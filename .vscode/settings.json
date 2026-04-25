@@ -1,0 +1,33 @@
+{
+    "intelephense.files.maxSize": 5000000,
+    "intelephense.files.associations": ["*.php"],
+    "intelephense.diagnostics.enable": false,
+    "intelephense.diagnostics.run": false,
+    "intelephense.environment.phpVersion": "8.1",
+    "intelephense.environment.shortOpenTag": false,
+    "intelephense.compatibility.enabled": false,
+    "intelephense.diagnostics.severity": {
+        "P1009": "hint",
+        "P1080": "hint",
+        "P1009": "hint"
+    },
+    "cSpell.words": [
+        "IECEP",
+        "MEMSYS",
+        "Supabase",
+        "supabase",
+        "apikey",
+        "Dompdf",
+        "dompdf",
+        "phpmailer",
+        "guzzlehttp",
+        "vlucas",
+        "phpdotenv",
+        "endroid",
+        "web3",
+        "Keccak",
+        "STARTTLS",
+        "iecep",
+        "memsys"
+    ]
+}

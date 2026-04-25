@@ -1,0 +1,45 @@
+{
+  "name": "iecep-lsc-memsys-blockchain",
+  "version": "1.0.0",
+  "description": "Blockchain smart contracts for IECEP-LSC-MEMSYS payment ledger using Truffle",
+  "main": "truffle-config.js",
+  "scripts": {
+    "compile": "truffle compile",
+    "migrate": "truffle migrate",
+    "migrate:local": "truffle migrate --network development",
+    "migrate:sepolia": "truffle migrate --network sepolia",
+    "migrate:mainnet": "truffle migrate --network mainnet",
+    "migrate:polygon": "truffle migrate --network polygon",
+    "test": "truffle test",
+    "test:coverage": "truffle run coverage",
+    "console": "truffle console",
+    "verify": "truffle run verify",
+    "node": "ganache-cli -d -p 8545",
+    "node:mnemonic": "ganache-cli -d -p 8545 -m \"your twelve word mnemonic phrase here\""
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0",
+    "@truffle/hdwallet-provider": "^2.1.15",
+    "dotenv": "^16.3.1",
+    "web3": "^1.10.0"
+  },
+  "devDependencies": {
+    "@truffle/contract": "^4.6.31",
+    "chai": "^4.3.10",
+    "chai-as-promised": "^7.1.1",
+    "ganache-cli": "^6.12.2",
+    "solidity-coverage": "^0.8.5",
+    "truffle": "^5.11.5",
+    "truffle-plugin-verify": "^0.6.7"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "solidity",
+    "truffle",
+    "payment",
+    "ledger"
+  ],
+  "author": "IECEP-LSC-MEMSYS Development Team",
+  "license": "MIT"
+}

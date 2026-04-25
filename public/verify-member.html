@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Member - IECEP-LSC MEMSYS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <meta name="description" content="Verify IECEP-LSC member credentials and membership status">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <img src="assets/icons/iecep-logo.png" alt="IECEP-LSC Logo" class="logo-img">
+                <span class="logo-text">IECEP-LSC MEMSYS</span>
+            </div>
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="verify-payment.html" class="nav-link">Verify Payment</a>
+                <a href="login.php" class="nav-link nav-btn">
+                    <i class="fas fa-sign-in-alt"></i> Login
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Verification Section -->
+    <section class="section">
+        <div class="container">
+            <div class="verification-container">
+                <div class="verification-header">
+                    <i class="fas fa-id-card"></i>
+                    <h1>Member Verification</h1>
+                    <p>Verify IECEP-LSC member credentials and membership status</p>
+                </div>
+
+                <div class="verification-form">
+                    <div class="form-tabs">
+                        <button class="tab-btn active" onclick="switchTab('qr')">
+                            <i class="fas fa-qrcode"></i> QR Code
+                        </button>
+                        <button class="tab-btn" onclick="switchTab('manual')">
+                            <i class="fas fa-keyboard"></i> Manual Entry
+                        </button>
+                    </div>
+
+                    <!-- QR Code Verification -->
+                    <div id="qrTab" class="tab-content active">
+                        <div class="qr-scanner">
+                            <div class="scanner-container">
+                                <i class="fas fa-qrcode scanner-icon"></i>
+                                <p>Position QR code within the frame to scan</p>
+                                <div class="scanner-frame">
+                                    <div class="scanner-line"></div>
+                                </div>
+                            </div>
+                            <div class="scanner-controls">
+                                <button onclick="startCamera()" class="btn btn-primary">
+                                    <i class="fas fa-camera"></i> Start Camera
+                                </button>
+                                <button onclick="uploadQRImage()" class="btn btn-secondary">
+                                    <i class="fas fa-upload"></i> Upload QR Image
+                                </button>
+                                <input type="file" id="qrFileInput" accept="image/*" style="display: none;" onchange="handleQRFileUpload(event)">
+                            </div>
+                        </div>
+                        <video id="qrVideo" style="display: none;"></video>
+                        <canvas id="qrCanvas" style="display: none;"></canvas>
+                    </div>
+
+                    <!-- Manual Entry -->
+                    <div id="manualTab" class="tab-content">
+                        <form id="manualVerificationForm" onsubmit="verifyManually(event)">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="memberId">Member ID</label>
+                                    <input type="text" id="memberId" placeholder="Enter member ID (e.g., MEM-2026-001)" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="memberName">Full Name</label>
+                                    <input type="text" id="memberName" placeholder="Enter member's full name" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="institutionName">Institution</label>
+                                    <input type="text" id="institutionName" placeholder="Enter institution name" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search"></i> Verify Member
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Verification Results -->
+                <div id="memberVerificationResult" class="verification-result" style="display: none;">
+                    <div class="result-header">
+                        <h2>Member Information</h2>
+                    </div>
+                    <div id="memberResultContent">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>IECEP-LSC MEMSYS</h4>
+                    <p>Blockchain-Enabled Progressive Web Application for Affiliates and Membership Management</p>
+                </div>
+                <div class="footer-section">
+                    <h4>Quick Links</h4>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="verify-payment.html">Verify Payment</a></li>
+                        <li><a href="login.php">Login</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h4>Security</h4>
+                    <p>All member verifications are logged for security purposes.</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 IECEP-LSC. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Verifying member...</p>
+        </div>
+    </div>
+
+    <!-- Success Message -->
+    <div id="successMessage" class="message success">
+        <div class="message-content">
+            <i class="fas fa-check-circle"></i>
+            <h3>Member Verified!</h3>
+            <p id="successText">Member information verified successfully.</p>
+            <button class="btn btn-primary" onclick="closeMessage()">OK</button>
+        </div>
+    </div>
+
+    <!-- Error Message -->
+    <div id="errorMessage" class="message error">
+        <div class="message-content">
+            <i class="fas fa-exclamation-circle"></i>
+            <h3>Verification Failed</h3>
+            <p id="errorText">Member verification failed. Please check the information and try again.</p>
+            <button class="btn btn-secondary" onclick="closeMessage()">OK</button>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://unpkg.com/qr-scanner/qr-scanner.umd.min.js"></script>
+    <script>
+        class MemberVerification {
+            constructor() {
+                this.apiBase = '/IECEP-LSC-MEMSYS/src/api';
+                this.camera = null;
+                this.scanner = null;
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.setupURLParameters();
+            }
+
+            setupEventListeners() {
+                // Manual form validation
+                const form = document.getElementById('manualVerificationForm');
+                const inputs = form.querySelectorAll('input[required]');
+                
+                inputs.forEach(input => {
+                    input.addEventListener('blur', () => this.validateField(input));
+                    input.addEventListener('input', () => this.clearFieldError(input));
+                });
+            }
+
+            setupURLParameters() {
+                const urlParams = new URLSearchParams(window.location.search);
+                const memberId = urlParams.get('member_id');
+                const name = urlParams.get('name');
+
+                if (memberId) {
+                    document.getElementById('memberId').value = memberId;
+                    if (name) {
+                        document.getElementById('memberName').value = decodeURIComponent(name);
+                    }
+                    this.verifyManually({ preventDefault: () => {} });
+                }
+            }
+
+            validateField(field) {
+                const value = field.value.trim();
+                let isValid = true;
+                let errorMessage = '';
+
+                if (field.hasAttribute('required') && !value) {
+                    isValid = false;
+                    errorMessage = 'This field is required';
+                }
+
+                if (!isValid) {
+                    this.showFieldError(field, errorMessage);
+                }
+
+                return isValid;
+            }
+
+            clearFieldError(field) {
+                field.classList.remove('error');
+                const errorElement = field.parentNode.querySelector('.error-message');
+                if (errorElement) {
+                    errorElement.remove();
+                }
+            }
+
+            showFieldError(field, message) {
+                field.classList.add('error');
+                let errorElement = field.parentNode.querySelector('.error-message');
+                
+                if (!errorElement) {
+                    errorElement = document.createElement('div');
+                    errorElement.className = 'error-message';
+                    errorElement.style.color = 'var(--error)';
+                    errorElement.style.fontSize = '0.875rem';
+                    errorElement.style.marginTop = '0.25rem';
+                    field.parentNode.appendChild(errorElement);
+                }
+                
+                errorElement.textContent = message;
+            }
+
+            // Tab switching
+            switchTab(tab) {
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                event.target.classList.add('active');
+
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(tab + 'Tab').classList.add('active');
+
+                // Stop camera if switching away from QR tab
+                if (tab !== 'qr' && this.camera) {
+                    this.stopCamera();
+                }
+            }
+
+            // Camera functions
+            async startCamera() {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: { facingMode: 'environment' } 
+                    });
+                    
+                    const video = document.getElementById('qrVideo');
+                    video.srcObject = stream;
+                    video.style.display = 'block';
+                    video.play();
+
+                    this.camera = stream;
+                    this.startQRScanning();
+                } catch (error) {
+                    this.showError('Camera access denied or not available');
+                }
+            }
+
+            stopCamera() {
+                if (this.camera) {
+                    this.camera.getTracks().forEach(track => track.stop());
+                    this.camera = null;
+                }
+                
+                const video = document.getElementById('qrVideo');
+                video.style.display = 'none';
+                
+                if (this.scanner) {
+                    this.scanner.stop();
+                }
+            }
+
+            startQRScanning() {
+                const video = document.getElementById('qrVideo');
+                const canvas = document.getElementById('qrCanvas');
+                const context = canvas.getContext('2d');
+
+                this.scanner = new QrScanner(
+                    video,
+                    result => this.handleQRResult(result),
+                    { 
+                        highlightScanRegion: true,
+                        highlightCodeOutline: true,
+                    }
+                );
+                this.scanner.start();
+            }
+
+            handleQRResult(result) {
+                if (result && result.data) {
+                    this.stopCamera();
+                    this.parseQRData(result.data);
+                }
+            }
+
+            parseQRData(qrData) {
+                try {
+                    // Try to parse as JSON first
+                    const data = JSON.parse(qrData);
+                    
+                    if (data.type === 'member' && data.id) {
+                        this.verifyByMemberId(data.id);
+                    } else {
+                        // Try to extract member ID from URL
+                        const url = new URL(qrData);
+                        const memberId = url.searchParams.get('member_id');
+                        if (memberId) {
+                            this.verifyByMemberId(memberId);
+                        } else {
+                            this.showError('Invalid QR code format');
+                        }
+                    }
+                } catch (error) {
+                    // If not JSON, try to extract from URL
+                    const url = new URL(qrData);
+                    const memberId = url.searchParams.get('member_id');
+                    if (memberId) {
+                        this.verifyByMemberId(memberId);
+                    } else {
+                        this.showError('Invalid QR code format');
+                    }
+                }
+            }
+
+            uploadQRImage() {
+                document.getElementById('qrFileInput').click();
+            }
+
+            handleQRFileUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        this.scanImage(img);
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            scanImage(img) {
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                
+                canvas.width = img.width;
+                canvas.height = img.height;
+                context.drawImage(img, 0, 0, img.width, img.height);
+                
+                // Use a simple QR code detection (in production, use a proper library)
+                this.showLoading();
+                
+                setTimeout(() => {
+                    this.hideLoading();
+                    this.showError('QR code scanning from images is not yet implemented. Please use manual entry or camera scanning.');
+                }, 2000);
+            }
+
+            // Verification functions
+            async verifyManually(event) {
+                event.preventDefault();
+                
+                const memberId = document.getElementById('memberId').value.trim();
+                const memberName = document.getElementById('memberName').value.trim();
+                const institutionName = document.getElementById('institutionName').value.trim();
+
+                if (!memberId && !memberName && !institutionName) {
+                    this.showError('Please enter at least one search criteria');
+                    return;
+                }
+
+                this.showLoading();
+
+                try {
+                    const response = await this.apiCall('/verify-member', 'POST', {
+                        member_id: memberId,
+                        name: memberName,
+                        institution_name: institutionName
+                    });
+                    
+                    if (response.success) {
+                        this.displayMemberResult(response.data, true);
+                        this.showSuccess('Member verified successfully!');
+                    } else {
+                        this.showError(response.message || 'Member verification failed');
+                    }
+                } catch (error) {
+                    this.showError('Network error. Please try again.');
+                } finally {
+                    this.hideLoading();
+                }
+            }
+
+            async verifyByMemberId(memberId) {
+                this.showLoading();
+
+                try {
+                    const response = await this.apiCall('/verify-member', 'POST', { member_id: memberId });
+                    
+                    if (response.success) {
+                        this.displayMemberResult(response.data, true);
+                        this.showSuccess('Member verified successfully!');
+                    } else {
+                        this.showError(response.message || 'Member verification failed');
+                    }
+                } catch (error) {
+                    this.showError('Network error. Please try again.');
+                } finally {
+                    this.hideLoading();
+                }
+            }
+
+            displayMemberResult(data, isValid) {
+                const resultContainer = document.getElementById('memberVerificationResult');
+                const resultContent = document.getElementById('memberResultContent');
+                
+                if (isValid) {
+                    resultContent.innerHTML = `
+                        <div class="member-success">
+                            <div class="member-photo">
+                                <img src="${data.photo_url || 'assets/icons/default-avatar.png'}" alt="Member Photo">
+                            </div>
+                            <div class="member-details">
+                                <div class="detail-header">
+                                    <h3>${data.full_name || 'N/A'}</h3>
+                                    <span class="member-id">ID: ${data.member_id || 'N/A'}</span>
+                                    <span class="status-badge status-active">ACTIVE</span>
+                                </div>
+                                <div class="detail-grid">
+                                    <div class="detail-item">
+                                        <label>Institution:</label>
+                                        <span>${data.institution_name || 'N/A'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <label>Membership Type:</label>
+                                        <span>${data.membership_type || 'N/A'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <label>Member Since:</label>
+                                        <span>${data.member_since ? new Date(data.member_since).toLocaleDateString() : 'N/A'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <label>Course:</label>
+                                        <span>${data.course || 'N/A'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <label>Year Level:</label>
+                                        <span>${data.year_level || 'N/A'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <label>Email:</label>
+                                        <span>${data.email || 'N/A'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultContent.innerHTML = `
+                        <div class="member-failed">
+                            <div class="error-icon">
+                                <i class="fas fa-user-times"></i>
+                            </div>
+                            <div class="error-details">
+                                <h3>Member Not Found</h3>
+                                <p>${data.message || 'The member could not be found in our system. Please check the member ID or contact the institution for verification.'}</p>
+                                <div class="error-suggestions">
+                                    <h4>Possible Solutions:</h4>
+                                    <ul>
+                                        <li>Check if the member ID is correct</li>
+                                        <li>Verify the member's full name spelling</li>
+                                        <li>Confirm the institution name</li>
+                                        <li>Contact IECEP-LSC for assistance</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                resultContainer.style.display = 'block';
+                resultContainer.scrollIntoView({ behavior: 'smooth' });
+            }
+
+            async apiCall(endpoint, method = 'GET', data = null) {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+
+                if (data) {
+                    options.body = JSON.stringify(data);
+                }
+
+                const response = await fetch(this.apiBase + endpoint, options);
+                return await response.json();
+            }
+
+            showLoading() {
+                document.getElementById('loadingOverlay').style.display = 'flex';
+            }
+
+            hideLoading() {
+                document.getElementById('loadingOverlay').style.display = 'none';
+            }
+
+            showSuccess(message) {
+                const successEl = document.getElementById('successMessage');
+                const successText = document.getElementById('successText');
+                successText.textContent = message;
+                successEl.style.display = 'block';
+                
+                setTimeout(() => {
+                    successEl.style.display = 'none';
+                }, 5000);
+            }
+
+            showError(message) {
+                const errorEl = document.getElementById('errorMessage');
+                const errorText = document.getElementById('errorText');
+                errorText.textContent = message;
+                errorEl.style.display = 'block';
+                
+                setTimeout(() => {
+                    errorEl.style.display = 'none';
+                }, 5000);
+            }
+
+            closeMessage() {
+                document.getElementById('successMessage').style.display = 'none';
+                document.getElementById('errorMessage').style.display = 'none';
+            }
+        }
+
+        // Initialize
+        let verification;
+        document.addEventListener('DOMContentLoaded', () => {
+            verification = new MemberVerification();
+        });
+    </script>
+
+    <style>
+        .verification-container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .qr-scanner {
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .scanner-container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .scanner-icon {
+            font-size: 4rem;
+            color: var(--gold);
+            margin-bottom: 1rem;
+        }
+
+        .scanner-frame {
+            width: 300px;
+            height: 300px;
+            border: 3px solid var(--gold);
+            border-radius: 1rem;
+            margin: 1rem auto;
+            position: relative;
+            overflow: hidden;
+            background: var(--gray-900);
+        }
+
+        .scanner-line {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--gold);
+            animation: scan 2s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { transform: translateY(-150px); }
+            100% { transform: translateY(150px); }
+        }
+
+        .scanner-controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+
+        #qrVideo {
+            width: 300px;
+            height: 300px;
+            border-radius: 1rem;
+            object-fit: cover;
+        }
+
+        .member-success,
+        .member-failed {
+            padding: 2rem;
+        }
+
+        .member-photo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .member-photo img {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            border: 4px solid var(--gold);
+            object-fit: cover;
+        }
+
+        .member-details {
+            text-align: center;
+        }
+
+        .detail-header {
+            margin-bottom: 2rem;
+        }
+
+        .detail-header h3 {
+            font-size: 2rem;
+            color: var(--navy);
+            margin-bottom: 0.5rem;
+        }
+
+        .member-id {
+            display: block;
+            font-family: monospace;
+            font-size: 1.1rem;
+            color: var(--gray-600);
+            margin-bottom: 1rem;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            text-align: left;
+        }
+
+        .error-suggestions {
+            background: var(--gray-50);
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .error-suggestions h4 {
+            color: var(--error);
+            margin-bottom: 1rem;
+        }
+
+        .error-suggestions ul {
+            color: var(--gray-700);
+            margin-left: 1.5rem;
+        }
+
+        .error-suggestions li {
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .verification-container {
+                padding: 0 1rem;
+            }
+
+            .scanner-frame {
+                width: 250px;
+                height: 250px;
+            }
+
+            #qrVideo {
+                width: 250px;
+                height: 250px;
+            }
+
+            .detail-grid {
+                grid-template-columns: 1fr;
+                text-align: center;
+            }
+        }
+    </style>
+</body>
+</html>

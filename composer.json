@@ -1,0 +1,22 @@
+{
+    "name": "iecep-lsc/memsys",
+    "description": "IECEP-LSC MEMSYS - Blockchain-Enabled PWA for Membership Management",
+    "type": "project",
+    "require": {
+        "php": ">=8.0",
+        "phpmailer/phpmailer": "^6.8",
+        "dompdf/dompdf": "^2.0",
+        "endroid/qr-code": "^2.0",
+        "firebase/php-jwt": "^6.3",
+        "vlucas/phpdotenv": "^5.4",
+        "guzzlehttp/guzzle": "^7.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "config": {
+        "vendor-dir": "vendor"
+    }
+}

@@ -1,0 +1,22 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Route API requests
+    RewriteRule ^api/(.*)$ ../src/api/index.php [QSA,L]
+    
+    # Handle login requests - redirect to login.php
+    RewriteRule ^login\.html$ login.php [R=301,L]
+
+    # Allow direct access to existing files and directories
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Route to PHP if exists, otherwise route to HTML
+    RewriteCond %{REQUEST_FILENAME}.php -f
+    RewriteRule ^(.*)$ $1.php [QSA,L]
+
+    # Route unmatched requests to index.php for SPA compatibility
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
