@@ -1,7 +1,7 @@
 {
     "name": "IECEP-LSC MEMSYS",
     "short_name": "IECEP MEMSYS",
-    "description": "Blockchain-Enabled Membership Management System for IECEP-LSC",
+    "description": "Membership Management System for IECEP-LSC",
     "start_url": "/index.html",
     "display": "standalone",
     "theme_color": "#0A2F6C",

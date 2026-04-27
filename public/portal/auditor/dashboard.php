@@ -50,11 +50,11 @@ $role_display = get_role_display_name($user['role']);
                 <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
-                            <i class="fas fa-link"></i>
+                            <i class="fas fa-exchange-alt"></i>
                         </div>
                         <div class="stat-content">
                             <h3>156</h3>
-                            <p>Blockchain Transactions</p>
+                            <p>Transactions</p>
                             <span class="stat-change positive">+24 this month</span>
                         </div>
                     </div>
@@ -102,7 +102,7 @@ $role_display = get_role_display_name($user['role']);
                                 <i class="fas fa-check-circle"></i>
                             </div>
                             <h3>Verify Transactions</h3>
-                            <p>Review and verify blockchain transactions</p>
+                            <p>Review and verify transactions</p>
                         </a>
                         
                         <a href="/IECEP-LSC-MEMSYS/public/portal/auditor/audit-logs.php" class="action-card">
@@ -162,7 +162,7 @@ $role_display = get_role_display_name($user['role']);
                                 <i class="fas fa-link"></i>
                             </div>
                             <div class="activity-content">
-                                <p><strong>New blockchain entries</strong> from treasurer transactions</p>
+                                <p><strong>New transaction entries</strong> from treasurer transactions</p>
                                 <span class="activity-time">5 hours ago</span>
                                 <span class="verification-status pending">Pending Review</span>
                             </div>

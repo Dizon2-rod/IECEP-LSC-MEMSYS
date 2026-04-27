@@ -45,15 +45,6 @@ if (!defined('APP_NAME')) {
     define('SUPABASE_ANON_KEY', $_ENV['SUPABASE_ANON_KEY'] ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmdmxianZ0d3R4bnBtbXN3YWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MDY0ODEsImV4cCI6MjA5MTk4MjQ4MX0.4o-RyygAaEnM61wfvc24xWGXMe3jVqZLPvh8bXUYxkg');
     define('SUPABASE_SERVICE_ROLE_KEY', $_ENV['SUPABASE_SERVICE_ROLE_KEY'] ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmdmxianZ0d3R4bnBtbXN3YWRmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjQwNjQ4MSwiZXhwIjoyMDkxOTgyNDgxfQ.JEYE5nCvnxSZ9F1cfGe43e8CDE_CEcJYwANQuRa1Jnk');
 
-    // Blockchain Configuration
-    define('BLOCKCHAIN_NETWORK', $_ENV['BLOCKCHAIN_NETWORK'] ?? 'sepolia');
-    define('BLOCKCHAIN_RPC_URL', $_ENV['BLOCKCHAIN_RPC_URL'] ?? '');
-    define('CONTRACT_ADDRESS', $_ENV['CONTRACT_ADDRESS'] ?? '');
-    define('CONTRACT_ABI_PATH', __DIR__ . '/../blockchain/PaymentLedger.json');
-
-    // System Wallet Configuration
-    define('SYSTEM_WALLET_PRIVATE_KEY', $_ENV['SYSTEM_WALLET_PRIVATE_KEY'] ?? '');
-    define('SYSTEM_WALLET_ADDRESS', $_ENV['SYSTEM_WALLET_ADDRESS'] ?? '');
 
     // Email Configuration
     define('SMTP_HOST', $_ENV['SMTP_HOST'] ?? 'smtp.gmail.com');
@@ -71,9 +62,6 @@ if (!defined('APP_NAME')) {
     define('MAX_FILE_SIZE', $_ENV['MAX_FILE_SIZE'] ?? 5242880); // 5MB
     define('ALLOWED_FILE_TYPES', $_ENV['ALLOWED_FILE_TYPES'] ?? 'pdf,doc,docx,jpg,jpeg,png');
 
-    // Blockchain Explorer URLs
-    define('BLOCKCHAIN_EXPLORER', $_ENV['BLOCKCHAIN_EXPLORER'] ?? 'https://sepolia.etherscan.io');
-    define('LOCAL_EXPLORER', $_ENV['LOCAL_EXPLORER'] ?? 'http://localhost:7545');
 
     // Database Table Names
     define('TABLE_USERS', 'user_profiles');
@@ -117,16 +105,6 @@ return [
         'anon_key' => SUPABASE_ANON_KEY,
         'service_role_key' => SUPABASE_SERVICE_ROLE_KEY
     ],
-    'blockchain' => [
-        'network' => BLOCKCHAIN_NETWORK,
-        'rpc_url' => BLOCKCHAIN_RPC_URL,
-        'contract_address' => CONTRACT_ADDRESS,
-        'contract_abi_path' => CONTRACT_ABI_PATH
-    ],
-    'wallet' => [
-        'private_key' => SYSTEM_WALLET_PRIVATE_KEY,
-        'address' => SYSTEM_WALLET_ADDRESS
-    ],
     'email' => [
         'host' => SMTP_HOST,
         'port' => SMTP_PORT,
@@ -142,9 +120,5 @@ return [
     'upload' => [
         'max_size' => MAX_FILE_SIZE,
         'allowed_types' => ALLOWED_FILE_TYPES
-    ],
-    'explorer' => [
-        'blockchain' => BLOCKCHAIN_EXPLORER,
-        'local' => LOCAL_EXPLORER
     ]
 ];

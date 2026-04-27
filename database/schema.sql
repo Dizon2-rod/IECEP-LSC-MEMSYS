@@ -146,7 +146,7 @@ CREATE TABLE IF NOT EXISTS compliance_records (
     calculated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 12. Transactions (financial + blockchain)
+-- 12. Transactions (financial)
 CREATE TABLE IF NOT EXISTS transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     receipt_id TEXT UNIQUE NOT NULL,
@@ -155,8 +155,6 @@ CREATE TABLE IF NOT EXISTS transactions (
     amount DECIMAL(10,2) NOT NULL,
     description TEXT,
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'cancelled')),
-    blockchain_tx_hash TEXT,
-    block_number BIGINT,
     receipt_url TEXT,
     paid_at TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

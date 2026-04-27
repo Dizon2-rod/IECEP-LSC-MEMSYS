@@ -83,11 +83,11 @@ $role_display = get_role_display_name($user['role']);
                     
                     <div class="stat-card">
                         <div class="stat-icon" style="background: rgba(10, 47, 108, 0.1); color: var(--navy);">
-                            <i class="fas fa-link"></i>
+                            <i class="fas fa-exchange-alt"></i>
                         </div>
                         <div class="stat-content">
                             <h3>156</h3>
-                            <p>Blockchain Transactions</p>
+                            <p>Transactions</p>
                             <span class="stat-change positive">+24 this month</span>
                         </div>
                     </div>
@@ -162,7 +162,7 @@ $role_display = get_role_display_name($user['role']);
                                 <i class="fas fa-link"></i>
                             </div>
                             <div class="activity-content">
-                                <p><strong>Blockchain transaction</strong> verified</p>
+                                <p><strong>Transaction</strong> verified</p>
                                 <span class="activity-time">1 day ago</span>
                                 <span class="amount">₱8,750</span>
                             </div>

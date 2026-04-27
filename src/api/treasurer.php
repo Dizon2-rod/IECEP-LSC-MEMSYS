@@ -7,7 +7,6 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
 require_once __DIR__ . '/../lib/supabase.php';
-require_once __DIR__ . '/../lib/blockchain.php';
 require_once __DIR__ . '/../lib/EmailService.php';
 require_once __DIR__ . '/../lib/pdf.php';
 require_once __DIR__ . '/../lib/qrcode.php';
@@ -15,7 +14,6 @@ require_once __DIR__ . '/../lib/digital_id.php';
 require_once __DIR__ . '/../middleware/auth.php';
 
 use App\Lib\Supabase;
-use App\Lib\BlockchainService;
 use App\Lib\EmailService;
 use App\Lib\PdfService;
 use App\Lib\QrCodeService;
@@ -24,7 +22,6 @@ use App\Middleware\AuthMiddleware;
 
 $sb = new Supabase();
 $auth = new AuthMiddleware();
-$blockchain = new BlockchainService();
 $emailSvc = new EmailService();
 $pdfSvc = new PdfService();
 $qrSvc = new QrCodeService();
@@ -69,12 +66,6 @@ try {
                 $receiptId = 'RCP-' . date('YmdHis') . '-' . bin2hex(random_bytes(3));
                 $feeAmount = $config['fee_affiliation'] / 100; // Convert cents to PHP
 
-                // Record blockchain transaction
-                $bcResult = $blockchain->logPayment($receiptId, $config['fee_affiliation']);
-
-                $txHash = $bcResult['tx_hash'] ?? null;
-                $blockNumber = $bcResult['block_number'] ?? null;
-
                 // Insert transaction
                 $sb->from('transactions')->insert([
                     'receipt_id' => $receiptId,
@@ -82,8 +73,6 @@ try {
                     'amount' => $feeAmount,
                     'description' => 'Institutional Affiliation Fee',
                     'status' => 'paid',
-                    'blockchain_tx_hash' => $txHash,
-                    'block_number' => $blockNumber,
                     'paid_at' => date('Y-m-d\TH:i:s\Z'),
                 ], true);
 
@@ -100,17 +89,15 @@ try {
                 $instName = $instResult['data'][0]['name'] ?? 'Institution';
 
                 $qrPath = sys_get_temp_dir() . '/receipt_qr_' . $receiptId . '.png';
-                if ($txHash) {
-                    $qrSvc->generateAndSave("https://sepolia.etherscan.io/tx/$txHash", $qrPath, 150);
-                }
+                $qrSvc->generateAndSave($config['app_url'] . "/verify-payment.php?receipt_id=$receiptId", $qrPath, 150);
 
                 $pdfContent = $pdfSvc->generateReceipt(
                     $receiptId,
                     $instName,
                     $feeAmount,
                     date('F j, Y'),
-                    $txHash,
-                    $txHash ? $qrPath : null
+                    null,
+                    $qrPath
                 );
 
                 $receiptUpload = $sb->storage()->uploadBinary(
@@ -128,7 +115,7 @@ try {
 
                 @unlink($qrPath);
 
-                $results[] = ['type' => 'affiliation_fee', 'receipt_id' => $receiptId, 'tx_hash' => $txHash];
+                $results[] = ['type' => 'affiliation_fee', 'receipt_id' => $receiptId];
             }
 
             // Process each member payment
@@ -158,11 +145,6 @@ try {
 
                 // Generate receipt ID
                 $receiptId = 'RCP-' . date('YmdHis') . '-' . bin2hex(random_bytes(3));
-
-                // Record blockchain transaction
-                $bcResult = $blockchain->logPayment($receiptId, $feeCents);
-                $txHash = $bcResult['tx_hash'] ?? null;
-                $blockNumber = $bcResult['block_number'] ?? null;
 
                 // Create Supabase Auth user
                 $password = 'IECEP@2025' . bin2hex(random_bytes(4));
@@ -224,17 +206,15 @@ try {
 
                 // Generate receipt PDF
                 $receiptQrPath = sys_get_temp_dir() . '/receipt_qr_' . $receiptId . '.png';
-                if ($txHash) {
-                    $qrSvc->generateAndSave("https://sepolia.etherscan.io/tx/$txHash", $receiptQrPath, 150);
-                }
+                $qrSvc->generateAndSave($config['app_url'] . "/verify-payment.php?receipt_id=$receiptId", $receiptQrPath, 150);
 
                 $pdfContent = $pdfSvc->generateReceipt(
                     $receiptId,
                     $pm['full_name'],
                     $feeAmount,
                     date('F j, Y'),
-                    $txHash,
-                    $txHash ? $receiptQrPath : null
+                    null,
+                    $receiptQrPath
                 );
 
                 $sb->storage()->uploadBinary('receipts', "{$receiptId}.pdf", $pdfContent, 'application/pdf');
@@ -250,8 +230,6 @@ try {
                     'amount' => $feeAmount,
                     'description' => "Membership Fee - {$pm['member_type']}",
                     'status' => 'paid',
-                    'blockchain_tx_hash' => $txHash,
-                    'block_number' => $blockNumber,
                     'receipt_url' => $receiptUrl,
                     'paid_at' => date('Y-m-d\TH:i:s\Z'),
                 ], true);
@@ -268,7 +246,6 @@ try {
                     'pending_member_id' => $pmId,
                     'member_id' => $newMemberId,
                     'receipt_id' => $receiptId,
-                    'tx_hash' => $txHash,
                     'email' => $pm['email'],
                 ];
             }
@@ -344,7 +321,7 @@ try {
                     <td style='padding:8px'>{$inst}</td>
                     <td style='padding:8px'>₱" . number_format($tx['amount'], 2) . "</td>
                     <td style='padding:8px'>{$tx['paid_at']}</td>
-                    <td style='padding:8px'><span style='color:#28a745'>On-Chain</span></td>
+                    <td style='padding:8px'><span style='color:#28a745'>Paid</span></td>
                 </tr>";
             }
 

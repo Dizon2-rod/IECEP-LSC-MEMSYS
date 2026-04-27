@@ -21,22 +21,10 @@ class PdfService
         $dompdf = new Dompdf($options);
 
         $amountFormatted = '₱' . number_format($amount, 2);
-        $etherscanLink = $txHash ? "https://sepolia.etherscan.io/tx/$txHash" : '';
         $qrImg = '';
         if ($qrCodePath && file_exists($qrCodePath)) {
             $qrData = base64_encode(file_get_contents($qrCodePath));
             $qrImg = "<img src='data:image/png;base64,{$qrData}' style='width:120px;height:120px;margin-top:12px' />";
-        }
-
-        $blockchainSection = '';
-        if ($txHash) {
-            $blockchainSection = "
-                <div style='margin-top:20px;padding:16px;background:#f0f4f8;border-radius:8px;border-left:4px solid #0A2F6C'>
-                    <h4 style='color:#0A2F6C;margin:0 0 8px 0'>Blockchain Verification</h4>
-                    <p style='margin:4px 0;font-size:12px'><strong>Transaction Hash:</strong> <code style='font-size:11px'>{$txHash}</code></p>
-                    <p style='margin:4px 0;font-size:12px'><a href='{$etherscanLink}'>View on Etherscan</a></p>
-                    {$qrImg}
-                </div>";
         }
 
         $html = "
@@ -76,10 +64,10 @@ class PdfService
                     <span class='value'>{$date}</span>
                 </div>
                 <div class='amount'>{$amountFormatted}</div>
-                {$blockchainSection}
+                <div style='text-align:center;margin-top:20px'>{$qrImg}</div>
                 <div class='footer'>
-                    <span class='badge'>On-Chain Verified</span><br><br>
-                    This payment is immutably recorded on the Ethereum Sepolia blockchain.<br>
+                    <span class='badge'>Official Receipt</span><br><br>
+                    This is an official payment receipt from IECEP-LSC.<br>
                     IECEP-LSC MEMSYS &copy; " . date('Y') . "
                 </div>
             </div>

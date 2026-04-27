@@ -88,7 +88,7 @@ try {
             $memberId = $memberResult['data'][0]['id'] ?? '';
 
             $transaction = $sb->from('transactions')
-                ->select('receipt_id, amount, status, blockchain_tx_hash, receipt_url, paid_at')
+                ->select('receipt_id, amount, status, receipt_url, paid_at')
                 ->eq('member_id', $memberId)
                 ->eq('status', 'paid')
                 ->get(true);

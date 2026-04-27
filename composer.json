@@ -1,6 +1,6 @@
 {
     "name": "iecep-lsc/memsys",
-    "description": "IECEP-LSC MEMSYS - Blockchain-Enabled PWA for Membership Management",
+    "description": "IECEP-LSC MEMSYS - PWA for Membership Management",
     "type": "project",
     "require": {
         "php": ">=8.0",

@@ -21,12 +21,12 @@
 
     <div style="max-width:700px;margin:40px auto;padding:0 24px">
         <h2 style="text-align:center;margin-bottom:24px">Verify Payment</h2>
-        <p class="text-center text-muted mb-3">Enter a Receipt ID or Blockchain Transaction Hash to verify a payment.</p>
+        <p class="text-center text-muted mb-3">Enter a Receipt ID to verify a payment.</p>
 
         <div class="card" style="padding:32px">
             <div class="form-group">
-                <label>Receipt ID or Transaction Hash</label>
-                <input type="text" class="form-control" id="verify-input" placeholder="RCP-20250101... or 0x...">
+                <label>Receipt ID</label>
+                <input type="text" class="form-control" id="verify-input" placeholder="RCP-20250101...">
             </div>
             <button class="btn btn-primary btn-block" onclick="verifyPayment()">Verify</button>
         </div>
@@ -38,13 +38,12 @@
     <script>
         async function verifyPayment() {
             const input = document.getElementById('verify-input').value.trim();
-            if (!input) { App.toast('Enter a receipt ID or transaction hash', 'warning'); return; }
+            if (!input) { App.toast('Enter a receipt ID', 'warning'); return; }
 
             const container = document.getElementById('result');
             container.innerHTML = '<div class="spinner"></div>';
 
-            const isTxHash = input.startsWith('0x');
-            const params = isTxHash ? `tx_hash=${input}` : `receipt_id=${input}`;
+            const params = `receipt_id=${input}`;
             const url = `/api/verify-payment?${params}`;
 
             try {
@@ -53,13 +52,12 @@
 
                 if (data.success && data.transaction) {
                     const tx = data.transaction;
-                    const bc = data.blockchain;
-                    const verified = bc?.verified;
+                    const verified = data.verified;
 
                     container.innerHTML = `
                         <div class="card" style="border-left:4px solid ${verified ? '#28A745' : '#DC3545'}">
                             <h3 style="color:${verified ? '#28A745' : '#DC3545'}">
-                                ${verified ? '✓ Verified on Blockchain' : '✗ Not Verified'}
+                                ${verified ? '✓ Verified' : '✗ Not Verified'}
                             </h3>
                             <div class="mt-2">
                                 <p><strong>Receipt ID:</strong> <code>${tx.receipt_id}</code></p>
@@ -67,10 +65,6 @@
                                 <p><strong>Amount:</strong> ${App.formatCurrency(tx.amount)}</p>
                                 <p><strong>Date:</strong> ${App.formatDate(tx.paid_at)}</p>
                                 <p><strong>Description:</strong> ${tx.description || '-'}</p>
-                                ${tx.blockchain_tx_hash ? `
-                                    <p><strong>Transaction Hash:</strong> <code style="font-size:11px">${tx.blockchain_tx_hash}</code></p>
-                                    <a href="${data.etherscan_url}" target="_blank" class="btn btn-outline btn-sm mt-1">View on Etherscan</a>
-                                ` : ''}
                             </div>
                         </div>`;
                 } else {

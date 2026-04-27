@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,8 +8,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="assets/css/style.css">
-    <meta name="description" content="Verify IECEP-LSC MEMSYS payments using receipt ID or blockchain transaction hash">
+    <meta name="description" content="Verify IECEP-LSC MEMSYS payments using receipt ID">
 </head>
+
 <body>
     <!-- Navigation -->
     <nav class="navbar">
@@ -34,19 +36,10 @@
                 <div class="verification-header">
                     <i class="fas fa-search-dollar"></i>
                     <h1>Payment Verification</h1>
-                    <p>Verify the authenticity of payments recorded on the IECEP-LSC blockchain</p>
+                    <p>Verify the authenticity of payments recorded in the system</p>
                 </div>
 
                 <div class="verification-form">
-                    <div class="form-tabs">
-                        <button class="tab-btn active" onclick="switchTab('receipt')">
-                            <i class="fas fa-receipt"></i> Receipt ID
-                        </button>
-                        <button class="tab-btn" onclick="switchTab('transaction')">
-                            <i class="fas fa-link"></i> Transaction Hash
-                        </button>
-                    </div>
-
                     <!-- Receipt ID Verification -->
                     <div id="receiptTab" class="tab-content active">
                         <form id="receiptForm" onsubmit="verifyByReceipt(event)">
@@ -56,19 +49,6 @@
                             </div>
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-search"></i> Verify Payment
-                            </button>
-                        </form>
-                    </div>
-
-                    <!-- Transaction Hash Verification -->
-                    <div id="transactionTab" class="tab-content">
-                        <form id="transactionForm" onsubmit="verifyByTransaction(event)">
-                            <div class="form-group">
-                                <label for="transactionHash">Transaction Hash</label>
-                                <input type="text" id="transactionHash" placeholder="Enter blockchain transaction hash" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-search"></i> Verify Transaction
                             </button>
                         </form>
                     </div>
@@ -93,7 +73,7 @@
             <div class="footer-content">
                 <div class="footer-section">
                     <h4>IECEP-LSC MEMSYS</h4>
-                    <p>Blockchain-Enabled Progressive Web Application for Affiliates and Membership Management</p>
+                    <p>Progressive Web Application for Affiliates and Membership Management</p>
                 </div>
                 <div class="footer-section">
                     <h4>Quick Links</h4>
@@ -102,12 +82,6 @@
                         <li><a href="verify-member.html">Verify Member</a></li>
                         <li><a href="login.php">Login</a></li>
                     </ul>
-                </div>
-                <div class="footer-section">
-                    <h4>Blockchain Explorer</h4>
-                    <a href="https://sepolia.etherscan.io" target="_blank" class="btn btn-secondary">
-                        <i class="fas fa-external-link-alt"></i> View on Etherscan
-                    </a>
                 </div>
             </div>
             <div class="footer-bottom">
@@ -129,7 +103,7 @@
         <div class="message-content">
             <i class="fas fa-check-circle"></i>
             <h3>Payment Verified!</h3>
-            <p id="successText">This payment has been verified on the blockchain.</p>
+            <p id="successText">This payment has been verified.</p>
             <button class="btn btn-primary" onclick="closeMessage()">OK</button>
         </div>
     </div>
@@ -139,7 +113,7 @@
         <div class="message-content">
             <i class="fas fa-exclamation-circle"></i>
             <h3>Verification Failed</h3>
-            <p id="errorText">Unable to verify this payment. Please check the receipt ID or transaction hash.</p>
+            <p id="errorText">Unable to verify this payment. Please check the receipt ID.</p>
             <button class="btn btn-secondary" onclick="closeMessage()">OK</button>
         </div>
     </div>
@@ -185,7 +159,7 @@
             validateReceiptId(input) {
                 const value = input.value.trim();
                 const receiptPattern = /^REC-\d{4}-\d{3}$/;
-                
+
                 if (value && !receiptPattern.test(value)) {
                     this.showFieldError(input, 'Receipt ID format: REC-YYYY-NNN');
                 } else {
@@ -196,7 +170,7 @@
             validateTransactionHash(input) {
                 const value = input.value.trim();
                 const hashPattern = /^0x[a-fA-F0-9]{64}$/;
-                
+
                 if (value && !hashPattern.test(value)) {
                     this.showFieldError(input, 'Transaction hash must start with 0x and be 64 characters');
                 } else {
@@ -207,7 +181,7 @@
             showFieldError(field, message) {
                 field.classList.add('error');
                 let errorElement = field.parentNode.querySelector('.error-message');
-                
+
                 if (!errorElement) {
                     errorElement = document.createElement('div');
                     errorElement.className = 'error-message';
@@ -216,7 +190,7 @@
                     errorElement.style.marginTop = '0.25rem';
                     field.parentNode.appendChild(errorElement);
                 }
-                
+
                 errorElement.textContent = message;
             }
 
@@ -231,7 +205,7 @@
             async verifyByReceipt(event) {
                 event.preventDefault();
                 const receiptId = document.getElementById('receiptId').value.trim();
-                
+
                 if (!receiptId) {
                     this.showError('Please enter a receipt ID');
                     return;
@@ -243,7 +217,7 @@
             async verifyByTransaction(event) {
                 event.preventDefault();
                 const txHash = document.getElementById('transactionHash').value.trim();
-                
+
                 if (!txHash) {
                     this.showError('Please enter a transaction hash');
                     return;
@@ -266,13 +240,13 @@
                 try {
                     const endpoint = type === 'receipt' ? '/verify-payment' : '/verify-payment';
                     const params = type === 'receipt' ? `?receipt_id=${value}` : `?tx_hash=${value}`;
-                    
+
                     const response = await fetch(this.apiBase + endpoint + params);
                     const result = await response.json();
 
                     if (result.success) {
                         this.displayVerificationResult(result.data, true);
-                        this.showSuccess('Payment successfully verified on blockchain!');
+                        this.showSuccess('Payment successfully verified!');
                     } else {
                         this.showError(result.message || 'Payment verification failed');
                     }
@@ -286,7 +260,7 @@
             displayVerificationResult(data, isValid) {
                 const resultContainer = document.getElementById('verificationResult');
                 const resultContent = document.getElementById('resultContent');
-                
+
                 if (isValid) {
                     resultContent.innerHTML = `
                         <div class="verification-success">
@@ -317,23 +291,12 @@
                                         <span>${data.payment_date ? new Date(data.payment_date).toLocaleDateString() : 'N/A'}</span>
                                     </div>
                                     <div class="detail-item">
-                                        <label>Transaction Hash:</label>
-                                        <span class="hash-value">${data.blockchain_tx_hash || 'N/A'}</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <label>Block Number:</label>
-                                        <span>${data.block_number || 'N/A'}</span>
-                                    </div>
-                                    <div class="detail-item">
                                         <label>Status:</label>
-                                        <span class="status-badge status-verified">Verified on Blockchain</span>
+                                        <span class="status-badge status-verified">Verified</span>
                                     </div>
                                 </div>
                             </div>
                             <div class="verification-actions">
-                                <a href="https://sepolia.etherscan.io/tx/${data.blockchain_tx_hash}" target="_blank" class="btn btn-primary">
-                                    <i class="fas fa-external-link-alt"></i> View on Etherscan
-                                </a>
                                 <button onclick="window.print()" class="btn btn-secondary">
                                     <i class="fas fa-print"></i> Print Verification
                                 </button>
@@ -348,13 +311,12 @@
                             </div>
                             <div class="error-details">
                                 <h3>Verification Failed</h3>
-                                <p>${data.message || 'The payment could not be verified. Please check the receipt ID or transaction hash and try again.'}</p>
+                                <p>${data.message || 'The payment could not be verified. Please check the receipt ID and try again.'}</p>
                                 <div class="error-suggestions">
                                     <h4>Possible Reasons:</h4>
                                     <ul>
-                                        <li>Invalid receipt ID or transaction hash</li>
+                                        <li>Invalid receipt ID</li>
                                         <li>Payment not yet processed</li>
-                                        <li>Transaction not yet confirmed on blockchain</li>
                                         <li>Network connectivity issues</li>
                                     </ul>
                                 </div>
@@ -372,7 +334,9 @@
                 }
 
                 resultContainer.style.display = 'block';
-                resultContainer.scrollIntoView({ behavior: 'smooth' });
+                resultContainer.scrollIntoView({
+                    behavior: 'smooth'
+                });
             }
 
             showLoading() {
@@ -388,7 +352,7 @@
                 const successText = document.getElementById('successText');
                 successText.textContent = message;
                 successEl.style.display = 'block';
-                
+
                 setTimeout(() => {
                     successEl.style.display = 'none';
                 }, 5000);
@@ -399,7 +363,7 @@
                 const errorText = document.getElementById('errorText');
                 errorText.textContent = message;
                 errorEl.style.display = 'block';
-                
+
                 setTimeout(() => {
                     errorEl.style.display = 'none';
                 }, 5000);
@@ -411,26 +375,10 @@
             }
         }
 
-        // Tab switching
-        function switchTab(tab) {
-            // Update tab buttons
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event.target.classList.add('active');
-
-            // Update tab content
-            document.querySelectorAll('.tab-content').forEach(content => {
-                content.classList.remove('active');
-            });
-            document.getElementById(tab + 'Tab').classList.add('active');
-        }
-
         // Reset verification
         function resetVerification() {
             document.getElementById('verificationResult').style.display = 'none';
             document.getElementById('receiptForm').reset();
-            document.getElementById('transactionForm').reset();
         }
 
         // Initialize
@@ -445,29 +393,29 @@
             max-width: 800px;
             margin: 0 auto;
         }
-
+        
         .verification-header {
             text-align: center;
             margin-bottom: 3rem;
         }
-
+        
         .verification-header i {
             font-size: 4rem;
             color: var(--gold);
             margin-bottom: 1rem;
         }
-
+        
         .verification-header h1 {
             font-size: 2.5rem;
             color: var(--navy);
             margin-bottom: 1rem;
         }
-
+        
         .verification-header p {
             color: var(--gray-600);
             font-size: 1.1rem;
         }
-
+        
         .verification-form {
             background: white;
             padding: 2rem;
@@ -475,13 +423,13 @@
             box-shadow: var(--shadow-lg);
             margin-bottom: 2rem;
         }
-
+        
         .form-tabs {
             display: flex;
             margin-bottom: 2rem;
             border-bottom: 2px solid var(--gray-200);
         }
-
+        
         .tab-btn {
             background: none;
             border: none;
@@ -493,149 +441,145 @@
             border-bottom: 3px solid transparent;
             transition: all 0.3s ease;
         }
-
+        
         .tab-btn.active {
             color: var(--navy);
             border-bottom-color: var(--gold);
         }
-
+        
         .tab-btn:hover {
             color: var(--navy);
         }
-
+        
         .tab-content {
             display: none;
         }
-
+        
         .tab-content.active {
             display: block;
         }
-
+        
         .verification-result {
             background: white;
             border-radius: 1rem;
             box-shadow: var(--shadow-lg);
             overflow: hidden;
         }
-
+        
         .result-header {
             background: var(--navy);
             color: white;
             padding: 1.5rem;
             text-align: center;
         }
-
+        
         .verification-success,
         .verification-failed {
             padding: 2rem;
         }
-
+        
         .success-icon,
         .error-icon {
             text-align: center;
             margin-bottom: 2rem;
         }
-
+        
         .success-icon i {
             font-size: 4rem;
             color: var(--success);
         }
-
+        
         .error-icon i {
             font-size: 4rem;
             color: var(--error);
         }
-
+        
         .payment-details,
         .error-details {
             margin-bottom: 2rem;
         }
-
+        
         .detail-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 1rem;
         }
-
+        
         .detail-item {
             padding: 1rem;
             background: var(--gray-50);
             border-radius: 0.5rem;
         }
-
+        
         .detail-item label {
             display: block;
             font-weight: 600;
             color: var(--gray-700);
             margin-bottom: 0.5rem;
         }
-
+        
         .detail-item span {
             font-size: 1.1rem;
             color: var(--navy);
         }
-
+        
         .hash-value {
             font-family: monospace;
             font-size: 0.9rem;
             word-break: break-all;
         }
-
+        
         .verification-actions {
             display: flex;
             gap: 1rem;
             justify-content: center;
             flex-wrap: wrap;
         }
-
+        
         .error-suggestions {
             background: var(--gray-50);
             padding: 1.5rem;
             border-radius: 0.5rem;
             margin-top: 1rem;
         }
-
+        
         .error-suggestions h4 {
             color: var(--error);
             margin-bottom: 1rem;
         }
-
+        
         .error-suggestions ul {
             color: var(--gray-700);
             margin-left: 1.5rem;
         }
-
+        
         .error-suggestions li {
             margin-bottom: 0.5rem;
         }
-
+        
         @media (max-width: 768px) {
             .verification-container {
                 padding: 0 1rem;
             }
-
             .form-tabs {
                 flex-direction: column;
             }
-
             .tab-btn {
                 border-bottom: 1px solid var(--gray-200);
                 border-right: none;
             }
-
             .tab-btn.active {
                 border-bottom-color: var(--gold);
                 border-right: none;
             }
-
             .detail-grid {
                 grid-template-columns: 1fr;
             }
-
             .verification-actions {
                 flex-direction: column;
             }
         }
     </style>
 </body>
+
 </html>

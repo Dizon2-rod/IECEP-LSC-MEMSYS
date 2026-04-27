@@ -7,16 +7,13 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
 require_once __DIR__ . '/../lib/supabase.php';
-require_once __DIR__ . '/../lib/blockchain.php';
 require_once __DIR__ . '/../middleware/auth.php';
 
 use App\Lib\Supabase;
-use App\Lib\BlockchainService;
 use App\Middleware\AuthMiddleware;
 
 $sb = new Supabase();
 $auth = new AuthMiddleware();
-$blockchain = new BlockchainService();
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
@@ -25,16 +22,25 @@ try {
         case 'verify-transaction':
             if ($method !== 'GET') { http_response_code(405); exit; }
             $user = $auth->requireRole(['eb_auditor']);
-            $txHash = $_GET['tx_hash'] ?? '';
+            $receiptId = $_GET['receipt_id'] ?? '';
 
-            if (empty($txHash)) {
+            if (empty($receiptId)) {
                 http_response_code(400);
-                echo json_encode(['error' => 'Transaction hash required']);
+                echo json_encode(['error' => 'Receipt ID required']);
                 exit;
             }
 
-            $bcResult = $blockchain->verifyTransaction($txHash);
-            echo json_encode(['success' => true, 'blockchain' => $bcResult]);
+            // Transaction verification now database-only
+            $result = $sb->from('transactions')
+                ->select('*')
+                ->eq('receipt_id', $receiptId)
+                ->get(true);
+
+            if ($result['error'] || empty($result['data'])) {
+                echo json_encode(['success' => false, 'error' => 'Transaction not found']);
+            } else {
+                echo json_encode(['success' => true, 'transaction' => $result['data'][0]]);
+            }
             break;
 
         case 'flag-discrepancy':

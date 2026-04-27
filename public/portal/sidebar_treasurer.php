@@ -50,15 +50,8 @@ $current_page = basename($_SERVER['PHP_SELF']);
         </ul>
         
         <div class="nav-section">
-            <h4>Blockchain & Marketing</h4>
+            <h4>Marketing</h4>
             <ul class="nav-menu">
-                <li>
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/treasurer/blockchain.php" 
-                       class="<?php echo $current_page === 'blockchain.php' ? 'active' : ''; ?>">
-                        <i class="fas fa-link"></i>
-                        <span>Blockchain</span>
-                    </a>
-                </li>
                 <li>
                     <a href="/IECEP-LSC-MEMSYS/public/portal/marketing/dashboard.php" 
                        class="<?php echo strpos($_SERVER['REQUEST_URI'], 'marketing') !== false ? 'active' : ''; ?>">

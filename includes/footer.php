@@ -19,7 +19,7 @@ A single community moving as one—bound by support, growth, and shared experien
                 <a href="#how-it-works">How it works</a>
             </div>
             <div class="footer-col">
-                <h4>Contact Us</h4>
+                <h4>About IECEP-LSC</h4>
                 <a href="#">Privacy Policy</a>
             </div>
             <div class="footer-col">

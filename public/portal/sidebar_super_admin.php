@@ -74,13 +74,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
                     </a>
                 </li>
                 <li>
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/super-admin/blockchain.php" 
-                       class="<?php echo $current_page === 'blockchain.php' ? 'active' : ''; ?>">
-                        <i class="fas fa-link"></i>
-                        <span>Blockchain</span>
-                    </a>
-                </li>
-                <li>
                     <a href="/IECEP-LSC-MEMSYS/public/portal/super-admin/audit.php" 
                        class="<?php echo $current_page === 'audit.php' ? 'active' : ''; ?>">
                         <i class="fas fa-history"></i>

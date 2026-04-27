@@ -32,7 +32,7 @@ const TreasurerPortal = {
         // Group by institution
         const grouped = {};
         this.pendingMembers.forEach(pm => {
-            const instName = pm.member_upload_batches?.institutions?.name || 'Unknown';
+            const instName = pm.member_upload_batches ? .institutions ? .name || 'Unknown';
             if (!grouped[instName]) grouped[instName] = [];
             grouped[instName].push(pm);
         });
@@ -90,7 +90,7 @@ const TreasurerPortal = {
             return;
         }
 
-        if (!confirm(`Mark ${ids.length} member(s) as paid? This will create accounts and record blockchain transactions.`)) return;
+        if (!confirm(`Mark ${ids.length} member(s) as paid? This will create accounts and record transactions.`)) return;
 
         const result = await App.api('treasurer', 'mark-members-paid', {
             method: 'POST',
@@ -98,9 +98,9 @@ const TreasurerPortal = {
         });
 
         if (result.success) {
-            const count = result.results?.length || 0;
+            const count = result.results ? .length || 0;
             App.toast(`${count} member(s) processed successfully!`, 'success');
-            if (result.errors?.length > 0) {
+            if (result.errors ? .length > 0) {
                 App.toast(`${result.errors.length} error(s) occurred`, 'warning');
             }
             this.loadPendingPayments();
@@ -131,18 +131,18 @@ const TreasurerPortal = {
             return;
         }
 
-        let html = '<div class="table-container"><table><thead><tr><th>Receipt ID</th><th>Payer</th><th>Institution</th><th>Amount</th><th>Date</th><th>Blockchain</th></tr></thead><tbody>';
+        let html = '<div class="table-container"><table><thead><tr><th>Receipt ID</th><th>Payer</th><th>Institution</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead><tbody>';
         this.transactions.forEach(tx => {
-            const payer = tx.members?.full_name || tx.institutions?.name || 'N/A';
-            const inst = tx.institutions?.name || '-';
-            const onChain = tx.blockchain_tx_hash ? '<span class="badge badge-onchain">On-Chain</span>' : '<span class="badge badge-warning">Pending</span>';
+            const payer = tx.members ? .full_name || tx.institutions ? .name || 'N/A';
+            const inst = tx.institutions ? .name || '-';
+            const status = tx.status === 'paid' ? '<span class="badge badge-success">Paid</span>' : '<span class="badge badge-warning">Pending</span>';
             html += `<tr>
                 <td><code>${tx.receipt_id}</code></td>
                 <td>${payer}</td>
                 <td>${inst}</td>
                 <td>${App.formatCurrency(tx.amount)}</td>
                 <td>${App.formatDate(tx.paid_at)}</td>
-                <td>${onChain}</td>
+                <td>${status}</td>
             </tr>`;
         });
         html += '</tbody></table></div>';

@@ -65,13 +65,6 @@ $current_page = basename($_SERVER['PHP_SELF']);
                         <span>Audit Reports</span>
                     </a>
                 </li>
-                <li>
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/auditor/blockchain.php" 
-                       class="<?php echo $current_page === 'blockchain.php' ? 'active' : ''; ?>">
-                        <i class="fas fa-link"></i>
-                        <span>Blockchain Monitor</span>
-                    </a>
-                </li>
             </ul>
         </div>
     </nav>

@@ -243,7 +243,6 @@ $role_display = get_role_display_name($user['role']);
                 <li><a href="#"><i class="fas fa-user-shield"></i> All Users</a></li>
                 <li><a href="#"><i class="fas fa-calendar"></i> Events</a></li>
                 <li><a href="#"><i class="fas fa-file-invoice"></i> Payments</a></li>
-                <li><a href="#"><i class="fas fa-link"></i> Blockchain</a></li>
                 <li><a href="#"><i class="fas fa-chart-line"></i> Reports</a></li>
                 <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
                 <li style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
@@ -266,7 +265,7 @@ $role_display = get_role_display_name($user['role']);
 
             <div class="alert">
                 <i class="fas fa-exclamation-triangle"></i>
-                <strong>Super Admin Access:</strong> You have full system control including user management, school administration, and blockchain operations.
+                <strong>Super Admin Access:</strong> You have full system control including user management, school administration, and system operations.
             </div>
 
             <div class="stats-grid">
@@ -297,7 +296,6 @@ $role_display = get_role_display_name($user['role']);
                     <li>🏫 Manage school affiliations</li>
                     <li>👥 Approve/reject applications</li>
                     <li>📊 Generate system reports</li>
-                    <li>⛓ Monitor blockchain transactions</li>
                     <li>⚙️ Configure system settings</li>
                 </ul>
             </div>

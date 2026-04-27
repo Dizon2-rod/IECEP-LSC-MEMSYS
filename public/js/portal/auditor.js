@@ -20,41 +20,23 @@ const AuditorPortal = {
         const container = document.getElementById('transactions-list');
         if (!container) return;
 
-        let html = '<div class="table-container"><table><thead><tr><th>Receipt ID</th><th>Payer</th><th>Amount</th><th>Date</th><th>Blockchain</th><th>Actions</th></tr></thead><tbody>';
+        let html = '<div class="table-container"><table><thead><tr><th>Receipt ID</th><th>Payer</th><th>Amount</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
         transactions.forEach(tx => {
-            const payer = tx.members?.full_name || tx.institutions?.name || 'N/A';
-            const onChain = tx.blockchain_tx_hash ? `<span class="badge badge-onchain">On-Chain</span>` : '-';
+            const payer = tx.members ? .full_name || tx.institutions ? .name || 'N/A';
+            const status = tx.status === 'paid' ? '<span class="badge badge-success">Paid</span>' : '<span class="badge badge-warning">Pending</span>';
             html += `<tr>
                 <td><code>${tx.receipt_id}</code></td>
                 <td>${payer}</td>
                 <td>${App.formatCurrency(tx.amount)}</td>
                 <td>${App.formatDate(tx.paid_at)}</td>
-                <td>${onChain}</td>
+                <td>${status}</td>
                 <td>
-                    ${tx.blockchain_tx_hash ? `<button class="btn btn-sm btn-outline" onclick="AuditorPortal.verifyTx('${tx.blockchain_tx_hash}')">Verify</button>` : ''}
                     <button class="btn btn-sm btn-danger" onclick="AuditorPortal.showFlagModal('${tx.id}', '${tx.receipt_id}')">Flag</button>
                 </td>
             </tr>`;
         });
         html += '</tbody></table></div>';
         container.innerHTML = html;
-    },
-
-    async verifyTx(txHash) {
-        const result = await App.api('auditor', 'verify-transaction', { method: 'GET' });
-        // Manually add tx_hash param
-        const url = `${API_BASE}/auditor?action=verify-transaction&tx_hash=${txHash}`;
-        const token = Auth.getToken();
-        const response = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-
-        if (data.success && data.blockchain?.verified) {
-            App.toast('Transaction verified on blockchain!', 'success');
-        } else {
-            App.toast('Verification failed or transaction not found', 'error');
-        }
     },
 
     showFlagModal(transactionId, receiptId) {
@@ -76,7 +58,7 @@ const AuditorPortal = {
     },
 
     async flagDiscrepancy(transactionId) {
-        const reason = document.getElementById('flag-reason')?.value;
+        const reason = document.getElementById('flag-reason') ? .value;
         if (!reason) { App.toast('Please provide a reason', 'warning'); return; }
 
         const result = await App.api('auditor', 'flag-discrepancy', {
@@ -86,7 +68,7 @@ const AuditorPortal = {
 
         if (result.success) {
             App.toast('Discrepancy flagged', 'success');
-            document.querySelector('.modal-overlay')?.remove();
+            document.querySelector('.modal-overlay') ? .remove();
         } else {
             App.toast(result.message || 'Failed to flag', 'error');
         }
