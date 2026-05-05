@@ -20,7 +20,7 @@ $role_display = get_role_display_name($user['role']);
 <body>
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <?php include __DIR__ . '/../sidebar_officer.php'; ?>
+        <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
         
         <!-- Main Content -->
         <main class="main-content">
@@ -73,7 +73,7 @@ $role_display = get_role_display_name($user['role']);
                     
                     <div class="stat-card">
                         <div class="stat-icon" style="background: rgba(245, 166, 35, 0.1); color: var(--gold);">
-                            <i class="fas fa-check-circle"></i>
+                            <i class="fas fa-circle-check"></i>
                         </div>
                         <div class="stat-content">
                             <h3>92%</h3>

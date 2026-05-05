@@ -1,23 +1,31 @@
 <?php
+/**
+ * Super Admin Dashboard - Now uses Admin Panel Layout
+ */
+
 require_once __DIR__ . '/../auth_check.php';
-
-// Handle logout
-if (isset($_GET['action']) && $_GET['action'] === 'logout') {
-    $_SESSION = array();
-    session_unset();
-    session_destroy();
-    session_write_close();
-    setcookie(session_name(), '', time() - 42000, '/');
-    setcookie('PHPSESSID', '', time() - 42000, '/');
-    header('Location: /IECEP-LSC-MEMSYS/login.php');
-    exit;
-}
-
-// Allow eb_president and super_admin to access this page
 require_role(['eb_president', 'super_admin']);
+
+require_once __DIR__ . '/../../../includes/paths.php';
+require_once __DIR__ . '/../../../src/lib/SupabaseClient.php';
+
+// Load Supabase credentials
+$supabaseConfig = require __DIR__ . '/../../../includes/supabase.php';
 
 $user = get_user_info();
 $role_display = get_role_display_name($user['role']);
+
+// Fetch pending affiliations
+$pendingAffiliationsCount = 0;
+try {
+    $supabase = new SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
+    $pendingAffiliations = $supabase->select('pending_affiliations', ['status' => 'eq.pending_review']);
+    if (is_array($pendingAffiliations)) {
+        $pendingAffiliationsCount = count($pendingAffiliations);
+    }
+} catch (Exception $e) {
+    $pendingAffiliationsCount = 0;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -25,281 +33,142 @@ $role_display = get_role_display_name($user['role']);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Super Admin Dashboard - IECEP-LSC MEMSYS</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #f8fafc;
-            color: #334155;
-        }
-
-        .dashboard-container {
-            display: flex;
-            min-height: 100vh;
-        }
-
-        .sidebar {
-            width: 280px;
-            background: #0A2F6C;
-            color: white;
-            padding: 20px 0;
-            position: fixed;
-            height: 100vh;
-            overflow-y: auto;
-        }
-
-        .sidebar-header {
-            padding: 0 20px 30px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            margin-bottom: 20px;
-        }
-
-        .sidebar-header h3 {
-            font-size: 1.3rem;
-            margin-bottom: 5px;
-        }
-
-        .sidebar-header p {
-            font-size: 0.9rem;
-            opacity: 0.8;
-        }
-
-        .nav-menu {
-            list-style: none;
-        }
-
-        .nav-menu li {
-            margin-bottom: 5px;
-        }
-
-        .nav-menu a {
-            display: block;
-            padding: 12px 20px;
-            color: white;
-            text-decoration: none;
-            transition: background 0.3s;
-            font-size: 0.95rem;
-        }
-
-        .nav-menu a:hover, .nav-menu a.active {
-            background: rgba(255,255,255,0.1);
-        }
-
-        .nav-menu i {
-            width: 20px;
-            margin-right: 12px;
-        }
-
-        .main-content {
-            flex: 1;
-            margin-left: 280px;
-            padding: 30px;
-        }
-
-        .header {
-            background: white;
-            padding: 25px 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .header h1 {
-            color: #0A2F6C;
-            font-size: 1.8rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .header h1::before {
-            content: '👑';
-            font-size: 1.5rem;
-        }
-
-        .user-info {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .user-avatar {
-            width: 45px;
-            height: 45px;
-            background: linear-gradient(135deg, #0A2F6C, #1e4a8a);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            border-left: 4px solid #dc2626;
-        }
-
-        .stat-card h3 {
-            color: #dc2626;
-            font-size: 2.2rem;
-            margin-bottom: 5px;
-        }
-
-        .stat-card p {
-            color: #64748b;
-            font-size: 0.9rem;
-        }
-
-        .content-card {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-
-        .content-card h2 {
-            color: #0A2F6C;
-            margin-bottom: 20px;
-            font-size: 1.4rem;
-        }
-
-        .btn-logout {
-            background: #dc2626;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-        }
-
-        .btn-logout:hover {
-            background: #b91c1c;
-        }
-
-        .alert {
-            background: #fef3c7;
-            border: 1px solid #fbbf24;
-            color: #92400e;
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-
-        @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-                transition: transform 0.3s;
-            }
-
-            .sidebar.active {
-                transform: translateX(0);
-            }
-
-            .main-content {
-                margin-left: 0;
-                padding: 20px;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/dashboard.css">
 </head>
 <body>
     <div class="dashboard-container">
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <h3>IECEP-LSC</h3>
-                <p>Super Admin Panel</p>
-            </div>
-            <ul class="nav-menu">
-                <li><a href="#" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                <li><a href="#"><i class="fas fa-users-cog"></i> System Management</a></li>
-                <li><a href="#"><i class="fas fa-graduation-cap"></i> Schools</a></li>
-                <li><a href="#"><i class="fas fa-user-shield"></i> All Users</a></li>
-                <li><a href="#"><i class="fas fa-calendar"></i> Events</a></li>
-                <li><a href="#"><i class="fas fa-file-invoice"></i> Payments</a></li>
-                <li><a href="#"><i class="fas fa-chart-line"></i> Reports</a></li>
-                <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
-                <li style="margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 10px;">
-                    <a href="?action=logout" style="color: #dc2626;"><i class="fas fa-sign-out-alt"></i> Logout</a>
-                </li>
-            </ul>
-        </div>
+        <!-- Sidebar -->
+        <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
 
-        <div class="main-content">
-            <div class="header">
-                <h1>Super Admin Dashboard</h1>
-                <div class="user-info">
-                    <span>Welcome, <?php echo htmlspecialchars($user['name']); ?>!</span>
-                    <div class="user-avatar"><?php echo strtoupper(substr($user['name'], 0, 1)); ?></div>
-                    <button onclick="window.location.href='?action=logout'" class="btn-logout" style="cursor: pointer; border: none; background: none;">
-                        <i class="fas fa-sign-out-alt"></i> Logout
-                    </button>
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <div class="header-content">
+                    <div>
+                        <h1>Super Admin Dashboard</h1>
+                        <p class="welcome-message">Welcome back, <?php echo htmlspecialchars($user['user_metadata']['full_name'] ?? $user['email']); ?> - <?php echo $role_display; ?></p>
+                    </div>
+                    <div class="header-actions">
+                        <button class="btn btn-outline">
+                            <i class="fas fa-bell"></i>
+                            <span class="badge"><?php echo $pendingAffiliationsCount; ?></span>
+                        </button>
+                        <div class="user-menu">
+                            <img src="<?php echo $user['user_metadata']['avatar_url'] ?? '/IECEP-LSC-MEMSYS/public/assets/images/default-avatar.png'; ?>" alt="User Avatar" class="user-avatar">
+                            <span><?php echo htmlspecialchars($user['user_metadata']['full_name'] ?? 'User'); ?></span>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </header>
 
-            <div class="alert">
-                <i class="fas fa-exclamation-triangle"></i>
-                <strong>Super Admin Access:</strong> You have full system control including user management, school administration, and system operations.
-            </div>
+            <!-- Dashboard Content -->
+            <div class="dashboard-content">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(245, 166, 35, 0.1); color: var(--gold);">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3><?php echo $pendingAffiliationsCount; ?></h3>
+                            <p>Pending Affiliations</p>
+                            <span class="stat-change neutral">Awaiting review</span>
+                        </div>
+                    </div>
 
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <h3>9</h3>
-                    <p>Total Schools</p>
-                </div>
-                <div class="stat-card">
-                    <h3>450+</h3>
-                    <p>Total Users</p>
-                </div>
-                <div class="stat-card">
-                    <h3>12</h3>
-                    <p>Active Events</p>
-                </div>
-                <div class="stat-card">
-                    <h3>₱250K</h3>
-                    <p>Total Transactions</p>
-                </div>
-            </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(10, 47, 108, 0.1); color: var(--navy);">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>450+</h3>
+                            <p>Total Users</p>
+                            <span class="stat-change positive">+15 this week</span>
+                        </div>
+                    </div>
 
-            <div class="content-card">
-                <h2>System Overview</h2>
-                <p>As Super Admin, you have complete control over the IECEP-LSC MEMSYS. Monitor all activities, manage user roles, oversee school affiliations, and ensure system integrity.</p>
-                
-                <h3 style="margin-top: 20px; color: #0A2F6C;">Quick Actions</h3>
-                <ul style="margin-left: 20px; line-height: 1.8;">
-                    <li>🏫 Manage school affiliations</li>
-                    <li>👥 Approve/reject applications</li>
-                    <li>📊 Generate system reports</li>
-                    <li>⚙️ Configure system settings</li>
-                </ul>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">
+                            <i class="fas fa-school"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>9</h3>
+                            <p>Affiliated Schools</p>
+                            <span class="stat-change positive">+1 this month</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;">
+                            <i class="fas fa-calendar"></i>
+                        </div>
+                        <div class="stat-content">
+                            <h3>12</h3>
+                            <p>Active Events</p>
+                            <span class="stat-change neutral">Ongoing</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="quick-actions">
+                    <h2>Quick Actions</h2>
+                    <div class="actions-grid">
+                        <a href="<?php echo PORTAL_URL; ?>/admin/affiliations.php" class="action-card">
+                            <div class="action-icon">
+                                <i class="fas fa-building"></i>
+                            </div>
+                            <h3>Review Affiliations</h3>
+                            <p>Process pending school affiliation applications</p>
+                        </a>
+
+                        <a href="<?php echo PORTAL_URL; ?>/admin/members.php" class="action-card">
+                            <div class="action-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <h3>Manage Members</h3>
+                            <p>View and manage member accounts</p>
+                        </a>
+
+                        <a href="<?php echo PORTAL_URL; ?>/super-admin/officers.php" class="action-card">
+                            <div class="action-icon">
+                                <i class="fas fa-user-tie"></i>
+                            </div>
+                            <h3>Manage Officers</h3>
+                            <p>Update officer information</p>
+                        </a>
+
+                        <a href="<?php echo PORTAL_URL; ?>/super-admin/board-of-directors.php" class="action-card">
+                            <div class="action-icon">
+                                <i class="fas fa-users-cog"></i>
+                            </div>
+                            <h3>Board of Directors</h3>
+                            <p>Manage board members</p>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- System Overview -->
+                <div class="recent-activity">
+                    <h2>System Overview</h2>
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-icon" style="background: rgba(245, 166, 35, 0.1); color: var(--gold);">
+                                <i class="fas fa-crown"></i>
+                            </div>
+                            <div class="activity-content">
+                                <p><strong>Super Admin Access</strong> - You have full system control including user management, school administration, and system operations.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
+        </main>
     </div>
+
+    <script src="/IECEP-LSC-MEMSYS/public/js/dashboard.js"></script>
 </body>
 </html>

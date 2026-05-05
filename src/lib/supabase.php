@@ -1,11 +1,18 @@
 <?php
 namespace App\Lib;
 
-use GuzzleHttp\Client;
+// Load fallback HTTP client if GuzzleHttp is not available
+if (!class_exists('\GuzzleHttp\Client')) {
+    require_once __DIR__ . '/SimpleHttpClient.php';
+    // Create alias for compatibility
+    class_alias('App\Lib\Client', 'GuzzleHttp\Client');
+    class_alias('App\Lib\Response', 'GuzzleHttp\Psr7\Response');
+    class_alias('App\Lib\Body', 'GuzzleHttp\Psr7\Stream');
+}
 
 class Supabase
 {
-    private Client $client;
+    private $client;
     private string $url;
     private string $anonKey;
     private string $serviceKey;
@@ -16,7 +23,7 @@ class Supabase
         $this->url = SUPABASE_URL;
         $this->anonKey = SUPABASE_ANON_KEY;
         $this->serviceKey = SUPABASE_SERVICE_ROLE_KEY;
-        $this->client = new Client([
+        $this->client = new \GuzzleHttp\Client([
             'base_uri' => $this->url,
             'timeout' => 30,
             'http_errors' => false,
@@ -305,10 +312,9 @@ class SupabaseStorage
 
     public function uploadBinary(string $bucket, string $path, string $data, string $contentType = 'application/octet-stream'): array
     {
-        $config = include __DIR__ . '/../config/config.php';
         $serviceKey = $this->sb->getServiceKey();
         $client = new \GuzzleHttp\Client();
-        $response = $client->request('POST', $config['https://kfvlbjvtwtxnpmmswadf.supabase.co'] . "/storage/v1/object/$bucket/$path", [
+        $response = $client->request('POST', SUPABASE_URL . "/storage/v1/object/$bucket/$path", [
             'headers' => [
                 'apikey' => $serviceKey,
                 'Authorization' => 'Bearer ' . $serviceKey,
@@ -329,8 +335,7 @@ class SupabaseStorage
 
     public function getPublicUrl(string $bucket, string $path): string
     {
-        $config = include __DIR__ . '/../config/config.php';
-        return $config['https://kfvlbjvtwtxnpmmswadf.supabase.co'] . "/storage/v1/object/public/$bucket/$path";
+        return SUPABASE_URL . "/storage/v1/object/public/$bucket/$path";
     }
 
     public function createSignedUrl(string $bucket, string $path, int $expires = 3600): array

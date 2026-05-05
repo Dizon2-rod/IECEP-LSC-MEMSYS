@@ -1,84 +1,227 @@
-<nav class="navbar">
-    <div class="nav-container">
-        <div class="logo">
-            <img src="/public/assets/icons/iecep-logo.png" alt="IECEP-LSC Logo" class="logo-img">
+<?php
+// Prevent multiple inclusions
+if (defined('NAVBAR_INCLUDED')) return;
+define('NAVBAR_INCLUDED', true);
+
+require_once __DIR__ . '/../autoload.php';
+require_once __DIR__ . '/supabase.php';
+require_once __DIR__ . '/../includes/paths.php';
+
+$supabase = new \App\Lib\Supabase();
+$affiliatedSchools = [];
+try {
+    $result = $supabase->from('institutions')
+        ->select('name,facebook_url')
+        ->eq('status', 'active')
+        ->order('name', true)
+        ->get(true);
+    $affiliatedSchools = $result['data'] ?? [];
+} catch (Exception $e) {
+    $affiliatedSchools = [];
+}
+
+$isLoggedIn = isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true;
+$userRole = $_SESSION['role'] ?? '';
+?>
+<!-- Header -->
+<header class="header">
+    <div class="header-container">
+        <a href="<?php echo BASE_URL; ?>/" class="logo">
+            <img src="<?php echo ASSETS_URL; ?>/icons/iecep-logo.png" alt="IECEP-LSC Logo" class="logo-img">
             <span>IECEP-LSC MEMSYS</span>
-        </div>
-        <div class="nav-links">
-            <div class="dropdown">
-                <a href="public/dashboard.php" class="dropdown-toggle">Home <i class="fas fa-chevron-down"></i></a>
-                <div class="dropdown-menu">
-                    <a href="index.php">Dashboard</a>
-                    <a href="public/announcements.php">Announcements</a>
-                    <a href="public/quick-links.php">Quick Links</a>
-                    <a href="public/recent-activities.php">Recent Activities</a>
-                </div>
-            </div>
-            <div class="dropdown">
-                <a href="#" class="dropdown-toggle">About <i class="fas fa-chevron-down"></i></a>
-                <div class="dropdown-menu">
-                    <a href="#">Our Mission</a>
-                    <a href="#">Leadership Team</a>
-                    <a href="#">Chapter History</a>
-                    <a href="#">Contact Us</a>
-                </div>
-            </div>
-            <div class="dropdown">
-                <a href="#" class="dropdown-toggle">Resources <i class="fas fa-chevron-down"></i></a>
-                <div class="dropdown-menu">
-                    <a href="#">Documentation</a>
-                    <a href="#">Event Calendar</a>
-                    <a href="#">Downloads</a>
-                </div>
-            </div>
-            <a href="/login.php" id="loginBtn" class="btn-outline btn" style="padding: 8px 20px;">Login</a>
-        </div>
+        </a>
+        
+        <!-- Mobile Menu Toggle -->
+        <button class="mobile-menu-btn" id="mobileMenuToggle" aria-label="Toggle mobile menu">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        
+        <?php if (!$isLoggedIn): ?>
+        <!-- Public Navigation -->
+        <nav class="nav" id="desktopNav">
+            <ul class="nav-links">
+                <li><a href="<?php echo BASE_URL; ?>/index.php">Home</a></li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        Resources <i class="fas fa-chevron-down"></i>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href="<?php echo BASE_URL; ?>/board-of-trustees.php" class="dropdown-item">Board of Trustees</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/iecep-officers.php" class="dropdown-item">IECEP Officers</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/former-presidents.php" class="dropdown-item">Former Presidents</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/iecep-hymn.php" class="dropdown-item">IECEP Hymn</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/awards-distinctions.php" class="dropdown-item">Awards & Distinctions</a></li>
+                    </ul>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        About IECEP-LSC <i class="fas fa-chevron-down"></i>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href="<?php echo BASE_URL; ?>/mission-vision.php" class="dropdown-item">IECEP Mission and Vision</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/objective.php" class="dropdown-item">IECEP Objective</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/calendar-activity.php" class="dropdown-item">Calendar Activity</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/affiliated-schools.php" class="dropdown-item">Affiliated Schools</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/contact.php" class="dropdown-item">Contact Us</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+        
+        <a href="<?php echo BASE_URL; ?>/login.php" class="btn-login" id="desktopLogin">Login</a>
+        
+        <?php else: ?>
+        <!-- Logged-in Navigation -->
+        <nav class="nav" id="desktopNav">
+            <ul class="nav-links">
+                <li><a href="<?php echo PORTAL_URL; ?>/dashboard.php" class="nav-link">Dashboard</a></li>
+                <li><a href="<?php echo BASE_URL; ?>/calendar-activity.php" class="nav-link">Calendar</a></li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link">
+                        <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'User'); ?> <i class="icon icon-chevron-down"></i>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a href="<?php echo PORTAL_URL; ?>/profile.php" class="dropdown-item">Profile</a></li>
+                        <li><a href="<?php echo PORTAL_URL; ?>/settings.php" class="dropdown-item">Settings</a></li>
+                        <li><hr style="border: none; border-top: 1px solid var(--neutral-200); margin: 8px 0;"></li>
+                        <li><a href="<?php echo BASE_URL; ?>/logout.php" class="dropdown-item" style="color: #DC2626;">Logout</a></li>
+                    </ul>
+                </li>
+            </ul>
+        </nav>
+        <?php endif; ?>
     </div>
-</nav>
+</header>
 
-<style>
-/* Dropdown Styles */
-.dropdown {
-    position: relative;
-    display: inline-block;
-}
+<!-- Mobile Menu Overlay -->
+<div class="mobile-menu-overlay" id="mobileMenuOverlay">
+    <div class="mobile-menu-content">
+        <div class="mobile-menu-header">
+            <div class="logo">
+                <img src="<?php echo ASSETS_URL; ?>/icons/iecep-logo.png" alt="IECEP-LSC Logo" class="logo-img" style="width: 40px; height: 40px;">
+                <span>IECEP-LSC MEMSYS</span>
+            </div>
+            <button class="mobile-menu-close" id="mobileMenuClose" aria-label="Close mobile menu">
+                <i class="icon icon-xmark"></i>
+            </button>
+        </div>
+        
+        <nav class="mobile-menu-nav">
+            <?php if (!$isLoggedIn): ?>
+                <!-- Public Mobile Menu -->
+                <ul>
+                    <li class="mobile-dropdown">
+                        <a href="#" class="mobile-dropdown-toggle">
+                            Home <i class="icon icon-chevron-down"></i>
+                        </a>
+                        <ul class="mobile-submenu">
+                            <li><a href="<?php echo BASE_URL; ?>/board-of-trustees.php">Board of Trustees</a></li>
+                            <li><a href="<?php echo BASE_URL; ?>/iecep-officers.php">IECEP Officers</a></li>
+                            <li><a href="<?php echo BASE_URL; ?>/former-presidents.php">Former Presidents</a></li>
+                            <li><a href="<?php echo BASE_URL; ?>/iecep-hymn.php">IECEP Hymn</a></li>
+                            <li><a href="<?php echo BASE_URL; ?>/awards-distinctions.php">Awards & Distinctions</a></li>
+                        </ul>
+                    </li>
+                    <li class="mobile-dropdown">
+                        <a href="#" class="mobile-dropdown-toggle">
+                            Resources <i class="icon icon-chevron-down"></i>
+                        </a>
+                        <ul class="mobile-submenu">
+                            <li><a href="<?php echo BASE_URL; ?>/calendar-activity.php">Calendar Activity</a></li>
+                            <li><a href="<?php echo BASE_URL; ?>/affiliated-schools.php">Affiliated Schools</a></li>
+                        </ul>
+                    </li>
+                    <li class="mobile-dropdown">
+                        <a href="#" class="mobile-dropdown-toggle">
+                            About IECEP-LSC <i class="icon icon-chevron-down"></i>
+                        </a>
+                        <ul class="mobile-submenu">
+                            <li><a href="<?php echo BASE_URL; ?>/mission-vision.php">IECEP Mission and Vision</a></li>
+                            <li><a href="<?php echo BASE_URL; ?>/objective.php">IECEP Objective</a></li>
+                            <li><a href="<?php echo BASE_URL; ?>/contact.php">Contact Us</a></li>
+                        </ul>
+                    </li>
+                    <li><a href="<?php echo BASE_URL; ?>/login.php" class="mobile-cta-btn">Login</a></li>
+                </ul>
+            <?php else: ?>
+                <!-- Logged-in Mobile Menu -->
+                <ul>
+                    <li><a href="<?php echo PORTAL_URL; ?>/dashboard.php">Dashboard</a></li>
+                    <li><a href="<?php echo BASE_URL; ?>/calendar-activity.php">Calendar</a></li>
+                    <li class="mobile-dropdown">
+                        <a href="#" class="mobile-dropdown-toggle">
+                            <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'User'); ?> <i class="icon icon-chevron-down"></i>
+                        </a>
+                        <ul class="mobile-submenu">
+                            <li><a href="<?php echo PORTAL_URL; ?>/profile.php">Profile</a></li>
+                            <li><a href="<?php echo PORTAL_URL; ?>/settings.php">Settings</a></li>
+                            <li><a href="<?php echo BASE_URL; ?>/logout.php" style="color: #DC2626;">Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            <?php endif; ?>
+        </nav>
+    </div>
+</div>
 
-.dropdown-menu {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    background: white;
-    min-width: 200px;
-    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-    border-radius: 8px;
-    padding: 8px 0;
-    z-index: 9999;
-    margin-top: 0;
-}
-
-.dropdown:hover .dropdown-menu {
-    display: block;
-}
-
-.dropdown-menu a {
-    display: block;
-    padding: 10px 20px;
-    color: #333;
-    text-decoration: none;
-    transition: background 0.2s;
-}
-
-.dropdown-menu a:hover {
-    background: #f5f5f5;
-}
-
-.dropdown-toggle {
-    cursor: pointer;
-}
-
-.dropdown-toggle i {
-    margin-left: 5px;
-    font-size: 0.7em;
-}
-</style>
+<script>
+// Mobile Menu Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+    const mobileMenuOverlay = document.getElementById('mobileMenuOverlay');
+    const mobileMenuClose = document.getElementById('mobileMenuClose');
+    const mobileDropdownToggles = document.querySelectorAll('.mobile-dropdown-toggle');
+    
+    function openMobileMenu() {
+        mobileMenuOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeMobileMenu() {
+        mobileMenuOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+    
+    mobileMenuToggle.addEventListener('click', openMobileMenu);
+    mobileMenuClose.addEventListener('click', closeMobileMenu);
+    mobileMenuOverlay.addEventListener('click', function(e) {
+        if (e.target === mobileMenuOverlay) {
+            closeMobileMenu();
+        }
+    });
+    
+    // Mobile dropdown toggles
+    mobileDropdownToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            const submenu = this.nextElementSibling;
+            const isOpen = submenu.style.display === 'block';
+            
+            // Close all other submenus
+            document.querySelectorAll('.mobile-submenu').forEach(menu => {
+                menu.style.display = 'none';
+            });
+            document.querySelectorAll('.mobile-dropdown-toggle i').forEach(icon => {
+                icon.classList.remove('icon-chevron-up');
+                icon.classList.add('icon-chevron-down');
+            });
+            
+            // Toggle current submenu
+            if (!isOpen) {
+                submenu.style.display = 'block';
+                this.querySelector('i').classList.remove('icon-chevron-down');
+                this.querySelector('i').classList.add('icon-chevron-up');
+            }
+        });
+    });
+    
+    // Handle escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && mobileMenuOverlay.classList.contains('active')) {
+            closeMobileMenu();
+        }
+    });
+});
+</script>

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify Member - IECEP-LSC MEMSYS</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/font-awesome.css">
     <link rel="stylesheet" href="assets/css/style.css">
     <meta name="description" content="Verify IECEP-LSC member credentials and membership status">
 </head>
@@ -148,7 +148,7 @@
     <!-- Success Message -->
     <div id="successMessage" class="message success">
         <div class="message-content">
-            <i class="fas fa-check-circle"></i>
+            <i class="fas fa-circle-check"></i>
             <h3>Member Verified!</h3>
             <p id="successText">Member information verified successfully.</p>
             <button class="btn btn-primary" onclick="closeMessage()">OK</button>
@@ -170,7 +170,7 @@
     <script>
         class MemberVerification {
             constructor() {
-                this.apiBase = '/IECEP-LSC-MEMSYS/src/api';
+                this.apiBase = '/IECEP-LSC-MEMSYS/public/api';
                 this.camera = null;
                 this.scanner = null;
                 this.init();

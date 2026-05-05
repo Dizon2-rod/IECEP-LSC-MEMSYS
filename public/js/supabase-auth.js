@@ -37,7 +37,7 @@ const SupabaseAuth = {
         localStorage.removeItem(this.TOKEN_KEY);
         localStorage.removeItem(this.USER_KEY);
         supabase.auth.signOut();
-        window.location.href = '/login.php';
+        window.location.href = IECEP_PATHS.BASE_URL + '/login.php';
     },
 
     isLoggedIn() {
@@ -170,7 +170,7 @@ const SupabaseAuth = {
         if (!profile) return;
 
         if (profile.force_password_change) {
-            window.location.href = '/login.html?force_change=1';
+            window.location.href = IECEP_PATHS.BASE_URL + '/login.html?force_change=1';
             return;
         }
 
@@ -214,7 +214,7 @@ const SupabaseAuth = {
     // Check if on correct portal page
     async requireAuth(requiredRole = null) {
         if (!this.isLoggedIn()) {
-            window.location.href = '/login.php';
+            window.location.href = IECEP_PATHS.BASE_URL + '/login.php';
             return null;
         }
 

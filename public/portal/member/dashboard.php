@@ -1,6 +1,9 @@
 <?php
 require_once __DIR__ . '/../auth_check.php';
 
+// Load path configuration
+require_once __DIR__ . '/../../../includes/paths.php';
+
 // Allow member role
 require_role(['member']);
 
@@ -174,34 +177,14 @@ $role_display = get_role_display_name($user['role']);
     </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <h3>IECEP-LSC</h3>
-                <p>Member Portal</p>
-            </div>
-            <ul class="nav-menu">
-                <li><a href="#" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-                <li><a href="#"><i class="fas fa-user"></i> My Profile</a></li>
-                <li><a href="#"><i class="fas fa-calendar"></i> Events</a></li>
-                <li><a href="#"><i class="fas fa-file-invoice"></i> Payments</a></li>
-                <li><a href="#"><i class="fas fa-certificate"></i> Certificates</a></li>
-                <li><a href="#"><i class="fas fa-bullhorn"></i> Announcements</a></li>
-                <li><a href="#"><i class="fas fa-cog"></i> Settings</a></li>
-            </ul>
-        </div>
-
-        <div class="main-content">
-            <div class="header">
-                <h1>Member Dashboard</h1>
-                <div class="user-info">
-                    <span>Welcome, <?php echo htmlspecialchars($user['name']); ?>!</span>
-                    <div class="user-avatar"><?php echo strtoupper(substr($user['name'], 0, 1)); ?></div>
-                    <form method="POST" action="/login.php" style="display: inline;">
-                        <button type="submit" name="logout" class="btn-logout">
-                            <i class="fas fa-sign-out-alt"></i> Logout
-                        </button>
-                    </form>
+    <?php include_once __DIR__ . '/../../../includes/sidebar.php'; ?>
+    <div class="main-content">
+            <div class="dashboard-header">
+                <div class="header-content">
+                    <div>
+                        <h1>Member Dashboard</h1>
+                        <p class="welcome-message">Welcome back, <?php echo htmlspecialchars($user['name']); ?> - Member</p>
+                    </div>
                 </div>
             </div>
 
@@ -211,24 +194,32 @@ $role_display = get_role_display_name($user['role']);
                     <p>Membership Status</p>
                 </div>
                 <div class="stat-card">
-                    <h3>5</h3>
+                    <h3>2024</h3>
+                    <p>Member Since</p>
+                </div>
+                <div class="stat-card">
+                    <h3>12</h3>
                     <p>Events Attended</p>
                 </div>
                 <div class="stat-card">
-                    <h3>2</h3>
-                    <p>Upcoming Events</p>
-                </div>
-                <div class="stat-card">
-                    <h3>Paid</h3>
-                    <p>Payment Status</p>
+                    <h3>8</h3>
+                    <p>Certificates Earned</p>
                 </div>
             </div>
 
             <div class="content-card">
-                <h2>Welcome to Member Dashboard</h2>
-                <p>Here you can manage your profile, view upcoming events, check payment status, and access member-exclusive content.</p>
+                <h2>Welcome to Your Dashboard</h2>
+                <p>Manage your profile, view your affiliation status, and stay updated with IECEP-LSC activities.</p>
+                <div style="margin-top: 20px;">
+                    <a href="<?php echo BASE_URL; ?>/portal/member/profile.php" class="btn">
+                        <i class="fas fa-user"></i> Update Profile
+                    </a>
+                    <a href="<?php echo BASE_URL; ?>/portal/member/affiliation.php" class="btn" style="margin-left: 10px;">
+                        <i class="fas fa-building"></i> View Affiliation
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
+    <?php include_once __DIR__ . '/../../../includes/footer.php'; ?>
 </body>
 </html>

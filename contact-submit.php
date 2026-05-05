@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (filter_var($email, FILTER_VALIDATE_EMAIL) && !empty($name) && !empty($message)) {
         try {
             require_once __DIR__ . '/src/lib/SupabaseClient.php';
-            $config = require __DIR__ . '/src/config/supabase.php';
+            $config = require __DIR__ . '/includes/supabase.php';
             $supabase = new SupabaseClient($config['url'], $config['anon_key']);
             
             // Save to database

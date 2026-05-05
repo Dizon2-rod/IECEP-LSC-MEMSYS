@@ -20,7 +20,7 @@ $role_display = get_role_display_name($user['role']);
 <body>
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <?php include __DIR__ . '/../sidebar_auditor.php'; ?>
+        <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
         
         <!-- Main Content -->
         <main class="main-content">
@@ -99,7 +99,7 @@ $role_display = get_role_display_name($user['role']);
                     <div class="actions-grid">
                         <a href="/IECEP-LSC-MEMSYS/public/portal/auditor/verify-transactions.php" class="action-card">
                             <div class="action-icon">
-                                <i class="fas fa-check-circle"></i>
+                                <i class="fas fa-circle-check"></i>
                             </div>
                             <h3>Verify Transactions</h3>
                             <p>Review and verify transactions</p>
@@ -137,7 +137,7 @@ $role_display = get_role_display_name($user['role']);
                     <div class="activity-list">
                         <div class="activity-item">
                             <div class="activity-icon" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">
-                                <i class="fas fa-check-circle"></i>
+                                <i class="fas fa-circle-check"></i>
                             </div>
                             <div class="activity-content">
                                 <p><strong>12 transactions</strong> verified successfully</p>

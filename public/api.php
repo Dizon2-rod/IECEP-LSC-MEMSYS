@@ -1,20 +1,16 @@
 <?php
-// API Proxy - forwards requests to src/api
+// API Proxy - forwards requests to api
 error_reporting(0); // Suppress all errors
 ini_set('display_errors', 0);
 
-// Clean any existing output
-if (ob_get_length()) ob_clean();
-
-header('Content-Type: application/json');
-
+// Get endpoint from URL
+$endpoint = $_GET['endpoint'] ?? '';
 $action = $_GET['action'] ?? '';
-$endpoint = $_GET['endpoint'] ?? 'affiliate';
 
 error_log("API Proxy: endpoint=$endpoint, action=$action");
 
 // Forward to the actual API file
-$apiFile = __DIR__ . '/../src/api/' . $endpoint . '.php';
+$apiFile = __DIR__ . '/api/' . $endpoint . '.php';
 
 error_log("API Proxy: Looking for file=$apiFile, exists=" . (file_exists($apiFile) ? 'YES' : 'NO'));
 

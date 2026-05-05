@@ -2,8 +2,11 @@
 require_once __DIR__ . '/../../auth_check.php';
 require_role(['eb_pro_1', 'committee_creatives']);
 
+// Load path configuration
+require_once __DIR__ . '/../../../includes/paths.php';
+
 require_once __DIR__ . '/../../../src/lib/SupabaseClient.php';
-$config = require __DIR__ . '/../../../src/config/supabase.php';
+$config = require __DIR__ . '/../../../includes/supabase.php';
 $supabase = new SupabaseClient($config['url'], $config['anon_key']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -34,9 +37,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
         
-        header('Location: publications.php?success=1');
+        header('Location: ' . PORTAL_URL . '/creatives/publications.php?success=1');
     } catch (Exception $e) {
-        header('Location: publications.php?error=1');
+        header('Location: ' . PORTAL_URL . '/creatives/publications.php?error=1');
     }
     exit;
 }

@@ -13,7 +13,7 @@ $error = isset($_GET['error']);
 
 // Load Supabase configuration
 require_once __DIR__ . '/../../../src/lib/SupabaseClient.php';
-$config = require __DIR__ . '/../../../src/config/supabase.php';
+$config = require __DIR__ . '/../../../includes/supabase.php';
 $supabase = new SupabaseClient($config['url'], $config['anon_key']);
 
 // Expose Supabase config to JavaScript for real-time subscriptions
@@ -167,7 +167,7 @@ try {
 <body>
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <?php include __DIR__ . '/../sidebar_creatives.php'; ?>
+        <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
         
         <!-- Main Content -->
         <main class="main-content">
@@ -194,7 +194,7 @@ try {
             <div class="dashboard-content">
                 <?php if ($success): ?>
                 <div style="background: #dcfce7; color: #166534; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 0.875rem;">
-                    <i class="fas fa-check-circle"></i> Features updated successfully!
+                    <i class="fas fa-circle-check"></i> Features updated successfully!
                 </div>
                 <?php endif; ?>
                 

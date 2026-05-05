@@ -20,7 +20,7 @@ $role_display = get_role_display_name($user['role']);
 <body>
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <?php include __DIR__ . '/../sidebar_treasurer.php'; ?>
+        <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
         
         <!-- Main Content -->
         <main class="main-content">

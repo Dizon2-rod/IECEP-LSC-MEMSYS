@@ -1,79 +1,63 @@
 <?php
-// Verify Payment Page
+require_once __DIR__ . '/../includes/lib/Blockchain.php';
+
+$receiptId = $_GET['receipt_id'] ?? '';
+$foundBlock = null;
+$error = '';
+
+if ($receiptId) {
+    $storageFile = __DIR__ . '/../storage/payments_chain.json';
+    if (!file_exists($storageFile)) {
+        $error = 'Blockchain data not found.';
+    } else {
+        $blockchain = new Blockchain(3, $storageFile);
+        $foundBlock = $blockchain->findBlockByReceiptId($receiptId);
+        if (!$foundBlock) {
+            $error = 'Receipt ID not found in the blockchain.';
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Verify Payment - IECEP-LSC MEMSYS</title>
-    <link rel="stylesheet" href="/css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Blockchain Payment Verification - IECEP-LSC MEMSYS</title>
+    <style>
+        body { font-family: 'Inter', sans-serif; max-width: 800px; margin: 50px auto; padding: 20px; background: #f5f7fa; }
+        .verified { background: #d4edda; color: #155724; padding: 20px; border-radius: 12px; border-left: 5px solid #28a745; }
+        .not-found { background: #f8d7da; color: #721c24; padding: 20px; border-radius: 12px; border-left: 5px solid #dc3545; }
+        pre { background: #fff; padding: 15px; border-radius: 8px; overflow-x: auto; border: 1px solid #ddd; }
+        input, button { padding: 10px 15px; border-radius: 8px; border: 1px solid #ccc; }
+        button { background: #0A2F6C; color: white; cursor: pointer; }
+    </style>
 </head>
 <body>
-    <nav class="navbar">
-        <a href="/" class="navbar-brand"><span>IECEP</span>-LSC</a>
-        <ul class="navbar-nav">
-            <li><a href="/">Home</a></li>
-            <li><a href="/verify-member.php">Verify Member</a></li>
-        </ul>
-    </nav>
+    <h1>🔗 Blockchain Payment Verification</h1>
+    <form method="GET">
+        <label>Enter Receipt ID:</label><br>
+        <input type="text" name="receipt_id" value="<?= htmlspecialchars($receiptId) ?>" required style="width: 70%;">
+        <button type="submit">Verify</button>
+    </form>
 
-    <div style="max-width:700px;margin:40px auto;padding:0 24px">
-        <h2 style="text-align:center;margin-bottom:24px">Verify Payment</h2>
-        <p class="text-center text-muted mb-3">Enter a Receipt ID to verify a payment.</p>
-
-        <div class="card" style="padding:32px">
-            <div class="form-group">
-                <label>Receipt ID</label>
-                <input type="text" class="form-control" id="verify-input" placeholder="RCP-20250101...">
+    <?php if ($receiptId): ?>
+        <?php if ($foundBlock): ?>
+            <div class="verified">
+                <h3>✅ Payment Verified on Blockchain</h3>
+                <p><strong>Receipt ID:</strong> <?= htmlspecialchars($receiptId) ?></p>
+                <p><strong>Block Index:</strong> <?= $foundBlock->index ?></p>
+                <p><strong>Block Hash:</strong> <code><?= $foundBlock->hash ?></code></p>
+                <p><strong>Previous Block Hash:</strong> <code><?= $foundBlock->previousHash ?></code></p>
+                <p><strong>Timestamp:</strong> <?= $foundBlock->timestamp ?></p>
+                <p><strong>Stored Data:</strong></p>
+                <pre><?= json_encode($foundBlock->data, JSON_PRETTY_PRINT) ?></pre>
             </div>
-            <button class="btn btn-primary btn-block" onclick="verifyPayment()">Verify</button>
-        </div>
-
-        <div id="result" class="mt-3"></div>
-    </div>
-
-    <script src="/js/app.js"></script>
-    <script>
-        async function verifyPayment() {
-            const input = document.getElementById('verify-input').value.trim();
-            if (!input) { App.toast('Enter a receipt ID', 'warning'); return; }
-
-            const container = document.getElementById('result');
-            container.innerHTML = '<div class="spinner"></div>';
-
-            const params = `receipt_id=${input}`;
-            const url = `/api/verify-payment?${params}`;
-
-            try {
-                const resp = await fetch(url);
-                const data = await resp.json();
-
-                if (data.success && data.transaction) {
-                    const tx = data.transaction;
-                    const verified = data.verified;
-
-                    container.innerHTML = `
-                        <div class="card" style="border-left:4px solid ${verified ? '#28A745' : '#DC3545'}">
-                            <h3 style="color:${verified ? '#28A745' : '#DC3545'}">
-                                ${verified ? '✓ Verified' : '✗ Not Verified'}
-                            </h3>
-                            <div class="mt-2">
-                                <p><strong>Receipt ID:</strong> <code>${tx.receipt_id}</code></p>
-                                <p><strong>Payer:</strong> ${tx.members?.full_name || tx.institutions?.name || 'N/A'}</p>
-                                <p><strong>Amount:</strong> ${App.formatCurrency(tx.amount)}</p>
-                                <p><strong>Date:</strong> ${App.formatDate(tx.paid_at)}</p>
-                                <p><strong>Description:</strong> ${tx.description || '-'}</p>
-                            </div>
-                        </div>`;
-                } else {
-                    container.innerHTML = `<div class="card" style="border-left:4px solid #DC3545"><h3 style="color:#DC3545">Not Found</h3><p class="text-muted">No payment record found for this query.</p></div>`;
-                }
-            } catch (err) {
-                container.innerHTML = `<div class="card" style="border-left:4px solid #DC3545"><h3 style="color:#DC3545">Error</h3><p>Failed to verify. Please try again.</p></div>`;
-            }
-        }
-    </script>
+        <?php else: ?>
+            <div class="not-found">
+                <h3>❌ Payment Not Found</h3>
+                <p>No block contains receipt ID: <?= htmlspecialchars($receiptId) ?></p>
+                <?php if ($error): ?><p><?= $error ?></p><?php endif; ?>
+            </div>
+        <?php endif; ?>
+    <?php endif; ?>
 </body>
 </html>

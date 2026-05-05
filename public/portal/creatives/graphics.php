@@ -13,7 +13,7 @@ $error = isset($_GET['error']);
 
 // Load Supabase configuration
 require_once __DIR__ . '/../../../src/lib/SupabaseClient.php';
-$config = require __DIR__ . '/../../../src/config/supabase.php';
+$config = require __DIR__ . '/../../../includes/supabase.php';
 $supabase = new SupabaseClient($config['url'], $config['anon_key']);
 
 // Expose Supabase config to JavaScript for real-time subscriptions
@@ -200,7 +200,7 @@ try {
 <body>
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <?php include __DIR__ . '/../sidebar_creatives.php'; ?>
+        <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
         
         <!-- Main Content -->
         <main class="main-content">

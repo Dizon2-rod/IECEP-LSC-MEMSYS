@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify Payment - IECEP-LSC MEMSYS</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/font-awesome.css">
     <link rel="stylesheet" href="assets/css/style.css">
     <meta name="description" content="Verify IECEP-LSC MEMSYS payments using receipt ID">
 </head>
@@ -101,7 +101,7 @@
     <!-- Success Message -->
     <div id="successMessage" class="message success">
         <div class="message-content">
-            <i class="fas fa-check-circle"></i>
+            <i class="fas fa-circle-check"></i>
             <h3>Payment Verified!</h3>
             <p id="successText">This payment has been verified.</p>
             <button class="btn btn-primary" onclick="closeMessage()">OK</button>
@@ -122,7 +122,7 @@
     <script>
         class PaymentVerification {
             constructor() {
-                this.apiBase = '/IECEP-LSC-MEMSYS/src/api';
+                this.apiBase = '/IECEP-LSC-MEMSYS/public/api';
                 this.init();
             }
 
@@ -265,7 +265,7 @@
                     resultContent.innerHTML = `
                         <div class="verification-success">
                             <div class="success-icon">
-                                <i class="fas fa-check-circle"></i>
+                                <i class="fas fa-circle-check"></i>
                             </div>
                             <div class="payment-details">
                                 <h3>Payment Details</h3>

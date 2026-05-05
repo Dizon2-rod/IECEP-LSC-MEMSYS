@@ -2,6 +2,9 @@
 // auth_check.php - Central Authorization Checker for IECEP-LSC MEMSYS
 session_start();
 
+// Load path configuration
+require_once dirname(dirname(__DIR__)) . '/includes/paths.php';
+
 /**
  * require_role - Check if current user has required role
  * @param array $allowed_roles - Array of allowed role strings
@@ -12,7 +15,7 @@ function require_role($allowed_roles, $redirect = true) {
     // Check if user is logged in
     if (!isset($_SESSION['user']) || !isset($_SESSION['user']['role'])) {
         if ($redirect) {
-            header('Location: /IECEP-LSC-MEMSYS/login.php');
+            header('Location: ' . BASE_URL . '/login.php');
             exit;
         }
         return false;
@@ -94,7 +97,7 @@ function require_role($allowed_roles, $redirect = true) {
         <div class="icon">🔒</div>
         <h1>Access Denied</h1>
         <p>You don\'t have permission to access this page. Please contact your administrator if you believe this is an error.</p>
-        <a href="/IECEP-LSC-MEMSYS/login.php" class="btn">Return to Login</a>
+        <a href="<?php echo BASE_URL; ?>/login.php" class="btn">Return to Login</a>
     </div>
 </body>
 </html>';
@@ -113,23 +116,7 @@ function require_role($allowed_roles, $redirect = true) {
  * @return string|null - Dashboard URL or null if not found
  */
 function get_role_dashboard($role) {
-    $role_dashboards = [
-        'eb_president' => '/IECEP-LSC-MEMSYS/public/portal/super-admin/dashboard.php',
-        'eb_vp_internal' => '/IECEP-LSC-MEMSYS/public/portal/registration/dashboard.php',
-        'eb_treasurer' => '/IECEP-LSC-MEMSYS/public/portal/treasurer/dashboard.php',
-        'eb_auditor' => '/IECEP-LSC-MEMSYS/public/portal/auditor/dashboard.php',
-        'eb_pro_1' => '/IECEP-LSC-MEMSYS/public/portal/creatives/dashboard.php',
-        'eb_pro_2' => '/IECEP-LSC-MEMSYS/public/portal/logistics/dashboard.php',
-        'eb_secretary_general' => '/IECEP-LSC-MEMSYS/public/portal/secretary/dashboard.php',
-        'committee_registration' => '/IECEP-LSC-MEMSYS/public/portal/registration/dashboard.php',
-        'committee_creatives' => '/IECEP-LSC-MEMSYS/public/portal/creatives/dashboard.php',
-        'committee_marketing' => '/IECEP-LSC-MEMSYS/public/portal/marketing/dashboard.php',
-        'committee_logistics' => '/IECEP-LSC-MEMSYS/public/portal/logistics/dashboard.php',
-        'school_officer' => '/IECEP-LSC-MEMSYS/public/portal/officer/dashboard.php',
-        'member' => '/IECEP-LSC-MEMSYS/public/portal/member/dashboard.php'
-    ];
-    
-    return $role_dashboards[$role] ?? null;
+    return get_portal_url($role, 'dashboard.php');
 }
 
 /**

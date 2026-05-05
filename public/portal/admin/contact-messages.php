@@ -19,7 +19,7 @@ $user = get_user_info();
 
 // Load Supabase configuration
 require_once __DIR__ . '/../../../src/lib/SupabaseClient.php';
-$config = require __DIR__ . '/../../../src/config/supabase.php';
+$config = require __DIR__ . '/../../../includes/supabase.php';
 $supabase = new SupabaseClient($config['url'], $config['anon_key']);
 
 // Handle status update
@@ -249,7 +249,7 @@ try {
 <body>
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <?php include __DIR__ . '/../sidebar_admin.php'; ?>
+        <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
         
         <!-- Main Content -->
         <main class="main-content">

@@ -19,12 +19,11 @@ $is_head = $user['role'] === 'eb_vp_internal';
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/dashboard.css">
 </head>
 <body>
-    <div class="dashboard-container">
-        <!-- Sidebar -->
-        <?php include __DIR__ . '/../sidebar_registration.php'; ?>
-        
-        <!-- Main Content -->
-        <main class="main-content">
+    <!-- Sidebar -->
+    <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
+    
+    <!-- Main Content -->
+    <main class="main-content">
             <!-- Header -->
             <header class="dashboard-header">
                 <div class="header-content">
@@ -76,7 +75,7 @@ $is_head = $user['role'] === 'eb_vp_internal';
                     
                     <div class="stat-card">
                         <div class="stat-icon" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">
-                            <i class="fas fa-check-circle"></i>
+                            <i class="fas fa-circle-check"></i>
                         </div>
                         <div class="stat-content">
                             <h3>156</h3>
@@ -169,7 +168,7 @@ $is_head = $user['role'] === 'eb_vp_internal';
                         
                         <div class="activity-item">
                             <div class="activity-icon" style="background: rgba(34, 197, 94, 0.1); color: #22c55e;">
-                                <i class="fas fa-check-circle"></i>
+                                <i class="fas fa-circle-check"></i>
                             </div>
                             <div class="activity-content">
                                 <p><strong>University of Santo Tomas</strong> affiliation approved</p>
@@ -204,7 +203,6 @@ $is_head = $user['role'] === 'eb_vp_internal';
                 <?php endif; ?>
             </div>
         </main>
-    </div>
 
     <script src="/IECEP-LSC-MEMSYS/public/js/dashboard.js"></script>
 </body>

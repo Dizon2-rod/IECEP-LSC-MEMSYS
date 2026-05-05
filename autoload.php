@@ -1,5 +1,12 @@
 <?php
 // Simple autoloader for IECEP-LSC MEMSYS
+
+// Include Composer autoloader if available
+$composerAutoload = __DIR__ . '/vendor/autoload.php';
+if (file_exists($composerAutoload)) {
+    require_once $composerAutoload;
+}
+
 spl_autoload_register(function ($class) {
     // Convert namespace to file path
     $file = __DIR__ . '/src/' . str_replace('\\', '/', $class) . '.php';

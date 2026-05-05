@@ -14,13 +14,13 @@ $role_display = get_role_display_name($user['role']);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secretary Dashboard - IECEP-LSC MEMSYS</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/font-awesome.css">
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/dashboard.css">
 </head>
 <body>
     <div class="dashboard-container">
         <!-- Sidebar -->
-        <?php include __DIR__ . '/../sidebar_secretary.php'; ?>
+        <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
         
         <!-- Main Content -->
         <main class="main-content">

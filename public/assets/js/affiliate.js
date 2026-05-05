@@ -1,4 +1,7 @@
 // IECEP-LSC MEMSYS - Affiliate Modal JavaScript
+// Load path configuration
+document.write('<script src="/js/config.js"></script>');
+
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize affiliate modal functionality
     const affiliateModal = document.getElementById('affiliateModal');
@@ -42,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showLoading();
 
             try {
-                const response = await fetch('/IECEP-LSC-MEMSYS/src/api/affiliate.php?action=send-code', {
+                const response = await fetch('/IECEP-LSC-MEMSYS/public/api/affiliate.php?action=send-code', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -79,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showLoading();
 
             try {
-                const response = await fetch('/IECEP-LSC-MEMSYS/src/api/affiliate.php?action=verify-code', {
+                const response = await fetch('/IECEP-LSC-MEMSYS/public/api/affiliate.php?action=verify-code', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -117,7 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showLoading();
 
             try {
-                const response = await fetch('/IECEP-LSC-MEMSYS/src/api/affiliate.php', {
+                const response = await fetch(IECEP_PATHS.API_URL + '/affiliate.php', {
                     method: 'POST',
                     body: formData
                 });
@@ -160,7 +163,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showLoading();
 
             try {
-                const response = await fetch('/IECEP-LSC-MEMSYS/src/api/affiliate.php', {
+                const response = await fetch(IECEP_PATHS.API_URL + '/affiliate.php', {
                     method: 'POST',
                     body: formData
                 });

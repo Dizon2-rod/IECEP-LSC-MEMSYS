@@ -455,6 +455,161 @@ table tr:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
+
+/* Dropdown container */
+
+.nav-item {
+    position: relative;
+}
+
+.dropdown-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 14px;
+    font-weight: 500;
+    transition: var(--transition);
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+}
+
+.dropdown-trigger:hover {
+    color: var(--white);
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    min-width: 220px;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    padding: 0.5rem 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    z-index: 100;
+    list-style: none;
+    margin: 0;
+}
+
+.dropdown-menu li {
+    margin: 0;
+}
+
+.dropdown-menu a,
+.dropdown-menu span {
+    display: block;
+    padding: 10px 20px;
+    color: #333;
+    text-decoration: none;
+    transition: background 0.2s;
+    font-size: 14px;
+}
+
+.dropdown-menu a:hover {
+    background: #f5f5f5;
+}
+
+
+/* Show dropdown on hover (desktop) */
+
+@media (hover: hover) {
+    .nav-item:hover .dropdown-menu {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+
+/* Sub-dropdown (for Affiliated Schools) */
+
+.sub-dropdown {
+    position: relative;
+}
+
+.sub-dropdown>a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.sub-dropdown-menu {
+    position: absolute;
+    top: 0;
+    left: 100%;
+    background: white;
+    min-width: 220px;
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    padding: 0.5rem 0;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease;
+    list-style: none;
+    margin: 0;
+}
+
+.sub-dropdown-menu li {
+    margin: 0;
+}
+
+.sub-dropdown-menu a,
+.sub-dropdown-menu span {
+    display: block;
+    padding: 10px 20px;
+    color: #333;
+    text-decoration: none;
+    transition: background 0.2s;
+    font-size: 14px;
+}
+
+.sub-dropdown-menu a:hover {
+    background: #f5f5f5;
+}
+
+.sub-dropdown:hover .sub-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+}
+
+
+/* Mobile click behaviour */
+
+.nav-item.active>.dropdown-menu,
+.sub-dropdown.active>.sub-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+}
+
+
+/* Disabled link style */
+
+.disabled-link {
+    color: #999;
+    cursor: default;
+    text-decoration: none;
+}
+
+
+/* Ensure no overlapping */
+
+.nav-item .dropdown-menu,
+.sub-dropdown .sub-dropdown-menu {
+    pointer-events: none;
+}
+
+.nav-item:hover .dropdown-menu,
+.sub-dropdown:hover .sub-dropdown-menu,
+.nav-item.active .dropdown-menu,
+.sub-dropdown.active .sub-dropdown-menu {
+    pointer-events: auto;
+}
+
 .navbar-brand {
     display: flex;
     align-items: center;

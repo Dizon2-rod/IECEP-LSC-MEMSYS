@@ -1,0 +1,173 @@
+<?php
+/**
+ * Simple Blockchain Implementation for IECEP-LSC MEMSYS
+ * 
+ * Features:
+ * - Blocks with index, timestamp, data, previous hash, nonce, and hash
+ * - Proof-of-work (adjustable difficulty)
+ * - Chain validation
+ * - JSON file persistence (with file locking for concurrency)
+ */
+
+class Block {
+    public $index;
+    public $timestamp;
+    public $data;
+    public $previousHash;
+    public $nonce;
+    public $hash;
+
+    public function __construct($index, $timestamp, $data, $previousHash = '0', $nonce = 0) {
+        $this->index        = $index;
+        $this->timestamp    = $timestamp;
+        $this->data         = $data;
+        $this->previousHash = $previousHash;
+        $this->nonce        = $nonce;
+        $this->hash         = $this->calculateHash();
+    }
+
+    public function calculateHash(): string {
+        return hash(
+            'sha256',
+            $this->index .
+            $this->timestamp .
+            json_encode($this->data) .
+            $this->previousHash .
+            $this->nonce
+        );
+    }
+}
+
+class Blockchain {
+    private $chain;
+    private $difficulty;
+    private $storageFile;
+
+    public function __construct(int $difficulty = 3, string $storageFile = 'blockchain_data.json') {
+        $this->chain       = [];
+        $this->difficulty  = $difficulty;
+        $this->storageFile = $storageFile;
+
+        $dir = dirname($this->storageFile);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        if (file_exists($this->storageFile)) {
+            $this->loadChain();
+        } else {
+            $this->createGenesisBlock();
+            $this->saveChain();
+        }
+    }
+
+    private function createGenesisBlock(): void {
+        $genesisBlock = new Block(0, date('c'), 'Genesis Block', '0');
+        $genesisBlock->nonce = 0;
+        $genesisBlock->hash  = $genesisBlock->calculateHash();
+        $this->chain[]       = $genesisBlock;
+    }
+
+    public function getLatestBlock(): Block {
+        return end($this->chain);
+    }
+
+    public function addBlock($data): Block {
+        $previousBlock = $this->getLatestBlock();
+        $newIndex      = $previousBlock->index + 1;
+        $timestamp     = date('c');
+        $previousHash  = $previousBlock->hash;
+
+        $newBlock = new Block($newIndex, $timestamp, $data, $previousHash);
+        $this->mineBlock($newBlock);
+
+        $this->chain[] = $newBlock;
+        $this->saveChain();
+
+        return $newBlock;
+    }
+
+    private function mineBlock(Block $block): void {
+        $target = str_repeat('0', $this->difficulty);
+        while (substr($block->hash, 0, $this->difficulty) !== $target) {
+            $block->nonce++;
+            $block->hash = $block->calculateHash();
+        }
+    }
+
+    public function isChainValid(): bool {
+        for ($i = 1; $i < count($this->chain); $i++) {
+            $currentBlock  = $this->chain[$i];
+            $previousBlock = $this->chain[$i - 1];
+
+            if ($currentBlock->hash !== $currentBlock->calculateHash()) return false;
+            if ($currentBlock->previousHash !== $previousBlock->hash) return false;
+            if (substr($currentBlock->hash, 0, $this->difficulty) !== str_repeat('0', $this->difficulty)) return false;
+        }
+        return true;
+    }
+
+    public function getChain(): array {
+        return $this->chain;
+    }
+
+    public function findBlockByHash(string $hash): ?Block {
+        foreach ($this->chain as $block) {
+            if ($block->hash === $hash) return $block;
+        }
+        return null;
+    }
+
+    public function findBlockByReceiptId(string $receiptId): ?Block {
+        foreach ($this->chain as $block) {
+            if (is_array($block->data) && isset($block->data['receipt_id']) && $block->data['receipt_id'] === $receiptId) {
+                return $block;
+            }
+        }
+        return null;
+    }
+
+    private function saveChain(): void {
+        $data = [];
+        foreach ($this->chain as $block) {
+            $data[] = [
+                'index'        => $block->index,
+                'timestamp'    => $block->timestamp,
+                'data'         => $block->data,
+                'previousHash' => $block->previousHash,
+                'nonce'        => $block->nonce,
+                'hash'         => $block->hash,
+            ];
+        }
+        $json = json_encode($data, JSON_PRETTY_PRINT);
+        file_put_contents($this->storageFile, $json, LOCK_EX);
+    }
+
+    private function loadChain(): void {
+        $content = file_get_contents($this->storageFile);
+        if ($content === false) {
+            $this->createGenesisBlock();
+            $this->saveChain();
+            return;
+        }
+        $data = json_decode($content, true);
+        if (!$data) {
+            $this->createGenesisBlock();
+            $this->saveChain();
+            return;
+        }
+
+        $this->chain = [];
+        foreach ($data as $blockData) {
+            $block = new Block(
+                $blockData['index'],
+                $blockData['timestamp'],
+                $blockData['data'],
+                $blockData['previousHash'],
+                $blockData['nonce']
+            );
+            $block->hash = $blockData['hash'];
+            $this->chain[] = $block;
+        }
+    }
+}
