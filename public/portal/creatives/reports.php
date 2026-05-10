@@ -1,4 +1,5 @@
 <?php
+$current_page = basename(__FILE__, '.php');
 require_once __DIR__ . '/../auth_check.php';
 
 // Only allow eb_pro_1 (head)
@@ -234,3 +235,4 @@ $is_head = $user['role'] === 'eb_pro_1';
     </div>
 </body>
 </html>
+

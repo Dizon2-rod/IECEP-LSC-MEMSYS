@@ -7,6 +7,7 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
 require_once __DIR__ . '/../../includes/supabase.php';
+require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/middleware/auth.php';
 
 use App\Lib\Supabase;
@@ -64,6 +65,28 @@ try {
                 'recorded_at' => date('Y-m-d\TH:i:s\Z'),
             ], true);
 
+            $attendanceRows = $sb->from('attendance')
+                ->select('member_id')
+                ->eq('event_id', $eventId)
+                ->get(true);
+
+            $attendanceList = array_column($attendanceRows['data'] ?? [], 'member_id');
+
+            if (isset($GLOBALS['blockchain']) && $GLOBALS['blockchain'] instanceof \App\Lib\BlockchainService) {
+                require_once __DIR__ . '/../../src/lib/MerkleTree.php';
+                $eventInfo = $sb->from('events')->select('name, academic_year')->eq('id', $eventId)->get(true);
+                $eventName = $eventInfo['data'][0]['name'] ?? '';
+                $academicYear = $eventInfo['data'][0]['academic_year'] ?? '';
+                $root = \App\Lib\MerkleTree::buildRoot($attendanceList);
+                $GLOBALS['blockchain']->record('compliance_attendance', $eventId, [
+                    'event_id' => $eventId,
+                    'event_name' => $eventName,
+                    'academic_year' => $academicYear,
+                    'merkle_root' => $root,
+                    'attendance_count' => count($attendanceList),
+                ]);
+            }
+
             echo json_encode(['success' => true, 'message' => 'Attendance recorded for ' . $memberResult['data'][0]['full_name']]);
             break;
 
@@ -119,6 +142,28 @@ try {
                 'attended' => true,
                 'recorded_at' => date('Y-m-d\TH:i:s\Z'),
             ], true);
+
+            $attendanceRows = $sb->from('attendance')
+                ->select('member_id')
+                ->eq('event_id', $eventId)
+                ->get(true);
+
+            $attendanceList = array_column($attendanceRows['data'] ?? [], 'member_id');
+
+            if (isset($GLOBALS['blockchain']) && $GLOBALS['blockchain'] instanceof \App\Lib\BlockchainService) {
+                require_once __DIR__ . '/../../src/lib/MerkleTree.php';
+                $eventInfo = $sb->from('events')->select('name, academic_year')->eq('id', $eventId)->get(true);
+                $eventName = $eventInfo['data'][0]['name'] ?? '';
+                $academicYear = $eventInfo['data'][0]['academic_year'] ?? '';
+                $root = \App\Lib\MerkleTree::buildRoot($attendanceList);
+                $GLOBALS['blockchain']->record('compliance_attendance', $eventId, [
+                    'event_id' => $eventId,
+                    'event_name' => $eventName,
+                    'academic_year' => $academicYear,
+                    'merkle_root' => $root,
+                    'attendance_count' => count($attendanceList),
+                ]);
+            }
 
             echo json_encode(['success' => true, 'message' => 'Attendance recorded', 'member' => $member, 'already' => false]);
             break;

@@ -1,10 +1,13 @@
 <?php
 require_once __DIR__ . '/../auth_check.php';
+require_once __DIR__ . '/../../../includes/config.php';
 
 // Allow eb_vp_internal (head) and committee_registration
 require_role(['eb_vp_internal', 'committee_registration']);
+$current_page = 'dashboard';
 
 $user = get_user_info();
+$displayName = $_SESSION['full_name'] ?? $_SESSION['email'] ?? $user['user_metadata']['full_name'] ?? $user['email'] ?? 'User';
 $role_display = get_role_display_name($user['role']);
 $is_head = $user['role'] === 'eb_vp_internal';
 ?>
@@ -17,6 +20,7 @@ $is_head = $user['role'] === 'eb_vp_internal';
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/dashboard.css">
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/professional.css">
 </head>
 <body>
     <!-- Sidebar -->
@@ -29,7 +33,7 @@ $is_head = $user['role'] === 'eb_vp_internal';
                 <div class="header-content">
                     <div>
                         <h1>Registration Dashboard</h1>
-                        <p class="welcome-message">Welcome back, <?php echo htmlspecialchars($user['user_metadata']['full_name'] ?? $user['email']); ?> - <?php echo $role_display; ?></p>
+                        <p class="welcome-message">Welcome back, <?php echo htmlspecialchars($displayName); ?> - <?php echo $role_display; ?></p>
                         <?php if ($is_head): ?>
                             <p class="role-badge">Committee Head</p>
                         <?php endif; ?>
@@ -41,7 +45,7 @@ $is_head = $user['role'] === 'eb_vp_internal';
                         </button>
                         <div class="user-menu">
                             <img src="<?php echo $user['user_metadata']['avatar_url'] ?? '/IECEP-LSC-MEMSYS/public/assets/images/default-avatar.png'; ?>" alt="User Avatar" class="user-avatar">
-                            <span><?php echo htmlspecialchars($user['user_metadata']['full_name'] ?? 'User'); ?></span>
+                            <span><?php echo htmlspecialchars($displayName); ?></span>
                         </div>
                     </div>
                 </div>
@@ -56,7 +60,7 @@ $is_head = $user['role'] === 'eb_vp_internal';
                             <i class="fas fa-clock"></i>
                         </div>
                         <div class="stat-content">
-                            <h3>8</h3>
+                            <h3 id="pending-affiliations-count">8</h3>
                             <p>Pending Affiliations</p>
                             <span class="stat-change neutral">Awaiting review</span>
                         </div>
@@ -67,7 +71,7 @@ $is_head = $user['role'] === 'eb_vp_internal';
                             <i class="fas fa-user-clock"></i>
                         </div>
                         <div class="stat-content">
-                            <h3>34</h3>
+                            <h3 id="pending-members-count">34</h3>
                             <p>Pending Members</p>
                             <span class="stat-change neutral">Awaiting approval</span>
                         </div>
@@ -108,7 +112,7 @@ $is_head = $user['role'] === 'eb_vp_internal';
                             <p>Process pending school affiliation applications</p>
                         </a>
                         
-                        <a href="/IECEP-LSC-MEMSYS/public/portal/registration/pending-members.php" class="action-card">
+                        <a href="/IECEP-LSC-MEMSYS/public/portal/registration/members.php" class="action-card">
                             <div class="action-icon">
                                 <i class="fas fa-users"></i>
                             </div>
@@ -202,7 +206,69 @@ $is_head = $user['role'] === 'eb_vp_internal';
                 </div>
                 <?php endif; ?>
             </div>
+
+            <!-- Real-Time Integration Script -->
+            <script>
+            // Registration Dashboard Real-Time Updates
+            document.addEventListener('DOMContentLoaded', function() {
+                // Listen for new pending affiliations
+                window.addEventListener('realtime:pending_affiliations', function(event) {
+                    const { action, new: newRecord, old: oldRecord } = event.detail;
+
+                    if (action === 'INSERT') {
+                        // New affiliation submitted - update counter
+                        updatePendingAffiliationsCount();
+                    } else if (action === 'UPDATE') {
+                        // Affiliation status changed - update counters accordingly
+                        if (oldRecord.status !== newRecord.status) {
+                            if (newRecord.status === 'approved') {
+                                // Affiliation approved - decrement pending count
+                                updatePendingAffiliationsCount(-1);
+                            } else if (oldRecord.status === 'pending_review' && newRecord.status !== 'pending_review') {
+                                // Affiliation moved out of pending - decrement count
+                                updatePendingAffiliationsCount(-1);
+                            }
+                        }
+                    }
+                });
+            });
+
+            function updatePendingAffiliationsCount(change = 1) {
+                const countElement = document.getElementById('pending-affiliations-count');
+                if (countElement) {
+                    const currentCount = parseInt(countElement.textContent) || 0;
+                    const newCount = Math.max(0, currentCount + change);
+                    countElement.textContent = newCount;
+
+                    // Highlight the element to show update
+                    countElement.classList.add('highlight');
+                    setTimeout(() => countElement.classList.remove('highlight'), 1000);
+                }
+            }
+
+            // Override default real-time handlers for registration-specific behavior
+            window.onNewPendingAffiliation = function(newAffiliation) {
+                updatePendingAffiliationsCount(1);
+                console.log('New pending affiliation for registration review:', newAffiliation);
+            };
+
+            window.onAffiliationStatusChanged = function(updatedAffiliation) {
+                // Handle status changes for registration workflow
+                if (updatedAffiliation.status !== 'pending_review') {
+                    updatePendingAffiliationsCount(-1);
+                }
+                console.log('Affiliation status changed:', updatedAffiliation);
+            };
+            </script>
+    <script>
+        window.IECEP_CONFIG = {
+            SUPABASE_URL: <?php echo json_encode(SUPABASE_URL); ?>,
+            SUPABASE_ANON_KEY: <?php echo json_encode(SUPABASE_ANON_KEY); ?>
+        };
+    </script>
+    <script src="/IECEP-LSC-MEMSYS/public/js/realtime.js" defer></script>
         </main>
+    </div>
 
     <script src="/IECEP-LSC-MEMSYS/public/js/dashboard.js"></script>
 </body>

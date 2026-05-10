@@ -1,4 +1,5 @@
 <?php
+$current_page = basename(__FILE__, '.php');
 /**
  * Admin Events Management - Uses Dynamic Sidebar
  */
@@ -46,3 +47,4 @@ $user = get_user_info();
     </div>
 </body>
 </html>
+

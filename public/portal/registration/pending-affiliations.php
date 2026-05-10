@@ -1,4 +1,5 @@
 <?php
+$current_page = basename(__FILE__, '.php');
 /**
  * Registration Committee - Pending Affiliations Review Dashboard
  * Complete workflow with modals for Request Changes, Approve, and Reject actions
@@ -1358,3 +1359,4 @@ function getStatusIcon($status) {
     </script>
 </body>
 </html>
+

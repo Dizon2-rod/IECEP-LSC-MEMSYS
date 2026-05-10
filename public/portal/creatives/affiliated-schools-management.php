@@ -1,4 +1,5 @@
 <?php
+$current_page = basename(__FILE__, '.php');
 session_start();
 require_once __DIR__ . '/../../../includes/paths.php';
 require_once __DIR__ . '/../../../autoload.php';
@@ -416,3 +417,4 @@ foreach ($schoolsMapping as $name => $path) {
     </script>
 </body>
 </html>
+

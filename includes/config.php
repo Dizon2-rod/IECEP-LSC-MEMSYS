@@ -68,6 +68,7 @@ if (!defined('APP_NAME')) {
     // Security
     define('JWT_SECRET', $_ENV['JWT_SECRET'] ?? 'default-secret-change-in-production');
     define('SESSION_LIFETIME', $_ENV['SESSION_LIFETIME'] ?? 86400); // 24 hours
+    define('CRON_SECRET', $_ENV['CRON_SECRET'] ?? 'change-me');
 
     // File Upload Configuration
     define('MAX_FILE_SIZE', $_ENV['MAX_FILE_SIZE'] ?? 5242880); // 5MB
@@ -107,7 +108,7 @@ if (session_status() === PHP_SESSION_NONE) {
 // Timezone
 date_default_timezone_set('Asia/Manila');
 
-return [
+$config = [
     'app_name' => APP_NAME,
     'app_url' => APP_URL,
     'app_env' => APP_ENV,
@@ -133,3 +134,42 @@ return [
         'allowed_types' => ALLOWED_FILE_TYPES
     ]
 ];
+
+// Function to output frontend SUPABASE configuration as JavaScript
+if (!function_exists('outputFrontendConfig')) {
+    function outputFrontendConfig() {
+        $config = [
+            'SUPABASE_URL' => SUPABASE_URL,
+            'SUPABASE_ANON_KEY' => SUPABASE_ANON_KEY,
+            'APP_URL' => APP_URL,
+            'APP_ENV' => APP_ENV,
+            'PORTAL_URL' => PORTAL_URL ?? APP_URL . '/portal'
+        ];
+        ?>
+        <script>
+            // Frontend Configuration (populated from server config)
+            window.IECEP_CONFIG = {
+                SUPABASE_URL: '<?= htmlspecialchars(SUPABASE_URL, ENT_QUOTES) ?>',
+                SUPABASE_ANON_KEY: '<?= htmlspecialchars(SUPABASE_ANON_KEY, ENT_QUOTES) ?>',
+                APP_URL: '<?= htmlspecialchars(APP_URL, ENT_QUOTES) ?>',
+                APP_ENV: '<?= htmlspecialchars(APP_ENV, ENT_QUOTES) ?>',
+                PORTAL_URL: '<?= htmlspecialchars(PORTAL_URL ?? (APP_URL . '/portal'), ENT_QUOTES) ?>'
+            };
+        </script>
+        <?php
+    }
+}
+
+// Initialize SupabaseClient for global use
+if (!class_exists('\App\Lib\SupabaseClient')) {
+    require_once __DIR__ . '/../src/lib/SupabaseClient.php';
+}
+$supabaseClient = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Initialize BlockchainService globally
+if (!isset($GLOBALS['blockchain']) && isset($supabaseClient)) {
+    require_once __DIR__ . '/../src/lib/BlockchainService.php';
+    $GLOBALS['blockchain'] = new \App\Lib\BlockchainService($supabaseClient);
+}
+
+return $config;

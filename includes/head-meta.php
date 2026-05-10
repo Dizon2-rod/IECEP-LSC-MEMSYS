@@ -5,9 +5,25 @@ define('HEAD_META_INCLUDED', true);
 ?>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com;">
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fcm.googleapis.com https://updates.push.services.mozilla.com https://*.googleapis.com;">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="manifest" href="/IECEP-LSC-MEMSYS/public/manifest.json">
+<link rel="apple-touch-icon" sizes="192x192" href="/IECEP-LSC-MEMSYS/public/assets/icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="/IECEP-LSC-MEMSYS/public/assets/icons/icon-512.png">
+<meta name="theme-color" content="#0B1D4A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script>window.PWA_PUBLIC_VAPID_KEY = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEBzKvmrZ1cSfWp12NbFBc0xTbQfMXTx7AYlADHWDjCgC6w94AlV87udKz4pi/CXKiY2Mv1ljKw0Q1e11AFCO6HA==';</script>
+<!-- Supabase JS Client Library (for real-time subscriptions) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Frontend Configuration -->
+<?php if (function_exists('outputFrontendConfig')) { outputFrontendConfig(); } ?>
+<!-- Real-time Subscriptions -->
+<script src="/IECEP-LSC-MEMSYS/public/js/realtime.js" defer></script>
+<script src="/IECEP-LSC-MEMSYS/public/js/pwa.js" defer></script>
 <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/font-awesome.css">
+<link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/professional.css">
 <style>
     /* Design Tokens */
     :root {
@@ -61,6 +77,51 @@ define('HEAD_META_INCLUDED', true);
         display: inline-flex; 
         align-items: center; 
         justify-content: center;
+    }
+
+    .install-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.7rem 1rem;
+        border-radius: 9999px;
+        border: 1px solid var(--primary);
+        background: var(--white);
+        color: var(--primary);
+        font-weight: 700;
+        cursor: pointer;
+        transition: background-color var(--transition-base), color var(--transition-base), transform var(--transition-base);
+    }
+
+    .install-btn.hidden {
+        display: none !important;
+    }
+
+    .network-status {
+        position: fixed;
+        right: 1rem;
+        bottom: 1rem;
+        z-index: 1100;
+        padding: 0.65rem 1rem;
+        border-radius: 9999px;
+        background: rgba(11, 29, 74, 0.95);
+        color: #FFFFFF;
+        box-shadow: 0 12px 28px rgba(0,0,0,0.18);
+        font-size: 0.85rem;
+        backdrop-filter: blur(10px);
+    }
+
+    .offline-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 9999px;
+        font-size: 0.85rem;
+        background: #DC2626;
+        color: #FFFFFF;
+        margin-top: 0.75rem;
     }
     
     /* Responsive Tables */
@@ -538,3 +599,20 @@ define('HEAD_META_INCLUDED', true);
         .schools-grid img { width: 85px; height: 85px; }
     }
 </style>
+<script src="/IECEP-LSC-MEMSYS/public/assets/js/toast.js"></script>
+<script src="/IECEP-LSC-MEMSYS/public/assets/js/offline.js"></script>
+<script src="/IECEP-LSC-MEMSYS/public/assets/js/notifications.js"></script>
+<script>
+// Service Worker Registration
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/public/sw.js')
+            .then(registration => {
+                console.log('Service Worker registered successfully');
+            })
+            .catch(error => {
+                console.error('Service Worker registration failed:', error);
+            });
+    });
+}
+</script>

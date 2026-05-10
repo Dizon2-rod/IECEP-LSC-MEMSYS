@@ -1,4 +1,5 @@
 <?php
+$current_page = basename(__FILE__, '.php');
 session_start();
 define('BASE_PUBLIC_URL', '/IECEP-LSC-MEMSYS/public');
 
@@ -45,3 +46,4 @@ include_once __DIR__ . '/../../../includes/sidebar.php';
     </div>
 </div>
 <?php include_once __DIR__ . '/../../../includes/footer.php'; ?>
+

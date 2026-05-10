@@ -1,4 +1,5 @@
 <?php
+$current_page = basename(__FILE__, '.php');
 // IECEP-LSC MEMSYS - Features Update Script
 // Creatives & Publication Committee can use this to update features content
 
@@ -82,3 +83,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     header('Location: ' . PORTAL_URL . '/creatives/features-manager.php');
     exit;
 }
+

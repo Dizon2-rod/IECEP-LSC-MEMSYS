@@ -26,6 +26,7 @@ if (!empty($missingCritical)) {
 }
 
 require_once __DIR__ . '/../../includes/supabase.php';
+require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/lib/EmailService.php';
 require_once __DIR__ . '/../../includes/lib/digital_id.php';
 require_once __DIR__ . '/../../includes/lib/qrcode.php';
@@ -166,6 +167,17 @@ try {
                         'qr_code' => $verifyUrl,
                     ], true);
 
+                if (isset($GLOBALS['blockchain']) && $GLOBALS['blockchain'] instanceof \App\Lib\BlockchainService) {
+                    $memberPayload = [
+                        'member_id' => $newMemberId,
+                        'full_name' => $pending['contact_person'],
+                        'institution_name' => $pending['institution_name'],
+                        'member_type' => 'returning',
+                        'issued_at' => date('c'),
+                    ];
+                    $GLOBALS['blockchain']->record('digital_id', $newMemberId, $memberPayload);
+                }
+
                 @unlink($idPath);
             }
             @unlink($qrPath);
@@ -276,6 +288,16 @@ try {
                     'status' => 'approved_payment_pending',
                     'approved_at' => date('Y-m-d\TH:i:s\Z'),
                 ], true);
+
+            if (isset($GLOBALS['blockchain']) && $GLOBALS['blockchain'] instanceof \App\Lib\BlockchainService) {
+                $GLOBALS['blockchain']->record('membership_change', $batchId, [
+                    'batch_id' => $batchId,
+                    'approved_count' => count($approvedIds),
+                    'rejected_count' => count($rejectedIds),
+                    'status' => 'approved_payment_pending',
+                    'updated_at' => date('c'),
+                ]);
+            }
 
             // Notify treasurer
             $treasurerProfile = $sb->from('user_profiles')

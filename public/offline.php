@@ -7,7 +7,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline - IECEP-LSC MEMSYS</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #0A2F6C; color: #fff; text-align: center; padding: 24px; }

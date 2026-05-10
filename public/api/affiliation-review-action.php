@@ -127,6 +127,17 @@ switch ($action) {
                 throw new Exception('Failed to update application status');
             }
             
+            $blockchain = $GLOBALS['blockchain'] ?? null;
+            if (isset($blockchain) && $blockchain instanceof \App\Lib\BlockchainService) {
+                $blockchain->record('affiliation_action', $applicationId, [
+                    'action' => $action,
+                    'notes' => $notes,
+                    'reviewed_by' => $_SESSION['user']['email'] ?? 'system',
+                    'previous_status' => $currentStatus,
+                    'new_status' => 'changes_requested',
+                ]);
+            }
+            
             // Send email to applicant
             $institutionName = $application['institution_name'] ?? 'Your Institution';
             $applicantEmail = $application['email'] ?? '';
@@ -210,12 +221,23 @@ switch ($action) {
             ];
             
             $result = $supabase->update('pending_affiliations', $updateData, $applicationId);
-            
+
             if (!$result) {
                 // Rollback not needed - Supabase Auth handles user creation
                 throw new Exception('Failed to update application status');
             }
-            
+
+            $blockchain = $GLOBALS['blockchain'] ?? null;
+            if (isset($blockchain) && $blockchain instanceof \App\Lib\BlockchainService) {
+                $blockchain->record('affiliation_action', $applicationId, [
+                    'action' => $action,
+                    'notes' => $_POST['notes'] ?? '',
+                    'reviewed_by' => $_SESSION['user']['email'] ?? 'system',
+                    'previous_status' => $currentStatus,
+                    'new_status' => 'approved',
+                ]);
+            }
+
             // Add to affiliated_schools table if exists
             try {
                 $schoolData = [
@@ -302,11 +324,22 @@ switch ($action) {
             ];
             
             $result = $supabase->update('pending_affiliations', $updateData, $applicationId);
-            
+
             if (!$result) {
                 throw new Exception('Failed to update application status');
             }
-            
+
+            $blockchain = $GLOBALS['blockchain'] ?? null;
+            if (isset($blockchain) && $blockchain instanceof \App\Lib\BlockchainService) {
+                $blockchain->record('affiliation_action', $applicationId, [
+                    'action' => $action,
+                    'notes' => $reason,
+                    'reviewed_by' => $_SESSION['user']['email'] ?? 'system',
+                    'previous_status' => $currentStatus,
+                    'new_status' => 'rejected',
+                ]);
+            }
+
             // Send rejection email
             $institutionName = $application['institution_name'] ?? 'Your Institution';
             $applicantEmail = $application['email'] ?? '';

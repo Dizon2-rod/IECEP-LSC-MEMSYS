@@ -486,7 +486,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     <div class="hero-pattern"></div>
     <div class="hero-content">
         <h2 class="hero-tagline">One LSC. One IECEP.</h2>
-        <h1 class="hero-title">Institute of Electronics Engineers <br>of the Philippines<br>Laguna Student Chapter</h1>
+        <h1 class="hero-title" style="color: white;">Institute of Electronics Engineers <br>of the Philippines<br>Laguna Student Chapter</h1>
         <div class="hero-buttons">
             <button type="button" id="affiliateNowBtn" class="btn btn-primary">
                 <i></i> Affiliate Now

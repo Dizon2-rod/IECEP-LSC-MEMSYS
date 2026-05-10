@@ -112,6 +112,18 @@ try {
                     $sb->storage()->uploadBinary('member_ids', "{$newMemberId}.png", file_get_contents($idPath), 'image/png');
                     $digitalIdUrl = $sb->storage()->getPublicUrl('member_ids', "{$newMemberId}.png");
                     $sb->from('members')->eq('id', $newMemberId)->update(['digital_id_url' => $digitalIdUrl, 'qr_code' => $verifyUrl], true);
+
+                    if (isset($GLOBALS['blockchain']) && $GLOBALS['blockchain'] instanceof \App\Lib\BlockchainService) {
+                        $memberPayload = [
+                            'member_id' => $newMemberId,
+                            'full_name' => $pending['contact_person'],
+                            'institution_name' => $pending['institution_name'],
+                            'member_type' => 'returning',
+                            'issued_at' => date('c'),
+                        ];
+                        $GLOBALS['blockchain']->record('digital_id', $newMemberId, $memberPayload);
+                    }
+
                     @unlink($idPath);
                 }
                 @unlink($qrPath);

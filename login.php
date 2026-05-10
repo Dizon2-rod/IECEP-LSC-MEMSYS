@@ -1,6 +1,15 @@
 <?php
-session_start();
-require_once __DIR__ . '/includes/paths.php';
+// Prevent session blocking issues
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Ensure paths.php exists before requiring to prevent timeout
+$pathsFile = __DIR__ . '/includes/paths.php';
+if (!file_exists($pathsFile)) {
+    die('Configuration error: paths.php not found');
+}
+require_once $pathsFile;
 require_once __DIR__ . '/includes/config.php'; // defines BASE_URL, PORTAL_URL, etc.
 
 // Prevent caching
@@ -48,170 +57,124 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
 
-    // --- Test accounts for development (unchanged) ---
-    $testAccounts = [
-        'super.admin@iecep-lsc.test' => [
-            'password' => 'SuperAdmin123!',
-            'role' => 'eb_president',
-            'name' => 'IECEP Super Admin',
-            'redirect' => PORTAL_URL . '/super-admin/dashboard.php'
-        ],
-        'test.president@iecep-lsc.test' => [
-            'password' => 'TestPresident123!',
-            'role' => 'admin',
-            'name' => 'School President',
-            'redirect' => PORTAL_URL . '/admin/dashboard.php'
-        ],
-        'test.vp@iecep-lsc.test' => [
-            'password' => 'TestVp123!',
-            'role' => 'admin',
-            'name' => 'School VP',
-            'redirect' => PORTAL_URL . '/admin/dashboard.php'
-        ],
-        'test.adviser@iecep-lsc.test' => [
-            'password' => 'TestAdviser123!',
-            'role' => 'admin',
-            'name' => 'School Adviser',
-            'redirect' => PORTAL_URL . '/admin/dashboard.php'
-        ],
-        'test.committee@iecep-lsc.test' => [
-            'password' => 'TestCommittee123!',
-            'role' => 'admin',
-            'name' => 'Registration Committee',
-            'redirect' => PORTAL_URL . '/admin/dashboard.php'
-        ],
-        'test.treasurer@iecep-lsc.test' => [
-            'password' => 'TestTreasurer123!',
-            'role' => 'school_officer',
-            'name' => 'School Treasurer',
-            'redirect' => PORTAL_URL . '/school-officer/dashboard.php'
-        ],
-        'test.auditor@iecep-lsc.test' => [
-            'password' => 'TestAuditor123!',
-            'role' => 'school_officer',
-            'name' => 'School Auditor',
-            'redirect' => PORTAL_URL . '/school-officer/dashboard.php'
-        ],
-        'test.member1@iecep-lsc.test' => [
-            'password' => 'TestMember123!',
-            'role' => 'member',
-            'name' => 'Student Member 1',
-            'redirect' => PORTAL_URL . '/member/dashboard.php'
-        ],
-        'test.member2@iecep-lsc.test' => [
-            'password' => 'TestMember123!',
-            'role' => 'member',
-            'name' => 'Student Member 2',
-            'redirect' => PORTAL_URL . '/member/dashboard.php'
-        ],
-        'creatives.head@iecep-lsc.test' => [
-            'password' => 'CreativesHead123!',
-            'role' => 'eb_pro_1',
-            'name' => 'PRO 1 - Creatives Head',
-            'redirect' => PORTAL_URL . '/creatives/dashboard.php'
-        ],
-        'creatives.member@iecep-lsc.test' => [
-            'password' => 'CreativesMember123!',
-            'role' => 'committee_creatives',
-            'name' => 'Creatives Committee Member',
-            'redirect' => PORTAL_URL . '/creatives/dashboard.php'
-        ],
-        'new.member@iecep-lsc.test' => [
-            'password' => 'NewMember123!',
-            'role' => 'member',
-            'name' => 'New Member',
-            'redirect' => PORTAL_URL . '/member/dashboard.php',
-            'must_change_password' => true
-        ]
-    ];
+    // Validate input
+    if (empty($email) || empty($password)) {
+        $error = 'Please enter both email and password.';
+    } else {
 
-    if (isset($testAccounts[$email]) && $testAccounts[$email]['password'] === $password) {
-        $mustChangePassword = $testAccounts[$email]['must_change_password'] ?? false;
+        // Authenticate via Supabase Auth (production-only)
+        try {
+            require_once __DIR__ . '/includes/supabase.php';
+            require_once __DIR__ . '/src/lib/SupabaseClient.php';
 
-        $_SESSION['user'] = [
-            'email' => $email,
-            'name' => $testAccounts[$email]['name'],
-            'role' => $testAccounts[$email]['role'],
-            'must_change_password' => $mustChangePassword
-        ];
-        $_SESSION['logged_in'] = true;
-        $_SESSION['role'] = $testAccounts[$email]['role'];
+            $config = require __DIR__ . '/includes/supabase.php';
 
-        if ($mustChangePassword) {
-            $_SESSION['require_password_change'] = true;
-            header('Location: ' . BASE_URL . '/change-password.php?first=1');
-            exit;
-        }
+            // Use the service role key to query users table and verify password (bypass RLS)
+            $supabaseService = new SupabaseClient($config['url'], $config['service_role_key']);
+            $users = $supabaseService->select('users', ['email' => 'eq.' . $email]);
 
-        header('Location: ' . $testAccounts[$email]['redirect']);
-        exit;
-    }
+            if (!empty($users) && is_array($users)) {
+                $user = $users[0];
 
-    // --- Custom users table authentication (with service role to bypass RLS) ---
-    try {
-        require_once __DIR__ . '/includes/supabase.php';
-        require_once __DIR__ . '/src/lib/SupabaseClient.php';
+                // Verify password (bcrypt)
+                if (password_verify($password, $user['password'] ?? '')) {
+                    // Check if account is active
+                    if (empty($user['is_active'])) {
+                        $error = 'Your account has been deactivated. Please contact the administrator.';
+                    } else {
+                        // Retrieve user profile from user_profiles table
+                        $profiles = $supabaseService->select('user_profiles', ['user_id' => 'eq.' . $user['id']]);
+                        if (empty($profiles)) {
+                            $error = 'User profile not found. Please contact the administrator.';
+                        } else {
+                            $profile = $profiles[0];
+                            
+                            // Successful login - set session variables
+                            $_SESSION['user_id']   = $user['id'];
+                            $_SESSION['email']     = $user['email'];
+                            $_SESSION['full_name'] = $user['full_name'] ?? '';
+                            $_SESSION['role']      = $profile['role'] ?? 'member';
+                            $_SESSION['logged_in'] = true;
 
-        $config = require __DIR__ . '/includes/supabase.php';
+                            // Store user info in 'user' array for compatibility
+                            $_SESSION['user'] = [
+                                'id'    => $user['id'],
+                                'email' => $user['email'],
+                                'name'  => $user['full_name'] ?? '',
+                                'role'  => $profile['role'] ?? 'member',
+                                'must_change_password' => !empty($user['must_change_password'])
+                            ];
 
-        // Use the service role key for the login query to bypass Row‑Level Security
-        $supabaseService = new SupabaseClient($config['url'], $config['service_role_key']);
-        $users = $supabaseService->select('users', ['email' => 'eq.' . $email]);
+                            // Check if forced password change is required
+                            if (!empty($user['must_change_password'])) {
+                                $_SESSION['require_password_change'] = true;
+                                header('Location: ' . BASE_URL . '/change-password.php?first=1');
+                                exit;
+                            }
 
-        if (!empty($users) && is_array($users)) {
-            $user = $users[0];
-
-            // Verify password (bcrypt)
-            if (password_verify($password, $user['password'] ?? '')) {
-                // Check if account is active
-                if (empty($user['is_active'])) {
-                    $error = 'Your account has been deactivated. Please contact the administrator.';
-                } else {
-                    // Successful login
-                    $_SESSION['user_id']   = $user['id'];
-                    $_SESSION['email']     = $user['email'];
-                    $_SESSION['full_name'] = $user['full_name'] ?? '';
-                    $_SESSION['role']      = $user['role'] ?? 'member';
-                    $_SESSION['logged_in'] = true;
-
-                    // Store user info in 'user' array as well (for compatibility)
-                    $_SESSION['user'] = [
-                        'id'    => $user['id'],
-                        'email' => $user['email'],
-                        'name'  => $user['full_name'] ?? '',
-                        'role'  => $user['role'] ?? 'member',
-                        'must_change_password' => !empty($user['must_change_password'])
-                    ];
-
-                    // Check if forced password change is required
-                    if (!empty($user['must_change_password'])) {
-                        $_SESSION['require_password_change'] = true;
-                        header('Location: ' . BASE_URL . '/change-password.php?first=1');
-                        exit;
+                            // Redirect to role-based dashboard
+                            $redirectMap = [
+                                'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
+                                'admin'          => PORTAL_URL . '/admin/dashboard.php',
+                                'super_admin'    => PORTAL_URL . '/super-admin/dashboard.php',
+                                'eb_president'   => PORTAL_URL . '/super-admin/dashboard.php',
+                                'member'         => PORTAL_URL . '/member/dashboard.php',
+                            ];
+                            $role = $profile['role'] ?? 'member';
+                            $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php';
+                            header('Location: ' . $redirectUrl);
+                            exit;
+                        }
                     }
-
-                    // Redirect to role-based dashboard
-                    $redirectMap = [
-                        'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
-                        'admin'          => PORTAL_URL . '/admin/dashboard.php',
-                        'super_admin'    => PORTAL_URL . '/super-admin/dashboard.php',
-                        'eb_president'   => PORTAL_URL . '/super-admin/dashboard.php',
-                        'member'         => PORTAL_URL . '/member/dashboard.php',
-                    ];
-                    $role = $user['role'] ?? 'member';
-                    $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php';
-                    header('Location: ' . $redirectUrl);
-                    exit;
+                } else {
+                    $error = 'Invalid email or password. Please try again.';
                 }
             } else {
                 $error = 'Invalid email or password. Please try again.';
             }
-        } else {
-            $error = 'Invalid email or password. Please try again.';
+        } catch (Exception $e) {
+            error_log("Login error: " . $e->getMessage());
+            // --- Test Accounts Fallback (Development Only) ---
+            // Only use if APP_ENV is 'development'
+            if (defined('APP_ENV') && APP_ENV === 'development') {
+                $testAccounts = require __DIR__ . '/includes/test-accounts.php';
+                if (isset($testAccounts[$email]) && $testAccounts[$email]['password'] === $password) {
+                    // Test account login
+                    $_SESSION['logged_in'] = true;
+                    $_SESSION['email'] = $email;
+                    $_SESSION['role'] = $testAccounts[$email]['role'];
+                    $_SESSION['full_name'] = $testAccounts[$email]['full_name'];
+                    $_SESSION['user_id'] = 'test-' . md5($email); // Mock user ID for testing
+                    
+                    // Store user info in 'user' array for compatibility
+                    $_SESSION['user'] = [
+                        'id' => 'test-' . md5($email),
+                        'email' => $email,
+                        'name' => $testAccounts[$email]['full_name'],
+                        'role' => $testAccounts[$email]['role'],
+                        'must_change_password' => false
+                    ];
+                    
+                    // Redirect to role-based dashboard
+                    $redirectMap = [
+                        'eb_president'           => PORTAL_URL . '/super-admin/dashboard.php',
+                        'admin'                  => PORTAL_URL . '/admin/dashboard.php',
+                        'committee_registration' => PORTAL_URL . '/registration/dashboard.php',
+                        'committee_creatives'    => PORTAL_URL . '/creatives/dashboard.php',
+                        'eb_treasurer'           => PORTAL_URL . '/treasurer/dashboard.php',
+                        'eb_auditor'             => PORTAL_URL . '/auditor/dashboard.php',
+                        'eb_secretary_general'   => PORTAL_URL . '/secretary/dashboard.php',
+                        'school_officer'         => PORTAL_URL . '/school-officer/dashboard.php',
+                        'member'                 => PORTAL_URL . '/member/dashboard.php',
+                    ];
+                    $role = $testAccounts[$email]['role'];
+                    $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php';
+                    header('Location: ' . $redirectUrl);
+                    exit;
+                }
+            }
+            $error = 'A system error occurred. Please try again later.';
         }
-    } catch (Exception $e) {
-        error_log("Login error: " . $e->getMessage());
-        $error = 'A system error occurred. Please try again later.';
     }
 }
 ?>

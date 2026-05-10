@@ -46,6 +46,10 @@ error_log("User data: " . json_encode($user));
 $request_uri = $_SERVER['REQUEST_URI'] ?? '';
 $request_path = parse_url($request_uri, PHP_URL_PATH) ?? '';
 
+if (empty($current_page)) {
+    $current_page = basename($request_path, '.php');
+}
+
 // Role-based menu mappings
 $role_menus = [
     'admin' => [
@@ -66,7 +70,7 @@ $role_menus = [
         'icon' => 'fa-crown',
         'badge' => 'Super Administrator',
         'items' => [
-            ['icon' => 'fa-tachometer-alt', 'label' => 'Dashboard', 'url' => '/portal/admin/dashboard.php'],
+            ['icon' => 'fa-tachometer-alt', 'label' => 'Dashboard', 'url' => '/portal/super-admin/dashboard.php'],
             ['icon' => 'fa-building', 'label' => 'Affiliations', 'url' => '/portal/admin/affiliations.php'],
             ['icon' => 'fa-envelope', 'label' => 'Contact Messages', 'url' => '/portal/admin/contact-messages.php'],
             ['icon' => 'fa-users', 'label' => 'Members', 'url' => '/portal/admin/members.php'],
@@ -239,7 +243,12 @@ $legacy_committee_map = [
     'logistics' => 'committee',
     'marketing' => 'committee',
     'technical' => 'committee',
-    'documentation' => 'committee'
+    'documentation' => 'committee',
+    'eb_treasurer' => 'treasurer',
+    'eb_president' => 'super_admin',
+    'eb_vp_internal' => 'registration',
+    'eb_auditor' => 'auditor',
+    'eb_secretary_general' => 'secretary'
 ];
 
 // Map legacy committee roles
@@ -278,9 +287,14 @@ error_log("Portal title mapping - Current role: " . $current_role . " -> Portal 
 $menu_config = $role_menus[$role] ?? $role_menus['member'];
 
 // Function to check if menu item is active
-function isMenuItemActive($item_url, $request_path) {
-    // Remove query string and compare full paths
+function isMenuItemActive($item_url, $current_page, $request_path) {
     $item_path = parse_url($item_url, PHP_URL_PATH);
+    $item_page = basename($item_path, '.php');
+
+    if (!empty($current_page)) {
+        return $current_page === $item_page;
+    }
+
     return $request_path === $item_path || strpos($request_path, $item_path) !== false;
 }
 ?>
@@ -379,6 +393,153 @@ function isMenuItemActive($item_url, $request_path) {
     box-shadow: 0 2px 4px rgba(196, 154, 0, 0.1);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+}
+
+.sidebar-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 16px;
+}
+
+.notification-bell {
+    position: relative;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    color: #fff;
+    padding: 10px 12px;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.25s ease, transform 0.2s ease;
+}
+
+.notification-bell:hover {
+    background: rgba(255, 255, 255, 0.14);
+    transform: translateY(-1px);
+}
+
+.notification-count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 18px;
+    height: 18px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.72rem;
+    line-height: 18px;
+    border-radius: 999px;
+    text-align: center;
+    padding: 0 5px;
+    display: none;
+}
+
+.notification-count.visible {
+    display: inline-flex;
+}
+
+.notification-dropdown {
+    display: none;
+    position: absolute;
+    top: 134px;
+    right: 20px;
+    width: 320px;
+    background: rgba(15, 23, 42, 0.98);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 20px;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.25);
+    z-index: 1100;
+    overflow: hidden;
+}
+
+.notification-dropdown.open {
+    display: block;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-weight: 700;
+}
+
+.notification-clear {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.65);
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.notification-controls {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.notification-action {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: #fff;
+    padding: 8px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.notification-action:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.notification-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.notification-item {
+    padding: 16px 18px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.notification-item.unread {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.notification-item:last-child {
+    border-bottom: none;
+}
+
+.notification-title {
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.notification-body {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.notification-time {
+    font-size: 0.78rem;
+    opacity: 0.7;
+}
+
+.notification-empty {
+    padding: 18px;
+    color: rgba(255, 255, 255, 0.75);
+    text-align: center;
 }
 
 .sidebar-nav {
@@ -615,47 +776,13 @@ function isMenuItemActive($item_url, $request_path) {
         display: none !important;
     }
 }
-</style>
+.notification-item {
+    cursor: pointer;
+}
 
-<!-- Mobile Sidebar Toggle Button -->
-<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar">
-    <i class="fas fa-bars"></i>
-</button>
-
-<!-- Mobile Sidebar Overlay -->
-<div class="sidebar-overlay" id="sidebarOverlay"></div>
-
-<script>
-// Mobile Sidebar Toggle
-document.addEventListener('DOMContentLoaded', function() {
-    const sidebar = document.querySelector('.sidebar');
-    const toggle = document.getElementById('sidebarToggle');
-    const overlay = document.getElementById('sidebarOverlay');
-    
-    if (toggle && sidebar && overlay) {
-        toggle.addEventListener('click', function() {
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('active');
-            document.body.style.overflow = sidebar.classList.contains('open') ? 'hidden' : '';
-        });
-        
-        overlay.addEventListener('click', function() {
-            sidebar.classList.remove('open');
-            overlay.classList.remove('active');
-            document.body.style.overflow = '';
-        });
-        
-        // Close sidebar on escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && sidebar.classList.contains('open')) {
-                sidebar.classList.remove('open');
-                overlay.classList.remove('active');
-                document.body.style.overflow = '';
-            }
-        });
-    }
-});
-</script>
+.notification-item.read {
+    opacity: 0.85;
+}</style>
 
 <!-- Mobile Toggle Button -->
 <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
@@ -673,9 +800,22 @@ document.addEventListener('DOMContentLoaded', function() {
             <h3>IECEP-LSC</h3>
         </div>
         <p><?php echo htmlspecialchars($portal_title); ?></p>
+        <div class="sidebar-actions">
+            <button id="notificationBell" class="notification-bell" type="button" aria-label="Notifications">
+                <i class="fas fa-bell"></i>
+                <span id="notificationCount" class="notification-count"></span>
+            </button>
+        </div>
         <div class="user-role-badge">
             <?php echo htmlspecialchars($menu_config['badge']); ?>
         </div>
+    </div>
+    <div id="notificationDropdown" class="notification-dropdown">
+        <div class="notification-header">
+            <span>Notifications</span>
+            <button type="button" class="notification-clear" onclick="document.getElementById('notificationDropdown').classList.remove('open')">Close</button>
+        </div>
+        <ul class="notification-list"></ul>
     </div>
 
     <nav class="sidebar-nav">
@@ -683,7 +823,7 @@ document.addEventListener('DOMContentLoaded', function() {
             <?php foreach ($menu_config['items'] as $item): ?>
                 <li>
                     <a href="<?php echo $base_public_url . htmlspecialchars($item['url']); ?>" 
-                       class="<?php echo isMenuItemActive($item['url'], $request_path) ? 'active' : ''; ?>">
+                       class="<?php echo isMenuItemActive($item['url'], $current_page, $request_path) ? 'active' : ''; ?>">
                         <i class="fas <?php echo htmlspecialchars($item['icon']); ?>"></i>
                         <span><?php echo htmlspecialchars($item['label']); ?></span>
                     </a>
@@ -705,6 +845,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="user-name"><?php echo htmlspecialchars($user_name); ?></div>
                 <div class="user-email"><?php echo htmlspecialchars($user_email); ?></div>
             </div>
+        </div>
+        <div class="sidebar-pwa-actions">
+            <button type="button" id="install-btn" class="install-btn hidden">Install App</button>
+            <div id="offline-status" class="offline-status hidden">Offline mode available</div>
         </div>
         <a href="<?php echo $base_root_url; ?>/login.php?logout=true" class="logout-btn">
             <i class="fas fa-sign-out-alt"></i>

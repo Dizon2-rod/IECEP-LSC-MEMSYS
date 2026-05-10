@@ -1,4 +1,5 @@
 <?php
+$current_page = basename(__FILE__, '.php');
 require_once __DIR__ . '/../auth_check.php';
 
 // Allow eb_pro_1 (head) and committee_creatives
@@ -252,3 +253,4 @@ try {
     <script src="/IECEP-LSC-MEMSYS/public/assets/js/supabase-realtime.js"></script>
 </body>
 </html>
+

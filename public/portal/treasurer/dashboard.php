@@ -53,7 +53,7 @@ $role_display = get_role_display_name($user['role']);
                             <i class="fas fa-wallet"></i>
                         </div>
                         <div class="stat-content">
-                            <h3>₱458,750</h3>
+                            <h3 id="total-balance">₱458,750</h3>
                             <p>Total Balance</p>
                             <span class="stat-change positive">+12% this month</span>
                         </div>
@@ -86,7 +86,7 @@ $role_display = get_role_display_name($user['role']);
                             <i class="fas fa-exchange-alt"></i>
                         </div>
                         <div class="stat-content">
-                            <h3>156</h3>
+                            <h3 id="transaction-count">156</h3>
                             <p>Transactions</p>
                             <span class="stat-change positive">+24 this month</span>
                         </div>
@@ -170,6 +170,59 @@ $role_display = get_role_display_name($user['role']);
                     </div>
                 </div>
             </div>
+
+            <!-- Real-Time Integration Script -->
+            <script>
+            // Treasurer Dashboard Real-Time Updates
+            document.addEventListener('DOMContentLoaded', function() {
+                // Listen for new transactions
+                window.addEventListener('realtime:transactions', function(event) {
+                    const { action, new: newRecord } = event.detail;
+
+                    if (action === 'INSERT') {
+                        // New transaction added - update counters
+                        updateTransactionCount();
+                        updateTotalBalance(newRecord.amount);
+                    }
+                });
+            });
+
+            function updateTransactionCount() {
+                const countElement = document.getElementById('transaction-count');
+                if (countElement) {
+                    const currentCount = parseInt(countElement.textContent.replace(/[^\d]/g, '')) || 0;
+                    countElement.textContent = currentCount + 1;
+
+                    // Highlight the element to show update
+                    countElement.classList.add('highlight');
+                    setTimeout(() => countElement.classList.remove('highlight'), 1000);
+                }
+            }
+
+            function updateTotalBalance(amount) {
+                const balanceElement = document.getElementById('total-balance');
+                if (balanceElement && amount) {
+                    const currentBalance = parseFloat(balanceElement.textContent.replace(/[^\d.,]/g, '').replace(',', '')) || 0;
+                    const newBalance = currentBalance + parseFloat(amount);
+                    balanceElement.textContent = '₱' + newBalance.toLocaleString('en-PH', { minimumFractionDigits: 0 });
+
+                    // Highlight the element to show update
+                    balanceElement.classList.add('highlight');
+                    setTimeout(() => balanceElement.classList.remove('highlight'), 1000);
+                }
+            }
+
+            // Override default real-time handlers for treasurer-specific behavior
+            window.onNewTransaction = function(newTransaction) {
+                updateTransactionCount();
+                updateTotalBalance(newTransaction.amount);
+                console.log('New transaction:', newTransaction);
+            };
+            </script>
+        </main>
+    </div>
+</body>
+</html>
         </main>
     </div>
 

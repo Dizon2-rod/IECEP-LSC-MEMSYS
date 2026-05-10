@@ -7,6 +7,7 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
 require_once __DIR__ . '/../../includes/supabase.php';
+require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/lib/EmailService.php';
 require_once __DIR__ . '/../../includes/lib/pdf.php';
 require_once __DIR__ . '/../../includes/lib/qrcode.php';
@@ -76,29 +77,17 @@ try {
                     'paid_at' => date('Y-m-d\TH:i:s\Z'),
                 ], true);
 
-                // ---- BLOCKCHAIN INTEGRATION ----
-                require_once __DIR__ . '/../lib/Blockchain.php';
-
-                $storageFile = __DIR__ . '/../../storage/payments_chain.json';
-                $blockchain = new Blockchain(3, $storageFile);
-
-                $paymentData = [
-                    'receipt_id'    => $receiptId,
-                    'member_name'   => $instName,
-                    'member_email'  => '',
-                    'amount'        => $feeAmount,
-                    'paid_at'       => date('c'),
-                    'member_id'     => null,
-                    'institution'   => $instName,
-                ];
-
-                $newBlock = $blockchain->addBlock($paymentData);
-                $blockHash = $newBlock->hash;
-
-                $sb->from('transactions')
-                    ->eq('receipt_id', $receiptId)
-                    ->update(['blockchain_hash' => $blockHash], true);
-                // ---- END BLOCKCHAIN INTEGRATION ----
+                if (isset($GLOBALS['blockchain']) && $GLOBALS['blockchain'] instanceof \App\Lib\BlockchainService) {
+                    $GLOBALS['blockchain']->record('transaction', $receiptId, [
+                        'receipt_id' => $receiptId,
+                        'institution_id' => $markAffiliationFee,
+                        'member_id' => null,
+                        'amount' => $feeAmount,
+                        'description' => 'Institutional Affiliation Fee',
+                        'status' => 'paid',
+                        'paid_at' => date('c'),
+                    ]);
+                }
 
                 // Update institution
                 $sb->from('institutions')
@@ -204,6 +193,15 @@ try {
 
                 $newMemberId = $memberResult['data'][0]['id'] ?? '';
 
+                if (isset($GLOBALS['blockchain']) && $GLOBALS['blockchain'] instanceof \App\Lib\BlockchainService && !empty($newMemberId)) {
+                    $GLOBALS['blockchain']->record('membership_change', $newMemberId, [
+                        'action' => 'added',
+                        'full_name' => $pm['full_name'],
+                        'institution_id' => $institutionId,
+                        'member_type' => $pm['member_type'] ?? 'new',
+                    ]);
+                }
+
                 // Generate digital ID
                 $instResult = $sb->from('institutions')
                     ->select('name')
@@ -211,7 +209,15 @@ try {
                     ->get(true);
                 $instName = $instResult['data'][0]['name'] ?? 'Institution';
 
-                $verifyUrl = $config['app_url'] . "/verify-member.php?id=" . $newMemberId;
+                $memberPayload = [
+                    'member_id' => $newMemberId,
+                    'full_name' => $pm['full_name'],
+                    'institution_name' => $instName,
+                    'member_type' => $pm['member_type'],
+                    'issued_at' => date('c'),
+                ];
+                $idHash = hash('sha256', json_encode($memberPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+                $verifyUrl = $config['app_url'] . "/verify-member.php?id=" . $newMemberId . '&hash=' . $idHash;
                 $qrPath = sys_get_temp_dir() . '/qr_' . $newMemberId . '.png';
                 $qrSvc->generateAndSave($verifyUrl, $qrPath, 200);
 
@@ -224,6 +230,11 @@ try {
                     $sb->from('members')
                         ->eq('id', $newMemberId)
                         ->update(['digital_id_url' => $digitalIdUrl, 'qr_code' => $verifyUrl], true);
+
+                    if (isset($GLOBALS['blockchain']) && $GLOBALS['blockchain'] instanceof \App\Lib\BlockchainService) {
+                        $GLOBALS['blockchain']->record('digital_id', $newMemberId, $memberPayload);
+                    }
+
                     @unlink($idPath);
                 }
                 @unlink($qrPath);
@@ -258,29 +269,19 @@ try {
                     'paid_at' => date('Y-m-d\TH:i:s\Z'),
                 ], true);
 
-                // ---- BLOCKCHAIN INTEGRATION ----
-                require_once __DIR__ . '/../lib/Blockchain.php';
-
-                $storageFile = __DIR__ . '/../../storage/payments_chain.json';
-                $blockchain = new Blockchain(3, $storageFile);
-
-                $paymentData = [
-                    'receipt_id'    => $receiptId,
-                    'member_name'   => $pm['full_name'],
-                    'member_email'  => $pm['email'],
-                    'amount'        => $feeAmount,
-                    'paid_at'       => date('c'),
-                    'member_id'     => $newMemberId,
-                    'institution'   => $instName,
-                ];
-
-                $newBlock = $blockchain->addBlock($paymentData);
-                $blockHash = $newBlock->hash;
-
-                $sb->from('transactions')
-                    ->eq('receipt_id', $receiptId)
-                    ->update(['blockchain_hash' => $blockHash], true);
-                // ---- END BLOCKCHAIN INTEGRATION ----
+                if (isset($GLOBALS['blockchain']) && $GLOBALS['blockchain'] instanceof \App\Lib\BlockchainService) {
+                    $GLOBALS['blockchain']->record('transaction', $receiptId, [
+                        'receipt_id' => $receiptId,
+                        'institution_id' => $institutionId,
+                        'member_id' => $newMemberId,
+                        'member_name' => $pm['full_name'],
+                        'member_email' => $pm['email'],
+                        'amount' => $feeAmount,
+                        'description' => "Membership Fee - {$pm['member_type']}",
+                        'status' => 'paid',
+                        'paid_at' => date('c'),
+                    ]);
+                }
 
                 // Send credentials email
                 $emailSvc->sendCredentials($pm['email'], $pm['email'], $password);

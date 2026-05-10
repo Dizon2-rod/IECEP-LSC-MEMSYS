@@ -53,7 +53,7 @@ $role_display = get_role_display_name($user['role']);
                             <i class="fas fa-exchange-alt"></i>
                         </div>
                         <div class="stat-content">
-                            <h3>156</h3>
+                            <h3 id="transactions-count">156</h3>
                             <p>Transactions</p>
                             <span class="stat-change positive">+24 this month</span>
                         </div>
@@ -64,7 +64,7 @@ $role_display = get_role_display_name($user['role']);
                             <i class="fas fa-check-double"></i>
                         </div>
                         <div class="stat-content">
-                            <h3>142</h3>
+                            <h3 id="verified-transactions-count">142</h3>
                             <p>Verified Transactions</p>
                             <span class="stat-change positive">91% verification rate</span>
                         </div>
@@ -196,6 +196,60 @@ $role_display = get_role_display_name($user['role']);
                         </div>
                     </div>
                 </div>
+
+                <!-- Real-Time Integration Script -->
+                <script>
+                // Auditor Dashboard Real-Time Updates
+                document.addEventListener('DOMContentLoaded', function() {
+                    // Listen for new transactions
+                    window.addEventListener('realtime:transactions', function(event) {
+                        const { action, new: newRecord } = event.detail;
+
+                        if (action === 'INSERT') {
+                            // New transaction added - update counters
+                            updateTransactionsCount();
+                        }
+                    });
+
+                    // Listen for new blockchain records (for audit trail)
+                    window.addEventListener('realtime:blockchain_records', function(event) {
+                        const { action, new: newRecord } = event.detail;
+
+                        if (action === 'INSERT') {
+                            // New blockchain record - could indicate new auditable activity
+                            console.log('New blockchain record for audit:', newRecord);
+                        }
+                    });
+                });
+
+                function updateTransactionsCount() {
+                    const countElement = document.getElementById('transactions-count');
+                    if (countElement) {
+                        const currentCount = parseInt(countElement.textContent.replace(/[^\d]/g, '')) || 0;
+                        countElement.textContent = currentCount + 1;
+
+                        // Highlight the element to show update
+                        countElement.classList.add('highlight');
+                        setTimeout(() => countElement.classList.remove('highlight'), 1000);
+                    }
+                }
+
+                // Override default real-time handlers for auditor-specific behavior
+                window.onNewTransaction = function(newTransaction) {
+                    updateTransactionsCount();
+                    console.log('New transaction for audit verification:', newTransaction);
+                };
+
+                window.onNewBlockchainRecord = function(newRecord) {
+                    // Auditor might want to know about new blockchain records for integrity verification
+                    console.log('Blockchain record added - audit trail updated:', newRecord);
+                };
+                </script>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
             </div>
         </main>
     </div>

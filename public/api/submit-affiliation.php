@@ -445,14 +445,16 @@ try {
 
             // Move uploaded file
             if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+                $fileHash = hash_file('sha256', $uploadPath);
                 $documents[$fieldName] = [
                     'name' => $fileName,
                     'type' => $fileType,
                     'size' => $fileSize,
                     'path' => 'assets/uploads/affiliations/' . $uniqueFileName,
-                    'uploaded_at' => date('Y-m-d H:i:s')
+                    'uploaded_at' => date('Y-m-d H:i:s'),
+                    'hash' => $fileHash
                 ];
-                error_log("File uploaded successfully: $fieldName -> $uniqueFileName");
+                error_log("File uploaded successfully: $fieldName -> $uniqueFileName, Hash: $fileHash");
             } else {
                 error_log("Failed to move uploaded file: $fieldName");
                 sendJsonResponse(false, '', 'Failed to upload ' . $fieldInfo['name']);
@@ -519,6 +521,24 @@ try {
         if ($result && isset($result[0]['id'])) {
             $applicationId = $result[0]['id'];
             error_log("Application submitted successfully: $applicationId");
+
+            // Record document hashes on blockchain
+            $blockchain = $GLOBALS['blockchain'] ?? null;
+            if (isset($blockchain) && $blockchain instanceof \App\Lib\BlockchainService) {
+                foreach ($documents as $fieldName => $docInfo) {
+                    if (isset($docInfo['hash'])) {
+                        $blockchain->record('document_hash', $applicationId, [
+                            'field_name' => $fieldName,
+                            'file_name' => $docInfo['name'],
+                            'hash' => $docInfo['hash'],
+                            'mime_type' => $docInfo['type'],
+                            'size' => $docInfo['size'],
+                            'path' => $docInfo['path']
+                        ]);
+                    }
+                }
+                error_log("Document hashes recorded on blockchain for application: $applicationId");
+            }
 
             // Send confirmation email to applicant (if possible)
             try {

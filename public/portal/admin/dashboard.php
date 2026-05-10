@@ -8,11 +8,14 @@ require_role(['eb_president', 'admin']);
 
 require_once __DIR__ . '/../../../includes/paths.php';
 require_once __DIR__ . '/../../../src/lib/SupabaseClient.php';
+require_once __DIR__ . '/../../../includes/config.php';
+$current_page = 'dashboard';
 
 // Load Supabase credentials
 $supabaseConfig = require __DIR__ . '/../../../includes/supabase.php';
 
 $user = get_user_info();
+$displayName = $_SESSION['full_name'] ?? $_SESSION['email'] ?? $user['user_metadata']['full_name'] ?? $user['email'] ?? 'User';
 $role_display = get_role_display_name($user['role']);
 
 // Fetch pending affiliations
@@ -36,6 +39,7 @@ try {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/font-awesome.css">
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/dashboard.css">
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/professional.css">
     <style>
         /* Admin Dashboard Specific Styles */
         .dashboard-header {
@@ -170,7 +174,7 @@ try {
             <div class="header-content">
                 <div>
                     <h1>Admin Dashboard</h1>
-                    <p class="welcome-message">Welcome back, <?php echo htmlspecialchars($user['user_metadata']['full_name'] ?? $user['email']); ?> - <?php echo $role_display; ?></p>
+                    <p class="welcome-message">Welcome back, <?php echo htmlspecialchars($displayName); ?> - <?php echo $role_display; ?></p>
                 </div>
             </div>
         </header>
@@ -195,7 +199,7 @@ try {
                     <p>Schools</p>
                 </div>
                 <div class="stat-card <?php echo $pendingAffiliationsCount > 0 ? 'warning' : ''; ?>">
-                    <h3><?php echo $pendingAffiliationsCount; ?></h3>
+                    <h3 id="pending-affiliations-count"><?php echo $pendingAffiliationsCount; ?></h3>
                     <p>Pending Affiliations</p>
                 </div>
                 <div class="stat-card">
@@ -212,5 +216,83 @@ try {
                 <p><a href="<?php echo PORTAL_URL; ?>/admin/affiliations.php" class="btn" style="display:inline-block; margin-top:12px;">View Affiliation Requests</a></p>
             </div>
         </main>
-</body>
+
+        <!-- Real-Time Integration Script -->
+        <script>
+        // Admin Dashboard Real-Time Updates
+        document.addEventListener('DOMContentLoaded', function() {
+            // Listen for new pending affiliations
+            window.addEventListener('realtime:pending_affiliations', function(event) {
+                const { action, new: newRecord, old: oldRecord } = event.detail;
+
+                if (action === 'INSERT') {
+                    // New affiliation submitted - update counter
+                    updatePendingAffiliationsCount();
+                } else if (action === 'UPDATE') {
+                    // Affiliation status changed - refresh if needed
+                    if (oldRecord.status !== newRecord.status && newRecord.status !== 'pending_review') {
+                        // Affiliation was approved/rejected, decrement counter
+                        updatePendingAffiliationsCount();
+                    }
+                }
+            });
+        });
+
+        function updatePendingAffiliationsCount() {
+            const countElement = document.getElementById('pending-affiliations-count');
+            if (countElement) {
+                const currentCount = parseInt(countElement.textContent) || 0;
+                // For INSERT events, increment; for status changes to non-pending, decrement
+                // The real-time handler above determines the action
+                const newCount = currentCount + 1; // This will be overridden by specific logic
+                countElement.textContent = newCount;
+
+                // Highlight the element to show update
+                countElement.classList.add('highlight');
+                setTimeout(() => countElement.classList.remove('highlight'), 1000);
+
+                // Update warning class if needed
+                const statCard = countElement.closest('.stat-card');
+                if (newCount > 0) {
+                    statCard.classList.add('warning');
+                } else {
+                    statCard.classList.remove('warning');
+                }
+            }
+        }
+
+        // Override default real-time handlers for admin-specific behavior
+        window.onNewPendingAffiliation = function(newAffiliation) {
+            updatePendingAffiliationsCount();
+            console.log('New pending affiliation:', newAffiliation);
+        };
+
+        window.onAffiliationStatusChanged = function(updatedAffiliation) {
+            // If status changed from pending_review to something else, decrement counter
+            if (updatedAffiliation.status !== 'pending_review') {
+                const countElement = document.getElementById('pending-affiliations-count');
+                if (countElement) {
+                    const currentCount = parseInt(countElement.textContent) || 0;
+                    if (currentCount > 0) {
+                        countElement.textContent = currentCount - 1;
+
+                        // Update warning class
+                        const statCard = countElement.closest('.stat-card');
+                        if (currentCount - 1 === 0) {
+                            statCard.classList.remove('warning');
+                        }
+                    }
+                }
+            }
+            console.log('Affiliation status changed:', updatedAffiliation);
+        };
+    </script>
+    <script>
+        window.IECEP_CONFIG = {
+            SUPABASE_URL: <?php echo json_encode(SUPABASE_URL); ?>,
+            SUPABASE_ANON_KEY: <?php echo json_encode(SUPABASE_ANON_KEY); ?>
+        };
+    </script>
+    <script src="/IECEP-LSC-MEMSYS/public/js/realtime.js" defer></script>
+    </body>
 </html>

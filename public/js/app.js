@@ -173,9 +173,40 @@ const App = {
         }
     },
 
+    // Initialize PWA helpers
+    initPWA() {
+        this.updateNetworkStatus();
+
+        window.addEventListener('online', () => {
+            this.updateNetworkStatus();
+            this.toast('Connectivity restored', 'success');
+        });
+
+        window.addEventListener('offline', () => {
+            this.updateNetworkStatus();
+            this.toast('You are offline. Some features may be unavailable.', 'error');
+        });
+    },
+
+    updateNetworkStatus() {
+        const statusId = 'networkStatusBadge';
+        let badge = document.getElementById(statusId);
+        if (!badge) {
+            badge = document.createElement('div');
+            badge.id = statusId;
+            badge.className = 'network-status';
+            document.body.appendChild(badge);
+        }
+
+        const online = navigator.onLine;
+        badge.textContent = online ? 'Online' : 'Offline — limited access';
+        badge.style.background = online ? 'var(--accent)' : '#DC2626';
+    },
+
     // Initialize
     init() {
         this.initNavbar();
+        this.initPWA();
     }
 };
 

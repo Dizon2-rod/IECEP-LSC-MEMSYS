@@ -8,11 +8,14 @@ require_role(['eb_president', 'super_admin']);
 
 require_once __DIR__ . '/../../../includes/paths.php';
 require_once __DIR__ . '/../../../src/lib/SupabaseClient.php';
+require_once __DIR__ . '/../../../includes/config.php';
+$current_page = 'dashboard';
 
 // Load Supabase credentials
 $supabaseConfig = require __DIR__ . '/../../../includes/supabase.php';
 
 $user = get_user_info();
+$displayName = $_SESSION['full_name'] ?? $_SESSION['email'] ?? $user['user_metadata']['full_name'] ?? $user['email'] ?? 'User';
 $role_display = get_role_display_name($user['role']);
 
 // Fetch pending affiliations
@@ -36,6 +39,7 @@ try {
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/dashboard.css">
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/professional.css">
 </head>
 <body>
     <div class="dashboard-container">
@@ -49,7 +53,7 @@ try {
                 <div class="header-content">
                     <div>
                         <h1>Super Admin Dashboard</h1>
-                        <p class="welcome-message">Welcome back, <?php echo htmlspecialchars($user['user_metadata']['full_name'] ?? $user['email']); ?> - <?php echo $role_display; ?></p>
+                        <p class="welcome-message">Welcome back, <?php echo htmlspecialchars($displayName); ?> - <?php echo $role_display; ?></p>
                     </div>
                     <div class="header-actions">
                         <button class="btn btn-outline">
@@ -58,7 +62,7 @@ try {
                         </button>
                         <div class="user-menu">
                             <img src="<?php echo $user['user_metadata']['avatar_url'] ?? '/IECEP-LSC-MEMSYS/public/assets/images/default-avatar.png'; ?>" alt="User Avatar" class="user-avatar">
-                            <span><?php echo htmlspecialchars($user['user_metadata']['full_name'] ?? 'User'); ?></span>
+                            <span><?php echo htmlspecialchars($displayName); ?></span>
                         </div>
                     </div>
                 </div>
@@ -169,6 +173,23 @@ try {
         </main>
     </div>
 
+    <script>
+        window.IECEP_CONFIG = {
+            SUPABASE_URL: <?php echo json_encode(SUPABASE_URL); ?>,
+            SUPABASE_ANON_KEY: <?php echo json_encode(SUPABASE_ANON_KEY); ?>
+        };
+    </script>
+    <script src="/IECEP-LSC-MEMSYS/public/js/realtime.js" defer></script>
+    <script>
+        window.onNewPendingAffiliation = function(newRecord) {
+            const el = document.getElementById('pending-affiliations-count');
+            if (!el) return;
+            const current = parseInt(el.textContent) || 0;
+            el.textContent = current + 1;
+            el.classList.add('live-update');
+            setTimeout(() => el.classList.remove('live-update'), 900);
+        };
+    </script>
     <script src="/IECEP-LSC-MEMSYS/public/js/dashboard.js"></script>
 </body>
 </html>

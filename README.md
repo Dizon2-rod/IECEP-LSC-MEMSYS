@@ -1,1 +1,0 @@
-# IECEP-LSC-MEMSYS

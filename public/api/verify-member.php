@@ -6,6 +6,7 @@ header('Access-Control-Allow-Methods: GET, OPTIONS');
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
 require_once __DIR__ . '/../../includes/supabase.php';
+require_once __DIR__ . '/../../includes/config.php';
 
 use App\Lib\Supabase;
 
@@ -13,6 +14,13 @@ $sb = new Supabase();
 
 try {
     $memberId = $_GET['id'] ?? '';
+    $scannedHash = $_GET['hash'] ?? '';
+
+    if (!empty($scannedHash) && isset($GLOBALS['blockchain']) && $GLOBALS['blockchain'] instanceof \App\Lib\BlockchainService) {
+        $verified = $GLOBALS['blockchain']->verifyDigitalId($scannedHash);
+        echo json_encode(['success' => $verified, 'verified' => $verified, 'hash' => $scannedHash]);
+        exit;
+    }
 
     if (empty($memberId)) {
         http_response_code(400);

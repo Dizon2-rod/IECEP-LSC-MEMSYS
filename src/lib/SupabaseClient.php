@@ -1,4 +1,6 @@
 <?php
+namespace App\Lib;
+
 // Supabase REST API Client for PHP
 class SupabaseClient {
     private $url;
@@ -255,4 +257,31 @@ class SupabaseClient {
         
         return json_decode($response, true);
     }
+
+    public function sendPushNotification(string $endpoint, array $payload, array $keys = []): bool {
+        // This method assumes a server-side push gateway or external service is configured.
+        // For Supabase-native push notifications, replace this with the correct API integration.
+        if (empty($endpoint) || empty($payload)) {
+            return false;
+        }
+
+        // Save a reusable notification log via Supabase only; actual push delivery may require an external service.
+        try {
+            $data = [
+                'endpoint' => $endpoint,
+                'payload' => json_encode($payload),
+                'keys' => json_encode($keys),
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+            $this->insert('notification_delivery_log', $data);
+            return true;
+        } catch (Exception $e) {
+            error_log('sendPushNotification error: ' . $e->getMessage());
+            return false;
+        }
+    }
+}
+
+if (!class_exists('SupabaseClient', false)) {
+    class_alias(__NAMESPACE__ . '\\SupabaseClient', 'SupabaseClient');
 }

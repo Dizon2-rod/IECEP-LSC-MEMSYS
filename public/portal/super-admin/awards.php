@@ -1,4 +1,5 @@
 <?php
+$current_page = basename(__FILE__, '.php');
 require_once __DIR__ . '/../auth_check.php';
 require_role(['eb_president', 'super_admin']);
 
@@ -212,3 +213,4 @@ $role_display = get_role_display_name($user['role']);
     <script src="/IECEP-LSC-MEMSYS/public/js/dashboard.js"></script>
 </body>
 </html>
+

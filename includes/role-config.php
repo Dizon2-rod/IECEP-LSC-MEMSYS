@@ -16,6 +16,7 @@ $ROLE_NAVIGATION = [
             ['icon' => 'fa-chart-line', 'label' => 'Reports', 'url' => '/super-admin/reports.php'],
             ['icon' => 'fa-cog', 'label' => 'Settings', 'url' => '/super-admin/settings.php'],
             ['icon' => 'fa-user-shield', 'label' => 'User Management', 'url' => '/super-admin/users.php'],
+            ['icon' => 'fa-handshake', 'label' => 'Collaboration', 'url' => '/collaboration/index.php'],
             ['icon' => 'fa-history', 'label' => 'Audit Logs', 'url' => '/super-admin/audit.php'],
         ],
         'alert_message' => 'You have full system control including user management, school administration, and system operations.',
@@ -46,7 +47,9 @@ $ROLE_NAVIGATION = [
             ['icon' => 'fa-building', 'label' => 'Schools', 'url' => '/admin/schools.php'],
             ['icon' => 'fa-calendar', 'label' => 'Events', 'url' => '/admin/events.php'],
             ['icon' => 'fa-file-invoice', 'label' => 'Payments', 'url' => '/admin/payments.php'],
+            ['icon' => 'fa-shield-alt', 'label' => 'Compliance', 'url' => '/admin/compliance.php'],
             ['icon' => 'fa-chart-bar', 'label' => 'Reports', 'url' => '/admin/reports.php'],
+            ['icon' => 'fa-bell', 'label' => 'Announcements', 'url' => '/admin/push.php'],
         ],
         'alert_message' => 'Welcome to the Admin Dashboard. From here you can manage users, monitor system activities, and oversee IECEP-LSC operations.',
     ],
@@ -71,6 +74,7 @@ $ROLE_NAVIGATION = [
         'nav_items' => [
             ['icon' => 'fa-tachometer-alt', 'label' => 'Dashboard', 'url' => '/member/dashboard.php', 'active' => true],
             ['icon' => 'fa-id-card', 'label' => 'My Profile', 'url' => '/member/profile.php'],
+            ['icon' => 'fa-id-badge', 'label' => 'Digital ID', 'url' => '/member/digital-id.php'],
             ['icon' => 'fa-calendar', 'label' => 'Events', 'url' => '/member/events.php'],
             ['icon' => 'fa-file-alt', 'label' => 'Documents', 'url' => '/member/documents.php'],
             ['icon' => 'fa-cog', 'label' => 'Settings', 'url' => '/member/settings.php'],
@@ -131,6 +135,7 @@ $ROLE_NAVIGATION = [
         'nav_items' => [
             ['icon' => 'fa-tachometer-alt', 'label' => 'Dashboard', 'url' => '/treasurer/dashboard.php', 'active' => true],
             ['icon' => 'fa-money-bill-wave', 'label' => 'Payments', 'url' => '/treasurer/payments.php'],
+            ['icon' => 'fa-cogs', 'label' => 'Fee Settings', 'url' => '/treasurer/fee-settings.php'],
             ['icon' => 'fa-chart-line', 'label' => 'Financial Reports', 'url' => '/treasurer/reports.php'],
             ['icon' => 'fa-file-invoice-dollar', 'label' => 'Invoices', 'url' => '/treasurer/invoices.php'],
             ['icon' => 'fa-university', 'label' => 'School Dues', 'url' => '/treasurer/school-dues.php'],

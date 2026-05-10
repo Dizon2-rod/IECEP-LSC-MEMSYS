@@ -1,4 +1,5 @@
 <?php
+$current_page = basename(__FILE__, '.php');
 // Set JSON headers first
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');

@@ -373,6 +373,34 @@ class EmailService
         }
     }
 
+    public function sendMemberRenewalConfirmation(string $to, string $memberName, string $membershipId, string $yearLevel = ''): bool
+    {
+        try {
+            $mail = $this->createMailer();
+            $mail->addAddress($to);
+            $loginUrl = $this->config['app_url'] . '/login.php';
+            $mail->Subject = 'IECEP-LSC Membership Renewal Confirmed';
+            $mail->Body = "
+                <div style='font-family:Inter,sans-serif;max-width:520px;margin:0 auto;padding:24px'>
+                    <h2 style='color:#0A2F6C'>Membership Renewal Confirmed</h2>
+                    <p>Dear " . htmlspecialchars($memberName) . ",</p>
+                    <p>Your IECEP-LSC membership has been reviewed and renewed successfully.</p>
+                    <div style='background:#f8fafc;border:1px solid #c7d2fe;padding:18px;border-radius:12px;margin:20px 0;'>
+                        <p style='margin:0 0 8px;'><strong>Membership ID:</strong> " . htmlspecialchars($membershipId) . "</p>
+                        " . (!empty($yearLevel) ? "<p style='margin:0;'><strong>Year Level:</strong> " . htmlspecialchars($yearLevel) . "</p>" : "") . "
+                    </div>
+                    <p>You can log in with your existing account credentials using the button below.</p>
+                    <a href='" . $loginUrl . "' style='display:inline-block;padding:12px 24px;background:#F5A623;color:#0B1D4A;text-decoration:none;border-radius:8px;margin-top:12px;'>Go to Login</a>
+                    <p style='margin-top:18px;color:#475569;'>If you did not request this renewal or if your account details are incorrect, please contact the Registration Committee immediately.</p>
+                </div>";
+            $mail->AltBody = "IECEP-LSC Membership Renewal Confirmed\n\nDear {$memberName},\n\nYour IECEP-LSC membership has been renewed successfully.\n\nMembership ID: {$membershipId}\n" . (!empty($yearLevel) ? "Year Level: {$yearLevel}\n" : "") . "\nLogin URL: {$loginUrl}\n\nIf you have questions, contact the Registration Committee.";
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Email error (membership renewal): " . $e->getMessage());
+            return false;
+        }
+    }
+
     public function sendSchoolAffiliationLinked(string $to, string $institutionName): bool
     {
         try {

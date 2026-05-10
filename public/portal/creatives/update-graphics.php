@@ -1,4 +1,5 @@
 <?php
+$current_page = basename(__FILE__, '.php');
 require_once __DIR__ . '/../../auth_check.php';
 require_role(['eb_pro_1', 'committee_creatives']);
 
@@ -42,3 +43,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     exit;
 }
+

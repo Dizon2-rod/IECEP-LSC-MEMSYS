@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - IECEP-LSC Membership System</title>
+    <link rel="stylesheet" href="/assets/css/professional.css">
+    <link rel="stylesheet" href="/public/assets/css/bootstrap.min.css">
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        .offline-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0B1D4A 0%, #1a365d 100%);
+        }
+
+        .offline-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .offline-icon {
+            font-size: 4rem;
+            color: #D4AF37;
+            margin-bottom: 1.5rem;
+        }
+
+        .offline-title {
+            color: #0B1D4A;
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .offline-message {
+            color: #64748b;
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+
+        .retry-btn {
+            background: linear-gradient(135deg, #0B1D4A 0%, #1a365d 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0.5rem;
+        }
+
+        .retry-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(11, 29, 74, 0.3);
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            background: #ef4444;
+            border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .features-list {
+            text-align: left;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .features-list h4 {
+            color: #0B1D4A;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+
+        .features-list ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .features-list li {
+            color: #64748b;
+            margin-bottom: 0.5rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .features-list li:before {
+            content: "✓";
+            color: #D4AF37;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-card">
+            <div class="offline-icon">
+                <i class="fas fa-wifi-slash"></i>
+            </div>
+
+            <h1 class="offline-title">
+                <span class="status-indicator"></span>
+                You're Offline
+            </h1>
+
+            <p class="offline-message">
+                It looks like you've lost your internet connection. Don't worry! You can still access some features of the IECEP-LSC Membership System while offline.
+            </p>
+
+            <div class="d-flex justify-content-center flex-wrap">
+                <button class="retry-btn" onclick="checkConnection()">
+                    <i class="fas fa-sync-alt me-2"></i>
+                    Try Again
+                </button>
+
+                <button class="retry-btn" onclick="goHome()" style="background: #D4AF37;">
+                    <i class="fas fa-home me-2"></i>
+                    Go Home
+                </button>
+            </div>
+
+            <div class="features-list">
+                <h4>Available Offline:</h4>
+                <ul>
+                    <li>View cached dashboard data</li>
+                    <li>Access previously loaded pages</li>
+                    <li>Read saved notifications</li>
+                    <li>View collaboration posts</li>
+                    <li>Access your digital ID</li>
+                </ul>
+            </div>
+
+            <div class="mt-4 text-muted">
+                <small>Your actions will be synced when you're back online.</small>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check connection status
+        function checkConnection() {
+            const btn = document.querySelector('.retry-btn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Checking...';
+            btn.disabled = true;
+
+            // Simple connection check
+            fetch(window.location.origin + '/api/health-check', {
+                method: 'HEAD',
+                cache: 'no-cache'
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Connection restored
+                    showToast('Connection restored! Reloading...', 'success');
+                    setTimeout(() => window.location.reload(), 1500);
+                } else {
+                    throw new Error('Server not responding');
+                }
+            })
+            .catch(error => {
+                console.log('Still offline:', error);
+                showToast('Still offline. Please check your connection.', 'warning');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            });
+        }
+
+        // Go to home page
+        function goHome() {
+            window.location.href = '/';
+        }
+
+        // Simple toast notification
+        function showToast(message, type = 'info') {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#10b981' : type === 'warning' ? '#f59e0b' : '#6b7280'};
+                color: white;
+                padding: 12px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 1000;
+                font-weight: 500;
+                animation: slideIn 0.3s ease;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'slideOut 0.3s ease';
+                setTimeout(() => document.body.removeChild(toast), 300);
+            }, 3000);
+        }
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Auto-check connection every 30 seconds
+        setInterval(() => {
+            if (navigator.onLine) {
+                fetch(window.location.origin + '/api/health-check', {
+                    method: 'HEAD',
+                    cache: 'no-cache'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        showToast('Connection restored!', 'success');
+                        setTimeout(() => window.location.reload(), 2000);
+                    }
+                })
+                .catch(() => {
+                    // Still offline, do nothing
+                });
+            }
+        }, 30000);
+
+        // Listen for online/offline events
+        window.addEventListener('online', () => {
+            showToast('Connection restored! Syncing data...', 'success');
+            setTimeout(() => window.location.reload(), 2000);
+        });
+
+        window.addEventListener('offline', () => {
+            showToast('Connection lost. Working offline.', 'warning');
+        });
+    </script>
+
+    <!-- Font Awesome for icons -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js" crossorigin="anonymous"></script>
+</body>
+</html>
