@@ -1,166 +1,189 @@
 <?php
-/**
- * IECEP-LSC MEMSYS Deadline Reminder Cron Job
- * 
- * Checks for:
- * 1. Pending affiliations > 7 days old
- * 2. Upcoming events (next 3 days)
- * 3. Compliance at risk institutions
- * 
- * Protect with API_KEY header check
- * Call: curl -H "API-Key: your-secret-key" https://domain/public/api/cron-check-deadlines.php
- */
-
 require_once __DIR__ . '/../../includes/config.php';
-require_once __DIR__ . '/../../includes/paths.php';
-require_once __DIR__ . '/../../src/lib/SupabaseClient.php';
+require_once __DIR__ . '/../../src/lib/Supabase.php';
+require_once __DIR__ . '/../../src/lib/EmailService.php';
 require_once __DIR__ . '/../../includes/notification-helpers.php';
 
-// Security check - verify API key header
-$providedKey = $_SERVER['HTTP_API_KEY'] ?? $_GET['key'] ?? null;
-$expectedKey = defined('CRON_SECRET') ? CRON_SECRET : (getenv('CRON_SECRET') ?: ($_ENV['CRON_SECRET'] ?? 'change-me'));
-
-if (empty($providedKey) || $providedKey !== $expectedKey) {
-    http_response_code(401);
-    die(json_encode(['error' => 'Unauthorized']));
-}
-
-// Set response headers
 header('Content-Type: application/json');
 
-$config = require __DIR__ . '/../../includes/supabase.php';
-$supabase = new SupabaseClient($config['url'], $config['service_role_key']);
+$key = $_GET['key'] ?? null;
+if (!defined('CRON_SECRET') || empty($key) || $key !== CRON_SECRET) {
+    http_response_code(403);
+    echo json_encode(['success' => false, 'error' => 'Forbidden']);
+    exit;
+}
 
-$notifications = [];
-$errors = [];
+$supabase = new \App\Lib\Supabase();
+$emailService = new \App\Lib\EmailService();
+
+$summary = [
+    'notifications_created' => 0,
+    'emails_sent' => 0,
+    'pending_affiliation_reminders' => 0,
+    'event_deadline_reminders' => 0,
+    'compliance_reminders' => 0,
+    'errors' => [],
+];
+
+function notifyUser(array $user, string $title, string $message, ?string $link, \App\Lib\EmailService $emailService, array &$summary): void
+{
+    if (empty($user['id'])) {
+        return;
+    }
+
+    $result = createNotification($user['id'], $title, $message, 'reminder', $link);
+    if (!empty($result['success'])) {
+        $summary['notifications_created']++;
+    } else {
+        $summary['errors'][] = 'Notification failed for user ' . ($user['id'] ?? 'unknown') . ': ' . ($result['error'] ?? 'unknown');
+    }
+
+    if (!empty($user['email'])) {
+        try {
+            $sent = $emailService->sendNotification($user['email'], $title, $message);
+            if ($sent) {
+                $summary['emails_sent']++;
+            }
+        } catch (\Exception $e) {
+            $summary['errors'][] = 'Email send failed for user ' . ($user['id'] ?? 'unknown') . ': ' . $e->getMessage();
+        }
+    }
+}
+
+function notifyUsers(array $users, string $title, string $message, ?string $link, \App\Lib\EmailService $emailService, array &$summary): void
+{
+    $seen = [];
+    foreach ($users as $user) {
+        if (empty($user['id']) || in_array($user['id'], $seen, true)) {
+            continue;
+        }
+        $seen[] = $user['id'];
+        notifyUser($user, $title, $message, $link, $emailService, $summary);
+    }
+}
 
 try {
-    // 1. Check pending affiliations > 7 days old
-    try {
-        $sevenDaysAgo = date('Y-m-d H:i:s', strtotime('-7 days'));
-        $oldAffiliations = $supabase->from('pending_affiliations')
-            ->select('id, institution_id, requested_at, institutions(name)')
-            ->eq('status', 'pending')
-            ->lt('requested_at', $sevenDaysAgo)
-            ->execute();
-        
-        if ($oldAffiliations) {
-            foreach ($oldAffiliations as $affiliation) {
-                // Create notification for registration committee
-                $notifMsg = "Pending affiliation for {$affiliation['institutions']['name']} waiting for review (requested {$affiliation['requested_at']})";
-                $notif = createNotification(
-                    'Pending Affiliation Review',
-                    $notifMsg,
-                    'committee_registration',
-                    'warning',
-                    '/portal/admin/affiliations.php'
-                );
-                $notifications[] = $notif;
-            }
-        }
-    } catch (Exception $e) {
-        $errors[] = "Affiliation check failed: " . $e->getMessage();
-    }
-    
-    // 2. Check upcoming events (next 3 days)
-    try {
-        $now = date('Y-m-d H:i:s');
-        $inThreeDays = date('Y-m-d H:i:s', strtotime('+3 days'));
-        
-        $upcomingEvents = $supabase->from('events')
-            ->select('id, title, event_date, institution_id')
-            ->gte('event_date', $now)
-            ->lte('event_date', $inThreeDays)
-            ->execute();
-        
-        if ($upcomingEvents) {
-            foreach ($upcomingEvents as $event) {
-                $eventDateTime = date('M d, Y H:i', strtotime($event['event_date']));
-                $notifMsg = "Upcoming event: {$event['title']} on {$eventDateTime}";
-                
-                // Notify all members
-                $notif = createNotification(
-                    'Event Reminder',
-                    $notifMsg,
-                    'member',
-                    'info',
-                    '/public/dashboard.php?tab=events'
-                );
-                $notifications[] = $notif;
-            }
-        }
-    } catch (Exception $e) {
-        $errors[] = "Event check failed: " . $e->getMessage();
-    }
-    
-    // 3. Check compliance at risk institutions (< 40% participation)
-    try {
-        $schoolOfficers = $supabase->from('user_profiles')
-            ->select('id, user_id, institution_id')
-            ->eq('role', 'school_officer')
-            ->execute();
-        
-        if ($schoolOfficers) {
-            $currentYear = date('Y');
-            
-            foreach ($schoolOfficers as $officer) {
-                // Get institution events
-                $institutionEvents = $supabase->from('events')
-                    ->select('id')
-                    ->eq('institution_id', $officer['institution_id'])
-                    ->gte('event_date', "{$currentYear}-01-01")
-                    ->execute();
-                
-                if (empty($institutionEvents)) {
-                    continue; // No events yet
-                }
-                
-                // Get attendance count
-                $attendance = $supabase->from('attendance')
-                    ->select('id', ['count' => 'exact'])
-                    ->in('event_id', array_column($institutionEvents, 'id'))
-                    ->execute();
-                
-                $participationRate = count($institutionEvents) > 0 
-                    ? (count($attendance) / count($institutionEvents)) * 100 
-                    : 0;
-                
-                if ($participationRate < 40) {
-                    $notifMsg = "Your institution's participation rate is {$participationRate}%. Please encourage members to attend events.";
-                    $notif = createNotification(
-                        'Low Compliance Alert',
-                        $notifMsg,
-                        'school_officer',
-                        'danger',
-                        '/portal/admin/compliance.php',
-                        $officer['user_id']
-                    );
-                    $notifications[] = $notif;
+    // 1) Pending affiliations older than 7 days without approval
+    $sevenDaysAgo = date('c', strtotime('-7 days'));
+    $pendingAffiliations = $supabase->from('pending_affiliations')
+        ->select('id,institution_id,submitted_at')
+        ->eq('status', 'pending')
+        ->lt('submitted_at', $sevenDaysAgo)
+        ->get(true);
+
+    if (empty($pendingAffiliations['error']) && !empty($pendingAffiliations['data'])) {
+        $reviewersResult = $supabase->from('user_profiles')
+            ->select('id,email,role')
+            ->in('role', ['committee_registration', 'admin'])
+            ->get(true);
+
+        $reviewers = empty($reviewersResult['error']) ? ($reviewersResult['data'] ?? []) : [];
+
+        foreach ($pendingAffiliations['data'] as $affiliation) {
+            $institutionName = 'the applicant';
+            if (!empty($affiliation['institution_id'])) {
+                $institutionResult = $supabase->from('institutions')
+                    ->select('name')
+                    ->eq('id', $affiliation['institution_id'])
+                    ->get(true);
+
+                if (empty($institutionResult['error']) && !empty($institutionResult['data'][0]['name'])) {
+                    $institutionName = $institutionResult['data'][0]['name'];
                 }
             }
+
+            $title = 'Pending Affiliation Awaiting Review';
+            $message = "A pending affiliation application for {$institutionName} has been waiting more than 7 days without approval.";
+            notifyUsers($reviewers, $title, $message, '/portal/registration/pending-affiliations.php', $emailService, $summary);
+            $summary['pending_affiliation_reminders']++;
         }
-    } catch (Exception $e) {
-        $errors[] = "Compliance check failed: " . $e->getMessage();
     }
-    
-    // Log execution
-    error_log('[CRON] Deadline reminders executed at ' . date('Y-m-d H:i:s') . 
-        ' - ' . count($notifications) . ' notifications created');
-    
-    echo json_encode([
-        'success' => true,
-        'timestamp' => date('c'),
-        'notifications_created' => count($notifications),
-        'errors' => $errors,
-        'message' => 'Deadline reminder check completed'
-    ]);
-    
-} catch (Exception $e) {
+
+    // 2) Upcoming events whose registration deadline is within 3 days
+    $now = date('c');
+    $inThreeDays = date('c', strtotime('+3 days'));
+
+    $upcomingEvents = $supabase->from('events')
+        ->select('id,title,registration_deadline,institution_id')
+        ->gte('registration_deadline', $now)
+        ->lte('registration_deadline', $inThreeDays)
+        ->eq('status', 'upcoming')
+        ->get(true);
+
+    if (empty($upcomingEvents['error']) && !empty($upcomingEvents['data'])) {
+        foreach ($upcomingEvents['data'] as $event) {
+            $deadline = !empty($event['registration_deadline']) ? date('M d, Y g:i A', strtotime($event['registration_deadline'])) : 'soon';
+            $title = 'Event Registration Deadline Approaching';
+            $message = "Registration for \"{$event['title']}\" closes on {$deadline}. Please register before the deadline.";
+
+            if (empty($event['institution_id'])) {
+                $membersResult = $supabase->from('members')
+                    ->select('user_id,email')
+                    ->get(true);
+            } else {
+                $membersResult = $supabase->from('members')
+                    ->select('user_id,email')
+                    ->eq('institution_id', $event['institution_id'])
+                    ->get(true);
+            }
+
+            $members = empty($membersResult['error']) ? ($membersResult['data'] ?? []) : [];
+            foreach ($members as $member) {
+                if (empty($member['user_id'])) {
+                    continue;
+                }
+                notifyUser([
+                    'id' => $member['user_id'],
+                    'email' => $member['email'] ?? null,
+                ], $title, $message, '/portal/events.php', $emailService, $summary);
+            }
+
+            $summary['event_deadline_reminders']++;
+        }
+    }
+
+    // 3) Institutions with compliance_status = at_risk or non_compliant
+    $complianceInstitutions = $supabase->from('institutions')
+        ->select('id,name,compliance_status')
+        ->in('compliance_status', ['at_risk', 'non_compliant'])
+        ->get(true);
+
+    if (empty($complianceInstitutions['error']) && !empty($complianceInstitutions['data'])) {
+        foreach ($complianceInstitutions['data'] as $institution) {
+            $statusLabel = str_replace('_', ' ', strtoupper($institution['compliance_status'] ?? 'at_risk'));
+            $title = 'Compliance Risk Notice';
+            $message = "Institution \"{$institution['name']}\" is marked {$statusLabel}. Please address compliance requirements immediately.";
+
+            $schoolOfficersResult = $supabase->from('user_profiles')
+                ->select('id,email,role')
+                ->eq('institution_id', $institution['id'])
+                ->eq('role', 'school_officer')
+                ->get(true);
+
+            $execBoardResult = $supabase->from('user_profiles')
+                ->select('id,email,role')
+                ->in('role', ['eb_president', 'eb_vp_internal'])
+                ->get(true);
+
+            $recipients = [];
+            if (empty($schoolOfficersResult['error'])) {
+                $recipients = array_merge($recipients, $schoolOfficersResult['data'] ?? []);
+            }
+            if (empty($execBoardResult['error'])) {
+                $recipients = array_merge($recipients, $execBoardResult['data'] ?? []);
+            }
+
+            notifyUsers($recipients, $title, $message, '/portal/compliance.php', $emailService, $summary);
+            $summary['compliance_reminders']++;
+        }
+    }
+
+    error_log('[CRON] Deadline reminder executed at ' . date('c') . ' with ' . $summary['notifications_created'] . ' notifications');
+
+    echo json_encode(['success' => true, 'timestamp' => date('c'), 'summary' => $summary]);
+    exit;
+} catch (\Exception $e) {
     http_response_code(500);
-    echo json_encode([
-        'success' => false,
-        'error' => $e->getMessage(),
-        'timestamp' => date('c')
-    ]);
+    echo json_encode(['success' => false, 'error' => $e->getMessage(), 'timestamp' => date('c')]);
+    exit;
 }
-?>

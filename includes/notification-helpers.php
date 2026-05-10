@@ -4,44 +4,32 @@
  */
 
 if (!function_exists('createNotification')) {
-    function createNotification(
-        string $title,
-        string $message,
-        string $role,
-        string $type = 'info',
-        string $link = '/',
-        ?string $userId = null
-    ): array {
-        global $supabase;
-
-        $notificationData = [
-            'title' => $title,
-            'message' => $message,
-            'role' => $role,
-            'type' => $type,
-            'link' => $link,
-            'user_id' => $userId,
-            'status' => 'unread',
-            'created_at' => date('Y-m-d H:i:s')
-        ];
-
+    function createNotification(string $userId, string $title, string $message, string $type = 'reminder', string $link = null): array
+    {
         try {
-            if (!isset($supabase) || !$supabase instanceof \App\Lib\SupabaseClient) {
-                $config = require __DIR__ . '/supabase.php';
-                $supabase = new \App\Lib\SupabaseClient($config['url'], $config['service_role_key']);
-            }
+            $supabase = new \App\Lib\Supabase();
+
+            $notificationData = [
+                'user_id' => $userId,
+                'title' => $title,
+                'message' => $message,
+                'type' => $type,
+                'action_url' => $link,
+                'read' => false,
+                'created_at' => date('c'),
+            ];
 
             $result = $supabase->from('notifications')
-                ->insert($notificationData);
+                ->insert($notificationData, true);
 
-            if (!$result) {
-                throw new Exception('Failed to insert notification');
+            if (!empty($result['error'])) {
+                throw new \Exception($result['message'] ?? 'Failed to insert notification');
             }
 
-            return $notificationData;
-        } catch (Exception $e) {
-            error_log('Notification creation error: ' . $e->getMessage());
-            return $notificationData;
+            return ['success' => true, 'notification' => $notificationData];
+        } catch (\Exception $e) {
+            error_log('createNotification error: ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
         }
     }
 }

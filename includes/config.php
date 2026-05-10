@@ -68,7 +68,7 @@ if (!defined('APP_NAME')) {
     // Security
     define('JWT_SECRET', $_ENV['JWT_SECRET'] ?? 'default-secret-change-in-production');
     define('SESSION_LIFETIME', $_ENV['SESSION_LIFETIME'] ?? 86400); // 24 hours
-    define('CRON_SECRET', $_ENV['CRON_SECRET'] ?? 'change-me');
+    define('CRON_SECRET', $_ENV['CRON_SECRET'] ?? 'change-this-to-a-random-string');
 
     // File Upload Configuration
     define('MAX_FILE_SIZE', $_ENV['MAX_FILE_SIZE'] ?? 5242880); // 5MB
