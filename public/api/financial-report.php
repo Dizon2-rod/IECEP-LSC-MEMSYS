@@ -17,8 +17,8 @@ try {
     $sb = new \App\Lib\Supabase();
     $response = $sb->from('transactions')
         ->select('*')
-        ->order('created_at', false)
-        ->limit(500)
+        ->order('transaction_date', false)
+        ->limit(1000)
         ->get(true);
 
     if ($response['error']) {
@@ -26,8 +26,8 @@ try {
     }
 
     $transactions = $response['data'] ?? [];
-    $statusBreakdown = [];
-    $monthlyData = [];
+    $statusTotals = [];
+    $typeCounts = [];
     $summary = [
         'total_income' => 0,
         'transaction_count' => count($transactions),
@@ -49,22 +49,21 @@ try {
     foreach ($transactions as $transaction) {
         $amount = floatval($transaction['amount'] ?? 0);
         $status = strtolower(trim($transaction['status'] ?? 'unknown'));
+        $type = strtolower(trim($transaction['type'] ?? 'other'));
         $summary['total_income'] += $amount;
 
-        if (!isset($statusBreakdown[$status])) {
-            $statusBreakdown[$status] = 0;
-        }
-        $statusBreakdown[$status] += $amount;
+        $statusTotals[$status] = ($statusTotals[$status] ?? 0) + $amount;
+        $typeCounts[$type] = ($typeCounts[$type] ?? 0) + 1;
 
-        if ($status === 'completed') {
+        if ($status === 'paid') {
             $summary['completed_amount'] += $amount;
         } elseif ($status === 'pending') {
             $summary['pending_amount'] += $amount;
-        } elseif (in_array($status, ['failed', 'cancelled'], true)) {
+        } elseif (in_array($status, ['failed', 'cancelled', 'refunded'], true)) {
             $summary['failed_amount'] += $amount;
         }
 
-        $recordedAt = $transaction['created_at'] ?? $transaction['updated_at'] ?? null;
+        $recordedAt = $transaction['transaction_date'] ?? $transaction['created_at'] ?? null;
         if ($recordedAt) {
             $monthKey = substr($recordedAt, 0, 7);
             if (!isset($lastTwelveMonths[$monthKey])) {
@@ -79,17 +78,15 @@ try {
         }
     }
 
-    foreach ($lastTwelveMonths as $monthEntry) {
-        $monthlyData[] = $monthEntry;
-    }
-
+    $monthlyData = array_values($lastTwelveMonths);
     $latestTransactions = array_slice($transactions, 0, 20);
 
     echo json_encode([
         'success' => true,
         'summary' => $summary,
-        'status_breakdown' => $statusBreakdown,
-        'monthly_data' => $monthlyData,
+        'total_income_by_status' => $statusTotals,
+        'transaction_count_by_type' => $typeCounts,
+        'monthly_income_data' => $monthlyData,
         'latest_transactions' => $latestTransactions,
     ]);
     exit;

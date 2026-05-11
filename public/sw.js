@@ -324,30 +324,37 @@ async function updateCachedContent() {
 // IndexedDB helpers for offline actions
 function getOfflineActions() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('IECEP-LSC-Offline', 1);
+        const request = indexedDB.open('IECEP_MEMSYS_Offline', 1);
 
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
             const db = request.result;
-            const transaction = db.transaction(['actions'], 'readonly');
-            const store = transaction.objectStore('actions');
+            const transaction = db.transaction(['pendingRequests'], 'readonly');
+            const store = transaction.objectStore('pendingRequests');
             const getAllRequest = store.getAll();
 
             getAllRequest.onsuccess = () => resolve(getAllRequest.result);
             getAllRequest.onerror = () => reject(getAllRequest.error);
+        };
+
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('pendingRequests')) {
+                db.createObjectStore('pendingRequests', { keyPath: 'id', autoIncrement: true });
+            }
         };
     });
 }
 
 function removeOfflineAction(id) {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('IECEP-LSC-Offline', 1);
+        const request = indexedDB.open('IECEP_MEMSYS_Offline', 1);
 
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
             const db = request.result;
-            const transaction = db.transaction(['actions'], 'readwrite');
-            const store = transaction.objectStore('actions');
+            const transaction = db.transaction(['pendingRequests'], 'readwrite');
+            const store = transaction.objectStore('pendingRequests');
             const deleteRequest = store.delete(id);
 
             deleteRequest.onsuccess = () => resolve();

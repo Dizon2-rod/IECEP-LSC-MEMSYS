@@ -120,6 +120,63 @@ function findAuthUserByEmail(Supabase $sb, string $email): ?array
     return !empty($userResult['data']) ? $userResult['data'][0] : null;
 }
 
+function generateMemberDigitalId(Supabase $sb, string $memberId): void
+{
+    $memberResult = $sb->from('members')
+        ->select('id, full_name, email, institutions(name)')
+        ->eq('id', $memberId)
+        ->get(true);
+
+    if ($memberResult['error'] || empty($memberResult['data'])) {
+        throw new Exception('Member not found for digital ID generation');
+    }
+
+    $member = $memberResult['data'][0];
+    $payload = [
+        'member_id' => $member['id'],
+        'full_name' => $member['full_name'],
+        'email' => $member['email'],
+        'institution' => $member['institutions']['name'] ?? 'Unknown',
+        'issued_at' => date('c')
+    ];
+
+    $hash = hash('sha256', json_encode($payload));
+
+    // Record blockchain entry
+    if (isset($GLOBALS['blockchain']) && $GLOBALS['blockchain'] instanceof BlockchainService) {
+        $GLOBALS['blockchain']->record('digital_id', $memberId, $payload);
+    }
+
+    // Generate QR code
+    require_once __DIR__ . '/../../vendor/autoload.php'; // Assuming Endroid QR Code is installed
+    $qrCode = new \Endroid\QrCode\QrCode($hash);
+    $qrCode->setSize(300);
+    $qrCode->setMargin(10);
+    $qrCode->setEncoding(new \Endroid\QrCode\Encoding\Encoding('UTF-8'));
+    $qrCode->setErrorCorrectionLevel(new \Endroid\QrCode\ErrorCorrectionLevel\ErrorCorrectionLevelLow());
+    $qrCode->setRoundBlockSizeMode(new \Endroid\QrCode\RoundBlockSizeMode\RoundBlockSizeModeMargin());
+    $qrCode->setForegroundColor(new \Endroid\QrCode\Color\Color(0, 0, 0));
+    $qrCode->setBackgroundColor(new \Endroid\QrCode\Color\Color(255, 255, 255));
+
+    $writer = new \Endroid\QrCode\Writer\PngWriter();
+    $result = $writer->write($qrCode);
+
+    $qrPath = __DIR__ . '/../../public/assets/qr/' . $memberId . '.png';
+    if (!is_dir(dirname($qrPath))) {
+        mkdir(dirname($qrPath), 0755, true);
+    }
+    file_put_contents($qrPath, $result->getString());
+
+    // Update member record
+    $sb->from('members')
+        ->eq('id', $memberId)
+        ->update([
+            'digital_id_hash' => $hash,
+            'qr_code' => '/assets/qr/' . $memberId . '.png',
+            'digital_id_url' => '/assets/qr/' . $memberId . '.png'
+        ], true);
+}
+
 try {
     $batchResponse = $sb->from('member_upload_batches')
         ->select('*,pending_members(*)')
@@ -193,8 +250,28 @@ try {
                     throw new Exception('Failed to update existing member record');
                 }
 
+                if ($existingMember['payment_status'] ?? false) {
+                    generateMemberDigitalId($sb, $existingMember['id']);
+                }
+
                 $emailSvc->sendMemberRenewalConfirmation($email, $fullName, $membershipId, $yearLevel);
                 $summary['renewed'] += 1;
+
+                // Audit logging
+                $sb->from('audit_logs')->insert([
+                    'user_id' => $_SESSION['user']['id'] ?? null,
+                    'category' => 'member_management',
+                    'action' => 'member_renewed',
+                    'details' => json_encode([
+                        'member_id' => $existingMember['id'],
+                        'email' => $email,
+                        'full_name' => $fullName,
+                        'batch_id' => $batchId
+                    ]),
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+                    'created_at' => date('c')
+                ], true);
             } else {
                 $password = 'IECEP@' . bin2hex(random_bytes(4));
                 $authResult = $sb->auth()->adminCreateUser($email, $password, [
@@ -230,8 +307,27 @@ try {
                     throw new Exception('Failed to insert member record');
                 }
 
+                $memberId = $insertResult['data'][0]['id'];
+                generateMemberDigitalId($sb, $memberId);
+
                 $emailSvc->sendCredentials($email, $email, $password);
                 $summary['new_accounts_created'] += 1;
+
+                // Audit logging
+                $sb->from('audit_logs')->insert([
+                    'user_id' => $_SESSION['user']['id'] ?? null,
+                    'category' => 'member_management',
+                    'action' => 'member_created',
+                    'details' => json_encode([
+                        'member_id' => $memberId,
+                        'email' => $email,
+                        'full_name' => $fullName,
+                        'batch_id' => $batchId
+                    ]),
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '',
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+                    'created_at' => date('c')
+                ], true);
             }
 
             $sb->from('pending_members')

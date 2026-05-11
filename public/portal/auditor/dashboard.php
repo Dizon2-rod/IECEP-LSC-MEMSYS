@@ -201,6 +201,8 @@ $role_display = get_role_display_name($user['role']);
                 <script>
                 // Auditor Dashboard Real-Time Updates
                 document.addEventListener('DOMContentLoaded', function() {
+                    loadAuditStats();
+
                     // Listen for new transactions
                     window.addEventListener('realtime:transactions', function(event) {
                         const { action, new: newRecord } = event.detail;
@@ -221,6 +223,38 @@ $role_display = get_role_display_name($user['role']);
                         }
                     });
                 });
+
+                async function loadAuditStats() {
+                    try {
+                        const response = await fetch('/IECEP-LSC-MEMSYS/public/api/auditor.php?action=stats');
+                        const data = await response.json();
+
+                        if (data.success) {
+                            const stats = data.stats;
+
+                            // Update total logs
+                            const totalLogsElement = document.querySelector('.stat-card:nth-child(1) h3');
+                            if (totalLogsElement) {
+                                totalLogsElement.textContent = stats.total_logs.toLocaleString();
+                            }
+
+                            // Update today's logs
+                            const todayLogsElement = document.querySelector('.stat-card:nth-child(2) h3');
+                            if (todayLogsElement) {
+                                todayLogsElement.textContent = stats.today_logs.toLocaleString();
+                            }
+
+                            // Update categories count
+                            const categoriesCount = Object.keys(stats.categories).length;
+                            const categoriesElement = document.querySelector('.stat-card:nth-child(3) h3');
+                            if (categoriesElement) {
+                                categoriesElement.textContent = categoriesCount;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Failed to load audit stats:', error);
+                    }
+                }
 
                 function updateTransactionsCount() {
                     const countElement = document.getElementById('transactions-count');

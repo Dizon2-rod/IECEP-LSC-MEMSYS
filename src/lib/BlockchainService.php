@@ -196,6 +196,113 @@ class BlockchainService
         return false;
     }
 
+    /**
+     * Verify the blockchain integrity for a specific record type and reference ID.
+     *
+     * @param string $recordType
+     * @param string $referenceId
+     * @return bool
+     */
+    public function verify(string $recordType, string $referenceId): bool
+    {
+        $records = $this->db->select($this->table, [
+            'record_type' => 'eq.' . $recordType,
+            'reference_id' => 'eq.' . $referenceId,
+            'order' => 'created_at.asc',
+        ]);
+
+        $valid = true;
+        $previousHash = null;
+
+        foreach ($records as $row) {
+            $payload = $row['data_json'];
+            if (is_string($payload)) {
+                $payload = json_decode($payload, true);
+            }
+            if (!is_array($payload)) {
+                $payload = [];
+            }
+
+            $this->jsonSort($payload);
+            $computedHash = hash('sha256', json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+
+            $hashMatches = hash_equals($computedHash, (string) ($row['data_hash'] ?? ''));
+            $chainMatches = hash_equals((string) ($row['previous_hash'] ?? ''), (string) ($previousHash ?? '')) || ($previousHash === null && $row['previous_hash'] === null);
+
+            if (!$hashMatches || !$chainMatches) {
+                $valid = false;
+                break;
+            }
+
+            $previousHash = $row['data_hash'] ?? null;
+        }
+
+        return $valid;
+    }
+
+    /**
+     * Hash a document and record it in the blockchain.
+     *
+     * @param string $documentPath
+     * @param string $documentName
+     * @param string $referenceId
+     * @return array
+     */
+    public function hashDocument(string $documentPath, string $documentName, string $referenceId): array
+    {
+        if (!file_exists($documentPath)) {
+            throw new \InvalidArgumentException('Document file does not exist');
+        }
+
+        $fileContent = file_get_contents($documentPath);
+        $fileHash = hash('sha256', $fileContent);
+
+        $payload = [
+            'document_name' => $documentName,
+            'file_size' => filesize($documentPath),
+            'mime_type' => mime_content_type($documentPath),
+            'hash' => $fileHash,
+            'uploaded_at' => date('c')
+        ];
+
+        return $this->record('document_hash', $referenceId, $payload);
+    }
+
+    /**
+     * Verify a document hash against blockchain records.
+     *
+     * @param string $documentPath
+     * @param string $referenceId
+     * @return bool
+     */
+    public function verifyDocument(string $documentPath, string $referenceId): bool
+    {
+        if (!file_exists($documentPath)) {
+            return false;
+        }
+
+        $fileContent = file_get_contents($documentPath);
+        $computedHash = hash('sha256', $fileContent);
+
+        $records = $this->db->select($this->table, [
+            'record_type' => 'eq.document_hash',
+            'reference_id' => 'eq.' . $referenceId,
+        ]);
+
+        foreach ($records as $record) {
+            $payload = $record['data_json'];
+            if (is_string($payload)) {
+                $payload = json_decode($payload, true);
+            }
+
+            if (is_array($payload) && isset($payload['hash']) && hash_equals($payload['hash'], $computedHash)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     private function jsonSort(array &$array): void
     {
         ksort($array);

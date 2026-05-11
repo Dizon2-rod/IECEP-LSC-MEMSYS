@@ -3,44 +3,160 @@ $current_page = basename(__FILE__, '.php');
 require_once '../../includes/config.php';
 require_once '../../includes/database.php';
 require_once '../../includes/role-config.php';
+require_once '../auth_check.php';
 
-// Check if user is logged in and has admin role
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'eb_president', 'super_admin'])) {
-    header('Location: ' . PORTAL_URL . '/login.php');
-    exit;
-}
+require_role(['admin', 'eb_president', 'super_admin']);
 
 $pageTitle = 'Compliance Dashboard';
 include '../../includes/dashboard-layout.php';
 
-// Get institutions with member counts and compliance data
+function getAcademicYearRange(): array
+{
+    $today = new DateTime('now', new DateTimeZone('Asia/Manila'));
+    $year = (int) $today->format('Y');
+    $month = (int) $today->format('n');
+
+    if ($month >= 7) {
+        $startYear = $year;
+        $endYear = $year + 1;
+    } else {
+        $startYear = $year - 1;
+        $endYear = $year;
+    }
+
+    return [
+        'start' => sprintf('%s-07-01T00:00:00Z', $startYear),
+        'end' => sprintf('%s-06-30T23:59:59Z', $endYear),
+    ];
+}
+
+$complianceData = [];
+$summary = [
+    'total_institutions' => 0,
+    'active_institutions' => 0,
+    'total_members' => 0,
+    'average_participation' => 0,
+];
+
 try {
-    $institutions = $supabaseClient->from('institutions')
-        ->select('id, name, status, created_at, members(count), attendance(count)')
-        ->order('name');
+    $range = getAcademicYearRange();
+    $sb = new \App\Lib\Supabase();
 
-    // Calculate participation rates (mock data for now - would need actual attendance data)
-    $complianceData = [];
-    foreach ($institutions as $inst) {
-        $memberCount = $inst['members'][0]['count'] ?? 0;
-        $attendanceCount = $inst['attendance'][0]['count'] ?? 0;
+    $institutionsResp = $sb->from('institutions')
+        ->select('id,name,status,created_at')
+        ->order('name')
+        ->get(true);
 
-        // Mock participation rate calculation
-        $participationRate = $memberCount > 0 ? min(100, ($attendanceCount / $memberCount) * 100) : 0;
+    $institutions = $institutionsResp['error'] ? [] : ($institutionsResp['data'] ?? []);
 
-        $complianceData[] = [
-            'id' => $inst['id'],
-            'name' => $inst['name'],
-            'status' => $inst['status'],
-            'member_count' => $memberCount,
-            'participation_rate' => round($participationRate, 1),
-            'created_at' => $inst['created_at']
+    $membersResp = $sb->from('members')
+        ->select('id,institution_id')
+        ->get(true);
+    $members = $membersResp['error'] ? [] : ($membersResp['data'] ?? []);
+
+    $memberCounts = [];
+    $memberInstitutionById = [];
+    foreach ($members as $member) {
+        $institutionId = $member['institution_id'] ?? null;
+        if (!$institutionId) {
+            continue;
+        }
+        $memberCounts[$institutionId] = ($memberCounts[$institutionId] ?? 0) + 1;
+        $memberInstitutionById[$member['id']] = $institutionId;
+    }
+
+    $eventsResp = $sb->from('events')
+        ->select('id,institution_id,start_date,status')
+        ->gte('start_date', $range['start'])
+        ->lte('start_date', $range['end'])
+        ->get(true);
+    $events = $eventsResp['error'] ? [] : ($eventsResp['data'] ?? []);
+
+    $eventIds = array_values(array_filter(array_map(fn($event) => $event['id'] ?? null, $events)));
+    $eventsByInstitution = [];
+    foreach ($events as $event) {
+        $institutionId = $event['institution_id'] ?? null;
+        if (!$institutionId) {
+            continue;
+        }
+        $eventsByInstitution[$institutionId] = ($eventsByInstitution[$institutionId] ?? 0) + 1;
+    }
+
+    $attendanceEventMap = [];
+    $attendanceResp = ['error' => false, 'data' => []];
+    if (!empty($eventIds)) {
+        $attendanceResp = $sb->from('attendance')
+            ->select('event_id,member_id,check_in_time,created_at')
+            ->in('event_id', $eventIds)
+            ->get(true);
+    }
+    $attendanceRows = $attendanceResp['error'] ? [] : ($attendanceResp['data'] ?? []);
+
+    $attendanceEventsByInstitution = [];
+    $latestActivityByInstitution = [];
+    foreach ($attendanceRows as $attendance) {
+        $memberId = $attendance['member_id'] ?? null;
+        $eventId = $attendance['event_id'] ?? null;
+        if (!$memberId || !$eventId || !isset($memberInstitutionById[$memberId])) {
+            continue;
+        }
+
+        $institutionId = $memberInstitutionById[$memberId];
+        $attendanceEventsByInstitution[$institutionId][$eventId] = true;
+
+        $activityTime = $attendance['check_in_time'] ?? $attendance['created_at'] ?? null;
+        if ($activityTime) {
+            $currentLatest = $latestActivityByInstitution[$institutionId] ?? '1970-01-01T00:00:00Z';
+            if ($activityTime > $currentLatest) {
+                $latestActivityByInstitution[$institutionId] = $activityTime;
+            }
+        }
+    }
+
+    $institutionsData = [];
+    foreach ($institutions as $institution) {
+        $instId = $institution['id'] ?? null;
+        if (!$instId) {
+            continue;
+        }
+
+        $totalEvents = count($events);
+        $attendedEvents = isset($attendanceEventsByInstitution[$instId]) ? count($attendanceEventsByInstitution[$instId]) : 0;
+        $participationRate = $totalEvents > 0 ? min(100, round(($attendedEvents / $totalEvents) * 100, 1)) : 0;
+        $hostedEvents = $eventsByInstitution[$instId] ?? 0;
+
+        $statusLabel = 'Non-compliant';
+        $badgeClass = 'danger';
+        if (($institution['status'] ?? '') === 'active' && $participationRate >= 75 && $hostedEvents > 0) {
+            $statusLabel = 'Compliant';
+            $badgeClass = 'success';
+        } elseif (($institution['status'] ?? '') === 'active') {
+            $statusLabel = 'At Risk';
+            $badgeClass = 'warning';
+        }
+
+        $institutionsData[] = [
+            'id' => $instId,
+            'name' => $institution['name'] ?? 'Unknown',
+            'status' => $institution['status'] ?? 'unknown',
+            'badge' => $badgeClass,
+            'status_label' => $statusLabel,
+            'member_count' => $memberCounts[$instId] ?? 0,
+            'participation_rate' => $participationRate,
+            'hosted_events' => $hostedEvents,
+            'last_activity' => $latestActivityByInstitution[$instId] ?? $institution['created_at'] ?? null,
+            'created_at' => $institution['created_at'] ?? null,
         ];
     }
 
+    $summary['total_institutions'] = count($institutionsData);
+    $summary['active_institutions'] = count(array_filter($institutionsData, fn($row) => $row['status'] === 'active'));
+    $summary['total_members'] = array_sum(array_column($institutionsData, 'member_count'));
+    $summary['average_participation'] = $summary['total_institutions'] > 0 ? round(array_sum(array_column($institutionsData, 'participation_rate')) / $summary['total_institutions'], 1) : 0;
+    $complianceData = $institutionsData;
 } catch (Exception $e) {
-    $complianceData = [];
     error_log('Error fetching compliance data: ' . $e->getMessage());
+    $complianceData = [];
 }
 ?>
 
@@ -52,25 +168,24 @@ try {
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h1 class="h3 mb-0">Compliance Dashboard</h1>
-                    <p class="text-muted">Monitor institution status and participation rates</p>
+                    <p class="text-muted">Monitor institution status, hosted event participation, and academic year compliance</p>
                 </div>
                 <div class="d-flex gap-2">
                     <button class="btn btn-outline-primary" onclick="refreshData()">
                         <i class="fas fa-sync-alt me-2"></i>Refresh
                     </button>
                     <button class="btn btn-outline-secondary" onclick="exportReport()">
-                        <i class="fas fa-download me-2"></i>Export Report
+                        <i class="fas fa-download me-2"></i>Export CSV
                     </button>
                 </div>
             </div>
 
-            <!-- Summary Cards -->
             <div class="row mb-4">
                 <div class="col-md-3">
                     <div class="card">
                         <div class="card-body text-center">
                             <i class="fas fa-building fa-2x text-primary mb-2"></i>
-                            <h4 class="mb-0"><?= count($complianceData) ?></h4>
+                            <h4 class="mb-0"><?= $summary['total_institutions'] ?></h4>
                             <small class="text-muted">Total Institutions</small>
                         </div>
                     </div>
@@ -79,7 +194,7 @@ try {
                     <div class="card">
                         <div class="card-body text-center">
                             <i class="fas fa-check-circle fa-2x text-success mb-2"></i>
-                            <h4 class="mb-0"><?= count(array_filter($complianceData, fn($i) => $i['status'] === 'active')) ?></h4>
+                            <h4 class="mb-0"><?= $summary['active_institutions'] ?></h4>
                             <small class="text-muted">Active Institutions</small>
                         </div>
                     </div>
@@ -88,7 +203,7 @@ try {
                     <div class="card">
                         <div class="card-body text-center">
                             <i class="fas fa-users fa-2x text-info mb-2"></i>
-                            <h4 class="mb-0"><?= array_sum(array_column($complianceData, 'member_count')) ?></h4>
+                            <h4 class="mb-0"><?= $summary['total_members'] ?></h4>
                             <small class="text-muted">Total Members</small>
                         </div>
                     </div>
@@ -97,16 +212,13 @@ try {
                     <div class="card">
                         <div class="card-body text-center">
                             <i class="fas fa-chart-line fa-2x text-warning mb-2"></i>
-                            <h4 class="mb-0">
-                                <?= count($complianceData) > 0 ? round(array_sum(array_column($complianceData, 'participation_rate')) / count($complianceData), 1) : 0 ?>%
-                            </h4>
+                            <h4 class="mb-0"><?= $summary['average_participation'] ?>%</h4>
                             <small class="text-muted">Avg Participation</small>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Compliance Table -->
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">Institution Compliance Overview</h5>
@@ -119,7 +231,8 @@ try {
                                     <th>Institution</th>
                                     <th>Status</th>
                                     <th>Members</th>
-                                    <th>Participation Rate</th>
+                                    <th>Participation</th>
+                                    <th>Hosted Events</th>
                                     <th>Last Activity</th>
                                     <th>Actions</th>
                                 </tr>
@@ -127,43 +240,26 @@ try {
                             <tbody>
                                 <?php foreach ($complianceData as $institution): ?>
                                     <tr>
-                                        <td>
-                                            <strong><?= htmlspecialchars($institution['name']) ?></strong>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-<?= $institution['status'] === 'active' ? 'success' : 'warning' ?>">
-                                                <?= ucfirst($institution['status']) ?>
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-info">
-                                                <?= $institution['member_count'] ?> members
-                                            </span>
-                                        </td>
+                                        <td><strong><?= htmlspecialchars($institution['name']) ?></strong></td>
+                                        <td><span class="badge bg-<?= $institution['badge'] ?>"><?= htmlspecialchars($institution['status_label']) ?></span></td>
+                                        <td><span class="badge bg-info"><?= $institution['member_count'] ?> members</span></td>
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 <div class="progress flex-grow-1 me-2" style="height: 8px;">
                                                     <div class="progress-bar bg-<?= $institution['participation_rate'] >= 75 ? 'success' : ($institution['participation_rate'] >= 50 ? 'warning' : 'danger') ?>"
                                                          style="width: <?= $institution['participation_rate'] ?>%"></div>
                                                 </div>
-                                                <span class="small text-muted">
-                                                    <?= $institution['participation_rate'] ?>%
-                                                </span>
+                                                <small class="text-muted"><?= $institution['participation_rate'] ?>%</small>
                                             </div>
                                         </td>
-                                        <td>
-                                            <small class="text-muted">
-                                                <?= !empty($institution['created_at']) ? date('M j, Y', strtotime($institution['created_at'])) : 'N/A' ?>
-                                            </small>
-                                        </td>
+                                        <td><?= $institution['hosted_events'] ?></td>
+                                        <td><small class="text-muted"><?= $institution['last_activity'] ? date('M j, Y', strtotime($institution['last_activity'])) : 'N/A' ?></small></td>
                                         <td>
                                             <div class="btn-group btn-group-sm">
-                                                <button class="btn btn-outline-primary btn-sm"
-                                                        onclick="viewDetails(<?= $institution['id'] ?>)">
+                                                <button class="btn btn-outline-primary btn-sm" onclick="viewDetails('<?= $institution['id'] ?>')">
                                                     <i class="fas fa-eye"></i>
                                                 </button>
-                                                <button class="btn btn-outline-warning btn-sm"
-                                                        onclick="sendReminder(<?= $institution['id'] ?>, '<?= htmlspecialchars($institution['name']) ?>')">
+                                                <button class="btn btn-outline-warning btn-sm" onclick="sendReminder('<?= $institution['id'] ?>', '<?= htmlspecialchars($institution['name'], ENT_QUOTES) ?>')">
                                                     <i class="fas fa-bell"></i>
                                                 </button>
                                             </div>
@@ -178,7 +274,7 @@ try {
                         <div class="text-center py-5">
                             <i class="fas fa-chart-bar fa-3x text-muted mb-3"></i>
                             <h5>No Compliance Data Available</h5>
-                            <p class="text-muted">Compliance data will appear here once institutions are registered.</p>
+                            <p class="text-muted">Compliance data will appear here once institutions and attendance records are available.</p>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -187,7 +283,6 @@ try {
     </main>
 </div>
 
-<!-- Institution Details Modal -->
 <div class="modal fade" id="detailsModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -207,76 +302,28 @@ try {
 </div>
 
 <script>
-// Real-time updates using Supabase
-let complianceChannel;
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize real-time subscriptions
-    initializeRealtimeUpdates();
-});
-
-function initializeRealtimeUpdates() {
-    if (typeof supabase !== 'undefined') {
-        complianceChannel = supabase
-            .channel('compliance-updates')
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'institutions' },
-                handleInstitutionUpdate
-            )
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'attendance' },
-                handleAttendanceUpdate
-            )
-            .subscribe();
-    }
-}
-
-function handleInstitutionUpdate(payload) {
-    console.log('Institution update:', payload);
-    // Refresh data when institutions table changes
-    if (payload.eventType !== 'SELECT') {
-        location.reload();
-    }
-}
-
-function handleAttendanceUpdate(payload) {
-    console.log('Attendance update:', payload);
-    // Refresh data when attendance table changes
-    if (payload.eventType !== 'SELECT') {
-        location.reload();
-    }
-}
-
 function refreshData() {
     location.reload();
 }
 
 function exportReport() {
-    // Generate and download compliance report
     const data = <?= json_encode($complianceData) ?>;
-    const csvContent = generateCSV(data);
-    downloadCSV(csvContent, 'compliance-report-' + new Date().toISOString().split('T')[0] + '.csv');
-}
+    const csv = [
+        ['Institution', 'Status', 'Members', 'Participation Rate', 'Hosted Events', 'Last Activity'],
+        ...data.map(item => [
+            item.name,
+            item.status_label,
+            item.member_count,
+            item.participation_rate + '%',
+            item.hosted_events,
+            item.last_activity ? new Date(item.last_activity).toLocaleDateString() : 'N/A'
+        ])
+    ].map(row => row.map(value => `"${value}"`).join(',')).join('\n');
 
-function generateCSV(data) {
-    const headers = ['Institution', 'Status', 'Members', 'Participation Rate', 'Last Activity'];
-    const rows = data.map(item => [
-        item.name,
-        item.status,
-        item.member_count,
-        item.participation_rate + '%',
-        item.created_at ? new Date(item.created_at).toLocaleDateString() : 'N/A'
-    ]);
-
-    return [headers, ...rows].map(row => row.map(field => `"${field}"`).join(',')).join('\n');
-}
-
-function downloadCSV(content, filename) {
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.style.display = 'none';
+    link.download = `compliance-report-${new Date().toISOString().split('T')[0]}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -285,11 +332,9 @@ function downloadCSV(content, filename) {
 function viewDetails(institutionId) {
     const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
     const detailsDiv = document.getElementById('institutionDetails');
-
     detailsDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div></div>';
 
-    // Fetch detailed institution data
-    fetch(`/IECEP-LSC-MEMSYS/public/api/institution-details.php?id=${institutionId}`)
+    fetch(`/IECEP-LSC-MEMSYS/public/api/institution-details.php?id=${encodeURIComponent(institutionId)}`)
         .then(response => response.json())
         .then(data => {
             if (!data.success) {
@@ -316,40 +361,33 @@ function viewDetails(institutionId) {
                 </div>
             `;
         })
-        .catch(error => {
+        .catch(() => {
             detailsDiv.innerHTML = '<div class="alert alert-danger">Error loading institution details.</div>';
-            console.error('Error:', error);
         });
-
     modal.show();
 }
 
 function sendReminder(institutionId, institutionName) {
-    if (confirm(`Send compliance reminder to ${institutionName}?`)) {
-        // Send reminder notification
-        fetch('/IECEP-LSC-MEMSYS/public/api/send-reminder.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                institution_id: institutionId,
-                type: 'compliance'
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                IECEP_Toast.show('Reminder sent successfully!', 'success');
-            } else {
-                IECEP_Toast.show('Failed to send reminder.', 'error');
-            }
-        })
-        .catch(error => {
-            IECEP_Toast.show('Error sending reminder.', 'error');
-            console.error('Error:', error);
-        });
+    if (!confirm(`Send compliance reminder to ${institutionName}?`)) {
+        return;
     }
+
+    fetch('/IECEP-LSC-MEMSYS/public/api/send-reminder.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ institution_id: institutionId, type: 'compliance' })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            IECEP_Toast.show('Reminder sent successfully!', 'success');
+        } else {
+            IECEP_Toast.show('Failed to send reminder.', 'error');
+        }
+    })
+    .catch(() => {
+        IECEP_Toast.show('Error sending reminder.', 'error');
+    });
 }
 </script>
 

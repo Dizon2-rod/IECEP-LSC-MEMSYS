@@ -118,6 +118,7 @@ $role_menus = [
         'badge' => 'Member',
         'items' => [
             ['icon' => 'fa-tachometer-alt', 'label' => 'Dashboard', 'url' => '/portal/member/dashboard.php'],
+            ['icon' => 'fa-comments', 'label' => 'Collaboration', 'url' => '/portal/collaboration/feed.php'],
             ['icon' => 'fa-id-card', 'label' => 'Profile', 'url' => '/portal/member/profile.php'],
             ['icon' => 'fa-building', 'label' => 'My Affiliation', 'url' => '/portal/member/affiliation.php']
         ]

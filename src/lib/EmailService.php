@@ -913,4 +913,63 @@ class EmailService
     {
         return "EmailService is available";
     }
+
+    /**
+     * Send push notification to user subscriptions.
+     *
+     * @param string $userId
+     * @param string $title
+     * @param string $body
+     * @param array $data
+     * @return bool
+     */
+    public function sendPushNotification(string $userId, string $title, string $body, array $data = []): bool
+    {
+        require_once __DIR__ . '/../../vendor/autoload.php'; // Assuming minishlink/web-push is installed
+
+        $sb = new Supabase();
+        $subscriptions = $sb->from('push_subscriptions')
+            ->select('subscription')
+            ->eq('user_id', $userId)
+            ->get(true);
+
+        if ($subscriptions['error'] || empty($subscriptions['data'])) {
+            return false;
+        }
+
+        $auth = [
+            'VAPID' => [
+                'subject' => 'mailto:' . $this->config['email']['from_email'],
+                'publicKey' => defined('VAPID_PUBLIC_KEY') ? constant('VAPID_PUBLIC_KEY') : '',
+                'privateKey' => defined('VAPID_PRIVATE_KEY') ? constant('VAPID_PRIVATE_KEY') : '',
+            ],
+        ];
+
+        $webPush = new \Minishlink\WebPush\WebPush($auth);
+
+        $payload = json_encode([
+            'title' => $title,
+            'body' => $body,
+            'icon' => '/assets/icons/icon-192.png',
+            'badge' => '/assets/icons/icon-72.png',
+            'data' => $data,
+            'url' => $data['url'] ?? '/portal/dashboard.php'
+        ]);
+
+        $success = true;
+        foreach ($subscriptions['data'] as $sub) {
+            $subscription = $sub['subscription'];
+            if (is_string($subscription)) {
+                $subscription = json_decode($subscription, true);
+            }
+
+            $result = $webPush->sendOneNotification($subscription, $payload);
+            if (!$result->isSuccess()) {
+                error_log('Push notification failed: ' . $result->getReason());
+                $success = false;
+            }
+        }
+
+        return $success;
+    }
 }

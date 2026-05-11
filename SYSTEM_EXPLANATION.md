@@ -1,263 +1,220 @@
 # IECEP-LSC MEMSYS - Complete System Explanation
 
-## 1. System Purpose
+## 1. Overview
 
-IECEP-LSC MEMSYS is a membership and affiliation management system for the IECEP Laguna Student Chapter. It manages:
-- member registration and batch approval
-- school affiliation applications
-- role-based portals and dashboards
-- user authentication and role authorization
-- email notifications and optional blockchain audit logging
-- Supabase-based data storage and authentication
+IECEP-LSC MEMSYS is a PHP-based membership management system for the IECEP Laguna Student Chapter. The platform supports:
+- member registration, approval, and renewal
+- school affiliation processing
+- role-based portal dashboards for members, officers, registration, admin, and super-admin
+- secure authentication and authorization
+- Supabase data persistence and authentication integration
+- email and notification delivery
+- blockchain-backed digital ID verification and audit logging
+- financial reporting for the treasurer
 
-## 2. Architecture Overview
+## 2. Architecture
 
 ### Backend
-- PHP application files at project root and under `public/`
-- Role-based portal pages under `public/portal/`
-- API endpoints under `public/api/`
-- Shared configuration under `includes/`
-- Supabase integration under `src/lib/`
-- Database schema and migrations under `database/`
+- Core application logic is in project root PHP files and `public/`
+- Portal interfaces live under `public/portal/`
+- API endpoints live under `public/api/`
+- Shared bootstrap and utilities are in `includes/`
+- Supabase SDK and service wrappers are in `src/lib/`
+- Database schema and migrations are in `database/`
 
 ### Frontend
-- Static assets under `public/assets/`, `public/css/`, `public/js/`
-- Global JS helper in `public/js/app.js`
-- PWA support via `public/sw.js`
+- Static web assets are under `public/assets/`, `public/css/`, and `public/js/`
+- Chart rendering is handled in `public/assets/js/charts.js`
+- Notification UI and service worker support are in `public/assets/js/` and `public/sw.js`
+- Global header and sidebar templates are loaded from `includes/`
 
 ### Database
-- Supabase PostgreSQL schema defined in `database/schema.sql`
-- Membership and role data stored in tables like `members`, `user_profiles`, `member_upload_batches`, `pending_members`, and `member_id_counter`
-- Settings stored in `system_settings`
+- The system relies on a Supabase PostgreSQL backend
+- Schema includes tables for members, user profiles, batches, notifications, transactions, settings, and counters
+- `database/schema.sql` defines the data model
 
-## 3. Main Configuration Files
+## 3. Core Configuration
 
 ### `includes/config.php`
-- Loads `.env` values and defines constants
-- Sets `APP_URL`, `APP_ENV`, Supabase keys, SMTP settings, JWT secret, session lifetime
-- Configures error reporting and timezone (`Asia/Manila`)
-- Exposes frontend config through `outputFrontendConfig()`
-- Initializes global `SupabaseClient` and `BlockchainService`
+- Loads environment and application constants
+- Defines URLs, Supabase credentials, SMTP settings, JWT secrets, and timezone
+- Initializes session settings, error reporting, and global client services
+- Exposes frontend configuration via `outputFrontendConfig()`
 
 ### `includes/paths.php`
-- Defines filesystem constants: `BASE_PATH`, `PUBLIC_PATH`, `SRC_PATH`, `INCLUDES_PATH`
-- Defines URL constants: `BASE_URL`, `PUBLIC_URL`, `PORTAL_URL`, `ASSETS_URL`, `JS_URL`, `CSS_URL`
-- Provides helper functions:
-  - `get_path($relativePath)`
-  - `get_url($relativePath)`
-  - `get_portal_url($role, $page)`
-  - `get_role_path($role)`
+- Defines project path and URL constants
+- Provides helpers for computing asset and portal URLs
+- Maps roles to portal folder names and routes
 
 ### `includes/role-config.php`
-- Defines role-based navigation for portal dashboards
-- Maps each role to UI menu items and display labels
-- Provides helper functions to query role configs
+- Defines role permissions and sidebar navigation entries
+- Maps each user role to UI labels and portal sections
+- Used across portal pages for navigation and access control
 
-## 4. Authentication & Access Control
+## 4. Authentication & Authorization
 
 ### `login.php`
-- Handles login form submission
-- Uses Supabase service-role queries to authenticate against `auth.users`
-- Verifies password with `password_verify`
-- Loads `user_profiles` to get role and profile data
-- Sets session data such as `user_id`, `email`, `full_name`, `role`, `logged_in`, and `user`
+- Authenticates users against Supabase auth data
+- Verifies credentials using secure password hashing
+- Loads `user_profiles` to resolve role, institution, and profile details
+- Establishes session state for `user_id`, `role`, `email`, and `user`
 - Redirects users to role-specific dashboards
-- Includes development fallback test accounts when `APP_ENV === 'development'`
 
 ### `public/portal/auth_check.php`
-- Starts session and loads `paths.php`
-- Implements `require_role()` to enforce page access
-- Provides role helpers and redirect behavior
-- Used by all portal pages to gate access
+- Enforces login and role restrictions on portal pages
+- Provides centralized access control helper functions
+- Ensures only authorized roles can open a portal page
 
-## 5. Portal Pages and Role Routes
+## 5. Portal Structure
 
-### Portal directories
-- `public/portal/registration/` - registration committee pages
-- `public/portal/admin/` - admin portal pages
-- `public/portal/school-officer/` - school officer portal pages
-- `public/portal/member/` - member portal pages
-- `public/portal/super-admin/` - super admin pages
-- other committee or role folders may exist as needed
+### Role-based portal dirs
+- `public/portal/registration/` — registration committee views
+- `public/portal/admin/` — administrative dashboards and tools
+- `public/portal/school-officer/` — school officer workflows
+- `public/portal/member/` — member-facing pages
+- `public/portal/super-admin/` — executive and full-access admin pages
 
-### Example portal routes
-- `public/portal/registration/dashboard.php` - registration dashboard
-- `public/portal/registration/members.php` - membership batch approval UI
-- `public/portal/school-officer/members.php` - school officer member management (mapped by role config)
-- `public/portal/admin/dashboard.php` - admin landing page
-- `public/portal/member/dashboard.php` - member landing page
+### Common portal features
+- Dashboard summaries
+- Data tables and approval workflows
+- Notification and alert support
+- Role-specific page rendering based on `role-config.php`
 
-### Role URL mapping in `paths.php`
-- `committee_registration` → `registration`
-- `admin` → `admin`
-- `school_officer` → `school-officer`
-- `member` → `member`
-- `eb_vp_internal` → `registration`
-- `eb_president` → `super-admin`
-
-## 6. API Routing
+## 6. API Layer
 
 ### `public/api.php`
-- Acts as a generic proxy for API calls
-- Reads `endpoint` and `action` from query parameters
-- Includes the resulting file from `public/api/<endpoint>.php`
-- Outputs JSON or 404 when the endpoint is missing
-- Example: `/public/api.php?endpoint=auth&action=login`
+- Serves as a generic router for API actions
+- Routes requests to `/public/api/<endpoint>.php`
+- Provides JSON output and error handling for missing endpoints
 
 ### Direct API endpoints
-- Some pages call API files directly instead of using `public/api.php`
-- Example: `public/portal/registration/members.php` posts directly to `public/api/process-member-batch.php`
+- Many pages use direct endpoint calls for data actions
+- Examples include `public/api/process-member-batch.php`, `public/api/financial-report.php`, `public/api/notifications.php`, and `public/api/verify-member.php`
 
-## 7. Key Supabase Integration Files
+## 7. Supabase Integration
 
 ### `src/lib/Supabase.php`
-- Namespaced as `App\\Lib\\Supabase`
-- Uses Guzzle or fallback HTTP client to interact with Supabase
-- Provides:
-  - `from($table)` returning `SupabaseQuery`
-  - `auth()` returning `SupabaseAuth`
-  - `storage()` returning `SupabaseStorage`
-  - `request($method, $path, $options, $useServiceKey, $jwt)`
+- Core Supabase wrapper using Guzzle or fallback client
+- Supports REST requests with service-role and anon authentication
+- Exposes query builder via `SupabaseQuery`
 
 ### `src/lib/SupabaseQuery`
-- Supports builder-style queries:
-  - `select()`
-  - `eq()`, `neq()`, `gt()`, `gte()`, `lt()`, `in()`, `like()`, `is()`
+- Builder methods include:
+  - `select()`, `eq()`, `neq()`, `gt()`, `gte()`, `lt()`, `in()`, `like()`, `is()`
+  - `or()` for complex boolean filters
   - `order()`, `limit()`, `offset()`
   - `get()`, `insert()`, `update()`, `delete()`
 
 ### `src/lib/SupabaseAuth`
-- Supports Supabase Auth endpoints:
-  - `signUp()`
-  - `signIn()`
-  - `getUser()`
-  - `updateUser()`
-  - `adminCreateUser()`
-  - `adminDeleteUser()`
+- Provides higher-level auth methods:
+  - `signUp()`, `signIn()`, `getUser()`, `updateUser()`
+  - admin actions like `adminCreateUser()` and `adminDeleteUser()`
 
 ### `src/lib/SupabaseClient.php`
-- Legacy Supabase client using `curl`
-- Provides simpler methods:
-  - `select()`, `insert()`, `update()`, `delete()`, `upsert()`
-  - `authSignUp()`, `authSignIn()`, `authUpdatePassword()`
-- Used by pages like `login.php` and some legacy flows
+- Legacy client with `curl` wrappers
+- Used by older auth and record mutation flows
+- Supports `select`, `insert`, `update`, `delete`, `upsert`, and auth helpers
 
-## 8. Membership Batch Processing Flow
+## 8. Batch Membership Approval
 
 ### `public/portal/registration/members.php`
-- Presents a form where registration staff enter a member upload `batch_id`
-- Sends a POST request to `public/api/process-member-batch.php`
-- Shows processing summary on completion
-- Requires authorized roles: `registration`, `committee_registration`, `admin`, `super_admin`
+- Accepts CSV batch IDs for member upload processing
+- Submits requests to `public/api/process-member-batch.php`
+- Displays approval summary and notifications
 
 ### `public/api/process-member-batch.php`
-- Loads `auth_check.php` for authorization
-- Uses `src/lib/supabase.php` for Supabase access
-- Uses `includes/lib/EmailService.php` to send emails
-- Validates request body and batch ID
-- Loads member batch from `member_upload_batches` with nested `pending_members`
-- For each pending member row:
-  - validates required fields
-  - checks existing member by email in `members`
-  - if existing member:
-    - uses existing `membership_id` or generates new one
-    - updates member data
-    - sends renewal confirmation email
-    - increments renewed count
-  - if new member:
-    - creates Supabase auth user
-    - inserts `user_profiles`
-    - inserts `members`
-    - sends credential email
-    - increments new account count
-  - updates `pending_members` status to `approved_payment_pending`
-  - optionally records blockchain audit event
-- Updates batch status to `approved_payment_pending`
-- Returns JSON summary
+- Requires authenticated registrar/admin/super-admin access
+- Reads `member_upload_batches` and nested `pending_members`
+- Validates and processes each pending row
+- Creates or updates Supabase auth users and member records
+- Generates or reuses membership IDs
+- Sends email notifications through `EmailService`
+- Optionally writes blockchain audit records
+- Tracks counts for new members, renewals, missing data, and duplicates
 
-### Membership ID generation in the endpoint
-- `getMembershipPrefix($sb)` reads `member_id_prefix` from `system_settings`
-- `getMembershipYear()` uses current year
-- `getCounterRowForYear($sb, $year)` reads or creates a counter row in `member_id_counter`
-- `generateMembershipId($sb)` increments that counter and builds an ID using the prefix, year, and zero-padded sequence
+### Membership ID generation
+- Uses `system_settings.member_id_prefix`
+- Maintains year-based counters in `member_id_counter`
+- Produces deterministic membership IDs with prefix, year, and sequence
 
-## 9. Database Structure Summary
+## 9. Notification System
+
+### `public/api/notifications.php`
+- Lists notifications for the current authenticated user
+- Supports global notifications and user-specific notifications
+- Allows marking individual notifications as read
+- Supports 'mark_all_read' and unread stats
+- Exposes `vapid_key` for push notification registration
+
+### `public/api/send-reminder.php`
+- Allows authorized staff to send reminder notifications
+- Targets specific users, institutions, or all users
+- Stores notification records with `sent_by`, `user_id`, `action_url`, `created_at`, and `read` status
+- Designed to support both in-app and push workflows
+
+### Notification assets and UI
+- Client side notification loading is implemented in `public/assets/js/notifications.js`
+- The service worker in `public/sw.js` integrates push event handling and API polling
+- Sidebar and header components render notification counts and details
+
+## 10. Financial Reporting
+
+### `public/portal/treasurer/reports.php`
+- Treasurer dashboard that renders charts and summary cards
+- Uses client-side JavaScript to fetch report data from `public/api/financial-report.php`
+- Includes export/report printing support
+
+### `public/api/financial-report.php`
+- Guards access to treasurer, admin, and super-admin roles
+- Aggregates 12 months of transaction income data
+- Computes totals by payment status and transaction type
+- Returns structured JSON for chart rendering and summary cards
+
+### `public/assets/js/charts.js`
+- Fetches the financial report API and renders:
+  - monthly income line chart
+  - payment status doughnut chart
+  - detailed monthly summary table
+  - summary totals for income, completed/pending amounts, and transaction count
+
+## 11. Member Verification & Digital ID
+
+### `public/api/verify-member.php`
+- Verifies members by `id` or `digital_id_hash`
+- Supports blockchain-backed digital ID hash verification when blockchain service is available
+- Returns member metadata including institution name and digital ID URL
+
+### Digital ID workflow
+- Member records can store `digital_id_url` and `digital_id_hash`
+- Blockchain service validates hash integrity for verified digital IDs
+
+## 12. Key Data Model Elements
 
 ### Important tables
-- `members` — core member records
-- `user_profiles` — role information and profile metadata
-- `auth.users` — Supabase auth users
-- `member_upload_batches` — uploaded CSV batch metadata
-- `pending_members` — batch member rows awaiting approval
-- `member_id_counter` — per-year membership ID sequence state
-- `system_settings` — app settings like `member_id_prefix`
+- `members` — primary member registry
+- `user_profiles` — role, institution, and profile metadata
+- `notifications` — in-app notification records
+- `transactions` — financial transaction history
+- `member_upload_batches` — uploaded batch metadata
+- `pending_members` — row-level batch staging and approval data
+- `member_id_counter` — sequential membership ID state
+- `system_settings` — configurable app settings
 
-### `members` fields
-- `id`
-- `institution_id`
-- `user_id`
-- `full_name`
-- `email`
-- `membership_id`
-- `member_type`
-- `payment_status`
-- `year_level`
-- `created_at`, `updated_at`
+### Common fields
+- `id`, `email`, `full_name`, `role`, `institution_id`, `membership_id`, `payment_status`, `created_at`, `updated_at`
 
-### `member_id_counter`
-- `year`
-- `last_number`
+## 13. Recommended Maintenance Paths
 
-## 10. Feature-to-File Mappings
+- Keep Supabase credentials and service role keys secure in `.env`
+- Ensure `includes/config.php` matches the deployed environment
+- Maintain the `member_id_counter` table for deterministic membership IDs
+- Update `system_settings` for app-wide configuration values
+- Monitor scheduled notification and cron workflows for reminder delivery
 
-### Login and session
-- `login.php` — login form and authentication logic
-- `logout.php` — end session
-- `change-password.php` — password update flow
+## 14. System Behavior Summary
 
-### Portal and dashboards
-- `public/portal/registration/dashboard.php`
-- `public/portal/registration/members.php`
-- `public/portal/admin/dashboard.php`
-- `public/portal/member/dashboard.php`
-- `public/portal/school-officer/dashboard.php`
+IECEP-LSC MEMSYS is designed as a role-oriented administrative portal with strong Supabase integration, batch member workflows, notification delivery, reporting dashboards, and extensible portal pages. It centralizes membership operations, compliance communication, and financial oversight while enabling secure auth and per-role access control.
 
-### API and backend actions
-- `public/api.php` — proxy router for generic API calls
-- `public/api/process-member-batch.php` — member batch approval
-- `public/api/affiliation-review-action.php` — affiliation review actions
-- `public/api/attendance.php` — attendance endpoints
-- `public/api/auth.php` — authentication-related endpoint
-
-### Shared utilities
-- `includes/config.php`
-- `includes/paths.php`
-- `includes/role-config.php`
-- `src/lib/Supabase.php`
-- `src/lib/SupabaseClient.php`
-- `src/lib/EmailService.php`
-- `src/lib/BlockchainService.php`
-
-## 11. Data Flow Example
-
-### Member batch approval path
-1. User opens `public/portal/registration/members.php`
-2. User enters `batch_id` and submits
-3. Browser sends POST JSON to `public/api/process-member-batch.php`
-4. Endpoint loads batch and pending rows from Supabase
-5. For each row, endpoint creates or updates member/auth records
-6. Endpoint sends emails and updates statuses
-7. Endpoint returns summary JSON
-8. UI displays counts and errors
-
-### Login path
-1. User submits email/password to `login.php`
-2. Server queries `auth.users` through `SupabaseClient`
-3. Server verifies password and loads profile role
-4. Session values are stored
-5. User is redirected to role-specific portal page
-
-## 12. Notes and Recommendations
 
 - The system currently uses both `Supabase` and `SupabaseClient` libraries. Use `src/lib/Supabase.php` for new endpoints and keep `SupabaseClient.php` for legacy login/code.
 - `public/api.php` is a generic proxy, but some newer flows post directly to `public/api/*.php`.

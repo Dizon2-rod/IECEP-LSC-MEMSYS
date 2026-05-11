@@ -78,6 +78,23 @@ $userRole = $_SESSION['role'] ?? '';
             <ul class="nav-links">
                 <li><a href="<?php echo PORTAL_URL; ?>/dashboard.php" class="nav-link">Dashboard</a></li>
                 <li><a href="<?php echo BASE_URL; ?>/calendar-activity.php" class="nav-link">Calendar</a></li>
+                <li class="notification-item">
+                    <button class="notification-btn" id="notificationBtn" aria-label="Notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge" style="display: none;"></span>
+                    </button>
+                    <div class="notification-dropdown" id="notificationDropdown">
+                        <div class="notification-header">
+                            <h4>Notifications</h4>
+                            <button class="mark-all-read" id="markAllRead">Mark all read</button>
+                        </div>
+                        <div class="notification-list" id="notificationList">
+                            <div class="notification-item loading">
+                                <p>Loading notifications...</p>
+                            </div>
+                        </div>
+                    </div>
+                </li>
                 <li class="nav-item">
                     <a href="#" class="nav-link">
                         <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'User'); ?> <i class="icon icon-chevron-down"></i>

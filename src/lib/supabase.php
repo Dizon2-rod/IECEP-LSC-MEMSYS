@@ -130,6 +130,12 @@ class SupabaseQuery
         return $this;
     }
 
+    public function or(string $condition): self
+    {
+        $this->filters[] = "or=($condition)";
+        return $this;
+    }
+
     public function lt(string $col, $val): self
     {
         $this->filters[] = "$col=lt.$val";

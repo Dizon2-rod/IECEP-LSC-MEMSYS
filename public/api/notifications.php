@@ -28,16 +28,14 @@ try {
         case 'list':
             $result = $sb->from('notifications')
                 ->select('*')
+                ->or("user_id.eq.$userId,user_id.is.null")
                 ->order('created_at', false)
                 ->limit(50)
                 ->get(true);
 
             $notifications = [];
             if (!$result['error']) {
-                $allNotifications = $result['data'] ?? [];
-                $notifications = array_values(array_filter($allNotifications, function ($item) use ($userId) {
-                    return array_key_exists('recipient_id', $item) && ($item['recipient_id'] == $userId || $item['recipient_id'] === null);
-                }));
+                $notifications = $result['data'] ?? [];
             }
 
             echo json_encode(['success' => true, 'notifications' => $notifications]);
@@ -52,44 +50,26 @@ try {
             $notificationResult = $sb->from('notifications')
                 ->select('*')
                 ->eq('id', $notificationId)
+                ->eq('user_id', $userId)
                 ->get(true);
 
             if ($notificationResult['error'] || empty($notificationResult['data'])) {
                 throw new Exception('Notification not found');
             }
 
-            $notification = $notificationResult['data'][0];
-            if ($notification['recipient_id'] !== null && $notification['recipient_id'] !== $userId) {
-                throw new Exception('Unauthorized');
-            }
-
             $sb->from('notifications')
-                ->update(['read' => true, 'read_at' => date('c')], true)
-                ->eq('id', $notificationId);
+                ->eq('id', $notificationId)
+                ->eq('user_id', $userId)
+                ->update(['read' => true, 'read_at' => date('c')], true);
 
             echo json_encode(['success' => true]);
             break;
 
         case 'mark_all_read':
-            $result = $sb->from('notifications')
-                ->select('*')
-                ->order('created_at', false)
-                ->get(true);
-
-            $notificationsToMark = [];
-            if (!$result['error']) {
-                foreach ($result['data'] as $item) {
-                    if (array_key_exists('recipient_id', $item) && ($item['recipient_id'] == $userId || $item['recipient_id'] === null) && empty($item['read'])) {
-                        $notificationsToMark[] = $item['id'];
-                    }
-                }
-            }
-
-            foreach ($notificationsToMark as $notificationId) {
-                $sb->from('notifications')
-                    ->update(['read' => true, 'read_at' => date('c')], true)
-                    ->eq('id', $notificationId);
-            }
+            $sb->from('notifications')
+                ->or("user_id.eq.$userId,user_id.is.null")
+                ->eq('read', false)
+                ->update(['read' => true, 'read_at' => date('c')], true);
 
             echo json_encode(['success' => true]);
             break;
@@ -97,19 +77,14 @@ try {
         case 'stats':
             $result = $sb->from('notifications')
                 ->select('*')
+                ->or("user_id.eq.$userId,user_id.is.null")
                 ->order('created_at', false)
                 ->get(true);
-            $allNotifications = [];
-            if (!$result['error']) {
-                $allNotifications = array_values(array_filter($result['data'] ?? [], function ($item) use ($userId) {
-                    return array_key_exists('recipient_id', $item) && ($item['recipient_id'] == $userId || $item['recipient_id'] === null);
-                }));
-            }
-            $unread = array_filter($allNotifications, function ($item) {
-                return empty($item['read']) || $item['read'] === false;
-            });
 
-            echo json_encode(['success' => true, 'stats' => ['total' => count($allNotifications), 'unread' => count($unread)]]);
+            $notifications = $result['error'] ? [] : ($result['data'] ?? []);
+            $unread = array_filter($notifications, fn($item) => empty($item['read']) || $item['read'] === false);
+
+            echo json_encode(['success' => true, 'stats' => ['total' => count($notifications), 'unread' => count($unread)]]);
             break;
 
         case 'vapid_key':

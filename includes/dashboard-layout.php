@@ -715,6 +715,10 @@ function renderDashboard(array $config): void {
                     <?php echo htmlspecialchars($title); ?>
                 </h1>
                 <div class="page-header-actions">
+                    <div id="connection-status" class="connection-status">
+                        <i class="fas fa-wifi"></i>
+                        <span>Online</span>
+                    </div>
                     <div class="user-greeting">
                         <span>Welcome, <?php echo htmlspecialchars($user_name); ?>!</span>
                     </div>

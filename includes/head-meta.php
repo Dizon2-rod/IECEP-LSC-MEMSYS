@@ -22,6 +22,10 @@ define('HEAD_META_INCLUDED', true);
 <!-- Real-time Subscriptions -->
 <script src="/IECEP-LSC-MEMSYS/public/js/realtime.js" defer></script>
 <script src="/IECEP-LSC-MEMSYS/public/js/pwa.js" defer></script>
+<?php if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']): ?>
+<script src="/IECEP-LSC-MEMSYS/public/js/notifications.js" defer></script>
+<script src="/IECEP-LSC-MEMSYS/public/assets/js/offline-manager.js" defer></script>
+<?php endif; ?>
 <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/font-awesome.css">
 <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/professional.css">
 <style>

@@ -32,12 +32,12 @@ if (empty($payload)) {
     exit;
 }
 
-$institutionId = isset($payload['institution_id']) ? $payload['institution_id'] : null;
-$type = isset($payload['type']) ? $payload['type'] : 'general';
-$targetUserId = isset($payload['user_id']) ? $payload['user_id'] : null;
-$title = trim(isset($payload['title']) ? $payload['title'] : 'IECEP-LSC Reminder');
-$message = trim(isset($payload['message']) ? $payload['message'] : 'Please check the latest updates from IECEP-LSC.');
-$duration = isset($payload['duration']) ? $payload['duration'] : '24h';
+$institutionId = $payload['institution_id'] ?? null;
+$type = $payload['type'] ?? 'reminder';
+$targetUserId = $payload['user_id'] ?? null;
+$title = trim($payload['title'] ?? 'IECEP-LSC Reminder');
+$message = trim($payload['message'] ?? 'Please review the latest compliance update from IECEP-LSC.');
+$link = $payload['link'] ?? '/portal/dashboard.php';
 
 if (empty($title) || empty($message)) {
     http_response_code(400);
@@ -64,15 +64,19 @@ try {
 
     $notifications = [];
     foreach ($targets as $target) {
+        if (empty($target['id'])) {
+            continue;
+        }
         $notifications[] = [
             'title' => $title,
             'message' => $message,
             'type' => $type,
-            'user_id' => isset($target['id']) ? $target['id'] : null,
-            'created_by' => $_SESSION['user_id'],
-            'created_at' => date('Y-m-d H:i:s'),
+            'user_id' => $target['id'],
+            'sent_by' => $_SESSION['user_id'],
             'read' => false,
-            'link' => isset($payload['link']) ? $payload['link'] : '/portal/dashboard.php'
+            'read_at' => null,
+            'action_url' => $link,
+            'created_at' => date('c')
         ];
     }
 
