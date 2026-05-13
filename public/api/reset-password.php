@@ -89,26 +89,32 @@ try {
     $user = $users[0];
     $userId = $user['id'];
 
-    // Hash the new password
-    $hashedPassword = password_hash($newPassword, PASSWORD_BCRYPT, ['cost' => 12]);
+    // Update user password via Supabase Admin API (service role key required)
+    try {
+        $updateResult = $supabase->authUpdatePassword($userId, $newPassword);
 
-    // Update user password in auth.users table
-    $updateResult = $supabase->update('users', ['password' => $hashedPassword], ['id' => 'eq.' . $userId]);
-
-    if ($updateResult) {
-        // Mark token as used
+        // Mark token as used (whether update succeeded or not, attempt to mark it)
         $supabase->update('password_resets', ['used' => true], ['token' => 'eq.' . $token]);
 
-        http_response_code(200);
-        echo json_encode([
-            'success' => true,
-            'message' => 'Password reset successfully'
-        ]);
-    } else {
+        if ($updateResult) {
+            http_response_code(200);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Password has been reset successfully. You can now login with your new password.'
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to update password. Please try again.'
+            ]);
+        }
+    } catch (Exception $updateError) {
+        error_log('Password update error: ' . $updateError->getMessage());
         http_response_code(500);
         echo json_encode([
             'success' => false,
-            'message' => 'Failed to update password'
+            'message' => 'Failed to update password. Please try again.'
         ]);
     }
 

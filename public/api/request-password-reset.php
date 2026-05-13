@@ -83,7 +83,7 @@ try {
                     <p style='color:#999;font-size:0.85rem;margin-top:30px'>If you did not request this, please ignore this email. Your password will not be changed.</p>
                 ";
 
-                $emailService->sendNotification($email, 'Reset Your Password', $emailBody);
+                $emailService->sendNotification($email, 'Password Reset Request', $emailBody);
             } catch (Exception $e) {
                 error_log('Password reset email failed: ' . $e->getMessage());
                 // Don't fail the API call, but log the error
