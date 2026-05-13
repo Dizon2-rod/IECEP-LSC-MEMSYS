@@ -64,17 +64,17 @@ class SupabaseClient {
         }
         
         if ($curlError) {
-            throw new Exception("Supabase cURL Error: $curlError");
+            throw new \Exception("Supabase cURL Error: $curlError");
         }
         
         if ($httpCode >= 400) {
-            throw new Exception("Supabase API Error: HTTP $httpCode - $response");
+            throw new \Exception("Supabase API Error: HTTP $httpCode - $response");
         }
         
         $decodedResponse = json_decode($response, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             error_log("Supabase JSON Decode Error: " . json_last_error_msg());
-            throw new Exception("Supabase JSON Decode Error: " . json_last_error_msg());
+            throw new \Exception("Supabase JSON Decode Error: " . json_last_error_msg());
         }
         
         return $decodedResponse;
@@ -120,7 +120,7 @@ class SupabaseClient {
         error_log("Supabase Update: HTTP Code = $httpCode, Response = $response");
         curl_close($ch);
         if ($httpCode >= 400) {
-            throw new Exception("Supabase API Error: HTTP $httpCode - $response");
+            throw new \Exception("Supabase API Error: HTTP $httpCode - $response");
         }
         return json_decode($response, true);
     }
@@ -195,7 +195,7 @@ class SupabaseClient {
         curl_close($ch);
         
         if ($httpCode >= 400) {
-            throw new Exception("Supabase Auth Error: HTTP $httpCode - $response");
+            throw new \Exception("Supabase Auth Error: HTTP $httpCode - $response");
         }
         
         return json_decode($response, true);
@@ -221,7 +221,7 @@ class SupabaseClient {
         curl_close($ch);
         
         if ($httpCode >= 400) {
-            throw new Exception("Supabase Auth Error: HTTP $httpCode - $response");
+            throw new \Exception("Supabase Auth Error: HTTP $httpCode - $response");
         }
         
         return json_decode($response, true);
@@ -252,7 +252,7 @@ class SupabaseClient {
         curl_close($ch);
         
         if ($httpCode >= 400) {
-            throw new Exception("Supabase Auth Error: HTTP $httpCode - $response");
+            throw new \Exception("Supabase Auth Error: HTTP $httpCode - $response");
         }
         
         return json_decode($response, true);

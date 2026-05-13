@@ -193,8 +193,8 @@ class NotificationManager {
         if ('Notification' in window && Notification.permission === 'granted') {
             new Notification('IECEP-LSC MEMSYS', {
                 body: notification.message,
-                icon: '/IECEP-LSC-MEMSYS/public/assets/icons/icon-192.png',
-                badge: '/IECEP-LSC-MEMSYS/public/assets/icons/icon-72.png'
+                icon: '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png',
+                badge: '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png'
             });
         }
     }

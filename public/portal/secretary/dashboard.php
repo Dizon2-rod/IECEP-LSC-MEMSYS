@@ -3,6 +3,7 @@ require_once __DIR__ . '/../auth_check.php';
 
 // Allow eb_secretary_general
 require_role(['eb_secretary_general']);
+$current_page = basename(__FILE__, '.php');
 
 $user = get_user_info();
 $role_display = get_role_display_name($user['role']);

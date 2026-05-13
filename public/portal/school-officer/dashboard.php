@@ -1,6 +1,7 @@
 <?php
 session_start();
 require_once __DIR__ . '/../../../includes/config.php';
+$current_page = basename(__FILE__, '.php');
 
 // Authentication check
 if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {

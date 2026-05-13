@@ -11,6 +11,11 @@ class ToastManager {
     }
 
     init() {
+        if (!document.body) {
+            document.addEventListener('DOMContentLoaded', () => this.init());
+            return;
+        }
+
         // Create container if it doesn't exist
         if (!document.getElementById('toast-container')) {
             this.container = document.createElement('div');

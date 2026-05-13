@@ -42,12 +42,10 @@ $avatar_url = $user['user_metadata']['avatar_url'] ?? '';
 error_log("Sidebar detected role: " . $role . " (Session role: " . ($_SESSION['role'] ?? 'not set') . ")");
 error_log("User data: " . json_encode($user));
 
-// Get current page for active state - use REQUEST_URI for better detection
-$request_uri = $_SERVER['REQUEST_URI'] ?? '';
-$request_path = parse_url($request_uri, PHP_URL_PATH) ?? '';
-
-if (empty($current_page)) {
-    $current_page = basename($request_path, '.php');
+// Get current page for active state
+// This should be set by each portal page: $current_page = basename(__FILE__, '.php');
+if (!isset($current_page)) {
+    $current_page = basename($_SERVER['PHP_SELF'], '.php');
 }
 
 // Role-based menu mappings
@@ -288,15 +286,9 @@ error_log("Portal title mapping - Current role: " . $current_role . " -> Portal 
 $menu_config = $role_menus[$role] ?? $role_menus['member'];
 
 // Function to check if menu item is active
-function isMenuItemActive($item_url, $current_page, $request_path) {
-    $item_path = parse_url($item_url, PHP_URL_PATH);
-    $item_page = basename($item_path, '.php');
-
-    if (!empty($current_page)) {
-        return $current_page === $item_page;
-    }
-
-    return $request_path === $item_path || strpos($request_path, $item_path) !== false;
+function isMenuItemActive($item_url, $current_page) {
+    $item_page = basename(parse_url($item_url, PHP_URL_PATH), '.php');
+    return $current_page === $item_page;
 }
 ?>
 
@@ -824,7 +816,7 @@ function isMenuItemActive($item_url, $current_page, $request_path) {
             <?php foreach ($menu_config['items'] as $item): ?>
                 <li>
                     <a href="<?php echo $base_public_url . htmlspecialchars($item['url']); ?>" 
-                       class="<?php echo isMenuItemActive($item['url'], $current_page, $request_path) ? 'active' : ''; ?>">
+                       class="<?php echo isMenuItemActive($item['url'], $current_page) ? 'active' : ''; ?>">
                         <i class="fas <?php echo htmlspecialchars($item['icon']); ?>"></i>
                         <span><?php echo htmlspecialchars($item['label']); ?></span>
                     </a>

@@ -78,13 +78,48 @@ try {
                 'full_name' => $appData['contact_person'] ?? $existingUsers[0]['full_name'],
                 'updated_at' => date('Y-m-d H:i:s')
             ], $userId);
+
+            // Check if user_profiles exists, create if not
+            $existingProfiles = $supabase->select('user_profiles', ['user_id' => 'eq.' . $userId]);
+            if (empty($existingProfiles)) {
+                error_log("Creating missing user_profiles for existing user_id=$userId");
+                $profileData = [
+                    'user_id'     => $userId,
+                    'role'        => 'school_officer',
+                    'full_name'   => $appData['contact_person'] ?? $existingUsers[0]['full_name'],
+                    'school_name' => $appData['institution_name'],
+                    'contact_phone' => $appData['contact_phone'] ?? null,
+                    'address'     => $appData['address'] ?? null,
+                    'created_at'  => date('Y-m-d H:i:s'),
+                    'updated_at'  => date('Y-m-d H:i:s')
+                ];
+                $supabase->insert('user_profiles', $profileData);
+            } else {
+                // Update existing profile
+                $supabase->update('user_profiles', [
+                    'role' => 'school_officer',
+                    'school_name' => $appData['institution_name'],
+                    'updated_at' => date('Y-m-d H:i:s')
+                ], $existingProfiles[0]['id']);
+            }
         } else {
             // No existing user – create a new account
             $isNewUser = true;
             $tempPassword = substr(bin2hex(random_bytes(6)), 0, 12);
             $passwordHash = password_hash($tempPassword, PASSWORD_BCRYPT);
 
+            // Generate UUID for new user
+            $userId = sprintf(
+                '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+                mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+                mt_rand(0, 0xffff),
+                mt_rand(0, 0x0fff) | 0x4000,
+                mt_rand(0, 0x3fff) | 0x8000,
+                mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+            );
+
             $userData = [
+                'id'          => $userId,
                 'email'       => $appData['email'],
                 'password'    => $passwordHash,
                 'full_name'   => $appData['contact_person'] ?? $appData['institution_name'],
@@ -96,11 +131,31 @@ try {
             ];
 
             $userResult = $supabase->insert('users', $userData);
-            if ($userResult && isset($userResult[0]['id'])) {
-                $userId = $userResult[0]['id'];
-                error_log("New user created: $userId for {$appData['email']}");
-            } else {
+            if (!$userResult || !isset($userResult[0]['id'])) {
                 sendResponse(false, '', 'Failed to create user account');
+            }
+
+            error_log("New user created: $userId for {$appData['email']}");
+
+            // Create user_profiles record
+            $profileData = [
+                'user_id'     => $userId,
+                'role'        => 'school_officer',
+                'full_name'   => $appData['contact_person'] ?? $appData['institution_name'],
+                'school_name' => $appData['institution_name'],
+                'contact_phone' => $appData['contact_phone'] ?? null,
+                'address'     => $appData['address'] ?? null,
+                'force_password_change' => true,
+                'created_at'  => date('Y-m-d H:i:s'),
+                'updated_at'  => date('Y-m-d H:i:s')
+            ];
+
+            $profileResult = $supabase->insert('user_profiles', $profileData);
+            if (!$profileResult) {
+                error_log("Warning: Failed to create user_profiles for user_id=$userId");
+                // Don't fail the whole process, but log it
+            } else {
+                error_log("User profile created for user_id=$userId");
             }
         }
 

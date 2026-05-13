@@ -408,6 +408,12 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                 border-radius: var(--radius-lg);
             }
             
+            /* Override for affiliate modal to maintain centering */
+            #affiliateModal .modal-content {
+                margin: 0 !important;
+                max-width: 95% !important;
+            }
+            
             .modal-title {
                 font-size: 1.5rem;
                 margin-bottom: 1.5rem;
@@ -457,6 +463,12 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
             .modal-content {
                 margin: 2rem;
                 max-width: calc(100% - 4rem);
+            }
+            
+            /* Override for affiliate modal to maintain centering */
+            #affiliateModal .modal-content {
+                margin: 0 !important;
+                max-width: 90% !important;
             }
             
             .verification-inputs input {
@@ -766,17 +778,19 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    right: 0;
+    bottom: 0;
     background: rgba(11, 29, 74, 0.8);
     backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 1.5rem;
     z-index: 1000;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
+    overflow: auto;
 }
 
 #affiliateModal.active {
@@ -787,14 +801,15 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 #affiliateModal .modal-content {
     background: white;
     border-radius: 16px;
-    max-width: 640px;
-    width: 90%;
-    max-height: 90vh;
+    width: min(640px, 100%);
+    max-height: calc(100vh - 3rem);
     overflow-y: auto;
     position: relative;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     transform: scale(0.9);
     transition: transform 0.3s ease;
+    /* Remove margin: auto to prevent conflict with flex centering */
+    margin: 0;
 }
 
 #affiliateModal.active .modal-content {
@@ -1204,7 +1219,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     #affiliateModal .modal-content {
         width: 95%;
         max-height: 95vh;
-        margin: 1rem;
+        margin: 0; /* Override general modal-content margin */
     }
     
     .modal-title {
@@ -1259,7 +1274,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 @media (max-width: 480px) {
     #affiliateModal .modal-content {
         width: 98%;
-        margin: 0.5rem;
+        margin: 0; /* Override general modal-content margin */
     }
     
     .modal-section {

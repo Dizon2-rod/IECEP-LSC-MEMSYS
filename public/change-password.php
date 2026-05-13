@@ -66,17 +66,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Hash the new password
         $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
         
-        // TODO: Update password in Supabase database
-        // For now, just update session
-        
-        // Clear password change flags
-        $_SESSION['user']['must_change_password'] = false;
-        unset($_SESSION['require_password_change']);
-        
-        // Regenerate session ID for security
-        session_regenerate_id(true);
-        
-        $success = 'Password changed successfully! Redirecting to your dashboard...';
+        try {
+            require_once __DIR__ . '/../includes/supabase.php';
+            require_once __DIR__ . '/../src/lib/SupabaseClient.php';
+            
+            $config = require __DIR__ . '/../includes/supabase.php';
+            $supabase = new SupabaseClient($config['url'], $config['service_role_key']);
+            
+            $userId = $_SESSION['user']['id'] ?? '';
+            $userEmail = $_SESSION['user']['email'] ?? '';
+            
+            if (empty($userId)) {
+                throw new Exception('User session invalid');
+            }
+            
+            // Try to update in custom users table first
+            $users = $supabase->select('users', ['id' => 'eq.' . $userId]);
+            if (!empty($users) && is_array($users)) {
+                // Update password in custom users table
+                $updateResult = $supabase->update('users', ['password' => $passwordHash], $userId);
+                if (!$updateResult) {
+                    throw new Exception('Failed to update password in users table');
+                }
+                
+                // Also update user_profiles to clear force_password_change
+                $profileUpdate = $supabase->update('user_profiles', ['force_password_change' => false], null, ['user_id' => 'eq.' . $userId]);
+                if (!$profileUpdate) {
+                    error_log('Warning: Failed to clear force_password_change flag in user_profiles');
+                }
+            } else {
+                // Fallback: try Supabase Auth password update
+                $authUpdate = $supabase->authUpdatePassword($userId, $newPassword);
+                if (!$authUpdate) {
+                    throw new Exception('Failed to update password via Supabase Auth');
+                }
+                
+                // Update user_profiles to clear force_password_change
+                $profileUpdate = $supabase->update('user_profiles', ['force_password_change' => false], null, ['user_id' => 'eq.' . $userId]);
+                if (!$profileUpdate) {
+                    error_log('Warning: Failed to clear force_password_change flag in user_profiles');
+                }
+            }
+            
+            // Clear password change flags from session
+            $_SESSION['user']['must_change_password'] = false;
+            unset($_SESSION['require_password_change']);
+            
+            // Regenerate session ID for security
+            session_regenerate_id(true);
+            
+            $success = 'Password changed successfully! Redirecting to your dashboard...';
+            
+        } catch (Exception $e) {
+            error_log('Password change error: ' . $e->getMessage());
+            $error = 'Failed to update password. Please try again.';
+        }
         
         // Redirect after success
         $role = $_SESSION['user']['role'] ?? '';

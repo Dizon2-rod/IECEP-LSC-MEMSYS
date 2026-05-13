@@ -5,11 +5,11 @@ define('HEAD_META_INCLUDED', true);
 ?>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fcm.googleapis.com https://updates.push.services.mozilla.com https://*.googleapis.com;">
+<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdn.skypack.dev; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fcm.googleapis.com https://updates.push.services.mozilla.com https://cdn.jsdelivr.net https://*.googleapis.com https://*.supabase.co wss://*.supabase.co;">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="manifest" href="/IECEP-LSC-MEMSYS/public/manifest.json">
-<link rel="apple-touch-icon" sizes="192x192" href="/IECEP-LSC-MEMSYS/public/assets/icons/icon-192.png">
-<link rel="apple-touch-icon" sizes="512x512" href="/IECEP-LSC-MEMSYS/public/assets/icons/icon-512.png">
+<link rel="apple-touch-icon" sizes="192x192" href="/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png">
+<link rel="apple-touch-icon" sizes="512x512" href="/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png">
 <meta name="theme-color" content="#0B1D4A">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -459,7 +459,7 @@ define('HEAD_META_INCLUDED', true);
     /* Modal */
     .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 2000; padding: var(--space-4); }
     .modal.active { display: flex; }
-    .modal-content { background: var(--white); max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; border-radius: var(--radius-xl); padding: var(--space-6); position: relative; }
+    .modal-content { background: var(--white); max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; border-radius: var(--radius-xl); padding: var(--space-6); position: relative; margin: 0 auto; }
     .modal-close { position: absolute; top: var(--space-4); right: var(--space-4); background: none; border: none; font-size: 1.5rem; color: var(--neutral-500); cursor: pointer; }
     .modal-title { font-size: 1.5rem; font-weight: 800; color: var(--primary); text-align: center; margin-bottom: var(--space-6); }
 
@@ -603,14 +603,14 @@ define('HEAD_META_INCLUDED', true);
         .schools-grid img { width: 85px; height: 85px; }
     }
 </style>
-<script src="/IECEP-LSC-MEMSYS/public/assets/js/toast.js"></script>
-<script src="/IECEP-LSC-MEMSYS/public/assets/js/offline.js"></script>
-<script src="/IECEP-LSC-MEMSYS/public/assets/js/notifications.js"></script>
+<script src="/IECEP-LSC-MEMSYS/public/assets/js/toast.js" defer></script>
+<script src="/IECEP-LSC-MEMSYS/public/assets/js/offline.js" defer></script>
+<script src="/IECEP-LSC-MEMSYS/public/assets/js/notifications.js" defer></script>
 <script>
 // Service Worker Registration
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/public/sw.js')
+        navigator.serviceWorker.register('/IECEP-LSC-MEMSYS/public/sw.js')
             .then(registration => {
                 console.log('Service Worker registered successfully');
             })

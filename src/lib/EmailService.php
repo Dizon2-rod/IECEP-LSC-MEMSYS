@@ -11,6 +11,7 @@ use PHPMailer\PHPMailer\Exception;
 class EmailService
 {
     private array $config;
+    private string $lastError = '';
 
     public function __construct()
     {
@@ -29,21 +30,33 @@ class EmailService
             ]
         ];
 
+        $this->lastError = '';
         error_log('EmailService initialized with: ' . $this->config['email']['username']);
+
+        if (!extension_loaded('openssl')) {
+            error_log('CRITICAL: PHP OpenSSL extension is not loaded. Gmail SMTP email delivery will fail without openssl enabled.');
+            $this->lastError = 'Missing PHP OpenSSL extension';
+        }
     }
 
-    private function createMailer(): PHPMailer
+    private function createMailer(array $options = []): PHPMailer
     {
         try {
             $mail = new PHPMailer(true);
             $mail->isSMTP();
-            $mail->Host = $this->config['email']['host'];
-            $mail->Port = (int)$this->config['email']['port'];
+            $mail->Host = $options['host'] ?? $this->config['email']['host'];
+            $mail->Port = (int)($options['port'] ?? $this->config['email']['port']);
             $mail->SMTPAuth = true;
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->SMTPSecure = $options['secure'] ?? PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->SMTPAutoTLS = $options['auto_tls'] ?? true;
+            $mail->AuthType = $options['auth_type'] ?? 'LOGIN';
             $mail->Username = $this->config['email']['username'];
             $mail->Password = $this->config['email']['password'];
-            $mail->setFrom($this->config['email']['from_email'], $this->config['email']['from_name']);
+            $fromEmail = $this->config['email']['from_email'] ?: $this->config['email']['username'];
+            $fromName = $this->config['email']['from_name'];
+            $mail->setFrom($fromEmail, $fromName);
+            $mail->addReplyTo($fromEmail, $fromName);
+            $mail->CharSet = 'UTF-8';
             $mail->isHTML(true);
             
             // Validate Gmail App Password format
@@ -52,11 +65,6 @@ class EmailService
                 error_log("WARNING: Gmail password does not appear to be an App Password. App Passwords are 16 characters long and contain only lowercase letters and numbers.");
                 error_log("Please generate a Gmail App Password from Google Account Settings > Security > 2-Step Verification > App Passwords");
             }
-            
-            // Gmail-specific SMTP configuration
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Host = 'smtp.gmail.com';
-            $mail->Port = 587;
             
             // Gmail-specific connection settings for better compatibility
             $mail->SMTPOptions = array(
@@ -67,20 +75,19 @@ class EmailService
                 )
             );
             
-            // Set SMTP timeout and keep-alive
+            // Set SMTP timeout
             $mail->Timeout = 30;
-            $mail->SMTPKeepAlive = true;
+            $mail->SMTPKeepAlive = false;
             
             // Disable SMTP debugging to prevent HTML output in JSON responses
             $mail->SMTPDebug = 0;
+            $mail->Debugoutput = 'error_log';
             
-            error_log("EmailService: Gmail SMTP configured with user={$this->config['email']['username']}, host={$mail->Host}, port={$mail->Port}");
-            error_log("EmailService: SMTP Auth enabled, TLS encryption active");
-            
-            error_log("EmailService: SMTP configured with host={$this->config['email']['host']}, port={$this->config['email']['port']}, user={$this->config['email']['username']}");
+            error_log("EmailService: SMTP configured with host={$mail->Host}, port={$mail->Port}, secure={$mail->SMTPSecure}, user={$this->config['email']['username']}");
             
             return $mail;
         } catch (Exception $e) {
+            $this->lastError = $e->getMessage();
             error_log('EmailService createMailer error: ' . $e->getMessage());
             throw $e;
         }
@@ -113,7 +120,7 @@ class EmailService
         }
     }
 
-    public function sendSchoolAccountCredentials(string $to, string $institutionName, string $password, string $contactPerson = ''): bool
+    public function sendSchoolAccountCredentials(string $to, string $institutionName, string $password, string $contactPerson = '', string $loginUrl = null): bool
     {
         try {
             error_log("Preparing to send school account credentials email to: $to with password: $password");
@@ -127,7 +134,7 @@ class EmailService
             
             $mail = $this->createMailer();
             $mail->addAddress($to);
-            $loginUrl = $this->config['app_url'] . '/login.php';
+            $loginUrl = $loginUrl ?: $this->config['app_url'] . '/login.php';
             $logoUrl = $this->config['app_url'] . '/public/assets/icons/iecep-logo.png';
             $mail->Subject = 'IECEP-LSC Affiliation Approved – Your Portal Account Details';
             
@@ -627,9 +634,55 @@ class EmailService
                     <h2 style='color:#0A2F6C'>{$subject}</h2>
                     <div>{$body}</div>
                 </div>";
-            return $mail->send();
+            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
+
+            $result = $mail->send();
+            if (!$result) {
+                $this->lastError = $mail->ErrorInfo;
+                error_log("Email error (notification): " . $mail->ErrorInfo);
+                if ($this->config['email']['host'] === 'smtp.gmail.com' && (int)$this->config['email']['port'] === 587) {
+                    error_log("EmailService: retrying notification using implicit SSL on port 465");
+                    return $this->sendNotificationViaAlternateTransport($to, $subject, $body);
+                }
+            }
+            return $result;
         } catch (Exception $e) {
+            $this->lastError = $e->getMessage();
             error_log("Email error (notification): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function sendNotificationViaAlternateTransport(string $to, string $subject, string $body): bool
+    {
+        try {
+            $mail = $this->createMailer([
+                'host' => 'smtp.gmail.com',
+                'port' => 465,
+                'secure' => PHPMailer::ENCRYPTION_SMTPS,
+                'auto_tls' => false,
+                'auth_type' => 'LOGIN'
+            ]);
+            $mail->addAddress($to);
+            $mail->Subject = "IECEP-LSC: $subject";
+            $mail->Body = "
+                <div style='font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:24px'>
+                    <h2 style='color:#0A2F6C'>{$subject}</h2>
+                    <div>{$body}</div>
+                </div>";
+            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
+
+            $result = $mail->send();
+            if (!$result) {
+                $this->lastError = $mail->ErrorInfo;
+                error_log("Email error (notification fallback 465): " . $mail->ErrorInfo);
+            } else {
+                error_log("EmailService: notification succeeded on fallback transport 465");
+            }
+            return $result;
+        } catch (Exception $e) {
+            $this->lastError = $e->getMessage();
+            error_log("Email error (notification fallback 465): " . $e->getMessage());
             return false;
         }
     }
@@ -911,7 +964,7 @@ class EmailService
     
     public function getErrorInfo(): string
     {
-        return "EmailService is available";
+        return $this->lastError ?: 'No error information available';
     }
 
     /**
@@ -950,8 +1003,8 @@ class EmailService
         $payload = json_encode([
             'title' => $title,
             'body' => $body,
-            'icon' => '/assets/icons/icon-192.png',
-            'badge' => '/assets/icons/icon-72.png',
+            'icon' => '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png',
+            'badge' => '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png',
             'data' => $data,
             'url' => $data['url'] ?? '/portal/dashboard.php'
         ]);

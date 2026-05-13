@@ -21,8 +21,8 @@ const STATIC_ASSETS = [
     buildUrl('assets/js/app.js'),
     buildUrl('assets/js/toast.js'),
     buildUrl('assets/js/offline.js'),
-    buildUrl('assets/icons/icon-192x192.png'),
-    buildUrl('assets/icons/icon-512x512.png'),
+    buildUrl('assets/icons/iecep-logo.png'),
+    buildUrl('assets/icons/iecep-logo.png'),
     buildUrl('assets/css/bootstrap.min.css'),
     buildUrl('assets/js/bootstrap.bundle.min.js'),
     buildUrl('assets/js/chart.js')
@@ -217,8 +217,8 @@ self.addEventListener('push', event => {
 
     const options = {
         body: data.body,
-        icon: '/assets/icons/icon-192x192.png',
-        badge: '/assets/icons/icon-72x72.png',
+        icon: '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png',
+        badge: '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png',
         vibrate: [100, 50, 100],
         data: {
             url: data.url || '/portal/dashboard.php'

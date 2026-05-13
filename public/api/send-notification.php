@@ -52,8 +52,8 @@ try {
         'title' => $data['title'],
         'body' => $data['body'],
         'url' => $data['url'] ?? '/portal/dashboard.php',
-        'icon' => $data['icon'] ?? '/IECEP-LSC-MEMSYS/public/assets/icons/icon-192.png',
-        'badge' => $data['badge'] ?? '/IECEP-LSC-MEMSYS/public/assets/icons/icon-192.png'
+        'icon' => $data['icon'] ?? '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png',
+        'badge' => $data['badge'] ?? '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png'
     ];
 
     $vapidPublic = $_ENV['VAPID_PUBLIC_KEY'] ?? null;

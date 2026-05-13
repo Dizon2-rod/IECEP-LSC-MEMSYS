@@ -1,4 +1,6 @@
 <?php
+use App\Lib\SupabaseClient;
+
 // Prevent session blocking issues
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -54,8 +56,8 @@ $error = '';
 $email = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = $_POST['email'] ?? '';
-    $password = $_POST['password'] ?? '';
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    $password = trim($_POST['password'] ?? '');
 
     // Validate input
     if (empty($email) || empty($password)) {
@@ -68,68 +70,108 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             require_once __DIR__ . '/src/lib/SupabaseClient.php';
 
             $config = require __DIR__ . '/includes/supabase.php';
-
-            // Use the service role key to query users table and verify password (bypass RLS)
             $supabaseService = new SupabaseClient($config['url'], $config['service_role_key']);
-            $users = $supabaseService->select('users', ['email' => 'eq.' . $email]);
 
+            $loginSuccess = false;
+            $authFallback = false;
+            $authError = null;
+
+            $users = $supabaseService->select('users', ['email' => 'eq.' . $email]);
             if (!empty($users) && is_array($users)) {
                 $user = $users[0];
 
-                // Verify password (bcrypt)
-                if (password_verify($password, $user['password'] ?? '')) {
-                    // Check if account is active
+                if (!empty($user['password']) && password_verify($password, $user['password'])) {
                     if (empty($user['is_active'])) {
                         $error = 'Your account has been deactivated. Please contact the administrator.';
                     } else {
-                        // Retrieve user profile from user_profiles table
                         $profiles = $supabaseService->select('user_profiles', ['user_id' => 'eq.' . $user['id']]);
                         if (empty($profiles)) {
-                            $error = 'User profile not found. Please contact the administrator.';
+                            error_log("Login: legacy users table found for email=$email but no matching user_profiles row for user_id={$user['id']}. Falling back to Supabase Auth.");
+                            $authFallback = true;
                         } else {
                             $profile = $profiles[0];
-                            
-                            // Successful login - set session variables
-                            $_SESSION['user_id']   = $user['id'];
-                            $_SESSION['email']     = $user['email'];
-                            $_SESSION['full_name'] = $user['full_name'] ?? '';
-                            $_SESSION['role']      = $profile['role'] ?? 'member';
-                            $_SESSION['logged_in'] = true;
-
-                            // Store user info in 'user' array for compatibility
-                            $_SESSION['user'] = [
-                                'id'    => $user['id'],
-                                'email' => $user['email'],
-                                'name'  => $user['full_name'] ?? '',
-                                'role'  => $profile['role'] ?? 'member',
-                                'must_change_password' => !empty($user['must_change_password'])
-                            ];
-
-                            // Check if forced password change is required
-                            if (!empty($user['must_change_password'])) {
-                                $_SESSION['require_password_change'] = true;
-                                header('Location: ' . BASE_URL . '/change-password.php?first=1');
-                                exit;
-                            }
-
-                            // Redirect to role-based dashboard
-                            $redirectMap = [
-                                'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
-                                'admin'          => PORTAL_URL . '/admin/dashboard.php',
-                                'super_admin'    => PORTAL_URL . '/super-admin/dashboard.php',
-                                'eb_president'   => PORTAL_URL . '/super-admin/dashboard.php',
-                                'member'         => PORTAL_URL . '/member/dashboard.php',
-                            ];
-                            $role = $profile['role'] ?? 'member';
-                            $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php';
-                            header('Location: ' . $redirectUrl);
-                            exit;
+                            $loginSuccess = true;
+                            $mustChangePassword = !empty($user['must_change_password']);
+                            $userId = $user['id'];
+                            $userEmail = $user['email'];
+                            $fullName = $user['full_name'] ?? '';
                         }
                     }
                 } else {
-                    $error = 'Invalid email or password. Please try again.';
+                    $authFallback = true;
                 }
             } else {
+                $authFallback = true;
+            }
+
+            if (!$loginSuccess && $authFallback) {
+                try {
+                    $authResult = $supabaseService->authSignIn($email, $password);
+                    $authUser = $authResult['user'] ?? ($authResult['data']['user'] ?? null);
+
+                    if (!empty($authUser['id'])) {
+                        $userId = $authUser['id'];
+                        $userEmail = $authUser['email'] ?? $email;
+                        $fullName = $authUser['user_metadata']['full_name'] ?? $authUser['full_name'] ?? '';
+
+                        $profiles = $supabaseService->select('user_profiles', ['user_id' => 'eq.' . $userId]);
+                        error_log("Login: Supabase auth user_id=$userId profile query result=" . json_encode($profiles));
+
+                        if (!empty($profiles) && is_array($profiles)) {
+                            $profile = $profiles[0];
+                            $loginSuccess = true;
+                            // Check force_password_change from profile, or must_change_password from user metadata
+                            $mustChangePassword = !empty($profile['force_password_change']) || 
+                                                !empty($authUser['user_metadata']['must_change_password']);
+                        } else {
+                            error_log("Login: Supabase auth succeeded but no user_profiles row for user_id=$userId");
+                            $error = 'Your account has not been fully configured. Please contact the administrator.';
+                        }
+                    } else {
+                        error_log('Login: Supabase authSignIn returned no user object for email=' . $email . ' response=' . json_encode($authResult));
+                        $error = 'Invalid email or password. Please try again.';
+                    }
+                } catch (Exception $e) {
+                    error_log('Login: Supabase authSignIn failed for email=' . $email . ' error=' . $e->getMessage());
+                    $authError = $e->getMessage();
+                }
+            }
+
+            if ($loginSuccess) {
+                $_SESSION['user_id']   = $userId;
+                $_SESSION['email']     = $userEmail;
+                $_SESSION['full_name'] = $fullName;
+                $_SESSION['role']      = $profile['role'] ?? 'member';
+                $_SESSION['logged_in'] = true;
+
+                $_SESSION['user'] = [
+                    'id'    => $userId,
+                    'email' => $userEmail,
+                    'name'  => $fullName,
+                    'role'  => $profile['role'] ?? 'member',
+                    'must_change_password' => !empty($mustChangePassword)
+                ];
+
+                if (!empty($mustChangePassword)) {
+                    $_SESSION['require_password_change'] = true;
+                    header('Location: ' . BASE_URL . '/change-password.php?first=1');
+                    exit;
+                }
+
+                $redirectMap = [
+                    'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
+                    'admin'          => PORTAL_URL . '/admin/dashboard.php',
+                    'super_admin'    => PORTAL_URL . '/super-admin/dashboard.php',
+                    'eb_president'   => PORTAL_URL . '/super-admin/dashboard.php',
+                    'member'         => PORTAL_URL . '/member/dashboard.php',
+                ];
+                $role = $profile['role'] ?? 'member';
+                $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php';
+                header('Location: ' . $redirectUrl);
+                exit;
+            }
+
+            if (!$error) {
                 $error = 'Invalid email or password. Please try again.';
             }
         } catch (Exception $e) {

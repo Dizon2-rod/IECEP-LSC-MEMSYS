@@ -54,7 +54,7 @@ function subscribeToTable(table, options = {}) {
     }
 
     const { event = '*', filter = null, callback = null } = options;
-    const channelName = `public:${table}`;
+    const channelName = `public:${table}:${event}:${filter ? encodeURIComponent(filter) : 'all'}`;
 
     try {
         const channel = supabaseClient.channel(channelName)
@@ -227,7 +227,7 @@ window.onNewPendingAffiliation = function(newAffiliation) {
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('New Affiliation Application', {
             body: `${newAffiliation.institution_name} has submitted an affiliation application.`,
-            icon: '/IECEP-LSC-MEMSYS/public/assets/icons/icon-192.png'
+            icon: '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png'
         });
     }
 
@@ -258,7 +258,7 @@ window.onAffiliationStatusChanged = function(updatedAffiliation) {
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Affiliation Status Updated', {
             body: `Application for ${updatedAffiliation.institution_name} is now ${updatedAffiliation.status}.`,
-            icon: '/IECEP-LSC-MEMSYS/public/assets/icons/icon-192.png'
+            icon: '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png'
         });
     }
 };
@@ -347,7 +347,7 @@ window.onNewAnnouncement = function(newAnnouncement) {
     if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(newAnnouncement.title, {
             body: newAnnouncement.content,
-            icon: '/IECEP-LSC-MEMSYS/public/assets/icons/icon-192.png'
+            icon: '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png'
         });
     }
 };

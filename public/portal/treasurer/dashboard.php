@@ -3,6 +3,7 @@ require_once __DIR__ . '/../auth_check.php';
 
 // Allow eb_treasurer
 require_role(['eb_treasurer']);
+$current_page = basename(__FILE__, '.php');
 
 $user = get_user_info();
 $role_display = get_role_display_name($user['role']);

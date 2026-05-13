@@ -38,7 +38,7 @@ if (!in_array($userRole, ['registration', 'committee_registration', 'admin', 'su
 
 // Get database and email configuration
 $config = require __DIR__ . '/../../includes/supabase.php';
-$supabase = new SupabaseClient($config['url'], $config['anon_key']);
+$supabase = new SupabaseClient($config['url'], $config['service_role_key']);
 $emailService = new EmailService();
 
 // Get POST data
@@ -84,11 +84,28 @@ if (in_array($currentStatus, ['approved', 'rejected'])) {
 }
 
 /**
- * Generate a random temporary password
- * 12 characters: cryptographically secure
+ * Generate a secure temporary password that meets Supabase Auth requirements
+ * Includes uppercase, lowercase, and numbers only for safer email copy/paste
  */
 function generateTempPassword($length = 12) {
-    return substr(bin2hex(random_bytes(8)), 0, $length);
+    $uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    $numbers = '0123456789';
+    $allChars = $uppercase . $lowercase . $numbers;
+    
+    $password = '';
+    
+    // Ensure at least one character from each required category
+    $password .= $uppercase[random_int(0, strlen($uppercase) - 1)];
+    $password .= $lowercase[random_int(0, strlen($lowercase) - 1)];
+    $password .= $numbers[random_int(0, strlen($numbers) - 1)];
+    
+    // Fill the rest randomly
+    for ($i = 3; $i < $length; $i++) {
+        $password .= $allChars[random_int(0, strlen($allChars) - 1)];
+    }
+    
+    return str_shuffle($password);
 }
 
 /**
@@ -190,8 +207,8 @@ switch ($action) {
             exit;
         }
         
-        // Generate temporary password (12 characters)
-        $tempPassword = substr(bin2hex(random_bytes(8)), 0, 12);
+        // Generate temporary password (12 characters, secure format)
+        $tempPassword = generateTempPassword(12);
         $passwordHash = password_hash($tempPassword, PASSWORD_BCRYPT);
         
         try {
@@ -206,12 +223,38 @@ switch ($action) {
             
             error_log("Auth signup result: " . json_encode($authResult));
             
-            if (!$authResult || !isset($authResult['id'])) {
-                throw new Exception('Failed to create user account in Supabase Auth');
+            // Supabase admin create may return the user object directly or nested under 'user'/'data.user'
+            $userId = $authResult['id'] 
+                ?? $authResult['user']['id'] ?? null 
+                ?? $authResult['data']['user']['id'] ?? null;
+
+            if (empty($userId)) {
+                throw new Exception('Failed to obtain Supabase Auth user id from signup result');
             }
             
-            $userId = $authResult['id'];
+            error_log("Supabase Auth user created with ID: $userId");
             
+            // Create a matching profile record for the new school officer
+            try {
+                $profileData = [
+                    'user_id' => $userId,
+                    'role' => 'school_officer',
+                    'full_name' => $contactPerson,
+                    'membership_status' => 'active',
+                    'force_password_change' => true, // Require password change on first login
+                ];
+                error_log("Creating user profile for user_id: $userId");
+                $profileResult = $supabase->insert('user_profiles', $profileData);
+                error_log("Profile creation result: " . json_encode($profileResult));
+                if (empty($profileResult) || !is_array($profileResult) || !isset($profileResult[0]['id'])) {
+                    throw new Exception('Failed to create user profile for approved affiliate');
+                }
+                error_log("Profile created successfully with ID: " . $profileResult[0]['id']);
+            } catch (Exception $profileError) {
+                error_log('Profile creation error: ' . $profileError->getMessage());
+                throw new Exception('Failed to create user profile for approved affiliate');
+            }
+
             // Update application with approval details
             $updateData = [
                 'status' => 'approved',
@@ -263,7 +306,7 @@ switch ($action) {
             error_log("Portal URL: $portalUrl");
             
             try {
-                $emailSent = $emailService->sendSchoolAccountCredentials($email, $institution, $tempPassword);
+                $emailSent = $emailService->sendSchoolAccountCredentials($email, $institution, $tempPassword, $contactPerson, $portalUrl);
                 error_log("Email send result: " . ($emailSent ? 'SUCCESS' : 'FAILED'));
             } catch (Exception $emailError) {
                 error_log("Email exception: " . $emailError->getMessage());

@@ -58,7 +58,9 @@ class OfflineManager {
         }
 
         // Update body class for styling
-        document.body.classList.toggle('offline-mode', !this.isOnline);
+        if (document.body) {
+            document.body.classList.toggle('offline-mode', !this.isOnline);
+        }
     }
 
     showOnlineNotification() {
