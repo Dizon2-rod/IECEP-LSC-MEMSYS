@@ -243,11 +243,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .input-wrapper { position: relative; }
         .input-wrapper i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #999; font-size: 1rem; }
         .form-group input {
-            width: 100%; padding: 16px 18px 16px 45px;
+            width: 100%; padding: 16px 48px 16px 50px;
             border: 2px solid #e2e8f0; border-radius: 12px;
             font-size: 1rem; transition: all 0.3s; background: #f8fafc;
         }
         .form-group input:focus { outline: none; border-color: #0A2F6C; background: white; box-shadow: 0 0 0 3px rgba(10,47,108,0.1); }
+        #togglePassword { user-select: none; transition: color 0.2s ease; left: auto; }
+        #togglePassword:hover { color: #0A2F6C !important; }
         .form-options { display: flex; justify-content: space-between; align-items: center; margin: 25px 0; font-size: 0.9rem; }
         .form-options label { display: flex; align-items: center; gap: 8px; color: #666; cursor: pointer; }
         .form-options input[type="checkbox"] { width: auto; margin: 0; }
@@ -335,14 +337,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                     <div class="form-group">
                         <label for="password">Password</label>
-                        <div class="input-wrapper">
+                        <div class="input-wrapper" style="position: relative;">
                             <i class="fas fa-lock"></i>
                             <input type="password" id="password" name="password" required placeholder="Enter your password">
+                            <i class="fas fa-eye-slash" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999; font-size: 1rem; pointer-events: auto;"></i>
                         </div>
                     </div>
+
+                    <script>
+                        const passwordInput = document.getElementById('password');
+                        const togglePasswordBtn = document.getElementById('togglePassword');
+
+                        togglePasswordBtn.addEventListener('click', function() {
+                            if (passwordInput.type === 'password') {
+                                passwordInput.type = 'text';
+                                togglePasswordBtn.classList.remove('fa-eye-slash');
+                                togglePasswordBtn.classList.add('fa-eye');
+                            } else {
+                                passwordInput.type = 'password';
+                                togglePasswordBtn.classList.remove('fa-eye');
+                                togglePasswordBtn.classList.add('fa-eye-slash');
+                            }
+                        });
+                    </script>
+
                     <div class="form-options">
                         <label><input type="checkbox" name="remember"> Remember Me</label>
-                        <a href="#">Forgot Password?</a>
+                        <a href="<?php echo BASE_URL; ?>/public/forgot-password.php">Forgot Password?</a>
                     </div>
                     <button type="submit" class="btn-login">Log in</button>
                     <div style="text-align: center; margin-bottom: 30px;">
