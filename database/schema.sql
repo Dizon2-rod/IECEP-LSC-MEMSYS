@@ -146,6 +146,9 @@ CREATE TABLE IF NOT EXISTS user_profiles (
         'school_officer', 'member'
     )),
     full_name TEXT,
+    school_name TEXT,
+    contact_phone TEXT,
+    address TEXT,
     membership_status TEXT DEFAULT 'active' CHECK (membership_status IN ('active', 'inactive', 'suspended', 'pending')),
     membership_type TEXT DEFAULT 'regular' CHECK (membership_type IN ('regular', 'student', 'lifetime')),
     force_password_change BOOLEAN DEFAULT true,
@@ -157,6 +160,9 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 
 ALTER TABLE IF EXISTS user_profiles ADD COLUMN IF NOT EXISTS institution_id UUID REFERENCES institutions(id) ON DELETE SET NULL;
 ALTER TABLE IF EXISTS user_profiles ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE;
+ALTER TABLE IF EXISTS user_profiles ADD COLUMN IF NOT EXISTS school_name TEXT;
+ALTER TABLE IF EXISTS user_profiles ADD COLUMN IF NOT EXISTS contact_phone TEXT;
+ALTER TABLE IF EXISTS user_profiles ADD COLUMN IF NOT EXISTS address TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_role ON user_profiles(role);
@@ -1413,11 +1419,10 @@ DECLARE
     pub_oid OID := (SELECT oid FROM pg_publication WHERE pubname = 'supabase_realtime');
     tbl TEXT;
 BEGIN
-    FOR tbl IN ARRAY[
-        'institutions', 'affiliated_schools', 'pending_affiliations', 'affiliation_approvals',
+    FOR tbl IN SELECT unnest(ARRAY['institutions', 'affiliated_schools', 'pending_affiliations', 'affiliation_approvals',
         'user_profiles', 'members', 'transactions', 'events', 'event_registrations',
-        'attendance', 'notifications', 'collaboration_posts', 'blockchain_records'
-    ] LOOP
+        'attendance', 'notifications', 'collaboration_posts', 'blockchain_records'])
+    LOOP
         IF EXISTS (SELECT 1 FROM pg_class WHERE relname = tbl AND relkind = 'r') THEN
             IF NOT EXISTS (
                 SELECT 1 FROM pg_publication_rel

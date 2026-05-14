@@ -412,18 +412,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <a href="index.php" class="btn-back-home"><i class="fas fa-arrow-left"></i> Back to Homepage</a>
                     </div>
                 </form>
-                <div class="test-accounts">
-                    <h4><i class="fas fa-info-circle"></i> Test Accounts</h4>
-                    <div><strong>Super Admin:</strong> super.admin@iecep-lsc.test / SuperAdmin123!</div>
-                    <div><strong>President:</strong> test.president@iecep-lsc.test / TestPresident123!</div>
-                    <div><strong>VP:</strong> test.vp@iecep-lsc.test / TestVp123!</div>
-                    <div><strong>Adviser:</strong> test.adviser@iecep-lsc.test / TestAdviser123!</div>
-                    <div><strong>Registration Committee:</strong> test.committee@iecep-lsc.test / TestCommittee123!</div>
-                    <div><strong>Treasurer:</strong> test.treasurer@iecep-lsc.test / TestTreasurer123!</div>
-                    <div><strong>Auditor:</strong> test.auditor@iecep-lsc.test / TestAuditor123!</div>
-                    <div><strong>Member 1:</strong> test.member1@iecep-lsc.test / TestMember123!</div>
-                    <div><strong>Member 2:</strong> test.member2@iecep-lsc.test / TestMember123!</div>
-                </div>
             </div>
         </div>
     </div>

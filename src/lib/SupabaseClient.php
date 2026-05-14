@@ -105,20 +105,44 @@ class SupabaseClient {
     }
     
     // UPDATE - Update record
-    public function update($table, $data, $id) {
-        // Always use filter approach (works for both integer and UUID IDs)
-        $endpoint = $this->url . '/rest/v1/' . $table . '?id=eq.' . $id;
+    public function update($table, $data, $id = null, $filterColumn = 'id') {
+        // Build filter query
+        $filterQuery = '';
+        
+        if (is_array($id)) {
+            // If $id is an array, it's a filter object
+            $filters = [];
+            foreach ($id as $key => $value) {
+                // Add 'eq.' prefix if not already present
+                if (!preg_match('/^(eq|neq|gt|gte|lt|lte|like|in|is)\./', $value)) {
+                    $filters[$key] = 'eq.' . $value;
+                } else {
+                    $filters[$key] = $value;
+                }
+            }
+            $filterQuery = http_build_query($filters);
+        } else if (!empty($id)) {
+            // Single ID filter
+            $filterQuery = http_build_query([$filterColumn => 'eq.' . $id]);
+        } else {
+            throw new \Exception("Update requires an ID or filter");
+        }
+        
+        $endpoint = $this->url . '/rest/v1/' . $table . '?' . $filterQuery;
         error_log("Supabase Update: URL = $endpoint, Data = " . json_encode($data));
+        
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $endpoint);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         error_log("Supabase Update: HTTP Code = $httpCode, Response = $response");
         curl_close($ch);
+        
         if ($httpCode >= 400) {
             throw new \Exception("Supabase API Error: HTTP $httpCode - $response");
         }
@@ -175,30 +199,36 @@ class SupabaseClient {
             'user_metadata' => $metadata
         ];
         
-        // Use service role key for admin user creation
-        $config = require __DIR__ . '/../../includes/supabase.php';
-        $serviceHeaders = [
-            'apikey: ' . $config['service_role_key'],
-            'Authorization: Bearer ' . $config['service_role_key'],
-            'Content-Type: application/json'
-        ];
+        error_log("Auth Sign Up: Endpoint = $endpoint, Email = $email");
+        error_log("Auth Sign Up: Data = " . json_encode($data));
+        error_log("Auth Sign Up: Headers = " . json_encode($this->headers));
         
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $endpoint);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $serviceHeaders);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
+        
+        error_log("Auth Sign Up: HTTP Code = $httpCode");
+        error_log("Auth Sign Up: Response = $response");
+        if (!empty($curlError)) {
+            error_log("Auth Sign Up: cURL Error = $curlError");
+        }
         
         if ($httpCode >= 400) {
             throw new \Exception("Supabase Auth Error: HTTP $httpCode - $response");
         }
         
-        return json_decode($response, true);
+        $result = json_decode($response, true);
+        error_log("Auth Sign Up: Decoded result = " . json_encode($result));
+        
+        return $result;
     }
     
     // Supabase Auth - Sign in user
@@ -229,8 +259,12 @@ class SupabaseClient {
     
     // Supabase Auth - Update user password (requires service role key)
     public function authUpdatePassword($userId, $newPassword) {
+        error_log("authUpdatePassword called - userId: $userId, passwordLength: " . strlen($newPassword));
+        
         $endpoint = $this->url . '/auth/v1/admin/users/' . $userId;
         $data = ['password' => $newPassword];
+        
+        error_log("Password update endpoint: $endpoint");
         
         // Use service role key for admin operations
         $config = require __DIR__ . '/../../includes/supabase.php';
@@ -249,13 +283,114 @@ class SupabaseClient {
         
         $response = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
+        
+        error_log("Password update response - HTTP $httpCode: $response");
+        if ($curlError) {
+            error_log("cURL error: $curlError");
+        }
         
         if ($httpCode >= 400) {
             throw new \Exception("Supabase Auth Error: HTTP $httpCode - $response");
         }
         
         return json_decode($response, true);
+    }
+
+    /**
+     * Get a user by email using Supabase Admin API
+     * This uses the auth/v1/admin/users endpoint to look up users by email
+     */
+    public function authGetUserByEmail($email) {
+        $config = require __DIR__ . '/../../includes/supabase.php';
+        $serviceHeaders = [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+            'Content-Type: application/json'
+        ];
+
+        $attempts = [
+            $this->url . '/auth/v1/admin/users?email=' . urlencode($email),
+            $this->url . '/auth/v1/admin/users?email=eq.' . urlencode($email)
+        ];
+
+        foreach ($attempts as $endpoint) {
+            error_log("Auth Get User by Email: Trying endpoint = $endpoint");
+
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $endpoint);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $serviceHeaders);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
+
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+
+            error_log("Auth Get User by Email: HTTP Code = $httpCode, Response = $response");
+            if (!empty($curlError)) {
+                error_log("Auth Get User by Email cURL error: $curlError");
+                continue;
+            }
+
+            if ($httpCode >= 400) {
+                error_log("Auth Get User by Email failed on endpoint $endpoint with HTTP $httpCode");
+                continue;
+            }
+
+            $result = json_decode($response, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                error_log("Auth Get User by Email JSON decode error: " . json_last_error_msg());
+                continue;
+            }
+
+            if (is_array($result) && !empty($result)) {
+                // Some Supabase versions may wrap user list inside a `data` key
+                if (isset($result['data']) && is_array($result['data']) && !empty($result['data'])) {
+                    return $result['data'][0];
+                }
+
+                return $result[0];
+            }
+
+            if (isset($result['id'])) {
+                return $result;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Get a user by ID using Supabase Admin API
+     */
+    public function authGetUserById($userId) {
+        $endpoint = $this->url . '/auth/v1/admin/users/' . urlencode($userId);
+        
+        error_log("Auth Get User by ID: URL = $endpoint");
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $endpoint);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        error_log("Auth Get User by ID: HTTP Code = $httpCode, Response = $response");
+        curl_close($ch);
+        
+        if ($httpCode >= 400) {
+            if ($httpCode === 404) {
+                return null; // User not found
+            }
+            throw new \Exception("Supabase Auth Error: HTTP $httpCode - $response");
+        }
+        
+        $result = json_decode($response, true);
+        return $result;
     }
 
     public function sendPushNotification(string $endpoint, array $payload, array $keys = []): bool {
@@ -275,7 +410,7 @@ class SupabaseClient {
             ];
             $this->insert('notification_delivery_log', $data);
             return true;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             error_log('sendPushNotification error: ' . $e->getMessage());
             return false;
         }

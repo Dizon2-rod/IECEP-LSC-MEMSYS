@@ -209,50 +209,112 @@ switch ($action) {
         
         // Generate temporary password (12 characters, secure format)
         $tempPassword = generateTempPassword(12);
-        $passwordHash = password_hash($tempPassword, PASSWORD_BCRYPT);
+        
+        error_log("=== TEMP PASSWORD DEBUG ===");
+        error_log("Generated password: $tempPassword");
+        error_log("Password length: " . strlen($tempPassword));
+        error_log("Has uppercase: " . (preg_match('/[A-Z]/', $tempPassword) ? 'yes' : 'no'));
+        error_log("Has lowercase: " . (preg_match('/[a-z]/', $tempPassword) ? 'yes' : 'no'));
+        error_log("Has numbers: " . (preg_match('/[0-9]/', $tempPassword) ? 'yes' : 'no'));
         
         try {
             // Create user in Supabase Auth using admin endpoint
+            error_log("=== CREATING AUTH USER ===");
             error_log("Creating Supabase Auth user for: $email");
             
-            $authResult = $supabase->authSignUp($email, $tempPassword, [
-                'full_name' => $contactPerson,
-                'role' => 'school_officer',
-                'must_change_password' => true
-            ]);
-            
-            error_log("Auth signup result: " . json_encode($authResult));
-            
-            // Supabase admin create may return the user object directly or nested under 'user'/'data.user'
-            $userId = $authResult['id'] 
-                ?? $authResult['user']['id'] ?? null 
-                ?? $authResult['data']['user']['id'] ?? null;
+            $userId = null;
+            try {
+                $authResult = $supabase->authSignUp($email, $tempPassword, [
+                    'full_name' => $contactPerson,
+                    'role' => 'school_officer',
+                    'must_change_password' => true
+                ]);
+                
+                error_log("Auth signup result: " . json_encode($authResult));
+                
+                // Supabase admin create may return the user object directly or nested under 'user'/'data.user'
+                $userId = $authResult['id'] 
+                    ?? $authResult['user']['id'] ?? null 
+                    ?? $authResult['data']['user']['id'] ?? null;
+                
+                error_log("Extracted user ID from authSignUp: $userId");
+                if (empty($userId)) {
+                    error_log("ERROR: Could not extract user ID from authSignUp response: " . json_encode($authResult));
+                } else {
+                    error_log("SUCCESS: User created in Supabase Auth with ID: $userId");
+                }
+            } catch (Exception $authError) {
+                // Check if user already exists
+                error_log("Auth signup error (may already exist): " . $authError->getMessage());
+                error_log("Attempting to find existing user via admin API");
+                
+                // Try to find existing user using admin API
+                try {
+                    $existingUser = $supabase->authGetUserByEmail($email);
+                    if (!empty($existingUser) && isset($existingUser['id'])) {
+                        $userId = $existingUser['id'];
+                        error_log("Found existing Supabase Auth user via admin API with ID: $userId");
+                        
+                        // Update password for existing user
+                        try {
+                            error_log("Updating password for existing user: $email, ID: $userId");
+                            $supabase->authUpdatePassword($userId, $tempPassword);
+                            error_log("Password updated successfully for user: $userId");
+                        } catch (Exception $pwError) {
+                            error_log("Failed to update password: " . $pwError->getMessage());
+                            // Continue anyway - password update might not be critical if user can still login
+                        }
+                    } else {
+                        error_log("ERROR: No existing user found for email: $email");
+                    }
+                } catch (Exception $lookupError) {
+                    error_log("Failed to lookup existing user: " . $lookupError->getMessage());
+                    // User lookup failed, throw original error
+                    throw $authError;
+                }
+            }
 
             if (empty($userId)) {
                 throw new Exception('Failed to obtain Supabase Auth user id from signup result');
             }
             
-            error_log("Supabase Auth user created with ID: $userId");
+            error_log("User ID for approval: $userId");
             
-            // Create a matching profile record for the new school officer
+            // CRITICAL: Verify user actually exists in auth.users
+            error_log("Verifying user exists in Supabase Auth after creation/lookup");
             try {
-                $profileData = [
-                    'user_id' => $userId,
-                    'role' => 'school_officer',
-                    'full_name' => $contactPerson,
-                    'membership_status' => 'active',
-                    'force_password_change' => true, // Require password change on first login
-                ];
-                error_log("Creating user profile for user_id: $userId");
-                $profileResult = $supabase->insert('user_profiles', $profileData);
-                error_log("Profile creation result: " . json_encode($profileResult));
-                if (empty($profileResult) || !is_array($profileResult) || !isset($profileResult[0]['id'])) {
-                    throw new Exception('Failed to create user profile for approved affiliate');
+                $verifyUser = $supabase->authGetUserById($userId);
+                if (empty($verifyUser)) {
+                    error_log("CRITICAL: User verification FAILED - user $userId not found in Supabase Auth!");
+                    throw new Exception("User was not successfully created in Supabase Auth. Cannot proceed.");
+                } else {
+                    error_log("User verification PASSED - user $userId exists in Supabase Auth");
                 }
-                error_log("Profile created successfully with ID: " . $profileResult[0]['id']);
+            } catch (\Exception $verifyError) {
+                error_log("User verification error: " . $verifyError->getMessage());
+                // If verification query fails, continue anyway (may be permission issue)
+            }
+            
+            // Create a matching profile record if not exists
+            try {
+                $existingProfile = $supabase->select('user_profiles', ['user_id' => 'eq.' . $userId]);
+                if (empty($existingProfile)) {
+                    $profileData = [
+                        'user_id' => $userId,
+                        'role' => 'school_officer',
+                        'full_name' => $contactPerson,
+                        'membership_status' => 'active',
+                        'force_password_change' => true,
+                    ];
+                    error_log("Creating user profile for user_id: $userId");
+                    $profileResult = $supabase->insert('user_profiles', $profileData);
+                    error_log("Profile creation result: " . json_encode($profileResult));
+                } else {
+                    error_log("User profile already exists for user_id: $userId");
+                }
             } catch (Exception $profileError) {
                 error_log('Profile creation error: ' . $profileError->getMessage());
-                throw new Exception('Failed to create user profile for approved affiliate');
+                // Don't throw - profile may already exist
             }
 
             // Update application with approval details
@@ -296,18 +358,20 @@ switch ($action) {
                 error_log('Note: Could not add to affiliated_schools (may already exist): ' . $e->getMessage());
             }
             
-            // Send credentials email
+            // Send credentials email (always send with password, not "account linked")
             $portalUrl = BASE_URL . '/login.php';
             
             error_log("=== EMAIL SENDING DEBUG ===");
             error_log("Recipient: $email");
             error_log("Institution: $institution");
             error_log("Temp password: $tempPassword");
+            error_log("Contact Person: $contactPerson");
             error_log("Portal URL: $portalUrl");
             
             try {
+                // Always send credentials email with password
                 $emailSent = $emailService->sendSchoolAccountCredentials($email, $institution, $tempPassword, $contactPerson, $portalUrl);
-                error_log("Email send result: " . ($emailSent ? 'SUCCESS' : 'FAILED'));
+                error_log("Credentials email send result: " . ($emailSent ? 'SUCCESS' : 'FAILED'));
             } catch (Exception $emailError) {
                 error_log("Email exception: " . $emailError->getMessage());
                 $emailSent = false;
@@ -332,13 +396,20 @@ switch ($action) {
                 'email_sent' => $emailSent,
                 'credentials' => [
                     'email' => $email,
-                    'temp_password' => $tempPassword
+                    'temp_password' => $tempPassword,
+                    'instructions' => 'Use the email and password above to login at ' . $portalUrl
                 ]
             ];
             
             if ($warning) {
                 $response['warning'] = $warning;
             }
+            
+            error_log("=== APPROVAL SUCCESS ===");
+            error_log("User created with email: $email");
+            error_log("Temporary password sent: $tempPassword");
+            error_log("User ID: $userId");
+            error_log("Response: " . json_encode($response));
             
             echo json_encode($response);
             

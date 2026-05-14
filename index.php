@@ -9,6 +9,7 @@ header('Expires: 0');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 header('X-XSS-Protection: 1; mode=block');
+header("Content-Security-Policy: script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdn.skypack.dev; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fcm.googleapis.com https://updates.push.services.mozilla.com https://cdn.jsdelivr.net https://*.googleapis.com https://*.supabase.co wss://*.supabase.co;");
 
 // Handle preflight OPTIONS requests
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

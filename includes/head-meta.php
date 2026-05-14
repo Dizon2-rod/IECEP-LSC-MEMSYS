@@ -5,7 +5,6 @@ define('HEAD_META_INCLUDED', true);
 ?>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdn.skypack.dev; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fcm.googleapis.com https://updates.push.services.mozilla.com https://cdn.jsdelivr.net https://*.googleapis.com https://*.supabase.co wss://*.supabase.co;">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="manifest" href="/IECEP-LSC-MEMSYS/public/manifest.json">
 <link rel="apple-touch-icon" sizes="192x192" href="/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png">

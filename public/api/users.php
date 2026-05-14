@@ -120,7 +120,7 @@ try {
                 'email' => trim($data['email']),
                 'role' => $data['role'],
                 'institution' => trim($data['institution'] ?? ''),
-                'address' => trim($data['address'] ?? ''),
+                // 'address' => trim($data['address'] ?? ''), // Removed until schema is updated
                 'phone' => trim($data['phone'] ?? ''),
                 'verification_status' => $data['verification_status'] ?? 'pending',
                 'created_at' => date('c'),
@@ -171,7 +171,7 @@ try {
                 'email' => trim($data['email']) ?? null,
                 'role' => $data['role'] ?? null,
                 'institution' => trim($data['institution']) ?? null,
-                'address' => trim($data['address']) ?? null,
+                // 'address' => trim($data['address']) ?? null, // Removed until schema is updated
                 'phone' => trim($data['phone']) ?? null,
                 'verification_status' => $data['verification_status'] ?? null,
                 'updated_at' => date('c')
@@ -326,7 +326,7 @@ try {
                 ->execute();
 
             // Generate CSV
-            $csvData = "ID,Name,Email,Role,Institution,Phone,Address,Verification Status,Created At,Updated At\n";
+            $csvData = "ID,Name,Email,Role,Institution,Phone,Verification Status,Created At,Updated At\n";
 
             foreach ($users as $user) {
                 $csvData .= '"' . ($user['id'] ?? '') . '",';
@@ -335,7 +335,7 @@ try {
                 $csvData .= '"' . str_replace('"', '""', $user['role'] ?? '') . '",';
                 $csvData .= '"' . str_replace('"', '""', $user['institution'] ?? '') . '",';
                 $csvData .= '"' . str_replace('"', '""', $user['phone'] ?? '') . '",';
-                $csvData .= '"' . str_replace('"', '""', $user['address'] ?? '') . '",';
+                // $csvData .= '"' . str_replace('"', '""', $user['address'] ?? '') . '",'; // Removed until schema is updated
                 $csvData .= '"' . str_replace('"', '""', $user['verification_status'] ?? '') . '",';
                 $csvData .= '"' . ($user['created_at'] ?? '') . '",';
                 $csvData .= '"' . ($user['updated_at'] ?? '') . '"';

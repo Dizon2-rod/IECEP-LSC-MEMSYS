@@ -89,7 +89,7 @@ try {
             'full_name'   => $affiliation['contact_person'] ?? $institutionName,
             'school_name' => $institutionName,
             'contact_phone' => $affiliation['contact_phone'] ?? null,
-            'address'     => $affiliation['address'] ?? null,
+            // 'address'     => $affiliation['address'] ?? null, // Removed until schema is updated
             'created_at'  => date('Y-m-d H:i:s'),
             'updated_at'  => date('Y-m-d H:i:s')
         ];
