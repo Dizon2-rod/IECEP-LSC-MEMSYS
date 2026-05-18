@@ -1,17 +1,21 @@
 <?php
 header('Content-Type: application/json');
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 header('Cache-Control: no-cache, no-store, must-revalidate');
 header('Pragma: no-cache');
 header('Expires: 0');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['success' => false, 'error' => 'Method not allowed']);
     exit;
 }
 
 require_once __DIR__ . '/../portal/auth_check.php';
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/paths.php';
+require_once __DIR__ . '/../../includes/csrf.php';
 require_once __DIR__ . '/../../src/lib/supabase.php';
 require_once __DIR__ . '/../../src/lib/BlockchainService.php';
 require_once __DIR__ . '/../../includes/lib/EmailService.php';
@@ -27,7 +31,16 @@ if (!require_role($allowedRoles, false)) {
     exit;
 }
 
-$input = json_decode(file_get_contents('php://input'), true);
+require_csrf();
+
+$rawBody = file_get_contents('php://input');
+$input = json_decode($rawBody, true);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    http_response_code(400);
+    echo json_encode(['success' => false, 'error' => 'Invalid JSON payload']);
+    exit;
+}
+
 $batchId = trim($input['batch_id'] ?? '');
 
 if (empty($batchId)) {
@@ -309,6 +322,17 @@ try {
 
                 $memberId = $insertResult['data'][0]['id'];
                 generateMemberDigitalId($sb, $memberId);
+                
+                // Record blockchain entry for member creation
+                if (isset($GLOBALS['blockchain']) && $GLOBALS['blockchain'] instanceof BlockchainService) {
+                    $memberHash = hash('sha256', json_encode([
+                        'id' => $memberId,
+                        'full_name' => $fullName,
+                        'email' => $email,
+                        'membership_id' => $membershipId
+                    ]));
+                    $GLOBALS['blockchain']->recordEvent('member_created', $memberId, $memberHash);
+                }
 
                 $emailSvc->sendCredentials($email, $email, $password);
                 $summary['new_accounts_created'] += 1;

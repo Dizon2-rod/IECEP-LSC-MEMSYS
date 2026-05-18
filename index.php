@@ -411,7 +411,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
             
             /* Override for affiliate modal to maintain centering */
             #affiliateModal .modal-content {
-                margin: 0 !important;
+                margin: auto !important;
                 max-width: 95% !important;
             }
             
@@ -468,7 +468,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
             
             /* Override for affiliate modal to maintain centering */
             #affiliateModal .modal-content {
-                margin: 0 !important;
+                margin: auto !important;
                 max-width: 90% !important;
             }
             
@@ -776,22 +776,26 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 <style>
 /* Enhanced Modal Design */
 #affiliateModal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
     background: rgba(11, 29, 74, 0.8);
     backdrop-filter: blur(8px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: flex !important;
+    align-items: flex-start;
+    justify-content: center !important;
     padding: 1.5rem;
     z-index: 1000;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
 }
 
 #affiliateModal.active {
@@ -802,15 +806,15 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 #affiliateModal .modal-content {
     background: white;
     border-radius: 16px;
-    width: min(640px, 100%);
-    max-height: calc(100vh - 3rem);
-    overflow-y: auto;
+    width: min(640px, 100%) !important;
+    margin: auto !important;
+    overflow-y: visible;
     position: relative;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     transform: scale(0.9);
     transition: transform 0.3s ease;
-    /* Remove margin: auto to prevent conflict with flex centering */
-    margin: 0;
+    flex-shrink: 0;
+    align-self: center;
 }
 
 #affiliateModal.active .modal-content {
@@ -1219,8 +1223,8 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 @media (max-width: 768px) {
     #affiliateModal .modal-content {
         width: 95%;
-        max-height: 95vh;
-        margin: 0; /* Override general modal-content margin */
+        max-height: none;
+        margin: auto;
     }
     
     .modal-title {
@@ -1275,7 +1279,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 @media (max-width: 480px) {
     #affiliateModal .modal-content {
         width: 98%;
-        margin: 0; /* Override general modal-content margin */
+        margin: auto;
     }
     
     .modal-section {
@@ -1500,6 +1504,11 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                     <div class="step-indicator-number">2</div>
                     <span>Application Form</span>
                 </div>
+                <div class="step-indicator-line"></div>
+                <div class="step-indicator-item" id="modal-step3">
+                    <div class="step-indicator-number">3</div>
+                    <span>Payment Summary</span>
+                </div>
             </div>
             
             <!-- Step 1: Email Verification -->
@@ -1679,34 +1688,145 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
                                     </label>
                                 </div>
                             </div>
-                            <div class="form-group">
-                                <div class="file-upload-wrapper">
-                                    <input type="file" name="member_directory" accept=".pdf,.xls,.xlsx,.csv" required id="member_directory_file">
+                            <div class="form-group form-grid-full">
+                                <label style="font-weight:600;color:#374151;font-size:0.95rem;margin-bottom:0.5rem;display:block;">
+                                    Member Directory <span style="color:#dc2626;">*</span>
+                                    <span style="font-weight:400;color:#64748b;font-size:0.85rem;margin-left:0.5rem;">(CSV or Excel only — must have a "Status" column)</span>
+                                </label>
+                                <div class="file-upload-wrapper" id="member_directory_wrapper">
+                                    <input type="file" name="member_directory" accept=".xls,.xlsx,.csv" required id="member_directory_file">
                                     <label for="member_directory_file" class="file-upload-label">
-                                        <i class="fas fa-file-excel" style="margin-right: 0.5rem;"></i>
-                                        <span class="label-text">Member Directory <span style="color: #dc2626;">*</span></span>
-                                        <span class="file-selected" style="display: none;">
-                                            <i class="fas fa-check-circle" style="color: #10b981; margin-right: 0.5rem;"></i>
+                                        <i class="fas fa-file-excel" style="margin-right:0.5rem;"></i>
+                                        <span class="label-text">Member Directory <span style="color:#dc2626;">*</span></span>
+                                        <span class="file-selected" style="display:none;">
+                                            <i class="fas fa-check-circle" style="color:#10b981;margin-right:0.5rem;"></i>
                                             <span class="file-name"></span>
                                         </span>
                                     </label>
+                                </div>
+                                <!-- Member parse result panel -->
+                                <div id="member-parse-result" style="display:none;margin-top:1rem;padding:1.25rem;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;">
+                                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+                                        <i class="fas fa-users" style="color:#059669;"></i>
+                                        <strong style="color:#065f46;font-size:0.95rem;">Member Directory Detected</strong>
+                                    </div>
+                                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.75rem;">
+                                        <div style="background:white;border-radius:8px;padding:0.75rem;border:1px solid #d1fae5;text-align:center;">
+                                            <div id="parse-total" style="font-size:1.75rem;font-weight:700;color:#0B1D4A;">0</div>
+                                            <div style="font-size:0.8rem;color:#64748b;margin-top:0.25rem;">Total Members</div>
+                                        </div>
+                                        <div style="background:white;border-radius:8px;padding:0.75rem;border:1px solid #d1fae5;text-align:center;">
+                                            <div id="parse-new" style="font-size:1.75rem;font-weight:700;color:#2563eb;">0</div>
+                                            <div style="font-size:0.8rem;color:#64748b;margin-top:0.25rem;">New Members</div>
+                                        </div>
+                                        <div style="background:white;border-radius:8px;padding:0.75rem;border:1px solid #d1fae5;text-align:center;">
+                                            <div id="parse-old" style="font-size:1.75rem;font-weight:700;color:#d97706;">0</div>
+                                            <div style="font-size:0.8rem;color:#64748b;margin-top:0.25rem;">Old / Renewing</div>
+                                        </div>
+                                    </div>
+                                    <div id="parse-warning" style="display:none;margin-top:0.75rem;padding:0.6rem 0.9rem;background:#fef9c3;border:1px solid #fde68a;border-radius:6px;color:#92400e;font-size:0.85rem;">
+                                        <i class="fas fa-triangle-exclamation" style="margin-right:0.4rem;"></i>
+                                        <span id="parse-warning-text"></span>
+                                    </div>
+                                </div>
+                                <div id="member-parse-error" style="display:none;margin-top:0.75rem;padding:0.6rem 0.9rem;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#991b1b;font-size:0.85rem;">
+                                    <i class="fas fa-circle-exclamation" style="margin-right:0.4rem;"></i>
+                                    <span id="parse-error-text"></span>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <div class="modal-actions" style="margin-top: 2rem;">
-                    <div class="form-group" style="text-align: center;">
-                        <label style="display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-bottom: 1.5rem; cursor: pointer;">
-                            <input type="checkbox" id="modal-terms-checkbox" name="terms" value="accepted" required style="width: 20px; height: 20px;">
-                            <span style="font-size: 0.95rem; color: #374151;">I agree to the terms and conditions and certify that all information provided is accurate</span>
-                        </label>
-                    </div>
-                    <button type="submit" id="modal-submit-application-btn" class="btn btn-primary">
-                        <i class="fas fa-paper-plane" style="margin-right: 0.5rem;"></i>
-                        Submit Application
+                <div class="modal-actions" style="margin-top:2rem;">
+                    <button type="button" id="modal-proceed-payment-btn" class="btn btn-primary" disabled>
+                        <i class="fas fa-arrow-right" style="margin-right:0.5rem;"></i>
+                        Proceed to Payment Summary
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Payment Summary -->
+        <div id="modal-payment-step" style="display:none;">
+            <div class="modal-section">
+                <h4><i class="fas fa-file-invoice-dollar" style="color:#C49A00;margin-right:0.5rem;"></i>Payment Summary</h4>
+                <p style="color:#64748b;margin-bottom:1.5rem;font-size:0.95rem;">
+                    Based on your submitted Member Directory, here is the breakdown of your affiliation fee.
+                </p>
+
+                <!-- Member breakdown recap -->
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:0.75rem;margin-bottom:1.5rem;">
+                    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:0.75rem;text-align:center;">
+                        <div id="pay-total" style="font-size:1.75rem;font-weight:700;color:#0B1D4A;">0</div>
+                        <div style="font-size:0.8rem;color:#64748b;margin-top:0.25rem;">Total Members</div>
+                    </div>
+                    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:0.75rem;text-align:center;">
+                        <div id="pay-new" style="font-size:1.75rem;font-weight:700;color:#2563eb;">0</div>
+                        <div style="font-size:0.8rem;color:#64748b;margin-top:0.25rem;">New Members</div>
+                    </div>
+                    <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:0.75rem;text-align:center;">
+                        <div id="pay-old" style="font-size:1.75rem;font-weight:700;color:#d97706;">0</div>
+                        <div style="font-size:0.8rem;color:#64748b;margin-top:0.25rem;">Old / Renewing</div>
+                    </div>
+                </div>
+
+                <!-- Fee computation table -->
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;margin-bottom:1.5rem;">
+                    <div style="padding:0.75rem 1rem;background:#0B1D4A;color:white;font-weight:600;font-size:0.9rem;">Fee Breakdown</div>
+                    <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
+                        <tbody>
+                            <tr style="border-bottom:1px solid #e2e8f0;">
+                                <td style="padding:0.75rem 1rem;color:#374151;">National Affiliation Fee</td>
+                                <td style="padding:0.75rem 1rem;color:#64748b;font-size:0.82rem;" id="pay-bracket-label">1–50 members</td>
+                                <td style="padding:0.75rem 1rem;text-align:right;font-weight:600;color:#0B1D4A;" id="pay-affiliation-fee">₱0</td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #e2e8f0;">
+                                <td style="padding:0.75rem 1rem;color:#374151;">Operational &amp; Activity Fee</td>
+                                <td style="padding:0.75rem 1rem;color:#64748b;font-size:0.82rem;">Local chapter programs</td>
+                                <td style="padding:0.75rem 1rem;text-align:right;font-weight:600;color:#0B1D4A;">₱800</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr style="background:#f0f9ff;">
+                                <td style="padding:1rem;font-weight:700;color:#0B1D4A;font-size:1rem;" colspan="2">Total Amount Due</td>
+                                <td style="padding:1rem;text-align:right;font-weight:700;color:#C49A00;font-size:1.2rem;" id="pay-total-fee">₱0</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:1rem;margin-bottom:1.5rem;font-size:0.88rem;color:#1e40af;">
+                    <i class="fas fa-info-circle" style="margin-right:0.5rem;"></i>
+                    Payment instructions will be sent to your verified email after the Registration Committee approves your application.
+                </div>
+
+                <!-- Hidden fields for fee data passed to form submission -->
+                <input type="hidden" id="hidden-total-members" name="total_members">
+                <input type="hidden" id="hidden-new-members" name="new_members">
+                <input type="hidden" id="hidden-old-members" name="old_members">
+                <input type="hidden" id="hidden-affiliation-fee" name="affiliation_fee">
+                <input type="hidden" id="hidden-total-fee" name="total_fee">
+            </div>
+
+            <div class="modal-actions" style="margin-top:2rem;">
+                <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+                    <button type="button" id="modal-back-to-form-btn" class="btn" style="background:#f1f5f9;color:#0B1D4A;border:1px solid #e2e8f0;">
+                        <i class="fas fa-arrow-left" style="margin-right:0.5rem;"></i>
+                        Back to Form
+                    </button>
+                    <div>
+                        <div class="form-group" style="text-align:center;margin-bottom:0.75rem;">
+                            <label style="display:flex;align-items:center;justify-content:center;gap:0.75rem;cursor:pointer;">
+                                <input type="checkbox" id="modal-terms-checkbox" name="terms" value="accepted" required style="width:20px;height:20px;">
+                                <span style="font-size:0.92rem;color:#374151;">I agree to the terms and conditions and certify that all information provided is accurate</span>
+                            </label>
+                        </div>
+                        <button type="submit" id="modal-submit-application-btn" class="btn btn-primary" disabled>
+                            <i class="fas fa-paper-plane" style="margin-right:0.5rem;"></i>
+                            Submit Application
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1742,6 +1862,7 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Mobile Menu Toggle
@@ -1793,17 +1914,31 @@ document.addEventListener('DOMContentLoaded', function() {
     const btns = document.querySelectorAll('#affiliateNowBtn, #ctaAffiliateBtn');
     const closeBtn = document.getElementById('closeModalBtn');
 
+    // Create a dedicated fullscreen overlay at body level — completely outside any navbar/container
+    const overlay = document.createElement('div');
+    overlay.id = 'affiliateOverlay';
+    overlay.style.cssText = 'display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(11,29,74,0.15);backdrop-filter:blur(1px);z-index:99999;overflow-y:auto;';
+    
+    const overlayInner = document.createElement('div');
+    overlayInner.style.cssText = 'min-height:100%;display:flex;align-items:center;justify-content:center;padding:1.5rem;box-sizing:border-box;';
+    overlay.appendChild(overlayInner);
+    document.body.appendChild(overlay);
+
+    // Move the modal-content into the overlay inner wrapper
+    const modalContent = modal.querySelector('.modal-content');
+
     function openModal() {
-        if (modal) {
-            modal.classList.add('active');
-            resetModal();
-        }
+        overlayInner.appendChild(modalContent);
+        modalContent.removeAttribute('style');
+        modalContent.style.cssText = 'width:100%;max-width:640px;background:white;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);position:relative;flex-shrink:0;';
+        overlay.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        resetModal();
     }
 
     function closeModal() {
-        if (modal) {
-            modal.classList.remove('active');
-        }
+        overlay.style.display = 'none';
+        document.body.style.overflow = '';
     }
 
     function resetModal() {
@@ -1847,22 +1982,21 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btn) btn.addEventListener('click', openModal);
     });
 
-    if (closeBtn && modal) {
-        closeBtn.addEventListener('click', () => modal.classList.remove('active'));
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeModal);
     }
 
-    if (modal) {
-        modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('active'); });
-    }
+    // Click outside modal-content to close
+    overlay.addEventListener('click', function(e) {
+        if (e.target === overlay || e.target === overlayInner) closeModal();
+    });
 
-    // Escape key to close modal
-    if (modal) {
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && modal.classList.contains('active')) {
-                modal.classList.remove('active');
-            }
-        });
-    }
+    // Escape key to close
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && overlay.style.display !== 'none') {
+            closeModal();
+        }
+    });
     
     // Email Verification
     document.getElementById('modal-send-code-btn').addEventListener('click', async function() {
@@ -1993,83 +2127,298 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
         
+    // ── Member directory parsed data (shared between steps) ──────────────────
+    let memberData = { total: 0, newCount: 0, oldCount: 0 };
+
+    // ── Fee computation ───────────────────────────────────────────────────────
+    function computeFees(total) {
+        let affiliation = 1500;
+        let bracket = '1–50 members';
+        if (total > 150) { affiliation = 3000; bracket = '151+ members'; }
+        else if (total > 100) { affiliation = 2500; bracket = '101–150 members'; }
+        else if (total > 50)  { affiliation = 2000; bracket = '51–100 members'; }
+        return { affiliation, operational: 800, total: affiliation + 800, bracket };
+    }
+
+    // ── Move to Step 2 ────────────────────────────────────────────────────────
     function moveToModalStep2() {
-        // Update step indicators
         document.getElementById('modal-step1').classList.remove('active');
         document.getElementById('modal-step1').classList.add('completed');
         document.getElementById('modal-step2').classList.add('active');
-        
-        // Hide email verification step and show application form step
+
         const emailStep = document.getElementById('modal-email-verification-step');
-        const formStep = document.getElementById('modal-application-form-step');
-        
+        const formStep  = document.getElementById('modal-application-form-step');
         emailStep.style.display = 'none';
         emailStep.classList.remove('active');
-        
         formStep.style.display = 'block';
         formStep.classList.add('active');
-        
-        // Set verified email and show document upload
+
         document.getElementById('modal-contact-email').value = verifiedEmail;
         document.getElementById('modal-document-upload-section').style.display = 'block';
-        
-        // Scroll to top of modal
-        document.querySelector('#affiliateModal .modal-content').scrollTop = 0;
+        overlay.scrollTop = 0;
     }
-    
+
+    // ── Move to Step 3 (Payment Summary) ─────────────────────────────────────
+    function moveToModalStep3() {
+        document.getElementById('modal-step2').classList.remove('active');
+        document.getElementById('modal-step2').classList.add('completed');
+        document.getElementById('modal-step3').classList.add('active');
+
+        document.getElementById('modal-application-form-step').style.display = 'none';
+        document.getElementById('modal-payment-step').style.display = 'block';
+
+        // Populate payment summary
+        const fees = computeFees(memberData.total);
+        document.getElementById('pay-total').textContent = memberData.total;
+        document.getElementById('pay-new').textContent   = memberData.newCount;
+        document.getElementById('pay-old').textContent   = memberData.oldCount;
+        document.getElementById('pay-bracket-label').textContent = fees.bracket;
+        document.getElementById('pay-affiliation-fee').textContent = '₱' + fees.affiliation.toLocaleString();
+        document.getElementById('pay-total-fee').textContent = '₱' + fees.total.toLocaleString();
+
+        // Populate hidden fields for submission
+        document.getElementById('hidden-total-members').value  = memberData.total;
+        document.getElementById('hidden-new-members').value    = memberData.newCount;
+        document.getElementById('hidden-old-members').value    = memberData.oldCount;
+        document.getElementById('hidden-affiliation-fee').value = fees.affiliation;
+        document.getElementById('hidden-total-fee').value      = fees.total;
+
+        overlay.scrollTop = 0;
+    }
+
+    // ── Back to Step 2 ────────────────────────────────────────────────────────
+    document.getElementById('modal-back-to-form-btn').addEventListener('click', function() {
+        document.getElementById('modal-step3').classList.remove('active');
+        document.getElementById('modal-step2').classList.remove('completed');
+        document.getElementById('modal-step2').classList.add('active');
+        document.getElementById('modal-payment-step').style.display = 'none';
+        document.getElementById('modal-application-form-step').style.display = 'block';
+        overlay.scrollTop = 0;
+    });
+
+    // ── Proceed to Payment button ─────────────────────────────────────────────
+    document.getElementById('modal-proceed-payment-btn').addEventListener('click', function() {
+        moveToModalStep3();
+    });
+
+    // ── Terms checkbox enables submit ─────────────────────────────────────────
     document.getElementById('modal-terms-checkbox').addEventListener('change', function() {
         document.getElementById('modal-submit-application-btn').disabled = !this.checked;
     });
-    
-    // File upload feedback
-    const fileInputs = document.querySelectorAll('#modal-document-upload-section input[type="file"]');
-    fileInputs.forEach(input => {
+
+    // ── Member Directory: parse CSV / Excel on file select ────────────────────
+    document.getElementById('member_directory_file').addEventListener('change', function() {
+        const file = this.files[0];
+        const wrapper  = document.getElementById('member_directory_wrapper');
+        const resultEl = document.getElementById('member-parse-result');
+        const errorEl  = document.getElementById('member-parse-error');
+        const proceedBtn = document.getElementById('modal-proceed-payment-btn');
+
+        // Reset
+        resultEl.style.display = 'none';
+        errorEl.style.display  = 'none';
+        document.getElementById('parse-warning').style.display = 'none';
+        proceedBtn.disabled = true;
+
+        // File upload label feedback
+        const label       = wrapper.querySelector('.file-upload-label');
+        const labelText   = label.querySelector('.label-text');
+        const fileSelected= label.querySelector('.file-selected');
+        const fileNameEl  = label.querySelector('.file-name');
+
+        if (!file) {
+            labelText.style.display = 'block';
+            fileSelected.style.display = 'none';
+            return;
+        }
+
+        // ── JS type validation ────────────────────────────────────────────────
+        const ext = file.name.split('.').pop().toLowerCase();
+        const allowedDirTypes = ['csv', 'xls', 'xlsx'];
+        if (!allowedDirTypes.includes(ext)) {
+            this.value = '';
+            labelText.style.display = 'block';
+            fileSelected.style.display = 'none';
+            wrapper.style.borderColor = '#f87171';
+            wrapper.style.backgroundColor = '#fef2f2';
+            document.getElementById('parse-error-text').textContent =
+                'Invalid file type ".' + ext + '". Only CSV or Excel files (.csv, .xls, .xlsx) are allowed for the Member Directory.';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        labelText.style.display = 'none';
+        fileSelected.style.display = 'flex';
+        fileNameEl.textContent = file.name;
+        wrapper.style.borderColor = '#10b981';
+        wrapper.style.backgroundColor = '#f0fdf4';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                let rows = [];
+                const ext = file.name.split('.').pop().toLowerCase();
+
+                if (ext === 'csv') {
+                    // Parse CSV manually
+                    const text = e.target.result;
+                    const lines = text.split(/\r?\n/).filter(l => l.trim());
+                    rows = lines.map(line => {
+                        // Handle quoted CSV values
+                        const cells = [];
+                        let cur = '', inQ = false;
+                        for (let ch of line) {
+                            if (ch === '"') { inQ = !inQ; }
+                            else if (ch === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
+                            else { cur += ch; }
+                        }
+                        cells.push(cur.trim());
+                        return cells;
+                    });
+                } else {
+                    // Parse Excel via SheetJS
+                    const data = new Uint8Array(e.target.result);
+                    const wb   = XLSX.read(data, { type: 'array' });
+                    const ws   = wb.Sheets[wb.SheetNames[0]];
+                    rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+                }
+
+                if (rows.length < 2) {
+                    throw new Error('File appears to be empty or has only a header row.');
+                }
+
+                // Find "Status" column (case-insensitive)
+                const header = rows[0].map(h => String(h).trim().toLowerCase());
+                const statusIdx = header.findIndex(h => h === 'status');
+
+                if (statusIdx === -1) {
+                    throw new Error('No "Status" column found. Please ensure the column header is exactly "Status".');
+                }
+
+                let newCount = 0, oldCount = 0, unknownCount = 0;
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    // Skip completely empty rows
+                    if (row.every(c => String(c).trim() === '')) continue;
+                    const status = String(row[statusIdx] || '').trim().toLowerCase();
+                    if (status === 'new') { newCount++; }
+                    else if (status === 'old' || status === 'renewing' || status === 'renewal') { oldCount++; }
+                    else { unknownCount++; }
+                }
+
+                const total = newCount + oldCount + unknownCount;
+                memberData = { total, newCount, oldCount };
+
+                // Show results
+                document.getElementById('parse-total').textContent = total;
+                document.getElementById('parse-new').textContent   = newCount;
+                document.getElementById('parse-old').textContent   = oldCount;
+                resultEl.style.display = 'block';
+
+                if (unknownCount > 0) {
+                    document.getElementById('parse-warning-text').textContent =
+                        unknownCount + ' row(s) have an unrecognized Status value (not "New", "Old", or "Renewing") and were still counted in the total.';
+                    document.getElementById('parse-warning').style.display = 'block';
+                }
+
+                if (total === 0) {
+                    throw new Error('No valid member rows found after parsing. Please check the file content.');
+                }
+
+                proceedBtn.disabled = false;
+
+            } catch (err) {
+                document.getElementById('parse-error-text').textContent = err.message;
+                errorEl.style.display = 'block';
+                wrapper.style.borderColor = '#f87171';
+                wrapper.style.backgroundColor = '#fef2f2';
+            }
+        };
+
+        if (file.name.endsWith('.csv')) {
+            reader.readAsText(file);
+        } else {
+            reader.readAsArrayBuffer(file);
+        }
+    });
+
+    // ── Generic file upload feedback + JS type validation for PDF inputs ─────
+    const allowedPdf = ['pdf'];
+    const pdfInputs = document.querySelectorAll('#modal-document-upload-section input[type="file"]:not(#member_directory_file)');
+
+    function showFileError(wrapper, label, labelText, fileSelected, message) {
+        labelText.style.display = 'block';
+        fileSelected.style.display = 'none';
+        wrapper.style.borderColor = '#f87171';
+        wrapper.style.backgroundColor = '#fef2f2';
+
+        // Remove any existing error
+        let errEl = wrapper.parentElement.querySelector('.file-type-error');
+        if (!errEl) {
+            errEl = document.createElement('div');
+            errEl.className = 'file-type-error';
+            errEl.style.cssText = 'margin-top:0.4rem;padding:0.4rem 0.75rem;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#991b1b;font-size:0.82rem;';
+            wrapper.parentElement.appendChild(errEl);
+        }
+        errEl.innerHTML = '<i class="fas fa-circle-exclamation" style="margin-right:0.4rem;"></i>' + message;
+        errEl.style.display = 'block';
+    }
+
+    function clearFileError(wrapper) {
+        wrapper.style.borderColor = '';
+        wrapper.style.backgroundColor = '';
+        const errEl = wrapper.parentElement.querySelector('.file-type-error');
+        if (errEl) errEl.style.display = 'none';
+    }
+
+    pdfInputs.forEach(input => {
         input.addEventListener('change', function() {
-            const wrapper = this.closest('.file-upload-wrapper');
-            const label = wrapper.querySelector('.file-upload-label');
-            const labelText = label.querySelector('.label-text');
+            const wrapper      = this.closest('.file-upload-wrapper');
+            const label        = wrapper.querySelector('.file-upload-label');
+            const labelText    = label.querySelector('.label-text');
             const fileSelected = label.querySelector('.file-selected');
-            const fileName = label.querySelector('.file-name');
-            
-            if (this.files[0]) {
-                // Show selected file
-                labelText.style.display = 'none';
-                fileSelected.style.display = 'flex';
-                fileName.textContent = this.files[0].name;
-                wrapper.style.borderColor = '#10b981';
-                wrapper.style.backgroundColor = '#f0fdf4';
-            } else {
-                // Reset to original state
+            const fileName     = label.querySelector('.file-name');
+
+            if (!this.files[0]) {
                 labelText.style.display = 'block';
                 fileSelected.style.display = 'none';
-                fileName.textContent = '';
-                wrapper.style.borderColor = '';
-                wrapper.style.backgroundColor = '';
+                clearFileError(wrapper);
+                return;
             }
+
+            const file = this.files[0];
+            const ext  = file.name.split('.').pop().toLowerCase();
+
+            if (!allowedPdf.includes(ext)) {
+                // Invalid — clear the input
+                this.value = '';
+                showFileError(wrapper, label, labelText, fileSelected,
+                    'Invalid file type ".' + ext + '". Only PDF files are allowed here.');
+                return;
+            }
+
+            // Valid
+            clearFileError(wrapper);
+            labelText.style.display = 'none';
+            fileSelected.style.display = 'flex';
+            fileName.textContent = file.name;
+            wrapper.style.borderColor = '#10b981';
+            wrapper.style.backgroundColor = '#f0fdf4';
         });
     });
-    
-    // Handle form submission - force correct action to bypass browser extension
+
+    // ── Form submission ────────────────────────────────────────────────────────
     const affiliationForm = document.getElementById('affiliationForm');
     if (affiliationForm) {
         affiliationForm.addEventListener('submit', function(e) {
-            // Force the correct action URL (browser extension may have changed it)
             affiliationForm.action = '/IECEP-LSC-MEMSYS/public/api/submit-affiliation.php';
             affiliationForm.method = 'POST';
-            
-            // Set the verified email before submission
             document.getElementById('form-contact-email').value = verifiedEmail;
-            
-            // Log for debugging
             console.log('Form submitting to:', affiliationForm.action);
-            
-            // Allow natural form submission
         });
     }
-    
-    // Legacy click handler - just sets the email
+
     document.getElementById('modal-submit-application-btn').addEventListener('click', function() {
-        // Set the verified email in the hidden field before form submission
         document.getElementById('form-contact-email').value = verifiedEmail;
     });
     
@@ -2155,7 +2504,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function showSuccessScreen(message) {
-        const modalContent = document.querySelector('#affiliateModal .modal-content');
+        const modalContent = overlayInner.querySelector('.modal-content') || modalContent;
         if (!modalContent) return;
         
         // Replace modal content with success screen

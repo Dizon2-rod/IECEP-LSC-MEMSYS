@@ -29,9 +29,8 @@ ob_start();
 
 // Set default JSON headers
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -66,10 +65,9 @@ function sendJsonResponse($success, $message = '', $error = '', $data = []) {
  * Output a beautiful HTML success page for browser visits
  */
 function outputSuccessPage($message, $isResubmission = false) {
-    // Use BASE_URL (project root) for the home link – avoids 404 on public/index.php
-    $baseUrl = defined('BASE_URL') ? BASE_URL : '/IECEP-LSC-MEMSYS';
-    $logoUrl = (defined('BASE_PUBLIC_URL') ? BASE_PUBLIC_URL : '/IECEP-LSC-MEMSYS/public') . '/assets/icons/iecep-logo.png';
-    $homeUrl = $baseUrl . '/index.php';
+    // Use APP_URL or BASE_URL for the home link to avoid hard-coded public path issues.
+    $homeUrl = defined('APP_URL') && APP_URL !== '' ? APP_URL : (defined('BASE_URL') ? BASE_URL : '/IECEP-LSC-MEMSYS');
+    $logoUrl = (defined('PUBLIC_URL') ? PUBLIC_URL : '/IECEP-LSC-MEMSYS/public') . '/assets/icons/iecep-logo.png';
     $title = $isResubmission ? 'Resubmission Successful' : 'Application Submitted';
 
     // Clear JSON headers and set HTML
@@ -275,15 +273,26 @@ try {
             sendJsonResponse(false, '', 'SupabaseClient class not found');
         }
 
-        error_log("Creating SupabaseClient with URL: {$config['url']}");
-        $supabase = new SupabaseClient($config['url'], $config['anon_key']);
-        error_log("Supabase client created successfully");
+        // CRITICAL: Use service role key for unauthenticated inserts
+        error_log("Creating SupabaseClient with service role for unauthenticated insert");
+        $supabase = new SupabaseClient($config['url'], $config['service_role_key']);
+        error_log("Supabase client created successfully with service role");
 
     } catch (Exception $e) {
         error_log("Supabase connection error: " . $e->getMessage());
         error_log("Supabase error details: " . $e->getTraceAsString());
         sendJsonResponse(false, '', 'Database connection failed: ' . $e->getMessage());
     }
+
+    // Check payment session before processing
+    session_start();
+    if (!isset($_SESSION['affiliation_payment']) || !isset($_SESSION['affiliation_payment']['simulation_token'])) {
+        sendJsonResponse(false, '', 'Payment simulation required. Please complete the payment step first.');
+    }
+
+    $paymentSession = $_SESSION['affiliation_payment'];
+    $simulationToken = $paymentSession['simulation_token'];
+    $sessionTransactionId = $paymentSession['transaction_id'] ?? null;
 
     // Get POST data
     $institutionName = $_POST['institution_name'] ?? '';
@@ -473,7 +482,85 @@ try {
         }
     }
 
-    // Prepare application data
+    // Re-calculate fees from uploaded member directory to prevent tampering
+    $memberDirectoryPath = null;
+    if (isset($documents['member_directory']['path'])) {
+        $memberDirectoryPath = __DIR__ . '/../' . $documents['member_directory']['path'];
+    }
+
+    if (!$memberDirectoryPath || !file_exists($memberDirectoryPath)) {
+        sendJsonResponse(false, '', 'Member directory file not found for fee verification');
+    }
+
+    // Load fee calculator
+    require_once __DIR__ . '/../../src/lib/FeeCalculator.php';
+    $feeCalc = new \App\Lib\FeeCalculator($supabase);
+
+    // Parse member directory and recalculate fees
+    require_once __DIR__ . '/../../vendor/autoload.php';
+    $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($memberDirectoryPath);
+    
+    $memberCount = 0;
+    $memberTypeCounts = ['new' => 0, 'returning' => 0, 'honorary' => 0];
+    
+    // Check for year-level sheets
+    $yearSheets = ['1st Yr', '2nd Yr', '3rd Yr', '4th Yr'];
+    $sheetsFound = [];
+    foreach ($yearSheets as $sheetName) {
+        try {
+            $sheet = $spreadsheet->getSheetByName($sheetName);
+            if ($sheet) $sheetsFound[] = $sheet;
+        } catch (Exception $e) {
+            // Sheet not found, continue
+        }
+    }
+    
+    if (empty($sheetsFound)) {
+        $sheetsFound = [$spreadsheet->getActiveSheet()];
+    }
+    
+    foreach ($sheetsFound as $sheet) {
+        $highestRow = $sheet->getHighestRow();
+        $memberTypeCol = null;
+        
+        // Find Member Type column
+        $headerRow = $sheet->rangeToArray('A1:Z1')[0];
+        foreach ($headerRow as $colIndex => $header) {
+            if (stripos($header, 'member type') !== false) {
+                $memberTypeCol = $colIndex;
+                break;
+            }
+        }
+        
+        for ($row = 2; $row <= $highestRow; $row++) {
+            $firstCell = $sheet->getCellByColumnAndRow(1, $row)->getValue();
+            if (!empty(trim($firstCell))) {
+                $memberCount++;
+                
+                if ($memberTypeCol !== null) {
+                    $memberType = strtolower(trim($sheet->getCellByColumnAndRow($memberTypeCol + 1, $row)->getValue()));
+                    if (in_array($memberType, ['new', 'returning', 'honorary'])) {
+                        $memberTypeCounts[$memberType]++;
+                    } else {
+                        $memberTypeCounts['new']++;
+                    }
+                } else {
+                    $memberTypeCounts['new']++;
+                }
+            }
+        }
+    }
+    
+    $recalculatedFees = $feeCalc->calculate($memberCount, $memberTypeCounts);
+    
+    // Compare with session fees
+    $sessionFees = $_SESSION['affiliation_fee_calc'] ?? null;
+    if (!$sessionFees || abs($recalculatedFees['total_fee'] - $sessionFees['total_fee']) > 0.01) {
+        error_log("Fee mismatch detected. Session: " . ($sessionFees['total_fee'] ?? 'N/A') . ", Recalculated: " . $recalculatedFees['total_fee']);
+        sendJsonResponse(false, '', 'Fee verification failed. Please recalculate fees and try again.');
+    }
+
+    // Prepare application data with payment fields
     $applicationData = [
         'institution_name' => trim($institutionName),
         'address' => trim($institutionAddress),
@@ -483,7 +570,17 @@ try {
         'email' => trim($contactEmail),
         'documents' => json_encode($documents),
         'submitted_at' => date('Y-m-d H:i:s'),
-        'status' => 'pending'
+        'status' => 'pending',
+        'estimated_member_count' => $memberCount,
+        'affiliation_fee' => $recalculatedFees['affiliation_fee'],
+        'operational_fee' => $recalculatedFees['operational_fee'],
+        'membership_fees_total' => $recalculatedFees['membership_fees_total'],
+        'total_fee' => $recalculatedFees['total_fee'],
+        'payment_reference' => $paymentSession['payment_reference'],
+        'receipt_number' => $paymentSession['receipt_number'],
+        'payment_status' => 'pending_verification',
+        'payment_simulated_at' => date('Y-m-d H:i:s'),
+        'simulation_token' => $simulationToken
     ];
 
     // Add resubmission specific fields
@@ -521,6 +618,18 @@ try {
         if ($result && isset($result[0]['id'])) {
             $applicationId = $result[0]['id'];
             error_log("Application submitted successfully: $applicationId");
+            
+            // Update transaction with pending_affiliation_id
+            if ($sessionTransactionId) {
+                $supabase->update('transactions', [
+                    'pending_affiliation_id' => $applicationId,
+                    'status' => 'pending'
+                ], $sessionTransactionId);
+            }
+            
+            // Clear payment session
+            unset($_SESSION['affiliation_fee_calc']);
+            unset($_SESSION['affiliation_payment']);
 
             // Record document hashes on blockchain
             $blockchain = $GLOBALS['blockchain'] ?? null;
@@ -540,19 +649,37 @@ try {
                 error_log("Document hashes recorded on blockchain for application: $applicationId");
             }
 
-            // Send confirmation email to applicant (if possible)
+            // Send confirmation emails
             try {
                 if (extension_loaded('openssl') && extension_loaded('mbstring')) {
                     require_once __DIR__ . '/../../src/lib/EmailService.php';
                     $emailService = new \App\Lib\EmailService();
-                    $emailSent = $emailService->sendAffiliationConfirmation($contactEmail, $institutionName);
-                    error_log("Confirmation email sent to $contactEmail: " . ($emailSent ? 'SUCCESS' : 'FAILED'));
+                    
+                    // Email to applicant
+                    $emailService->sendAffiliationConfirmation($contactEmail, $institutionName, $paymentSession['receipt_number']);
+                    
+                    // Email to treasurer/registration officer
+                    $treasurerEmail = 'treasurer@iecep-lsc.org'; // TODO: Load from system_settings
+                    $emailService->sendPaymentVerificationNotification($treasurerEmail, $institutionName, $recalculatedFees['total_fee'], $paymentSession['receipt_number']);
+                    
+                    error_log("Confirmation emails sent");
                 } else {
                     error_log("WARNING: Email extensions missing, skipping email notification");
                 }
             } catch (Exception $e) {
                 error_log("Failed to send confirmation email: " . $e->getMessage());
             }
+            
+            // Audit log
+            $supabase->insert('audit_logs', [
+                'user_id' => null,
+                'action' => 'affiliation_submitted',
+                'entity_type' => 'pending_affiliations',
+                'entity_id' => $applicationId,
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'old_data' => null,
+                'new_data' => json_encode($applicationData)
+            ]);
 
             if (isAjax()) {
                 sendJsonResponse(true, 'Application submitted successfully. The Registration Committee will review your application within 3-5 business days.', '', [

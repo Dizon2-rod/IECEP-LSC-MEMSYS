@@ -439,11 +439,17 @@ body {
     background: rgba(0, 0, 0, 0.5);
     z-index: 2000;
     overflow-y: auto;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal.active {
+    display: flex;
 }
 
 .modal-content {
     background: white;
-    margin: 2rem auto;
+    margin: auto;
     padding: 0;
     border-radius: 1rem;
     box-shadow: var(--shadow-xl);
@@ -1243,6 +1249,13 @@ h6 { font-size: 1rem; font-weight: 600; }
     width: 90%;
     max-height: 90vh;
     overflow-y: auto;
+    margin: auto;
+}
+
+#affiliateModal .modal-content {
+    max-width: 640px;
+    padding: 0;
+    margin: auto;
 }
 
 /* Responsive Adjustments */

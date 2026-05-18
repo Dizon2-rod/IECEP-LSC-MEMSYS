@@ -1,33 +1,27 @@
 <?php
-/**
- * Admin Dashboard - Uses Dynamic Sidebar
- */
 
 require_once __DIR__ . '/../auth_check.php';
 require_role(['eb_president', 'admin']);
 
-require_once __DIR__ . '/../../../includes/paths.php';
-require_once __DIR__ . '/../../../src/lib/SupabaseClient.php';
-require_once __DIR__ . '/../../../includes/config.php';
+require_once INCLUDES_PATH . 'paths.php';
+require_once INCLUDES_PATH . 'config.php';
+require_once SRC_PATH . 'lib/SupabaseClient.php';
+
 $current_page = 'dashboard';
-
-// Load Supabase credentials
-$supabaseConfig = require __DIR__ . '/../../../includes/supabase.php';
-
 $user = get_user_info();
-$displayName = $_SESSION['full_name'] ?? $_SESSION['email'] ?? $user['user_metadata']['full_name'] ?? $user['email'] ?? 'User';
+$displayName = $_SESSION['full_name'] ?? $_SESSION['email'] ?? $user['user_metadata']['full_name'] ?? $user['email'] ?? 'Administrator';
 $role_display = get_role_display_name($user['role']);
 
-// Fetch pending affiliations
-$pendingAffiliationsCount = 0;
 try {
-    $supabase = new SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
+    $supabase = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     $pendingAffiliations = $supabase->select('pending_affiliations', ['status' => 'eq.pending_review']);
-    if (is_array($pendingAffiliations)) {
-        $pendingAffiliationsCount = count($pendingAffiliations);
-    }
+    $pendingAffiliationsCount = is_array($pendingAffiliations) ? count($pendingAffiliations) : 0;
+    $totalMembersData = $supabase->select('members', ['select' => 'id']); 
+    $totalMembersCount = is_array($totalMembersData) ? count($totalMembersData) : 0;
+    $institutionsData = $supabase->select('institutions', ['select' => 'id']);
+    $totalSchoolsCount = is_array($institutionsData) ? count($institutionsData) : 0;
 } catch (Exception $e) {
-    $pendingAffiliationsCount = 0;
+    $pendingAffiliationsCount = $totalMembersCount = $totalSchoolsCount = 0;
 }
 ?>
 <!DOCTYPE html>
@@ -35,86 +29,145 @@ try {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - IECEP-LSC MEMSYS</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Admin Dashboard | IECEP-LSC MEMSYS</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/font-awesome.css">
+    
+    <!-- We remove professional.css if it contains global body/main-content styles 
+         to prevent it from fighting with sidebar.php -->
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/dashboard.css">
-    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/professional.css">
+
     <style>
-        /* Admin Dashboard Specific Styles */
-        .dashboard-header {
-            background: white;
-            padding: 1.5rem 2rem;
-            border-bottom: 1px solid #e2e8f0;
+        /* 
+           SOCIALLY ISOLATED CSS 
+           Lahat ng styles dito ay nagsisimula sa .dashboard-scope.
+           WALA nang styles para sa body, html, o .main-content.
+        */
+        .dashboard-scope {
+            font-family: 'Inter', sans-serif;
+            color: #1E293B;
+        }
+
+        .dashboard-scope .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
-        
-        .dashboard-header h1 {
-            color: #0B1D4A;
-            font-size: 1.875rem;
+
+        .dashboard-scope .header-title h1 {
+            font-size: 1.75rem;
             font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-        
-        .welcome-message {
-            color: #64748b;
-            font-size: 0.95rem;
+            color: #0B1D4A;
             margin: 0;
         }
-        
-        .stats-grid {
+
+        .dashboard-scope .welcome-badge {
+            background: white;
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            color: #64748B;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid #E2E8F0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dashboard-scope .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
             gap: 1.5rem;
-            margin-bottom: 2rem;
+            margin-bottom: 2.5rem;
         }
-        
-        .stat-card {
+
+        .dashboard-scope .stat-card {
             background: white;
-            border-radius: 12px;
             padding: 1.5rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            border-left: 4px solid #0B1D4A;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
             transition: transform 0.2s ease;
+            border: 1px solid #E2E8F0;
         }
-        
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
-        }
-        
-        .stat-card.warning {
-            border-left-color: #f59e0b;
-        }
-        
-        .stat-card h3 {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #0B1D4A;
-            margin-bottom: 0.5rem;
-        }
-        
-        .stat-card p {
-            color: #64748b;
-            font-weight: 500;
-        }
-        
-        .content-card {
-            background: white;
+
+        .dashboard-scope .stat-card:hover { transform: translateY(-5px); }
+
+        .dashboard-scope .stat-icon {
+            width: 50px;
+            height: 50px;
             border-radius: 12px;
-            padding: 2rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            color: white;
         }
-        
-        .content-card h2 {
+
+        .dashboard-scope .icon-blue { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .dashboard-scope .icon-indigo { background: linear-gradient(135deg, #6366f1, #4338ca); }
+        .dashboard-scope .icon-amber { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .dashboard-scope .icon-emerald { background: linear-gradient(135deg, #10b981, #059669); }
+
+        .dashboard-scope .stat-details h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
             color: #0B1D4A;
-            margin-bottom: 1rem;
         }
-        
-        .btn {
+
+        .dashboard-scope .stat-details p {
+            font-size: 0.875rem;
+            color: #64748B;
+            margin: 0;
+        }
+
+        .dashboard-scope .stat-card.warning-pulse {
+            border: 2px solid #F59E0B;
+            animation: pulse-border 2s infinite;
+        }
+
+        @keyframes pulse-border {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+
+        .dashboard-scope .content-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            border: 1px solid #E2E8F0;
+        }
+
+        .dashboard-scope .content-card h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #0B1D4A;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .dashboard-scope .alert-banner {
+            background: #EFF6FF;
+            border-left: 4px solid #3B82F6;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: #1E40AF;
+        }
+
+        .dashboard-scope .btn-primary {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
@@ -125,174 +178,109 @@ try {
             border-radius: 8px;
             font-weight: 500;
             transition: all 0.2s ease;
+            font-size: 0.9rem;
         }
-        
-        .btn:hover {
+
+        .dashboard-scope .btn-primary:hover {
             background: #1E3A6E;
-            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(11, 29, 74, 0.2);
         }
-        
-        .alert {
-            background: #dbeafe;
-            border: 1px solid #3b82f6;
-            color: #1e40af;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-        }
-        
-        .alert i {
-            font-size: 1.25rem;
-        }
-        
+
         @media (max-width: 768px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .dashboard-header {
-                padding: 1rem;
-            }
-            
-            .dashboard-header h1 {
-                font-size: 1.5rem;
-            }
+            .dashboard-scope .dashboard-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
         }
     </style>
 </head>
 <body>
-    <!-- Dynamic Sidebar -->
-    <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
+    <!-- Dynamic Sidebar handles the layout (margin-left, body bg, etc.) -->
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
     
-    <!-- Main Content -->
+    <!-- Main content is already styled as .main-content in sidebar.php -->
     <main class="main-content">
-        <!-- Header -->
-        <header class="dashboard-header">
-            <div class="header-content">
-                <div>
+        <!-- Wrapper for Dashboard-specific styles only -->
+        <div class="dashboard-scope">
+            <header class="dashboard-header">
+                <div class="header-title">
                     <h1>Admin Dashboard</h1>
-                    <p class="welcome-message">Welcome back, <?php echo htmlspecialchars($displayName); ?> - <?php echo $role_display; ?></p>
                 </div>
-            </div>
-        </header>
+                <div class="welcome-badge">
+                    <i class="fas fa-user-circle"></i>
+                    <span><strong><?php echo htmlspecialchars($displayName); ?></strong> &bull; <?php echo $role_display; ?></span>
+                </div>
+            </header>
 
-            <!-- Alert -->
-            <div class="alert">
+            <div class="alert-banner">
                 <i class="fas fa-info-circle"></i>
                 <div>
-                    <strong>Welcome to the Admin Dashboard!</strong>
-                    From here you can manage users, monitor system activities, and oversee IECEP-LSC operations.
+                    <strong>System Overview:</strong> Manage your membership base and school affiliations from this panel.
                 </div>
             </div>
 
-            <!-- Stats Grid -->
             <div class="stats-grid">
                 <div class="stat-card">
-                    <h3>150</h3>
-                    <p>Total Members</p>
+                    <div class="stat-icon icon-blue"><i class="fas fa-users"></i></div>
+                    <div class="stat-details">
+                        <h3><?php echo $totalMembersCount; ?></h3>
+                        <p>Total Members</p>
+                    </div>
                 </div>
+                
                 <div class="stat-card">
-                    <h3>12</h3>
-                    <p>Schools</p>
+                    <div class="stat-icon icon-indigo"><i class="fas fa-university"></i></div>
+                    <div class="stat-details">
+                        <h3><?php echo $totalSchoolsCount; ?></h3>
+                        <p>Affiliated Schools</p>
+                    </div>
                 </div>
-                <div class="stat-card <?php echo $pendingAffiliationsCount > 0 ? 'warning' : ''; ?>">
-                    <h3 id="pending-affiliations-count"><?php echo $pendingAffiliationsCount; ?></h3>
-                    <p>Pending Affiliations</p>
+                
+                <div class="stat-card <?php echo $pendingAffiliationsCount > 0 ? 'warning-pulse' : ''; ?>">
+                    <div class="stat-icon icon-amber"><i class="fas fa-clock"></i></div>
+                    <div class="stat-details">
+                        <h3 id="pending-affiliations-count"><?php echo $pendingAffiliationsCount; ?></h3>
+                        <p>Pending Review</p>
+                    </div>
                 </div>
+                
                 <div class="stat-card">
-                    <h3>₱125,000</h3>
-                    <p>Total Collections</p>
+                    <div class="stat-icon icon-emerald"><i class="fas fa-wallet"></i></div>
+                    <div class="stat-details">
+                        <h3>₱0.00</h3>
+                        <p>Total Collections</p>
+                    </div>
                 </div>
             </div>
 
-            <!-- Recent Activities -->
             <div class="content-card">
-                <h2>Recent Activities</h2>
-                <p>Welcome to the Admin Dashboard. From here you can manage users, monitor system activities, and oversee all IECEP-LSC operations.</p>
-                <p style="margin-top:18px; font-weight:600;">Pending affiliation requests: <?php echo $pendingAffiliationsCount; ?></p>
-                <p><a href="<?php echo PORTAL_URL; ?>/admin/affiliations.php" class="btn" style="display:inline-block; margin-top:12px;">View Affiliation Requests</a></p>
+                <h2><i class="fas fa-tasks"></i> Priority Actions</h2>
+                <div style="color: #64748B; line-height: 1.6;">
+                    <p>You have <strong><?php echo $pendingAffiliationsCount; ?></strong> institutional affiliation requests awaiting your approval.</p>
+                    
+                    <div style="margin-top: 2rem; padding: 1.5rem; background: #F8FAFC; border-radius: 12px; border: 1px dashed #CBD5E1; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: #0B1D4A; display: block;">Affiliation Management</strong>
+                            <span style="font-size: 0.85rem;">Review and approve school requests to enable student registration.</span>
+                        </div>
+                        <a href="<?php echo PORTAL_URL; ?>/admin/affiliations.php" class="btn-primary">
+                            Manage Requests <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
             </div>
-        </main>
+        </div>
+    </main>
 
-        <!-- Real-Time Integration Script -->
-        <script>
-        // Admin Dashboard Real-Time Updates
-        document.addEventListener('DOMContentLoaded', function() {
-            // Listen for new pending affiliations
-            window.addEventListener('realtime:pending_affiliations', function(event) {
-                const { action, new: newRecord, old: oldRecord } = event.detail;
-
-                if (action === 'INSERT') {
-                    // New affiliation submitted - update counter
-                    updatePendingAffiliationsCount();
-                } else if (action === 'UPDATE') {
-                    // Affiliation status changed - refresh if needed
-                    if (oldRecord.status !== newRecord.status && newRecord.status !== 'pending_review') {
-                        // Affiliation was approved/rejected, decrement counter
-                        updatePendingAffiliationsCount();
-                    }
-                }
-            });
-        });
-
-        function updatePendingAffiliationsCount() {
-            const countElement = document.getElementById('pending-affiliations-count');
-            if (countElement) {
-                const currentCount = parseInt(countElement.textContent) || 0;
-                // For INSERT events, increment; for status changes to non-pending, decrement
-                // The real-time handler above determines the action
-                const newCount = currentCount + 1; // This will be overridden by specific logic
-                countElement.textContent = newCount;
-
-                // Highlight the element to show update
-                countElement.classList.add('highlight');
-                setTimeout(() => countElement.classList.remove('highlight'), 1000);
-
-                // Update warning class if needed
-                const statCard = countElement.closest('.stat-card');
-                if (newCount > 0) {
-                    statCard.classList.add('warning');
-                } else {
-                    statCard.classList.remove('warning');
-                }
-            }
-        }
-
-        // Override default real-time handlers for admin-specific behavior
-        window.onNewPendingAffiliation = function(newAffiliation) {
-            updatePendingAffiliationsCount();
-            console.log('New pending affiliation:', newAffiliation);
-        };
-
-        window.onAffiliationStatusChanged = function(updatedAffiliation) {
-            // If status changed from pending_review to something else, decrement counter
-            if (updatedAffiliation.status !== 'pending_review') {
-                const countElement = document.getElementById('pending-affiliations-count');
-                if (countElement) {
-                    const currentCount = parseInt(countElement.textContent) || 0;
-                    if (currentCount > 0) {
-                        countElement.textContent = currentCount - 1;
-
-                        // Update warning class
-                        const statCard = countElement.closest('.stat-card');
-                        if (currentCount - 1 === 0) {
-                            statCard.classList.remove('warning');
-                        }
-                    }
-                }
-            }
-            console.log('Affiliation status changed:', updatedAffiliation);
-        };
-    </script>
     <script>
         window.IECEP_CONFIG = {
             SUPABASE_URL: <?php echo json_encode(SUPABASE_URL); ?>,
             SUPABASE_ANON_KEY: <?php echo json_encode(SUPABASE_ANON_KEY); ?>
         };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            window.addEventListener('realtime:pending_affiliations', function(event) {
+                location.reload(); 
+            });
+        });
     </script>
     <script src="/IECEP-LSC-MEMSYS/public/js/realtime.js" defer></script>
-    </body>
+</body>
 </html>

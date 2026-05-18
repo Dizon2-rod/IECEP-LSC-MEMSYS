@@ -22,7 +22,7 @@ function initializeSupabase() {
 
     try {
         // Initialize Supabase client using the anon key
-        supabaseClient = supabase.createClient(
+        supabaseClient = window.supabase.createClient(
             window.IECEP_CONFIG.SUPABASE_URL,
             window.IECEP_CONFIG.SUPABASE_ANON_KEY
         );
@@ -414,5 +414,8 @@ window.RealtimeAPI = {
     unsubscribe: unsubscribeFromTable,
     getClient: () => supabaseClient
 };
+
+// Export supabase client globally for other scripts
+window.supabase = supabaseClient;
 
 console.log('Real-time subscriptions module loaded');

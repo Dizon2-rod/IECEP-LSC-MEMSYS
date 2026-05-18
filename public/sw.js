@@ -4,8 +4,12 @@ const STATIC_CACHE = 'iecep-lsc-static-v1.0.0';
 const DYNAMIC_CACHE = 'iecep-lsc-dynamic-v1.0.0';
 
 const BASE_PATH = self.location.pathname.replace(/\/sw\.js$/, '');
-const buildUrl = (path) => {
-    const normalized = path.startsWith('/') ? path.substring(1) : path;
+const buildUrl = (path) => {    if (path === '/' || path === '') {
+        return `${BASE_PATH}/`;
+    }    if (path.startsWith('/')) {
+        return path;
+    }
+    const normalized = path.replace(/^\/+/, '');
     return `${BASE_PATH}/${normalized}`.replace(/([^:]\/)\/+/g, '$1');
 };
 
@@ -103,7 +107,8 @@ self.addEventListener('fetch', event => {
                 })
                 .catch(() => {
                     // Return offline fallback for HTML pages
-                    if (request.headers.get('accept').includes('text/html')) {
+                    const acceptHeader = request.headers.get('accept');
+                    if (acceptHeader && acceptHeader.includes('text/html')) {
                         return caches.match(OFFLINE_PAGE);
                     }
                 })
@@ -133,7 +138,7 @@ self.addEventListener('fetch', event => {
                         }
                         // Return offline page for navigation requests
                         if (request.mode === 'navigate') {
-                            return caches.match('/offline.html');
+                            return caches.match(OFFLINE_PAGE);
                         }
                     });
             })
@@ -217,11 +222,11 @@ self.addEventListener('push', event => {
 
     const options = {
         body: data.body,
-        icon: '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png',
-        badge: '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png',
+        icon: buildUrl('assets/icons/iecep-logo.png'),
+        badge: buildUrl('assets/icons/iecep-logo.png'),
         vibrate: [100, 50, 100],
         data: {
-            url: data.url || '/portal/dashboard.php'
+            url: data.url || buildUrl('portal/dashboard.php')
         },
         actions: [
             {

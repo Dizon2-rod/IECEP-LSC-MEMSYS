@@ -94,11 +94,13 @@ $selectedBatchId = trim($_GET['batch_id'] ?? '');
                 summaryPanel.innerHTML = '';
 
                 try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
                     const response = await fetch('<?= BASE_URL ?>/public/api/process-member-batch.php', {
                         method: 'POST',
                         credentials: 'same-origin',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'X-CSRF-Token': csrfToken
                         },
                         body: JSON.stringify({ batch_id: batchId })
                     });

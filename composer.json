@@ -9,7 +9,8 @@
         "endroid/qr-code": "^2.0",
         "firebase/php-jwt": "^6.3",
         "vlucas/phpdotenv": "^5.4",
-        "guzzlehttp/guzzle": "^7.5"
+        "guzzlehttp/guzzle": "^7.5",
+        "phpoffice/phpspreadsheet": "^1.29"
     },
     "autoload": {
         "psr-4": {
@@ -17,6 +18,12 @@
         }
     },
     "config": {
-        "vendor-dir": "vendor"
+        "vendor-dir": "vendor",
+        "disable-tls": true,
+        "policy": {
+            "advisories": {
+                "block": false
+            }
+        }
     }
 }

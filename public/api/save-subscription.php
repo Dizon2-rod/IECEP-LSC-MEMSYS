@@ -1,8 +1,7 @@
 <?php
 header('Content-Type: application/json');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: strict-origin-when-cross-origin');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(204);
@@ -16,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../includes/csrf.php';
 require_once __DIR__ . '/../../src/lib/Supabase.php';
 session_start();
 
@@ -26,16 +26,24 @@ if (!isset($_SESSION['user']) || !isset($_SESSION['user']['id'])) {
 }
 
 try {
-    $data = json_decode(file_get_contents('php://input'), true);
+    require_csrf();
 
-    if (!$data || !isset($data['endpoint'])) {
+    $rawBody = file_get_contents('php://input');
+    $data = json_decode($rawBody, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
         http_response_code(400);
-        echo json_encode(['error' => 'Invalid subscription data']);
+        echo json_encode(['error' => 'Invalid JSON payload']);
+        exit;
+    }
+
+    $endpoint = trim($data['endpoint'] ?? '');
+    if ($endpoint === '' || filter_var($endpoint, FILTER_VALIDATE_URL) === false) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid subscription endpoint']);
         exit;
     }
 
     $supabase = new \App\Lib\Supabase();
-    $endpoint = trim($data['endpoint']);
     $userId = $_SESSION['user']['id'];
 
     $existing = $supabase->from('push_subscriptions')
@@ -73,6 +81,6 @@ try {
 } catch (Exception $e) {
     error_log('Push subscription save error: ' . $e->getMessage());
     http_response_code(500);
-    echo json_encode(['error' => 'Failed to save subscription', 'details' => $e->getMessage()]);
+    echo json_encode(['error' => 'Failed to save subscription']);
 }
 ?>

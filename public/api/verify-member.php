@@ -10,10 +10,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/../../includes/supabase.php';
 require_once __DIR__ . '/../../includes/config.php';
+require_once __DIR__ . '/../../src/lib/BlockchainService.php';
 
 use App\Lib\Supabase;
 
 $sb = new Supabase();
+$blockchain = new BlockchainService();
 
 try {
     $memberId = trim($_GET['id'] ?? '');
@@ -48,6 +50,28 @@ try {
     }
 
     $member = $result['data'][0];
+    
+    // Check blockchain verification
+    $blockchain_verified = false;
+    try {
+        $blockchain_records = $blockchain->getRecordsByReference('member_created', $member['id']);
+        if (!empty($blockchain_records)) {
+            $member_hash = hash('sha256', json_encode([
+                'id' => $member['id'],
+                'full_name' => $member['full_name'],
+                'digital_id_hash' => $member['digital_id_hash']
+            ]));
+            foreach ($blockchain_records as $record) {
+                if ($record['data_hash'] === $member_hash || $record['data_hash'] === $member['digital_id_hash']) {
+                    $blockchain_verified = true;
+                    break;
+                }
+            }
+        }
+    } catch (Exception $e) {
+        // Blockchain check failed, continue without verification
+    }
+    
     echo json_encode([
         'success' => true,
         'member' => [
@@ -59,6 +83,7 @@ try {
             'digital_id_url' => $member['digital_id_url'] ?? null,
             'digital_id_hash' => $member['digital_id_hash'] ?? null,
             'short_id' => substr($member['id'], 0, 8),
+            'blockchain_verified' => $blockchain_verified,
         ],
     ]);
 } catch (\Exception $e) {

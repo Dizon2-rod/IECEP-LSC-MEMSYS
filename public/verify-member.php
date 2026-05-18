@@ -59,9 +59,12 @@
                 if (data.success && data.member) {
                     const m = data.member;
                     const statusColor = m.payment_status ? '#16a34a' : '#dc2626';
+                    const blockchainBadge = m.blockchain_verified 
+                        ? '<span style="display: inline-block; background: #16a34a; color: white; padding: 4px 12px; border-radius: 8px; font-size: 0.85rem; margin-left: 8px;">✓ Verified on Blockchain</span>'
+                        : '<span style="display: inline-block; background: #f59e0b; color: white; padding: 4px 12px; border-radius: 8px; font-size: 0.85rem; margin-left: 8px;">⚠️ Not verified on chain</span>';
                     container.innerHTML = `
                         <div class="notification-box" style="border-color: ${statusColor};">
-                            <h2 style="margin-bottom: 12px; color: ${statusColor};">${m.payment_status ? 'Verified Member' : 'Member Found'}</h2>
+                            <h2 style="margin-bottom: 12px; color: ${statusColor};">${m.payment_status ? 'Verified Member' : 'Member Found'} ${blockchainBadge}</h2>
                             <dl class="member-details">
                                 <dt>Name</dt><dd>${m.full_name}</dd>
                                 <dt>Member ID</dt><dd>${m.short_id}</dd>

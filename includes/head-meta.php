@@ -6,27 +6,39 @@ define('HEAD_META_INCLUDED', true);
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="manifest" href="/IECEP-LSC-MEMSYS/public/manifest.json">
-<link rel="apple-touch-icon" sizes="192x192" href="/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png">
-<link rel="apple-touch-icon" sizes="512x512" href="/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png">
+<link rel="manifest" href="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/manifest.json">
+<link rel="apple-touch-icon" sizes="192x192" href="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/assets/icons/iecep-logo.png">
+<link rel="apple-touch-icon" sizes="512x512" href="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/assets/icons/iecep-logo.png">
 <meta name="theme-color" content="#0B1D4A">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<script>window.PWA_PUBLIC_VAPID_KEY = 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEBzKvmrZ1cSfWp12NbFBc0xTbQfMXTx7AYlADHWDjCgC6w94AlV87udKz4pi/CXKiY2Mv1ljKw0Q1e11AFCO6HA==';</script>
+<?php if (function_exists('csrf_meta')) { echo csrf_meta(); } ?>
+<script>
+    window.IECEP_CONFIG = {
+        SUPABASE_URL: '<?= htmlspecialchars(SUPABASE_URL, ENT_QUOTES) ?>',
+        SUPABASE_ANON_KEY: '<?= htmlspecialchars(SUPABASE_ANON_KEY, ENT_QUOTES) ?>',
+        APP_URL: '<?= htmlspecialchars(APP_URL, ENT_QUOTES) ?>',
+        APP_ENV: '<?= htmlspecialchars(APP_ENV, ENT_QUOTES) ?>',
+        PORTAL_URL: '<?= htmlspecialchars(PORTAL_URL, ENT_QUOTES) ?>',
+        PUBLIC_URL: '<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>',
+        ASSETS_URL: '<?= htmlspecialchars(ASSETS_URL, ENT_QUOTES) ?>',
+        VAPID_PUBLIC_KEY: '<?= function_exists('env') ? htmlspecialchars(env('VAPID_PUBLIC_KEY', ''), ENT_QUOTES) : '' ?>'
+    };
+</script>
 <!-- Supabase JS Client Library (for real-time subscriptions) -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <!-- Frontend Configuration -->
 <?php if (function_exists('outputFrontendConfig')) { outputFrontendConfig(); } ?>
 <!-- Real-time Subscriptions -->
-<script src="/IECEP-LSC-MEMSYS/public/js/realtime.js" defer></script>
-<script src="/IECEP-LSC-MEMSYS/public/js/pwa.js" defer></script>
+<script src="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/js/realtime.js" defer></script>
+<script src="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/js/pwa.js" defer></script>
 <?php if (isset($_SESSION['logged_in']) && $_SESSION['logged_in']): ?>
-<script src="/IECEP-LSC-MEMSYS/public/js/notifications.js" defer></script>
-<script src="/IECEP-LSC-MEMSYS/public/assets/js/offline-manager.js" defer></script>
+<script src="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/js/notifications.js" defer></script>
+<script src="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/assets/js/offline-manager.js" defer></script>
 <?php endif; ?>
-<link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/font-awesome.css">
-<link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/professional.css">
+<link rel="stylesheet" href="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/assets/css/font-awesome.css">
+<link rel="stylesheet" href="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/assets/css/professional.css">
 <style>
     /* Design Tokens */
     :root {

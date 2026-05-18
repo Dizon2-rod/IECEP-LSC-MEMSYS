@@ -13,6 +13,7 @@ if (!file_exists($pathsFile)) {
 }
 require_once $pathsFile;
 require_once __DIR__ . '/includes/config.php'; // defines BASE_URL, PORTAL_URL, etc.
+require_once __DIR__ . '/includes/audit.php';
 
 // Prevent caching
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
@@ -22,6 +23,9 @@ header('Expires: 0');
 
 // Handle logout
 if ((isset($_GET['logout']) && $_GET['logout'] === 'true') || (isset($_POST['logout']))) {
+    $user_id = $_SESSION['user_id'] ?? null;
+    log_audit('logout', 'users', $user_id, null, null);
+    
     $_SESSION = [];
     session_unset();
     session_destroy();
@@ -151,6 +155,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     'role'  => $profile['role'] ?? 'member',
                     'must_change_password' => !empty($mustChangePassword)
                 ];
+                
+                // Audit log successful login
+                log_audit('login', 'users', $userId, null, ['email' => $userEmail, 'role' => $profile['role'] ?? 'member']);
 
                 if (!empty($mustChangePassword)) {
                     $_SESSION['require_password_change'] = true;
@@ -172,6 +179,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if (!$error) {
+                // Audit log failed login attempt
+                log_audit('login_failed', 'users', null, null, ['email' => $email]);
                 $error = 'Invalid email or password. Please try again.';
             }
         } catch (Exception $e) {

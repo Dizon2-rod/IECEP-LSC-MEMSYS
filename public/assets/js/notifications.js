@@ -1,6 +1,8 @@
 class NotificationCenter {
     constructor() {
-        this.apiBase = '/IECEP-LSC-MEMSYS/public/api/notifications.php';
+        const publicUrl = (window.IECEP_CONFIG && window.IECEP_CONFIG.PUBLIC_URL) ? window.IECEP_CONFIG.PUBLIC_URL : '/IECEP-LSC-MEMSYS/public';
+        this.apiBase = `${publicUrl}/api/notifications.php`;
+        this.subscriptionApi = `${publicUrl}/api/save-subscription.php`;
         this.bell = null;
         this.dropdown = null;
         this.count = null;
@@ -31,6 +33,11 @@ class NotificationCenter {
         });
     }
 
+    getCsrfToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        return meta ? meta.getAttribute('content') : '';
+    }
+
     toggleDropdown() {
         this.dropdown.classList.toggle('open');
     }
@@ -46,7 +53,15 @@ class NotificationCenter {
 
     async fetchNotifications() {
         try {
-            const response = await fetch(`${this.apiBase}?action=list`, { credentials: 'same-origin' });
+            const response = await fetch(`${this.apiBase}?action=list`, {
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const data = await response.json();
             if (data.success) {
                 this.notifications = data.notifications || [];
@@ -59,7 +74,15 @@ class NotificationCenter {
 
     async fetchStats() {
         try {
-            const response = await fetch(`${this.apiBase}?action=stats`, { credentials: 'same-origin' });
+            const response = await fetch(`${this.apiBase}?action=stats`, {
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const data = await response.json();
             if (data.success && data.stats) {
                 this.updateBadge(data.stats.unread || 0);
@@ -139,9 +162,15 @@ class NotificationCenter {
             const response = await fetch(`${this.apiBase}?action=mark_read`, {
                 method: 'POST',
                 credentials: 'same-origin',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRF-Token': this.getCsrfToken()
+                },
                 body: new URLSearchParams({ notification_id: notificationId })
             });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const data = await response.json();
             if (data.success) {
                 this.notifications = this.notifications.map(item => {
@@ -163,7 +192,13 @@ class NotificationCenter {
             const response = await fetch(`${this.apiBase}?action=mark_all_read`, {
                 method: 'POST',
                 credentials: 'same-origin',
+                headers: {
+                    'X-CSRF-Token': this.getCsrfToken()
+                }
             });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const data = await response.json();
             if (data.success) {
                 this.notifications = this.notifications.map(item => ({ ...item, read: true }));
@@ -187,21 +222,24 @@ class NotificationCenter {
                 return;
             }
 
-            const vapidResponse = await fetch(`${this.apiBase}?action=vapid_key`, { credentials: 'same-origin' });
-            const vapidData = await vapidResponse.json();
-            if (!vapidData.success || !vapidData.vapid_public_key) {
+            const vapidPublicKey = window.IECEP_CONFIG?.VAPID_PUBLIC_KEY;
+            const vapidKey = vapidPublicKey || await this.fetchVapidKey();
+            if (!vapidKey) {
                 return;
             }
 
-            const applicationServerKey = this.urlBase64ToUint8Array(vapidData.vapid_public_key);
+            const applicationServerKey = this.urlBase64ToUint8Array(vapidKey);
             const newSubscription = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
                 applicationServerKey
             });
 
-            await fetch('/IECEP-LSC-MEMSYS/public/api/save-subscription.php', {
+            await fetch(this.subscriptionApi, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': this.getCsrfToken()
+                },
                 credentials: 'same-origin',
                 body: JSON.stringify({
                     endpoint: newSubscription.endpoint,
@@ -210,12 +248,28 @@ class NotificationCenter {
                     platform: navigator.platform,
                     metadata: {
                         language: navigator.language,
-                        hostname: window.location.hostname,
+                        hostname: window.location.hostname
                     }
                 })
             });
         } catch (error) {
             console.warn('Push subscription registration failed:', error);
+        }
+    }
+
+    async fetchVapidKey() {
+        try {
+            const response = await fetch(`${this.apiBase}?action=vapid_key`, {
+                credentials: 'same-origin',
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) {
+                return '';
+            }
+            const data = await response.json();
+            return data.success ? data.vapid_public_key : '';
+        } catch (error) {
+            return '';
         }
     }
 

@@ -10,35 +10,65 @@ require_once __DIR__ . '/../autoload.php';
 
 // Load environment variables from .env file manually
 if (!function_exists('loadEnv')) {
-    function loadEnv($path) {
+    function loadEnv($path)
+    {
         if (!file_exists($path)) {
             return;
         }
-        
+
         $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
         foreach ($lines as $line) {
             $line = trim($line);
             if (empty($line) || strpos($line, '#') === 0) {
                 continue;
             }
-            
+
             $parts = explode('=', $line, 2);
             if (count($parts) === 2) {
                 $name = trim($parts[0]);
                 $value = trim($parts[1]);
-                
+
                 // Remove quotes if present
                 if ((substr($value, 0, 1) === '"' && substr($value, -1) === '"') ||
                     (substr($value, 0, 1) === "'" && substr($value, -1) === "'")) {
                     $value = substr($value, 1, -1);
                 }
-                
-                if (!array_key_exists($name, $_SERVER) && !array_key_exists($name, $_ENV)) {
-                    putenv(sprintf('%s=%s', $name, $value));
-                    $_ENV[$name] = $value;
-                    $_SERVER[$name] = $value;
-                }
+
+                putenv(sprintf('%s=%s', $name, $value));
+                $_ENV[$name] = $value;
+                $_SERVER[$name] = $value;
             }
+        }
+    }
+}
+
+if (!function_exists('env')) {
+    function env(string $name, $default = null)
+    {
+        if (array_key_exists($name, $_ENV) && $_ENV[$name] !== null) {
+            return $_ENV[$name];
+        }
+        if (array_key_exists($name, $_SERVER) && $_SERVER[$name] !== null) {
+            return $_SERVER[$name];
+        }
+        return $default;
+    }
+}
+
+if (!function_exists('validateEnv')) {
+    function validateEnv(array $required): void
+    {
+        $missing = [];
+        foreach ($required as $key) {
+            $value = env($key, null);
+            if ($value === null || $value === '') {
+                $missing[] = $key;
+            }
+        }
+        if (!empty($missing)) {
+            $message = 'Missing required environment variables: ' . implode(', ', $missing);
+            error_log($message);
+            throw new RuntimeException($message);
         }
     }
 }
@@ -47,33 +77,40 @@ loadEnv(__DIR__ . '/../../.env');
 
 // Application Constants
 if (!defined('APP_NAME')) {
-    define('APP_NAME', $_ENV['APP_NAME'] ?? 'IECEP-LSC-MEMSYS');
-    define('APP_URL', $_ENV['APP_URL'] ?? 'http://localhost/IECEP-LSC-MEMSYS');
-    define('APP_ENV', $_ENV['APP_ENV'] ?? 'development');
+    define('APP_NAME', env('APP_NAME', 'IECEP-LSC-MEMSYS'));
+    define('APP_URL', rtrim(env('APP_URL', 'http://localhost/IECEP-LSC-MEMSYS'), '/'));
+    define('APP_ENV', env('APP_ENV', 'development'));
 
     // Supabase Configuration
-    define('SUPABASE_URL', $_ENV['SUPABASE_URL'] ?? 'https://kfvlbjvtwtxnpmmswadf.supabase.co');
-    define('SUPABASE_ANON_KEY', $_ENV['SUPABASE_ANON_KEY'] ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmdmxianZ0d3R4bnBtbXN3YWRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MDY0ODEsImV4cCI6MjA5MTk4MjQ4MX0.4o-RyygAaEnM61wfvc24xWGXMe3jVqZLPvh8bXUYxkg');
-    define('SUPABASE_SERVICE_ROLE_KEY', $_ENV['SUPABASE_SERVICE_ROLE_KEY'] ?? 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtmdmxianZ0d3R4bnBtbXN3YWRmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NjQwNjQ4MSwiZXhwIjoyMDkxOTgyNDgxfQ.JEYE5nCvnxSZ9F1cfGe43e8CDE_CEcJYwANQuRa1Jnk');
-
+    define('SUPABASE_URL', env('SUPABASE_URL', ''));
+    define('SUPABASE_ANON_KEY', env('SUPABASE_ANON_KEY', ''));
+    define('SUPABASE_SERVICE_ROLE_KEY', env('SUPABASE_SERVICE_ROLE_KEY', ''));
 
     // Email Configuration
-    define('SMTP_HOST', $_ENV['SMTP_HOST'] ?? 'smtp.gmail.com');
-    define('SMTP_PORT', $_ENV['SMTP_PORT'] ?? 587);
-    define('SMTP_USERNAME', $_ENV['SMTP_USERNAME'] ?? 'rasheddizon7@gmail.com');
-    define('SMTP_PASSWORD', $_ENV['SMTP_PASSWORD'] ?? 'wqyvufrkrgoxfosk');
-    define('SMTP_FROM_NAME', $_ENV['SMTP_FROM_NAME'] ?? 'IECEP-LSC-MEMSYS');
-    define('SMTP_FROM_EMAIL', $_ENV['SMTP_FROM_EMAIL'] ?? 'rasheddizon7@gmail.com');
+    define('SMTP_HOST', env('SMTP_HOST', 'smtp.gmail.com'));
+    define('SMTP_PORT', (int)env('SMTP_PORT', 587));
+    define('SMTP_USERNAME', env('SMTP_USERNAME', ''));
+    define('SMTP_PASSWORD', env('SMTP_PASSWORD', ''));
+    define('SMTP_FROM_NAME', env('SMTP_FROM_NAME', 'IECEP-LSC-MEMSYS'));
+    define('SMTP_FROM_EMAIL', env('SMTP_FROM_EMAIL', ''));
 
     // Security
-    define('JWT_SECRET', $_ENV['JWT_SECRET'] ?? 'default-secret-change-in-production');
-    define('SESSION_LIFETIME', $_ENV['SESSION_LIFETIME'] ?? 86400); // 24 hours
-    define('CRON_SECRET', $_ENV['CRON_SECRET'] ?? 'change-this-to-a-random-string');
+    define('JWT_SECRET', env('JWT_SECRET', ''));
+    define('SESSION_LIFETIME', (int)env('SESSION_LIFETIME', 86400));
+    define('CRON_SECRET', env('CRON_SECRET', ''));
 
     // File Upload Configuration
-    define('MAX_FILE_SIZE', $_ENV['MAX_FILE_SIZE'] ?? 5242880); // 5MB
-    define('ALLOWED_FILE_TYPES', $_ENV['ALLOWED_FILE_TYPES'] ?? 'pdf,doc,docx,jpg,jpeg,png');
+    define('MAX_FILE_SIZE', (int)env('MAX_FILE_SIZE', 5242880)); // 5MB
+    define('ALLOWED_FILE_TYPES', env('ALLOWED_FILE_TYPES', 'pdf,doc,docx,jpg,jpeg,png'));
+    define('ALLOWED_FILE_TYPES_ARRAY', array_filter(array_map('trim', explode(',', ALLOWED_FILE_TYPES))));
 
+    // Storage
+    if (!defined('STORAGE_PATH')) {
+        define('STORAGE_PATH', dirname(__DIR__) . '/storage');
+    }
+    if (!defined('STORAGE_URL')) {
+        define('STORAGE_URL', APP_URL . '/storage');
+    }
 
     // Database Table Names
     define('TABLE_USERS', 'user_profiles');
@@ -84,6 +121,68 @@ if (!defined('APP_NAME')) {
     define('TABLE_PENDING_MEMBERS', 'pending_members');
     define('TABLE_PENDING_AFFILIATIONS', 'pending_affiliations');
     define('TABLE_ATTENDANCE', 'attendance');
+}
+
+// Validate critical environment values in production and warn in development
+$requiredEnv = [
+    'APP_NAME',
+    'APP_URL',
+    'APP_ENV',
+    'SUPABASE_URL',
+    'SUPABASE_ANON_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'SMTP_HOST',
+    'SMTP_PORT',
+    'SMTP_USERNAME',
+    'SMTP_PASSWORD',
+    'SMTP_FROM_EMAIL',
+    'JWT_SECRET',
+    'CRON_SECRET',
+];
+
+try {
+    if (APP_ENV === 'production') {
+        validateEnv($requiredEnv);
+    } else {
+        $missing = [];
+        foreach ($requiredEnv as $key) {
+            $value = env($key, null);
+            if ($value === null || $value === '') {
+                $missing[] = $key;
+            }
+        }
+        if (!empty($missing)) {
+            error_log('WARNING: Missing environment variables in development: ' . implode(', ', $missing));
+        }
+    }
+} catch (Throwable $e) {
+    if (APP_ENV === 'production') {
+        http_response_code(500);
+        echo '<pre>Configuration error: ' . htmlspecialchars($e->getMessage()) . '</pre>';
+        exit;
+    }
+}
+
+if (!defined('BASE_URL')) {
+    define('BASE_URL', APP_URL);
+}
+if (!defined('PUBLIC_URL')) {
+    define('PUBLIC_URL', BASE_URL . '/public');
+}
+if (!defined('PORTAL_URL')) {
+    define('PORTAL_URL', PUBLIC_URL . '/portal');
+}
+if (!defined('ASSETS_URL')) {
+    define('ASSETS_URL', PUBLIC_URL . '/assets');
+}
+if (!defined('CSS_URL')) {
+    define('CSS_URL', PUBLIC_URL . '/css');
+}
+if (!defined('JS_URL')) {
+    define('JS_URL', PUBLIC_URL . '/js');
+}
+if (!defined('API_URL')) {
+    define('API_URL', PUBLIC_URL . '/api');
 }
 
 // Error Reporting

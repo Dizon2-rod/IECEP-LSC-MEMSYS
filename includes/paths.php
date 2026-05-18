@@ -4,9 +4,9 @@
  * This file defines all base paths to ensure consistency across the application
  */
 
-// Detect if we're in public directory or root
-$publicPath = dirname(__DIR__);
-$rootPath = dirname($publicPath);
+// __DIR__ is the includes/ folder, so its parent is the project root
+$rootPath = dirname(__DIR__);
+$publicPath = $rootPath . '/public';
 
 // Define base paths as constants
 if (!defined('BASE_PATH')) {
@@ -16,36 +16,40 @@ if (!defined('PUBLIC_PATH')) {
     define('PUBLIC_PATH', $publicPath);
 }
 if (!defined('SRC_PATH')) {
-    define('SRC_PATH', BASE_PATH . '/src');
+    define('SRC_PATH', BASE_PATH . '/src/');
 }
 if (!defined('CONFIG_PATH')) {
-    define('CONFIG_PATH', SRC_PATH . '/config');
+    define('CONFIG_PATH', SRC_PATH . 'config/');
 }
 if (!defined('LIB_PATH')) {
-    define('LIB_PATH', SRC_PATH . '/lib');
+    define('LIB_PATH', SRC_PATH . 'lib/');
 }
 if (!defined('API_PATH')) {
-    define('API_PATH', SRC_PATH . '/api');
+    define('API_PATH', SRC_PATH . 'api/');
 }
 if (!defined('INCLUDES_PATH')) {
-    define('INCLUDES_PATH', BASE_PATH . '/includes');
+    define('INCLUDES_PATH', BASE_PATH . '/includes/');
 }
 if (!defined('PORTAL_PATH')) {
-    define('PORTAL_PATH', PUBLIC_PATH . '/portal');
+    define('PORTAL_PATH', PUBLIC_PATH . '/portal/');
 }
 if (!defined('ASSETS_PATH')) {
-    define('ASSETS_PATH', PUBLIC_PATH . '/assets');
+    define('ASSETS_PATH', PUBLIC_PATH . '/assets/');
 }
 if (!defined('CSS_PATH')) {
-    define('CSS_PATH', PUBLIC_PATH . '/css');
+    define('CSS_PATH', PUBLIC_PATH . '/css/');
 }
 if (!defined('JS_PATH')) {
-    define('JS_PATH', PUBLIC_PATH . '/js');
+    define('JS_PATH', PUBLIC_PATH . '/js/');
 }
 
 // Web-accessible base URL (adjust based on your server configuration)
 if (!defined('BASE_URL')) {
-    define('BASE_URL', '/IECEP-LSC-MEMSYS');
+    if (defined('APP_URL') && APP_URL !== '') {
+        define('BASE_URL', APP_URL);
+    } else {
+        define('BASE_URL', '/IECEP-LSC-MEMSYS');
+    }
 }
 if (!defined('PUBLIC_URL')) {
     define('PUBLIC_URL', BASE_URL . '/public');
@@ -66,7 +70,13 @@ if (!defined('JS_URL')) {
     define('JS_URL', PUBLIC_URL . '/js');
 }
 if (!defined('API_URL')) {
-    define('API_URL', BASE_URL . '/src/api');
+    define('API_URL', PUBLIC_URL . '/api');
+}
+if (!defined('STORAGE_PATH')) {
+    define('STORAGE_PATH', BASE_PATH . '/storage/');
+}
+if (!defined('STORAGE_URL')) {
+    define('STORAGE_URL', PUBLIC_URL . '/storage');
 }
 
 /**

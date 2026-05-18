@@ -292,6 +292,36 @@ if (!empty($resubmitId)) {
                 margin: 60px auto;
             }
         }
+
+        @media (max-width: 768px) {
+            .step-indicator {
+                flex-direction: column;
+                gap: var(--space-2);
+            }
+
+            .step-line {
+                width: 2px;
+                height: 30px;
+            }
+
+            .verification-inputs input {
+                width: 45px;
+                height: 45px;
+                font-size: 1.25rem;
+            }
+
+            #member-summary-card > div:first-of-type {
+                grid-template-columns: 1fr !important;
+            }
+
+            table {
+                font-size: 0.875rem;
+            }
+
+            table th, table td {
+                padding: var(--space-2) !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -310,6 +340,11 @@ if (!empty($resubmitId)) {
             <div class="step" id="step2">
                 <div class="step-number">2</div>
                 <span>Application Form</span>
+            </div>
+            <div class="step-line"></div>
+            <div class="step" id="step3">
+                <div class="step-number">3</div>
+                <span>Payment Summary</span>
             </div>
         </div>
 
@@ -485,12 +520,99 @@ if (!empty($resubmitId)) {
                     </div>
                 </div>
 
+                <!-- Member Count Summary Card -->
+                <div id="member-summary-card" class="hidden" style="margin-top: var(--space-6); padding: var(--space-4); background: #f0f9ff; border: 2px solid #0ea5e9; border-radius: var(--radius-lg);">
+                    <h4 style="color: var(--primary); margin-bottom: var(--space-3);">📊 Member Directory Summary</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3);">
+                        <div>
+                            <div style="font-size: 0.875rem; color: var(--neutral-600);">Total Members</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);" id="summary-total">0</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.875rem; color: var(--neutral-600);">New Members</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="summary-new">0</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.875rem; color: var(--neutral-600);">Old/Renewing</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #f59e0b;" id="summary-old">0</div>
+                        </div>
+                    </div>
+                    <div id="warning-section" class="hidden" style="margin-top: var(--space-3); padding: var(--space-3); background: #fef3c7; border-radius: var(--radius-md);">
+                        <strong style="color: #92400e;">⚠️ Warnings:</strong>
+                        <ul id="warning-list" style="margin: var(--space-2) 0 0 var(--space-4); color: #92400e;"></ul>
+                    </div>
+                </div>
+
                 <div style="text-align: center; margin-top: var(--space-8);">
                     <label style="display: flex; align-items: center; justify-content: center; gap: var(--space-2); margin-bottom: var(--space-4);">
                         <input type="checkbox" id="terms-checkbox" required>
                         I agree to the terms and conditions and certify that all information provided is accurate
                     </label>
-                    <button type="button" class="btn btn-primary btn-lg" id="submit-application-btn" style="min-width: 200px;" disabled>
+                    <button type="button" class="btn btn-primary btn-lg" id="proceed-to-payment-btn" style="min-width: 200px;" disabled>
+                        Proceed to Payment Summary
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Payment Summary -->
+        <div id="payment-summary-step" class="hidden">
+            <div class="card">
+                <h3 style="text-align: center; margin-bottom: var(--space-6); color: var(--primary);">💳 Payment Summary</h3>
+                
+                <div style="background: #f8fafc; border-radius: var(--radius-lg); padding: var(--space-6); margin-bottom: var(--space-6);">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid var(--neutral-300);">
+                                <th style="text-align: left; padding: var(--space-3); color: var(--neutral-700); font-weight: 600;">Description</th>
+                                <th style="text-align: right; padding: var(--space-3); color: var(--neutral-700); font-weight: 600;">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td style="padding: var(--space-3); color: var(--neutral-600);">Member Count</td>
+                                <td style="text-align: right; padding: var(--space-3); font-weight: 600;" id="pay-member-count">-</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: var(--space-3); color: var(--neutral-600);">New Members</td>
+                                <td style="text-align: right; padding: var(--space-3); color: #10b981; font-weight: 600;" id="pay-new">-</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: var(--space-3); color: var(--neutral-600);">Old/Renewing Members</td>
+                                <td style="text-align: right; padding: var(--space-3); color: #f59e0b; font-weight: 600;" id="pay-old">-</td>
+                            </tr>
+                            <tr style="border-top: 2px solid var(--neutral-300);">
+                                <td style="padding: var(--space-3); font-weight: 600; color: var(--neutral-700);">Variable Affiliation Fee</td>
+                                <td style="text-align: right; padding: var(--space-3); font-weight: 700; color: var(--primary);" id="pay-affiliation-fee">₱0.00</td>
+                            </tr>
+                            <tr>
+                                <td style="padding: var(--space-3); color: var(--neutral-600);">Operational & Activity Fee</td>
+                                <td style="text-align: right; padding: var(--space-3); font-weight: 600;" id="pay-operational-fee">₱800.00</td>
+                            </tr>
+                            <tr style="border-top: 3px solid var(--primary); background: #f0f9ff;">
+                                <td style="padding: var(--space-4); font-size: 1.25rem; font-weight: 700; color: var(--primary);">Total Amount Due</td>
+                                <td style="text-align: right; padding: var(--space-4); font-size: 1.5rem; font-weight: 800; color: var(--primary);" id="pay-total-fee">₱0.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="alert alert-info" style="margin-bottom: var(--space-6);">
+                    <strong>📋 Fee Breakdown (CBL Compliance):</strong>
+                    <ul style="margin: var(--space-2) 0 0 var(--space-4);">
+                        <li>1-50 members: ₱1,500</li>
+                        <li>51-100 members: ₱2,000</li>
+                        <li>101-150 members: ₱2,500</li>
+                        <li>151+ members: ₱3,000</li>
+                        <li>Fixed Operational Fee: ₱800</li>
+                    </ul>
+                </div>
+
+                <div style="display: flex; gap: var(--space-3); justify-content: center;">
+                    <button type="button" class="btn" id="back-to-form-btn" style="background: var(--neutral-200); color: var(--neutral-700);">
+                        ← Back to Form
+                    </button>
+                    <button type="button" class="btn btn-primary btn-lg" id="submit-application-btn" style="min-width: 200px;">
                         Submit Application
                     </button>
                 </div>
@@ -498,6 +620,9 @@ if (!empty($resubmitId)) {
         </div>
     </div>
 
+    <!-- Load XLSX library for parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="/IECEP-LSC-MEMSYS/public/js/member-directory-parser.js"></script>
     <script src="/js/app.js"></script>
     <script>
         let verifiedEmail = '';
@@ -505,7 +630,11 @@ if (!empty($resubmitId)) {
         let countdownInterval;
         let isResubmit = <?php echo !empty($existingApplication) ? 'true' : 'false'; ?>;
         let resubmitId = '<?php echo htmlspecialchars($resubmitId); ?>';
-        let currentEmail = ''; // Store current email for resend
+        let currentEmail = '';
+        
+        // Initialize Member Directory Parser
+        const parser = new MemberDirectoryParser();
+        let memberDirectoryParsed = false;
 
         // If resubmitting, skip email verification and set verified email
         if (isResubmit) {
@@ -515,7 +644,6 @@ if (!empty($resubmitId)) {
             document.getElementById('step2').classList.add('active');
             document.getElementById('email-verification-step').classList.add('hidden');
             document.getElementById('application-form-step').classList.remove('hidden');
-            // Document upload section is now rendered server-side for resubmission
             console.log('Resubmit mode - document upload section rendered server-side');
         }
 
@@ -799,7 +927,6 @@ if (!empty($resubmitId)) {
                 { key: 'member_directory', name: 'Member Directory', accept: '.pdf,.doc,.docx,.xls,.xlsx,.csv' }
             ];
 
-            // Existing documents from PHP (if resubmitting)
             const existingDocs = <?php echo !empty($existingApplication['documents']) ? json_encode(json_decode($existingApplication['documents'], true) ?: []) : '[]'; ?>;
 
             console.log('setupDocumentUpload called, isResubmit:', isResubmit, 'existingDocs:', existingDocs);
@@ -836,17 +963,124 @@ if (!empty($resubmitId)) {
 
             console.log('Document upload section set up, display:', uploadSection.style.display);
 
-            // Add change listeners to file inputs
-            document.querySelectorAll('#document-upload-section input[type="file"]').forEach(input => {
-                input.addEventListener('change', function(e) {
-                    console.log('File selected:', e.target.files[0]?.name);
-                });
-            });
+            // Add Member Directory file listener
+            const memberDirectoryInput = document.getElementById('file-member_directory');
+            if (memberDirectoryInput) {
+                memberDirectoryInput.addEventListener('change', handleMemberDirectoryUpload);
+            }
+        }
+
+        // Handle Member Directory Upload and Parsing
+        async function handleMemberDirectoryUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const summaryCard = document.getElementById('member-summary-card');
+            const proceedBtn = document.getElementById('proceed-to-payment-btn');
+
+            // Show processing state
+            summaryCard.innerHTML = '<div style="text-align:center;padding:var(--space-4);"><div class="spinner-border" style="color:var(--primary);"></div><p style="margin-top:var(--space-2);color:var(--neutral-600);">Processing file...</p></div>';
+            summaryCard.classList.remove('hidden');
+            proceedBtn.disabled = true;
+
+            try {
+                const result = await parser.parseFile(file);
+                const fees = parser.calculateFees(result.total);
+
+                // Update summary card
+                document.getElementById('summary-total').textContent = result.total;
+                document.getElementById('summary-new').textContent = result.new;
+                document.getElementById('summary-old').textContent = result.old;
+
+                // Show warnings if any
+                if (result.warnings.length > 0) {
+                    const warningSection = document.getElementById('warning-section');
+                    const warningList = document.getElementById('warning-list');
+                    warningList.innerHTML = result.warnings.map(w => `<li>${w}</li>`).join('');
+                    warningSection.classList.remove('hidden');
+                }
+
+                // Restore summary card HTML
+                summaryCard.innerHTML = `
+                    <h4 style="color: var(--primary); margin-bottom: var(--space-3);">📊 Member Directory Summary</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--space-3);">
+                        <div>
+                            <div style="font-size: 0.875rem; color: var(--neutral-600);">Total Members</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);" id="summary-total">${result.total}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.875rem; color: var(--neutral-600);">New Members</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #10b981;" id="summary-new">${result.new}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.875rem; color: var(--neutral-600);">Old/Renewing</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: #f59e0b;" id="summary-old">${result.old}</div>
+                        </div>
+                    </div>
+                    ${result.warnings.length > 0 ? `
+                        <div id="warning-section" style="margin-top: var(--space-3); padding: var(--space-3); background: #fef3c7; border-radius: var(--radius-md);">
+                            <strong style="color: #92400e;">⚠️ Warnings:</strong>
+                            <ul id="warning-list" style="margin: var(--space-2) 0 0 var(--space-4); color: #92400e;">
+                                ${result.warnings.map(w => `<li>${w}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                `;
+
+                memberDirectoryParsed = true;
+                updateProceedButton();
+
+                showSuccess('Member directory parsed successfully!');
+            } catch (error) {
+                summaryCard.classList.add('hidden');
+                showError(error.message);
+                memberDirectoryParsed = false;
+                proceedBtn.disabled = true;
+            }
+        }
+
+        // Update Proceed Button State
+        function updateProceedButton() {
+            const termsChecked = document.getElementById('terms-checkbox').checked;
+            const proceedBtn = document.getElementById('proceed-to-payment-btn');
+            proceedBtn.disabled = !(memberDirectoryParsed && termsChecked);
         }
 
         // Terms checkbox validation
-        document.getElementById('terms-checkbox').addEventListener('change', function() {
-            document.getElementById('submit-application-btn').disabled = !this.checked;
+        document.getElementById('terms-checkbox').addEventListener('change', updateProceedButton);
+
+        // Proceed to Payment Summary
+        document.getElementById('proceed-to-payment-btn').addEventListener('click', function() {
+            if (!memberDirectoryParsed) {
+                showError('Please upload and parse the Member Directory first.');
+                return;
+            }
+
+            const parsedData = parser.getParsedData();
+            const feeData = parser.getFeeCalculation();
+
+            // Update Payment Summary
+            document.getElementById('pay-member-count').textContent = parsedData.total;
+            document.getElementById('pay-new').textContent = parsedData.new;
+            document.getElementById('pay-old').textContent = parsedData.old;
+            document.getElementById('pay-affiliation-fee').textContent = `₱${feeData.affiliationFee.toLocaleString()}.00`;
+            document.getElementById('pay-total-fee').textContent = `₱${feeData.totalFee.toLocaleString()}.00`;
+
+            // Move to Step 3
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('step2').classList.add('completed');
+            document.getElementById('step3').classList.add('active');
+            document.getElementById('application-form-step').classList.add('hidden');
+            document.getElementById('payment-summary-step').classList.remove('hidden');
+        });
+
+        // Back to Form Button
+        document.getElementById('back-to-form-btn').addEventListener('click', function() {
+            document.getElementById('step3').classList.remove('active');
+            document.getElementById('step2').classList.remove('completed');
+            document.getElementById('step2').classList.add('active');
+            document.getElementById('payment-summary-step').classList.add('hidden');
+            document.getElementById('application-form-step').classList.remove('hidden');
         });
 
         // Test if resend button exists on page load
@@ -874,6 +1108,11 @@ if (!empty($resubmitId)) {
                 return;
             }
             
+            if (!memberDirectoryParsed) {
+                showError('Member directory must be uploaded and parsed.');
+                return;
+            }
+            
             console.log('Form validation passed, preparing submission...');
             
             this.disabled = true;
@@ -890,6 +1129,16 @@ if (!empty($resubmitId)) {
             formData.append('contact_position', document.getElementById('contact-position').value);
             formData.append('contact_phone', document.getElementById('contact-phone').value);
             formData.append('terms', 'accepted');
+
+            // Add member directory data
+            const parsedData = parser.getParsedData();
+            const feeData = parser.getFeeCalculation();
+            formData.append('member_count_total', parsedData.total);
+            formData.append('member_count_new', parsedData.new);
+            formData.append('member_count_old', parsedData.old);
+            formData.append('affiliation_fee', feeData.affiliationFee);
+            formData.append('operational_fee', feeData.operationalFee);
+            formData.append('total_fee', feeData.totalFee);
 
             // Add resubmit ID if resubmitting
             if (isResubmit && resubmitId) {
@@ -939,7 +1188,6 @@ if (!empty($resubmitId)) {
                         window.location.href = '/';
                     }, 3000);
                 } else {
-                    // Check if this is a duplicate email error with resubmit option
                     if (result.resubmit_available && result.application_id) {
                         showResubmitModal(result.error, result.application_id);
                     } else {
