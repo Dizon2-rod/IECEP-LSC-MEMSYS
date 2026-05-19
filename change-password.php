@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Change Password Page - Forced password change on first login
  * IECEP-LSC MEMSYS

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * Treasurer: Pending Payments Review
  * GET /portal/treasurer/pending-payments.php
@@ -9,7 +10,9 @@
  * SOURCE: Deliverable 3.4 - Pending Payments Portal
  */
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);

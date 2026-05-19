@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Submit Affiliation API
  * Handles form submission, file uploads, and Excel parsing

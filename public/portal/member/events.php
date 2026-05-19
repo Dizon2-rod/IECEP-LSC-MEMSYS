@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../auth_check.php';
 require_role(['member', 'admin', 'super_admin', 'school_officer']);
 require_once __DIR__ . '/../../../includes/csrf.php';

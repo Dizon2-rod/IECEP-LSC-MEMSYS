@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 $current_page = basename(__FILE__, '.php');
 /**
  * Admin User Management - Uses Dynamic Sidebar

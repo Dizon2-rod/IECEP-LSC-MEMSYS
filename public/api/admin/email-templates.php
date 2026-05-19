@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * EMAIL TEMPLATES - Admin API
  * Manage email templates for system notifications

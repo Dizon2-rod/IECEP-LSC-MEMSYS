@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * SYSTEM HEALTH DASHBOARD - Super Admin API
  * Monitor system health and performance

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 // API Proxy - forwards requests to api
 require_once __DIR__ . '/../includes/config.php';
 

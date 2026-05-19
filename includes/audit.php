@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * Audit Logging Helper
  * 
@@ -40,7 +41,7 @@
  * - any record deletion (delete operations on any table)
  */
 
-require_once __DIR__ . '/../src/lib/Supabase.php';
+require_once __DIR__ . '/../src/lib/supabase.php';
 
 function log_audit($action, $table_name, $record_id, $old_data = null, $new_data = null) {
     try {

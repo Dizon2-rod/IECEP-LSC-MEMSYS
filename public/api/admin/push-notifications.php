@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * PUSH NOTIFICATIONS - Admin API
  * Manage and send push notifications to users

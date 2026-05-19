@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Verify Affiliation Payment
  * POST /api/treasurer/verify-payment.php

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Approval Notification Bell
  * Displays a bell icon with pending approval count

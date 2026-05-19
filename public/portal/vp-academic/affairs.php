@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * VP Academic Affairs - Uses Dynamic Sidebar
  */

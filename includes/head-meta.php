@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 // Prevent multiple inclusions
 if (defined('HEAD_META_INCLUDED')) return;
 define('HEAD_META_INCLUDED', true);
@@ -154,11 +155,16 @@ define('HEAD_META_INCLUDED', true);
         bottom: 0;
         background: rgba(0, 0, 0, 0.95);
         z-index: 9999;
-        display: none;
+        display: none !important;
         overflow-y: auto;
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.3s ease, visibility 0.3s ease;
     }
     .mobile-menu-overlay.active {
-        display: block;
+        display: flex !important;
+        visibility: visible;
+        opacity: 1;
     }
     .mobile-menu-content {
         padding: 2rem;
@@ -432,9 +438,12 @@ define('HEAD_META_INCLUDED', true);
     .step-card p { color: var(--neutral-500); font-size: 0.95rem; }
 
     /* Contact */
-    .contact { background: var(--primary); color: var(--white); padding: var(--space-12) 0; }
-    .contact-container { display: grid; grid-template-columns: 1fr; gap: var(--space-8); max-width: 1200px; margin: 0 auto; padding: 0 var(--space-2); }
+    .contact { background: linear-gradient(135deg, #0B1D4A 0%, #142a6b 100%); color: var(--white); padding: var(--space-12) 0; position: relative; overflow: hidden; }
+    .contact::before { content: ''; position: absolute; inset: 0; background: url('/IECEP-LSC-MEMSYS/public/assets/icons/hero.png') center/cover no-repeat; opacity: 0.7; z-index: 0; }
+    .contact::after { content: ''; position: absolute; inset: 0; background: rgba(11, 29, 74, 0.6); z-index: 1; }
+    .contact-container { display: grid; grid-template-columns: 1fr; gap: var(--space-8); max-width: 1200px; margin: 0 auto; padding: 0 var(--space-2); position: relative; z-index: 2; }
     @media (min-width: 768px) { .contact-container { grid-template-columns: 1fr 1fr; padding: 0 var(--space-4); } }
+    .contact-content { display: flex; flex-direction: column; justify-content: flex-end; }
     .contact-form { background: var(--white); border-radius: var(--radius-xl); padding: var(--space-6); color: var(--text-dark); }
     .form-group { margin-bottom: var(--space-4); }
     .form-label { display: block; margin-bottom: var(--space-2); font-weight: 600; color: var(--neutral-700); }

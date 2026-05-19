@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../auth_check.php';
 
 // Allow eb_pro_2 (head) and committee_logistics

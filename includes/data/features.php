@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 // IECEP-LSC MEMSYS - Features Data
 // This file can be updated by Creatives and Publication Committee to manage features content
 

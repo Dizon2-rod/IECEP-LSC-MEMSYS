@@ -80,6 +80,11 @@ self.addEventListener('fetch', event => {
     const { request } = event;
     const url = new URL(request.url);
 
+    // Skip chrome-extension and other non-http requests
+    if (!url.protocol.startsWith('http')) {
+        return;
+    }
+
     // Handle API requests
     if (url.pathname.startsWith(`${BASE_PATH}/api/`)) {
         event.respondWith(handleApiRequest(request));

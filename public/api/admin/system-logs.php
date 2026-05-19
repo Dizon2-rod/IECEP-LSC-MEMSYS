@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * SYSTEM LOGS VIEWER - Admin API
  * Retrieves and filters system logs

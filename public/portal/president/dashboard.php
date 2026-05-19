@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * President Dashboard - Uses Dynamic Sidebar
  */

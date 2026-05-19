@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Edit Affiliation Application
  * Allows applicants to resubmit documents after committee requests changes

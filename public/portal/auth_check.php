@@ -1,6 +1,9 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 // auth_check.php - Central Authorization Checker for IECEP-LSC MEMSYS
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Load path configuration
 require_once dirname(dirname(__DIR__)) . '/includes/paths.php';
@@ -131,8 +134,10 @@ function get_user_info() {
  * is_logged_in - Check if user is logged in
  * @return bool - True if logged in
  */
-function is_logged_in() {
-    return isset($_SESSION['user']) && isset($_SESSION['user']['id']);
+if (!function_exists('is_logged_in')) {
+    function is_logged_in() {
+        return isset($_SESSION['user']) && isset($_SESSION['user']['id']);
+    }
 }
 
 /**

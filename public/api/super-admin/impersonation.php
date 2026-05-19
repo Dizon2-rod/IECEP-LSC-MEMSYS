@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * USER IMPERSONATION - Super Admin API
  * Allow super admins to impersonate users for troubleshooting

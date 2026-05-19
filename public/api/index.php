@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 // API Router - routes /api/{endpoint}?action={action} to the correct PHP file
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');

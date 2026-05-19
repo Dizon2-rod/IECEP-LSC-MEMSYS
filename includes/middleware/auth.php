@@ -1,6 +1,7 @@
 <?php
 namespace App\Middleware;
 
+require_once __DIR__ . '/../bootstrap.php';
 class AuthMiddleware
 {
     private $supabase;

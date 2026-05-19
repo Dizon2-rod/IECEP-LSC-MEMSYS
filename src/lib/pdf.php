@@ -4,6 +4,7 @@ namespace App\Lib;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
+require_once __DIR__ . '/../../bootstrap.php';
 class PdfService
 {
     private array $config;

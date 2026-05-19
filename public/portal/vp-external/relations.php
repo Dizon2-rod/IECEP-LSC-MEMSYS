@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * VP External Relations - Uses Dynamic Sidebar
  */

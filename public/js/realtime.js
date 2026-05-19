@@ -20,6 +20,12 @@ function initializeSupabase() {
         return;
     }
 
+    if (!window.supabase) {
+        console.warn('Supabase library not loaded, retrying...');
+        setTimeout(initializeSupabase, 500);
+        return;
+    }
+
     try {
         // Initialize Supabase client using the anon key
         supabaseClient = window.supabase.createClient(

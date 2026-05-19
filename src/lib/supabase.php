@@ -1,6 +1,7 @@
 <?php
 namespace App\Lib;
 
+require_once dirname(dirname(__DIR__)) . '/bootstrap.php';
 // Load fallback HTTP client if GuzzleHttp is not available
 if (!class_exists('\GuzzleHttp\Client')) {
     require_once __DIR__ . '/SimpleHttpClient.php';
@@ -19,10 +20,10 @@ class Supabase
 
     public function __construct()
     {
-        $config = include __DIR__ . '/../config/config.php';
-        $this->url = SUPABASE_URL;
-        $this->anonKey = SUPABASE_ANON_KEY;
-        $this->serviceKey = SUPABASE_SERVICE_ROLE_KEY;
+        $config = include dirname(dirname(__DIR__)) . '/includes/config.php';
+        $this->url = $_ENV['SUPABASE_URL'] ?? '';
+        $this->anonKey = $_ENV['SUPABASE_ANON_KEY'] ?? '';
+        $this->serviceKey = $_ENV['SUPABASE_SERVICE_ROLE_KEY'] ?? '';
         $this->client = new \GuzzleHttp\Client([
             'base_uri' => $this->url,
             'timeout' => 30,
@@ -320,7 +321,7 @@ class SupabaseStorage
     {
         $serviceKey = $this->sb->getServiceKey();
         $client = new \GuzzleHttp\Client();
-        $response = $client->request('POST', SUPABASE_URL . "/storage/v1/object/$bucket/$path", [
+        $response = $client->request('POST', ($_ENV['SUPABASE_URL'] ?? '') . "/storage/v1/object/$bucket/$path", [
             'headers' => [
                 'apikey' => $serviceKey,
                 'Authorization' => 'Bearer ' . $serviceKey,
@@ -341,7 +342,7 @@ class SupabaseStorage
 
     public function getPublicUrl(string $bucket, string $path): string
     {
-        return SUPABASE_URL . "/storage/v1/object/public/$bucket/$path";
+        return ($_ENV['SUPABASE_URL'] ?? '') . "/storage/v1/object/public/$bucket/$path";
     }
 
     public function createSignedUrl(string $bucket, string $path, int $expires = 3600): array
@@ -350,4 +351,11 @@ class SupabaseStorage
             'json' => ['expiresIn' => $expires],
         ], true);
     }
+}
+
+// Remove the duplicate require_once that was causing issues
+if (!defined('SUPABASE_URL')) {
+    define('SUPABASE_URL', $_ENV['SUPABASE_URL'] ?? '');
+    define('SUPABASE_ANON_KEY', $_ENV['SUPABASE_ANON_KEY'] ?? '');
+    define('SUPABASE_SERVICE_ROLE_KEY', $_ENV['SUPABASE_SERVICE_ROLE_KEY'] ?? '');
 }

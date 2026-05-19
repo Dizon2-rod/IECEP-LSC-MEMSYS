@@ -1,6 +1,7 @@
 <?php
 namespace App\Lib;
 
+require_once __DIR__ . '/../../bootstrap.php';
 class CsvService
 {
     public function parse(string $filePath, bool $hasHeader = true): array

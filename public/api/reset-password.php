@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 // API: Reset Password
 // POST /public/api/reset-password.php
 // Expects: { "token": "...", "new_password": "..." }

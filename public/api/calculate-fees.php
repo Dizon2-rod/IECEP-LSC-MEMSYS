@@ -1,4 +1,8 @@
 <?php
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Calculate Affiliation Fees
  * POST /api/calculate-fees.php
@@ -20,6 +24,7 @@ header('Content-Type: application/json');
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/helpers.php';
 require_once __DIR__ . '/../../src/lib/SupabaseClient.php';
+require_once __DIR__ . '/../../vendor/autoload.php';
 
 // Get Supabase client
 $config = require __DIR__ . '/../../includes/supabase.php';
@@ -68,11 +73,6 @@ try {
     }
 
     // 5. Parse Excel file using PhpSpreadsheet
-    require_once __DIR__ . '/../../vendor/autoload.php';
-    
-    use PhpOffice\PhpSpreadsheet\IOFactory;
-    use PhpOffice\PhpSpreadsheet\Spreadsheet;
-
     $spreadsheet = IOFactory::load($file['tmp_name']);
     
     // 6. Look for sheets named '1st Yr', '2nd Yr', '3rd Yr', '4th Yr' (case-insensitive)
@@ -91,6 +91,9 @@ try {
     }
 
     // 7. Process each sheet and count members
+    // NOTE: member_type column stores fee category ('new', 'returning', 'honorary')
+    //       status column stores membership validity ('active', 'inactive', 'suspended', 'pending')
+    //       For fee calculation, we ONLY use member_type, NOT status
     $totalMembers = 0;
     $newMembers = 0;
     $returningMembers = 0;

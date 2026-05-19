@@ -1,5 +1,8 @@
 <?php
-session_start();
+require_once __DIR__ . '/../bootstrap.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 define('BASE_PUBLIC_URL', '/IECEP-LSC-MEMSYS/public');
 
 // Authentication check

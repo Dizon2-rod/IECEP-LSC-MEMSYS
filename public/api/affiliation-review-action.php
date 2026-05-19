@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Affiliation Review Action API
  * Handles approve, reject, and request_changes actions for affiliation applications

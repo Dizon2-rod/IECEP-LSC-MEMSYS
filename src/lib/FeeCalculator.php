@@ -3,6 +3,7 @@ namespace App\Lib;
 
 use App\Lib\SupabaseClient;
 
+require_once __DIR__ . '/../../bootstrap.php';
 /**
  * FeeCalculator - Database-driven fee calculation
  * 

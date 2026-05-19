@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 session_start();
 
 // Suppress PHP errors to prevent HTML warnings in JSON response

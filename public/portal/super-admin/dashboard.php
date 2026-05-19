@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * Super Admin Dashboard - Now uses Admin Panel Layout
  */

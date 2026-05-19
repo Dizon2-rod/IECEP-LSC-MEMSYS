@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../auth_check.php';
 require_role(['eb_president', 'admin']);
 
@@ -33,6 +34,8 @@ try {
     
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/font-awesome.css">
+    <!-- Supabase JS Client Library (for real-time subscriptions) -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <!-- We remove professional.css if it contains global body/main-content styles 
          to prevent it from fighting with sidebar.php -->

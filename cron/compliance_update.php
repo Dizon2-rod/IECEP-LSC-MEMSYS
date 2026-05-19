@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Compliance Update Cron Job
  * Run daily: 0 2 * * * php /path/to/compliance_update.php

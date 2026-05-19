@@ -1,13 +1,17 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Assign Single Membership ID
  * 
  * POST endpoint for assigning a membership ID to a single imported member
  * Handles payment status validation and member type matching
+ * Auto-creates Supabase user accounts and sends credentials
  */
 
 require_once __DIR__ . '/../../../includes/paths.php';
 require_once __DIR__ . '/../../../includes/config.php';
+require_once __DIR__ . '/../../../includes/supabase-admin.php';
+require_once __DIR__ . '/../../../src/lib/EmailService.php';
 require_once __DIR__ . '/../../portal/auth_check.php';
 
 // Require admin or registration role
@@ -29,6 +33,7 @@ if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
 
 try {
     $db = getDbConnection();
+    $emailService = new \App\Lib\EmailService();
     
     $row_id = $_POST['row_id'] ?? null;
     $is_paid = isset($_POST['is_paid']) ? (bool)$_POST['is_paid'] : false;
@@ -71,11 +76,12 @@ try {
         $birthday = $import_row['birthday'];
         $year = (int)date('Y');
         $member_id = null;
+        $membership_id = null;
 
         if ($member_type === 'old') {
             // Find existing member
             $stmt = $db->prepare("
-                SELECT id FROM members 
+                SELECT id, membership_id FROM members 
                 WHERE email = ? OR (LOWER(full_name) = LOWER(?) AND birthday = ?)
                 LIMIT 1
             ");
@@ -87,6 +93,7 @@ try {
             }
 
             $member_id = $existing['id'];
+            $membership_id = $existing['membership_id'];
 
             // Update existing member payment status
             $stmt = $db->prepare("
@@ -97,6 +104,13 @@ try {
                 WHERE id = ?
             ");
             $stmt->execute([$is_paid, $assigned_by_user_id, $member_id]);
+
+            // Send renewal email
+            try {
+                $emailService->sendRenewalConfirmation($email, $name, $membership_id);
+            } catch (Exception $e) {
+                error_log("[assign-id] Renewal email failed for $email: " . $e->getMessage());
+            }
 
         } else { // 'new'
             // Generate membership ID
@@ -130,14 +144,53 @@ try {
             ]);
 
             $member_id = $db->lastInsertId();
-            $membership_id = generate_membership_id($db, $year); // Get generated ID
-        }
 
-        // Get the membership ID (fetch if new member)
-        if ($member_type === 'old') {
-            $stmt = $db->prepare("SELECT membership_id FROM members WHERE id = ?");
-            $stmt->execute([$member_id]);
-            $membership_id = $stmt->fetchColumn();
+            // Check if Supabase user exists
+            $existing = checkSupabaseUserByEmail($email);
+
+            if (!$existing) {
+                // Create Supabase user
+                $password = bin2hex(random_bytes(6)); // 12-char hex password
+                $newUser = createSupabaseUser($email, $password, $name);
+
+                if ($newUser && isset($newUser['id'])) {
+                    $userId = $newUser['id'];
+
+                    // Insert user_profiles
+                    $stmt = $db->prepare("
+                        INSERT INTO user_profiles (user_id, role, full_name, force_password_change)
+                        VALUES (?, 'member', ?, true)
+                    ");
+                    $stmt->execute([$userId, $name]);
+
+                    // Link member record
+                    $stmt = $db->prepare("
+                        UPDATE members SET user_id = ? WHERE id = ?
+                    ");
+                    $stmt->execute([$userId, $member_id]);
+
+                    // Send credential email
+                    try {
+                        $emailService->sendMemberCredentials($email, $name, $membership_id, $password);
+                    } catch (Exception $e) {
+                        error_log("[assign-id] Credential email failed for $email: " . $e->getMessage());
+                    }
+
+                    log_audit('account_created', 'members', $member_id, null, [
+                        'membership_id' => $membership_id,
+                        'email' => $email
+                    ]);
+                } else {
+                    error_log("[assign-id] Failed to create Supabase user for: $email");
+                    log_audit('account_error', 'members', $member_id, null, ['email' => $email]);
+                }
+            } else {
+                // User exists — link only
+                $userId = $existing['id'];
+                $stmt = $db->prepare("UPDATE members SET user_id = ? WHERE id = ?");
+                $stmt->execute([$userId, $member_id]);
+                log_audit('account_linked', 'members', $member_id, null, ['email' => $email]);
+            }
         }
 
         // Update import row with assignment

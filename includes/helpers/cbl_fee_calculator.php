@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * CBL Fee Calculator
  * Automated fee calculation based on member count bracketing

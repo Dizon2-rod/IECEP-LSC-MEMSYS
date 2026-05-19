@@ -1,6 +1,7 @@
 <?php
 namespace App\Lib;
 
+require_once __DIR__ . '/../../bootstrap.php';
 /**
  * Lightweight HTTP client using PHP cURL
  * Provides GuzzleHttp-compatible interface as fallback

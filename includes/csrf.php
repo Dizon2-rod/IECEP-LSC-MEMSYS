@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * CSRF Protection System
  * Generates and validates CSRF tokens for all state-changing operations
@@ -57,6 +58,14 @@ function require_csrf($exit = true) {
  */
 function csrf_field() {
     return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars(csrf_token()) . '">';
+}
+
+/**
+ * Get CSRF token value
+ * @return string
+ */
+function csrf_field_value() {
+    return csrf_token();
 }
 
 /**

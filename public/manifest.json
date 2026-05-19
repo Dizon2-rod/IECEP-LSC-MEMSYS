@@ -100,20 +100,5 @@
   ],
   "related_applications": [],
   "prefer_related_applications": false,
-  "screenshots": [
-    {
-      "src": "/assets/screenshots/dashboard-mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "IECEP-LSC Dashboard on mobile"
-    },
-    {
-      "src": "/assets/screenshots/dashboard-desktop.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "IECEP-LSC Dashboard on desktop"
-    }
-  ]
+  "screenshots": []
 }

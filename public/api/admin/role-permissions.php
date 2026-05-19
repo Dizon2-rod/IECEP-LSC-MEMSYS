@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * ROLE PERMISSIONS MATRIX - Admin API
  * Manage role-based permissions

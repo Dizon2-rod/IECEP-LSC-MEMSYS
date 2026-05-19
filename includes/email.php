@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 // Gmail SMTP Configuration
 return [
     'host' => 'smtp.gmail.com',

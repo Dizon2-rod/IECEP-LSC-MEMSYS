@@ -1,6 +1,7 @@
 <?php
 namespace App\Lib;
 
+require_once __DIR__ . '/../../bootstrap.php';
 require_once __DIR__ . '/../../vendor/phpmailer/phpmailer/src/PHPMailer.php';
 require_once __DIR__ . '/../../vendor/phpmailer/phpmailer/src/Exception.php';
 require_once __DIR__ . '/../../vendor/phpmailer/phpmailer/src/SMTP.php';
@@ -149,14 +150,21 @@ class EmailService
         <p>Dear ' . htmlspecialchars($contactPerson ?: 'Representative') . ',</p>
         <p>Congratulations! Your affiliation application for <strong>' . htmlspecialchars($institutionName) . '</strong> has been approved. You can now access the IECEP-LSC Member Portal.</p>
         
-        <div style="background-color: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 6px; padding: 20px; margin: 20px 0;">
-            <h3 style="color: #0B1D4A; margin-top: 0;">Your Account Details</h3>
-            <p><strong>Email (Username):</strong> ' . htmlspecialchars($to) . '</p>
-            <p><strong>Temporary Password:</strong> <span style="font-family: monospace; background: #fff; padding: 4px 8px; border-radius: 4px;">' . htmlspecialchars($password) . '</span></p>
-            <p><a href="' . $loginUrl . '" style="display: inline-block; background-color: #C49A00; color: #0B1D4A; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: bold;">Login to Portal</a></p>
+        <div style="background-color: #fef3c7; border: 2px solid #f59e0b; border-radius: 6px; padding: 20px; margin: 20px 0;">
+            <h3 style="color: #92400e; margin-top: 0;">Your Account Credentials</h3>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                    <td style="padding: 10px; font-weight: bold; color: #0B1D4A; background: #fff; border: 1px solid #f59e0b;">Email (Username):</td>
+                    <td style="padding: 10px; background: #fff; border: 1px solid #f59e0b; font-family: monospace;">' . htmlspecialchars($to) . '</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; font-weight: bold; color: #0B1D4A; background: #fff; border: 1px solid #f59e0b;">Temporary Password:</td>
+                    <td style="padding: 10px; background: #fff; border: 1px solid #f59e0b; font-family: monospace; font-size: 16px; font-weight: bold; color: #c0392b;">' . htmlspecialchars($password) . '</td>
+                </tr>
+            </table>
         </div>
 
-        <p><strong>Important:</strong> For security reasons, you must change your password immediately after logging in.</p>
+        <p style="background-color: #fef2f2; border: 1px solid #ef4444; border-radius: 6px; padding: 15px; color: #991b1b;"><strong>⚠ Important:</strong> For security reasons, you must change your password immediately after logging in.</p>
         
         <p>If you have any questions, please contact the Registration Committee.</p>
         <p>Sincerely,<br>IECEP-LSC Registration Committee</p>
@@ -167,7 +175,7 @@ class EmailService
     </div>
 </div>';
             
-            $mail->AltBody = "IECEP-LSC Affiliation Approved – Your Portal Account Details\n\nDear " . ($contactPerson ?: 'Representative') . ",\n\nCongratulations! Your affiliation application for $institutionName has been approved. You can now access the IECEP-LSC Member Portal.\n\nYOUR ACCOUNT DETAILS:\n\nEmail (Username): $to\nTemporary Password: $password\n\nLogin URL: $loginUrl\n\nIMPORTANT: For security reasons, you must change your password immediately after logging in.\n\nIf you have any questions, please contact the Registration Committee.\n\nSincerely,\nIECEP-LSC Registration Committee\n\n© 2025 IECEP-LSC MEMSYS";
+            $mail->AltBody = "IECEP-LSC Affiliation Approved - Your Portal Account Details\n\nDear " . ($contactPerson ?: 'Representative') . ",\n\nCongratulations! Your affiliation application for $institutionName has been approved. You can now access the IECEP-LSC Member Portal.\n\nYOUR ACCOUNT CREDENTIALS:\n\nEmail (Username): $to\nTemporary Password: $password\n\nIMPORTANT: For security reasons, you must change your password immediately after logging in.\n\nIf you have any questions, please contact the Registration Committee.\n\nSincerely,\nIECEP-LSC Registration Committee\n\n© 2025 IECEP-LSC MEMSYS";
             
             $result = $mail->send();
             error_log("School account credentials email send result to $to: " . ($result ? 'SUCCESS' : 'FAILED'));
@@ -965,6 +973,113 @@ class EmailService
     public function getErrorInfo(): string
     {
         return $this->lastError ?: 'No error information available';
+    }
+
+    /**
+     * Send membership account credentials to a new member.
+     */
+    public function sendMemberCredentials(
+        string $toEmail,
+        string $fullName,
+        string $membershipId,
+        string $password
+    ): bool {
+        try {
+            $mail = $this->createMailer();
+            $mail->addAddress($toEmail);
+            $loginUrl = $this->config['app_url'] . '/login.php';
+            $logoUrl = $this->config['app_url'] . '/public/uploads/features/1776563416_iecep-logo.png';
+            $mail->Subject = 'Your IECEP-LSC Membership Account Credentials';
+
+            $mail->Body = "
+            <div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #ddd;border-radius:8px;overflow:hidden;'>
+                <div style='background:#0B1D4A;padding:24px;text-align:center;'>
+                    <img src='{$logoUrl}' alt='IECEP-LSC' style='height:70px;'>
+                </div>
+                <div style='padding:32px;'>
+                    <h2 style='color:#0B1D4A;'>Welcome to IECEP Laguna Student Chapter!</h2>
+                    <p>Hi <strong>" . htmlspecialchars($fullName) . "</strong>,</p>
+                    <p>Your affiliation has been approved. Below are your account credentials to access the IECEP-LSC Member System.</p>
+
+                    <table style='width:100%;border-collapse:collapse;margin:20px 0;'>
+                        <tr>
+                            <td style='padding:10px;background:#f5f5f5;font-weight:bold;width:40%;'>Membership ID</td>
+                            <td style='padding:10px;'>" . htmlspecialchars($membershipId) . "</td>
+                        </tr>
+                        <tr>
+                            <td style='padding:10px;background:#f5f5f5;font-weight:bold;'>Email (Username)</td>
+                            <td style='padding:10px;'>" . htmlspecialchars($toEmail) . "</td>
+                        </tr>
+                        <tr>
+                            <td style='padding:10px;background:#f5f5f5;font-weight:bold;'>Temporary Password</td>
+                            <td style='padding:10px;'><code>" . htmlspecialchars($password) . "</code></td>
+                        </tr>
+                    </table>
+
+                    <p style='color:#c0392b;'><strong>⚠ Important:</strong> You will be required to change your password upon first login.</p>
+
+                    <div style='text-align:center;margin:28px 0;'>
+                        <a href='{$loginUrl}' style='background:#0B1D4A;color:#fff;padding:12px 32px;border-radius:50px;text-decoration:none;font-weight:bold;'>
+                            Login to Member Portal
+                        </a>
+                    </div>
+
+                    <p style='font-size:13px;color:#888;'>If you did not expect this email, please contact your school officer or the IECEP-LSC Registration Committee.</p>
+                </div>
+                <div style='background:#f9f9f9;padding:16px;text-align:center;font-size:12px;color:#aaa;'>
+                    &copy; " . date('Y') . " IECEP Laguna Student Chapter. All rights reserved.
+                </div>
+            </div>";
+
+            $mail->AltBody = "Welcome to IECEP-LSC!\n\nHi {$fullName},\n\nYour affiliation has been approved. Below are your account credentials:\n\nMembership ID: {$membershipId}\nEmail: {$toEmail}\nTemporary Password: {$password}\n\nIMPORTANT: You must change your password upon first login.\n\nLogin at: {$loginUrl}";
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Email error (member credentials): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Send membership renewal confirmation to an existing member.
+     */
+    public function sendRenewalConfirmation(string $toEmail, string $fullName, string $membershipId): bool {
+        try {
+            $mail = $this->createMailer();
+            $mail->addAddress($toEmail);
+            $loginUrl = $this->config['app_url'] . '/login.php';
+            $mail->Subject = 'IECEP-LSC Membership Renewal Confirmed';
+
+            $mail->Body = "
+            <div style='font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #ddd;border-radius:8px;overflow:hidden;'>
+                <div style='background:#0B1D4A;padding:24px;text-align:center;'>
+                    <h2 style='color:#C49A00;margin:0;'>IECEP-LSC</h2>
+                </div>
+                <div style='padding:32px;'>
+                    <h2 style='color:#0B1D4A;'>Membership Renewal Confirmed</h2>
+                    <p>Hi <strong>" . htmlspecialchars($fullName) . "</strong>,</p>
+                    <p>Your IECEP-LSC membership for " . date('Y') . " has been successfully renewed.</p>
+                    <p><strong>Membership ID:</strong> " . htmlspecialchars($membershipId) . "</p>
+                    <p>Your existing login credentials remain unchanged. You may continue using the Member Portal with your current email and password.</p>
+                    <div style='text-align:center;margin:28px 0;'>
+                        <a href='{$loginUrl}' style='background:#0B1D4A;color:#fff;padding:12px 32px;border-radius:50px;text-decoration:none;font-weight:bold;'>
+                            Login to Portal
+                        </a>
+                    </div>
+                    <p>Thank you for your continued membership!</p>
+                </div>
+                <div style='background:#f9f9f9;padding:16px;text-align:center;font-size:12px;color:#aaa;'>
+                    &copy; " . date('Y') . " IECEP Laguna Student Chapter. All rights reserved.
+                </div>
+            </div>";
+
+            $mail->AltBody = "IECEP-LSC Membership Renewal Confirmed\n\nHi {$fullName},\n\nYour membership for " . date('Y') . " has been renewed.\nMembership ID: {$membershipId}\n\nYour existing credentials remain unchanged.\nLogin at: {$loginUrl}";
+
+            return $mail->send();
+        } catch (Exception $e) {
+            error_log("Email error (renewal confirmation): " . $e->getMessage());
+            return false;
+        }
     }
 
     /**

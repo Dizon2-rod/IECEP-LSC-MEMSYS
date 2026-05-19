@@ -1,25 +1,29 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * AUDIT LOGS VIEWER - Super Admin API
  * View detailed audit logs with advanced filtering
  * Created: May 17, 2026
  */
 
+ob_start();
+
 require_once __DIR__ . '/../../../includes/config.php';
 require_once __DIR__ . '/../../../includes/auth.php';
 
-header('Content-Type: application/json');
-
-// Verify super_admin access
-if ($_SESSION['role'] !== 'super_admin') {
-    http_response_code(403);
-    exit(json_encode(['error' => 'Super Admin access required']));
-}
-
-$method = $_SERVER['REQUEST_METHOD'];
-$action = $_GET['action'] ?? 'list';
+header('Content-Type: application/json; charset=utf-8');
 
 try {
+    // Verify super_admin access
+    if ($_SESSION['role'] !== 'super_admin') {
+        ob_end_clean();
+        http_response_code(403);
+        echo json_encode(['success' => false, 'error' => 'Super Admin access required']);
+        exit;
+    }
+
+    $action = $_GET['action'] ?? 'list';
+
     switch ($action) {
         case 'list':
             handleList();
@@ -47,11 +51,20 @@ try {
             break;
         default:
             http_response_code(400);
-            echo json_encode(['error' => 'Invalid action']);
+            echo json_encode(['success' => false, 'error' => 'Invalid action']);
     }
+    
+    ob_end_flush();
 } catch (Exception $e) {
+    ob_end_clean();
     http_response_code(500);
-    echo json_encode(['error' => $e->getMessage()]);
+    error_log('Audit Logs API Error: ' . $e->getMessage() . ' | ' . $e->getFile() . ':' . $e->getLine());
+    echo json_encode(['success' => false, 'error' => 'Internal server error']);
+} catch (Throwable $t) {
+    ob_end_clean();
+    http_response_code(500);
+    error_log('Audit Logs API Fatal Error: ' . $t->getMessage() . ' | ' . $t->getFile() . ':' . $t->getLine());
+    echo json_encode(['success' => false, 'error' => 'Internal server error']);
 }
 
 /**
@@ -82,7 +95,7 @@ function handleList() {
             ->range($offset, $offset + $limit - 1)
             ->execute();
         
-        $countQuery = $supabase->from('audit_logs')->select('id', count: 'exact')->limit(1);
+        $countQuery = $supabase->from('audit_logs')->select('id')->limit(1);
         if ($user_id) $countQuery->eq('user_id', $user_id);
         if ($action) $countQuery->ilike('action', "%$action%");
         if ($table) $countQuery->eq('table_name', $table);
@@ -113,7 +126,8 @@ function handleDetail() {
     $log_id = $_GET['id'] ?? '';
     if (!$log_id) {
         http_response_code(400);
-        return json_encode(['error' => 'Log ID required']);
+        echo json_encode(['success' => false, 'error' => 'Log ID required']);
+        return;
     }
     
     try {
@@ -142,7 +156,8 @@ function handleSearch() {
     $query_text = $_GET['q'] ?? '';
     if (strlen($query_text) < 2) {
         http_response_code(400);
-        return json_encode(['error' => 'Search query too short']);
+        echo json_encode(['success' => false, 'error' => 'Search query too short']);
+        return;
     }
     
     try {
@@ -200,7 +215,8 @@ function handleUserActions() {
     $user_id = $_GET['user_id'] ?? '';
     if (!$user_id) {
         http_response_code(400);
-        return json_encode(['error' => 'User ID required']);
+        echo json_encode(['success' => false, 'error' => 'User ID required']);
+        return;
     }
     
     $days = $_GET['days'] ?? 30;
@@ -248,7 +264,8 @@ function handleEntityChanges() {
     
     if (!$entity_id || !$entity_type) {
         http_response_code(400);
-        return json_encode(['error' => 'entity_id and entity_type required']);
+        echo json_encode(['success' => false, 'error' => 'entity_id and entity_type required']);
+        return;
     }
     
     try {
@@ -265,8 +282,8 @@ function handleEntityChanges() {
                 'timestamp' => $log['created_at'],
                 'action' => $log['action'],
                 'changed_by' => $log['user_id'],
-                'old_values' => $log['old_data'] ?? {},
-                'new_values' => $log['new_data'] ?? {}
+                'old_values' => $log['old_data'] ?? [],
+                'new_values' => $log['new_data'] ?? []
             ];
         }
         
@@ -337,43 +354,39 @@ function handleExport() {
     $format = $_GET['format'] ?? 'csv';
     $days = $_GET['days'] ?? 30;
     
-    try {
-        $response = $supabase->from('audit_logs')
-            ->select('*')
-            ->gte('created_at', date('Y-m-d H:i:s', strtotime("-$days days")))
-            ->order('created_at', 'desc')
-            ->limit(50000)
-            ->execute();
+    $response = $supabase->from('audit_logs')
+        ->select('*')
+        ->gte('created_at', date('Y-m-d H:i:s', strtotime("-$days days")))
+        ->order('created_at', 'desc')
+        ->limit(50000)
+        ->execute();
+    
+    $logs = $response->data ?? [];
+    
+    if ($format === 'csv') {
+        ob_end_clean();
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="audit_logs_' . date('Y-m-d') . '.csv"');
         
-        $logs = $response->data ?? [];
+        $fp = fopen('php://output', 'w');
+        fputcsv($fp, ['Timestamp', 'User ID', 'Action', 'Table', 'Record ID', 'IP Address', 'Details']);
         
-        if ($format === 'csv') {
-            header('Content-Type: text/csv');
-            header('Content-Disposition: attachment; filename="audit_logs_' . date('Y-m-d') . '.csv"');
-            
-            $fp = fopen('php://output', 'w');
-            fputcsv($fp, ['Timestamp', 'User ID', 'Action', 'Table', 'Record ID', 'IP Address', 'Details']);
-            
-            foreach ($logs as $log) {
-                fputcsv($fp, [
-                    $log['created_at'] ?? '',
-                    $log['user_id'] ?? '',
-                    $log['action'] ?? '',
-                    $log['table_name'] ?? '',
-                    $log['record_id'] ?? '',
-                    $log['ip_address'] ?? '',
-                    json_encode($log['details'] ?? [])
-                ]);
-            }
-            
-            fclose($fp);
-            exit;
+        foreach ($logs as $log) {
+            fputcsv($fp, [
+                $log['created_at'] ?? '',
+                $log['user_id'] ?? '',
+                $log['action'] ?? '',
+                $log['table_name'] ?? '',
+                $log['record_id'] ?? '',
+                $log['ip_address'] ?? '',
+                json_encode($log['details'] ?? [])
+            ]);
         }
         
-        echo json_encode(['success' => true, 'message' => 'Export format not implemented']);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['error' => $e->getMessage()]);
+        fclose($fp);
+        exit;
     }
+    
+    echo json_encode(['success' => false, 'error' => 'Export format not implemented']);
 }
 ?>

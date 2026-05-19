@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 // Prevent multiple inclusions
 if (defined('FOOTER_INCLUDED')) return;
 define('FOOTER_INCLUDED', true);

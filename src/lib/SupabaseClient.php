@@ -1,6 +1,7 @@
 <?php
 namespace App\Lib;
 
+require_once __DIR__ . '/../../bootstrap.php';
 // Supabase REST API Client for PHP
 class SupabaseClient {
     private $url;
@@ -43,28 +44,58 @@ class SupabaseClient {
             error_log("Supabase Data: " . json_encode($data));
         }
         
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $endpoint);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
-        
-        if ($data !== null) {
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        }
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        curl_close($ch);
-        
-        error_log("Supabase Response: HTTP $httpCode, Response: $response");
-        if ($curlError) {
-            error_log("Supabase cURL Error: $curlError");
-        }
-        
-        if ($curlError) {
-            throw new \Exception("Supabase cURL Error: $curlError");
+        // Check if curl is available
+        if (function_exists('curl_init')) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $endpoint);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+            
+            if ($data !== null) {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            }
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+            
+            error_log("Supabase Response: HTTP $httpCode, Response: $response");
+            if ($curlError) {
+                error_log("Supabase cURL Error: $curlError");
+            }
+            
+            if ($curlError) {
+                throw new \Exception("Supabase cURL Error: $curlError");
+            }
+        } else {
+            // Fallback to file_get_contents when curl is not available
+            $contextOptions = [
+                'http' => [
+                    'method' => $method,
+                    'header' => implode("\r\n", $this->headers),
+                    'ignore_errors' => true
+                ]
+            ];
+            
+            if ($data !== null) {
+                $contextOptions['http']['content'] = json_encode($data);
+            }
+            
+            $context = stream_context_create($contextOptions);
+            $response = file_get_contents($endpoint, false, $context);
+            
+            // Parse HTTP response code from headers
+            $httpCode = 200;
+            if (isset($http_response_header[0])) {
+                preg_match('/HTTP\/\d\.\d\s+(\d+)/', $http_response_header[0], $matches);
+                if (isset($matches[1])) {
+                    $httpCode = (int)$matches[1];
+                }
+            }
+            
+            error_log("Supabase Response (fallback): HTTP $httpCode, Response: $response");
         }
         
         if ($httpCode >= 400) {
@@ -88,13 +119,28 @@ class SupabaseClient {
             $endpoint .= '?' . http_build_query($filters);
         }
         
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $endpoint);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
-        
-        $response = curl_exec($ch);
-        curl_close($ch);
+        // Check if curl is available
+        if (function_exists('curl_init')) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $endpoint);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
+            
+            $response = curl_exec($ch);
+            curl_close($ch);
+        } else {
+            // Fallback to file_get_contents when curl is not available
+            $contextOptions = [
+                'http' => [
+                    'method' => 'GET',
+                    'header' => implode("\r\n", $this->headers),
+                    'ignore_errors' => true
+                ]
+            ];
+            
+            $context = stream_context_create($contextOptions);
+            $response = file_get_contents($endpoint, false, $context);
+        }
         
         return json_decode($response, true);
     }
@@ -131,17 +177,44 @@ class SupabaseClient {
         $endpoint = $this->url . '/rest/v1/' . $table . '?' . $filterQuery;
         error_log("Supabase Update: URL = $endpoint, Data = " . json_encode($data));
         
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $endpoint);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        error_log("Supabase Update: HTTP Code = $httpCode, Response = $response");
-        curl_close($ch);
+        // Check if curl is available
+        if (function_exists('curl_init')) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $endpoint);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PATCH');
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            error_log("Supabase Update: HTTP Code = $httpCode, Response = $response");
+            curl_close($ch);
+        } else {
+            // Fallback to file_get_contents when curl is not available
+            $contextOptions = [
+                'http' => [
+                    'method' => 'PATCH',
+                    'header' => implode("\r\n", $this->headers),
+                    'content' => json_encode($data),
+                    'ignore_errors' => true
+                ]
+            ];
+            
+            $context = stream_context_create($contextOptions);
+            $response = file_get_contents($endpoint, false, $context);
+            
+            // Parse HTTP response code from headers
+            $httpCode = 200;
+            if (isset($http_response_header[0])) {
+                preg_match('/HTTP\/\d\.\d\s+(\d+)/', $http_response_header[0], $matches);
+                if (isset($matches[1])) {
+                    $httpCode = (int)$matches[1];
+                }
+            }
+            
+            error_log("Supabase Update (fallback): HTTP Code = $httpCode, Response = $response");
+        }
         
         if ($httpCode >= 400) {
             throw new \Exception("Supabase API Error: HTTP $httpCode - $response");
@@ -154,13 +227,30 @@ class SupabaseClient {
         // For integer IDs, use filter instead of direct ID endpoint
         if (is_numeric($id)) {
             $endpoint = $this->url . '/rest/v1/' . $table . '?id=eq.' . $id;
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $endpoint);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
-            $response = curl_exec($ch);
-            curl_close($ch);
+            
+            // Check if curl is available
+            if (function_exists('curl_init')) {
+                $ch = curl_init();
+                curl_setopt($ch, CURLOPT_URL, $endpoint);
+                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+                $response = curl_exec($ch);
+                curl_close($ch);
+            } else {
+                // Fallback to file_get_contents when curl is not available
+                $contextOptions = [
+                    'http' => [
+                        'method' => 'DELETE',
+                        'header' => implode("\r\n", $this->headers),
+                        'ignore_errors' => true
+                    ]
+                ];
+                
+                $context = stream_context_create($contextOptions);
+                $response = file_get_contents($endpoint, false, $context);
+            }
+            
             return json_decode($response, true);
         }
         return $this->request('DELETE', $table, null, $id);
@@ -171,15 +261,31 @@ class SupabaseClient {
         $headers = array_merge($this->headers, ['Prefer: resolution=ignore-duplicates,return=representation']);
         $endpoint = $this->url . '/rest/v1/' . $table;
         
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $endpoint);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        
-        $response = curl_exec($ch);
-        curl_close($ch);
+        // Check if curl is available
+        if (function_exists('curl_init')) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $endpoint);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            
+            $response = curl_exec($ch);
+            curl_close($ch);
+        } else {
+            // Fallback to file_get_contents when curl is not available
+            $contextOptions = [
+                'http' => [
+                    'method' => 'POST',
+                    'header' => implode("\r\n", $headers),
+                    'content' => json_encode($data),
+                    'ignore_errors' => true
+                ]
+            ];
+            
+            $context = stream_context_create($contextOptions);
+            $response = file_get_contents($endpoint, false, $context);
+        }
         
         return json_decode($response, true);
     }
@@ -203,17 +309,43 @@ class SupabaseClient {
         error_log("Auth Sign Up: Data = " . json_encode($data));
         error_log("Auth Sign Up: Headers = " . json_encode($this->headers));
         
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $endpoint);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
-        curl_close($ch);
+        // Check if curl is available
+        if (function_exists('curl_init')) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $endpoint);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+        } else {
+            // Fallback to file_get_contents when curl is not available
+            $contextOptions = [
+                'http' => [
+                    'method' => 'POST',
+                    'header' => implode("\r\n", $this->headers),
+                    'content' => json_encode($data),
+                    'ignore_errors' => true
+                ]
+            ];
+            
+            $context = stream_context_create($contextOptions);
+            $response = file_get_contents($endpoint, false, $context);
+            
+            // Parse HTTP response code from headers
+            $httpCode = 200;
+            $curlError = '';
+            if (isset($http_response_header[0])) {
+                preg_match('/HTTP\/\d\.\d\s+(\d+)/', $http_response_header[0], $matches);
+                if (isset($matches[1])) {
+                    $httpCode = (int)$matches[1];
+                }
+            }
+        }
         
         error_log("Auth Sign Up: HTTP Code = $httpCode");
         error_log("Auth Sign Up: Response = $response");

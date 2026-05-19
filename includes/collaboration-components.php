@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * Collaboration UI Components
  * Reusable components for collaboration features

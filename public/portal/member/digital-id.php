@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 require_once '../../../includes/auth_check.php';
 require_role(['member']);
 require_once '../../../includes/dashboard-layout.php';

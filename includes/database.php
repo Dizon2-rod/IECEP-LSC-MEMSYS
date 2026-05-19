@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 // Database Configuration for Creatives Committee
 class Database {
     private static $instance = null;

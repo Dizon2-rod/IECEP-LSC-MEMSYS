@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Approval Notifications Modal
  * Displays all items that need approval in a unified modal

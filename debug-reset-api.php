@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 // Debug script for password reset API using PHP only.
 $url = 'http://localhost/IECEP-LSC-MEMSYS/public/api/reset-password.php';
 

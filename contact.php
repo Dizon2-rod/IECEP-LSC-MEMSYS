@@ -1,9 +1,6 @@
 <?php
 session_start();
-require_once __DIR__ . '/autoload.php';
-require_once __DIR__ . '/includes/supabase.php';
-require_once __DIR__ . '/includes/paths.php';
-
+require_once __DIR__ . '/bootstrap.php';
 $success = false;
 $error = '';
 
@@ -148,10 +145,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: flex;
             gap: var(--space-3);
             margin-top: var(--space-4);
+            align-items: center;
         }
         .social-links a {
-            width: 40px;
-            height: 40px;
+            width: 50px;
+            height: 50px;
             background: var(--primary);
             color: var(--white);
             border-radius: 50%;
@@ -160,11 +158,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             justify-content: center;
             text-decoration: none;
             transition: all 0.3s ease;
+            font-size: 1.5rem;
+            line-height: 1;
+        }
+        .social-links a i {
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .social-links a:hover {
             background: var(--accent);
             color: var(--primary);
             transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
         }
     </style>
 </head>

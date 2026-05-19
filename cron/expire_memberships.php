@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Membership Expiry Cron Job
  * Run daily: 0 3 * * * php /path/to/expire_memberships.php

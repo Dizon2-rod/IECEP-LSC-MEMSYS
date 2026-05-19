@@ -1,9 +1,12 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../../../includes/config.php';
 require_once __DIR__ . '/../../../includes/database.php';
 require_once __DIR__ . '/../../../includes/helpers/cbl_fee_calculator.php';
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'school_officer') {
     header('Location: /login.php');
     exit;

@@ -1,13 +1,17 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Bulk Assign Membership IDs
  * 
  * POST endpoint for assigning multiple membership IDs in a single transaction
  * All rows succeed or all fail (atomic operation)
+ * Auto-creates Supabase user accounts and sends credentials
  */
 
 require_once __DIR__ . '/../../../includes/paths.php';
 require_once __DIR__ . '/../../../includes/config.php';
+require_once __DIR__ . '/../../../includes/supabase-admin.php';
+require_once __DIR__ . '/../../../src/lib/EmailService.php';
 require_once __DIR__ . '/../../portal/auth_check.php';
 
 require_role(['admin', 'registration']);
@@ -28,6 +32,7 @@ if (!isset($_POST['csrf_token']) || !verify_csrf_token($_POST['csrf_token'])) {
 
 try {
     $db = getDbConnection();
+    $emailService = new \App\Lib\EmailService();
     
     $application_id = $_POST['application_id'] ?? null;
     $rows_json = $_POST['rows'] ?? '[]';
@@ -56,6 +61,7 @@ try {
     $year = (int)date('Y');
     $assigned_ids = [];
     $failed_rows = [];
+    $emailQueue = [];
 
     try {
         foreach ($rows as $row) {
@@ -92,6 +98,7 @@ try {
                 $name = $import_row['name'];
                 $birthday = $import_row['birthday'];
                 $member_id = null;
+                $membership_id = null;
 
                 if ($member_type === 'old') {
                     // Find existing member
@@ -120,6 +127,14 @@ try {
                         WHERE id = ?
                     ");
                     $stmt->execute([$is_paid, $assigned_by_user_id, $member_id]);
+
+                    // Queue renewal email
+                    $emailQueue[] = [
+                        'email' => $email,
+                        'full_name' => $name,
+                        'membership_id' => $membership_id,
+                        'type' => 'renewal',
+                    ];
 
                 } else { // 'new'
                     // Generate membership ID
@@ -153,6 +168,55 @@ try {
                     ]);
 
                     $member_id = $db->lastInsertId();
+
+                    // Check if Supabase user exists
+                    $existing = checkSupabaseUserByEmail($email);
+
+                    if (!$existing) {
+                        // Create Supabase user
+                        $password = bin2hex(random_bytes(6)); // 12-char hex password
+                        $newUser = createSupabaseUser($email, $password, $name);
+
+                        if ($newUser && isset($newUser['id'])) {
+                            $userId = $newUser['id'];
+
+                            // Insert user_profiles
+                            $stmt = $db->prepare("
+                                INSERT INTO user_profiles (user_id, role, full_name, institution_id, force_password_change)
+                                VALUES (?, 'member', ?, ?, true)
+                            ");
+                            $stmt->execute([$userId, $name, $institution_id]);
+
+                            // Link member record
+                            $stmt = $db->prepare("
+                                UPDATE members SET user_id = ? WHERE id = ?
+                            ");
+                            $stmt->execute([$userId, $member_id]);
+
+                            // Queue credential email
+                            $emailQueue[] = [
+                                'email' => $email,
+                                'full_name' => $name,
+                                'membership_id' => $membership_id,
+                                'password' => $password,
+                                'type' => 'new_member',
+                            ];
+
+                            log_audit('account_created', 'members', $member_id, null, [
+                                'membership_id' => $membership_id,
+                                'email' => $email
+                            ]);
+                        } else {
+                            error_log("[bulk-assign] Failed to create Supabase user for: $email");
+                            log_audit('account_error', 'members', $member_id, null, ['email' => $email]);
+                        }
+                    } else {
+                        // User exists — link only
+                        $userId = $existing['id'];
+                        $stmt = $db->prepare("UPDATE members SET user_id = ? WHERE id = ?");
+                        $stmt->execute([$userId, $member_id]);
+                        log_audit('account_linked', 'members', $member_id, null, ['email' => $email]);
+                    }
                 }
 
                 // Update import row
@@ -203,10 +267,34 @@ try {
         // Commit transaction
         $db->commit();
 
+        // Send emails AFTER commit — outside the transaction lock
+        foreach ($emailQueue as $item) {
+            try {
+                if ($item['type'] === 'new_member') {
+                    $emailService->sendMemberCredentials(
+                        $item['email'],
+                        $item['full_name'],
+                        $item['membership_id'],
+                        $item['password']
+                    );
+                } elseif ($item['type'] === 'renewal') {
+                    $emailService->sendRenewalConfirmation(
+                        $item['email'],
+                        $item['full_name'],
+                        $item['membership_id']
+                    );
+                }
+            } catch (Exception $e) {
+                error_log('[bulk-assign] Email failed for ' . $item['email'] . ': ' . $e->getMessage());
+                // Non-fatal — member record is already saved
+            }
+        }
+
         // Log audit
         log_audit('member_bulk_assign_ids', 'pending_affiliations', $application_id, null, [
             'assigned_count' => count($assigned_ids),
-            'failed_count' => count($failed_rows)
+            'failed_count' => count($failed_rows),
+            'emails_queued' => count($emailQueue)
         ]);
 
         http_response_code(200);

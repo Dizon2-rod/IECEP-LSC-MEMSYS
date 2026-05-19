@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * VP Academic Dashboard - Uses Dynamic Sidebar
  */

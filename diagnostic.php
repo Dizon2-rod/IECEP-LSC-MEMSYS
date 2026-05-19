@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Diagnostic Script - Verify Error Fixes
  * Run this file to check if all fixes have been applied correctly

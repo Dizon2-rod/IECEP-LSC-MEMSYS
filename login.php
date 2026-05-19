@@ -11,15 +11,15 @@ $pathsFile = __DIR__ . '/includes/paths.php';
 if (!file_exists($pathsFile)) {
     die('Configuration error: paths.php not found');
 }
-require_once $pathsFile;
-require_once __DIR__ . '/includes/config.php'; // defines BASE_URL, PORTAL_URL, etc.
-require_once __DIR__ . '/includes/audit.php';
+require_once __DIR__ . '/bootstrap.php';
 
 // Prevent caching
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Cache-Control: post-check=0, pre-check=0', false);
 header('Pragma: no-cache');
 header('Expires: 0');
+
+
 
 // Handle logout
 if ((isset($_GET['logout']) && $_GET['logout'] === 'true') || (isset($_POST['logout']))) {
@@ -83,8 +83,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $users = $supabaseService->select('users', ['email' => 'eq.' . $email]);
             if (!empty($users) && is_array($users)) {
                 $user = $users[0];
-
+                
+                error_log("=== LOGIN DEBUG ===");
+                error_log("Email found: " . $email);
+                error_log("Has password hash: " . (!empty($user['password']) ? 'YES' : 'NO'));
+                error_log("Password provided length: " . strlen($password));
+                
                 if (!empty($user['password']) && password_verify($password, $user['password'])) {
+                    error_log("Password verification: SUCCESS");
                     if (empty($user['is_active'])) {
                         $error = 'Your account has been deactivated. Please contact the administrator.';
                     } else {
@@ -102,9 +108,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                     }
                 } else {
+                    error_log("Password verification: FAILED for email=" . $email);
+                    error_log("Password hash from DB: " . substr($user['password'] ?? '', 0, 20) . "...");
                     $authFallback = true;
                 }
             } else {
+                error_log("User not found in database for email: " . $email);
                 $authFallback = true;
             }
 
@@ -142,6 +151,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
 
             if ($loginSuccess) {
+                error_log("=== LOGIN SUCCESS ===");
+                error_log("Email: " . $userEmail);
+                error_log("Role: " . ($profile['role'] ?? 'N/A'));
+                error_log("Must change password: " . ($mustChangePassword ? 'YES' : 'NO'));
+                
                 $_SESSION['user_id']   = $userId;
                 $_SESSION['email']     = $userEmail;
                 $_SESSION['full_name'] = $fullName;
@@ -180,6 +194,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (!$error) {
                 // Audit log failed login attempt
+                error_log("=== LOGIN FAILED ===");
+                error_log("Email: " . $email);
+                error_log("Login success: " . ($loginSuccess ? 'YES' : 'NO'));
+                error_log("Auth fallback triggered: " . ($authFallback ? 'YES' : 'NO'));
+                
                 log_audit('login_failed', 'users', null, null, ['email' => $email]);
                 $error = 'Invalid email or password. Please try again.';
             }

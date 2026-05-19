@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * CRON JOBS MANAGER - Super Admin API
  * Manage and monitor cron jobs

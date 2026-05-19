@@ -7,6 +7,7 @@ use Endroid\QrCode\ErrorCorrectionLevel;
 use Endroid\QrCode\RoundBlockSizeMode;
 use Endroid\QrCode\Writer\PngWriter;
 
+require_once __DIR__ . '/../../bootstrap.php';
 class QrCodeService
 {
     public function generate(string $data, int $size = 200): string

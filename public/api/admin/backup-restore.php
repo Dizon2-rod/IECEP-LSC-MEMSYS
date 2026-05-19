@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * BACKUP & RESTORE - Admin API
  * Handle database backup and restore operations

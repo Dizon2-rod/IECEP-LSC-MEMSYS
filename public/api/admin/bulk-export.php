@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * BULK USER EXPORT - Admin API
  * Exports users to CSV/Excel format

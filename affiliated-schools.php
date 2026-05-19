@@ -1,92 +1,87 @@
 <?php
-session_start();
-require_once __DIR__ . '/autoload.php';
-require_once __DIR__ . '/includes/supabase.php';
-require_once __DIR__ . '/includes/paths.php';
+require_once __DIR__ . '/bootstrap.php';
 
-// Load schools mapping
-$schoolsMapping = require __DIR__ . '/includes/data/schools_mapping.php';
-
-$supabase = new \App\Lib\Supabase();
-$affiliatedSchools = [];
-try {
-    $result = $supabase->from('affiliated_schools')
-        ->select('*')
-        ->eq('status', 'active')
-        ->order('name', true)
-        ->get(true);
-    $affiliatedSchools = $result['data'] ?? [];
-} catch (Exception $e) {
-    $affiliatedSchools = [];
-}
-
-// Convert mapping to use ASSETS_URL
-$schoolLogos = [];
-foreach ($schoolsMapping as $name => $path) {
-    $schoolLogos[$name] = ASSETS_URL . '/icons/' . basename($path);
-}
-
-// Static list of affiliated schools if database is empty
+// Static list of affiliated schools
 $staticSchools = [
     [
         'name' => 'Colegio de San Juan de Letrán',
-        'logo' => ASSETS_URL . '/icons/LETRAN.png',
+        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/LETRAN.png',
+        'location' => 'Calamba, Laguna',
         'facebook_url' => 'https://www.facebook.com/LetranCalamba',
-        'member_count' => 150,
-        'created_at' => '2020-01-15'
     ],
     [
         'name' => 'Laguna State Polytechnic University - Santa Cruz Campus',
-        'logo' => ASSETS_URL . '/icons/LSPU-SCC.png',
+        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/LSPU-SCC.png',
+        'location' => 'Santa Cruz, Laguna',
         'facebook_url' => 'https://www.facebook.com/LSPUSantaCruz',
-        'member_count' => 200,
-        'created_at' => '2019-06-20'
     ],
     [
         'name' => 'Laguna State Polytechnic University - San Pablo City Campus',
-        'logo' => ASSETS_URL . '/icons/LSPU-SPCC.png',
+        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/LSPU-SPCC.png',
+        'location' => 'San Pablo City, Laguna',
         'facebook_url' => 'https://www.facebook.com/LSPUSanPablo',
-        'member_count' => 180,
-        'created_at' => '2019-08-10'
     ],
     [
         'name' => 'Mapua Malayan Colleges Laguna',
-        'logo' => ASSETS_URL . '/icons/MMCL.webp',
+        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/MMCL.webp',
+        'location' => 'Cabuyao, Laguna',
         'facebook_url' => 'https://www.facebook.com/MMCLaguna',
-        'member_count' => 120,
-        'created_at' => '2020-03-25'
     ],
     [
         'name' => 'Polytechnic University of the Philippines - Santa Rosa Campus',
-        'logo' => ASSETS_URL . '/icons/PUP-STA ROSA.png',
+        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/PUP-STA ROSA.png',
+        'location' => 'Santa Rosa, Laguna',
         'facebook_url' => 'https://www.facebook.com/PUPSantaRosa',
-        'member_count' => 160,
-        'created_at' => '2019-11-15'
     ],
     [
         'name' => 'Pamantasan ng Cabuyao',
-        'logo' => ASSETS_URL . '/icons/UC-PNC.png',
+        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/UC-PNC.png',
+        'location' => 'Cabuyao, Laguna',
         'facebook_url' => 'https://www.facebook.com/PamantasanNgCabuyao',
-        'member_count' => 140,
-        'created_at' => '2020-05-30'
     ],
     [
         'name' => 'University of Perpetual Help System Dalta - Calamba Campus',
-        'logo' => ASSETS_URL . '/icons/UPHSD.png',
+        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/UPHSD.png',
+        'location' => 'Calamba, Laguna',
         'facebook_url' => 'https://www.facebook.com/UPHSDCalamba',
-        'member_count' => 190,
-        'created_at' => '2019-07-12'
     ],
     [
         'name' => 'University of Perpetual Help System Jonelta - Biñán Campus',
-        'logo' => ASSETS_URL . '/icons/UPHSL-BINAN.png',
+        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/UPHSL-BINAN.png',
+        'location' => 'Biñán, Laguna',
         'facebook_url' => 'https://www.facebook.com/UPHSLBinan',
-        'member_count' => 170,
-        'created_at' => '2019-09-05'
     ]
 ];
 
-// Use database data if available, otherwise use static data
+// Get Supabase client
+$supabase = supabase();
+$affiliatedSchools = [];
+
+if ($supabase) {
+    try {
+        $result = $supabase->select('affiliated_schools', null, 'name', 'ASC');
+        if (!empty($result) && is_array($result)) {
+            $affiliatedSchools = array_filter($result, function($school) {
+                return ($school['status'] ?? null) === 'active';
+            });
+            foreach ($affiliatedSchools as &$school) {
+                $schoolName = $school['name'];
+                foreach ($staticSchools as $staticSchool) {
+                    if ($staticSchool['name'] === $schoolName) {
+                        if (empty($school['logo'])) $school['logo'] = $staticSchool['logo'];
+                        if (empty($school['location'])) $school['location'] = $staticSchool['location'];
+                        if (empty($school['facebook_url'])) $school['facebook_url'] = $staticSchool['facebook_url'];
+                        break;
+                    }
+                }
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Affiliated schools fetch error: " . $e->getMessage());
+        $affiliatedSchools = [];
+    }
+}
+
 $schoolsToShow = !empty($affiliatedSchools) ? $affiliatedSchools : $staticSchools;
 ?>
 <!DOCTYPE html>
@@ -95,262 +90,361 @@ $schoolsToShow = !empty($affiliatedSchools) ? $affiliatedSchools : $staticSchool
     <title>Affiliated Schools - IECEP-LSC</title>
     <?php include __DIR__ . '/includes/head-meta.php'; ?>
     <style>
+        :root {
+            --primary-dark: #0B1D4A;
+            --primary-main: #1A3A8A;
+            --primary-light: #2D4A9A;
+            --accent-gold: #C5A059;
+            --accent-soft: #F8F3E6;
+            --white: #FFFFFF;
+            --gray-50: #F9FAFB;
+            --gray-100: #F3F4F6;
+            --gray-200: #E5E7EB;
+            --gray-600: #4B5563;
+            --gray-700: #374151;
+            --gray-900: #111827;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-900);
+            line-height: 1.5;
+        }
+
         /* Page Header */
         .page-header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary-main) 50%, var(--primary-light) 100%);
             color: var(--white);
-            padding: 120px var(--space-4) var(--space-12);
+            padding: 100px var(--space-4) 60px;
             text-align: center;
-            margin-top: 64px;
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url('public/uploads/features/1776563415_hero.png') center/cover no-repeat;
+            opacity: 0.08;
+            pointer-events: none;
         }
         .page-header h1 {
             font-size: 2.5rem;
             font-weight: 800;
-            margin-bottom: var(--space-3);
+            margin-bottom: 1rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(to right, #fff, #e0e7ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: none;
         }
         .page-header p {
             font-size: 1.1rem;
-            opacity: 0.9;
-            max-width: 600px;
+            max-width: 700px;
             margin: 0 auto;
+            opacity: 0.9;
+            font-weight: 400;
         }
 
         /* Container */
         .container {
-            max-width: 1200px;
+            max-width: 1000px;
             margin: 0 auto;
-            padding: var(--space-8) var(--space-4);
+            padding: 4rem 1.5rem;
         }
 
-        /* Accordion */
-        .accordion {
-            max-width: 900px;
-            margin: 0 auto;
+        /* Accordion Group */
+        .accordion-group {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
         }
+
+        /* Accordion Item (Card) */
         .accordion-item {
             background: var(--white);
-            border: 1px solid var(--neutral-200);
-            border-radius: var(--radius-lg);
-            margin-bottom: var(--space-4);
+            border-radius: 1rem;
+            box-shadow: var(--shadow-md);
+            transition: var(--transition);
+            border: 1px solid var(--gray-200);
             overflow: hidden;
-            box-shadow: var(--shadow-sm);
         }
+        .accordion-item:hover {
+            box-shadow: var(--shadow-lg);
+            border-color: var(--accent-gold);
+        }
+
+        /* Accordion Header */
         .accordion-header {
-            padding: var(--space-4) var(--space-6);
-            cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            transition: all var(--transition-base);
+            padding: 1.25rem 1.5rem;
+            cursor: pointer;
             background: var(--white);
+            transition: background 0.2s ease;
         }
         .accordion-header:hover {
-            background: var(--neutral-100);
+            background: var(--gray-50);
         }
-        .accordion-header.active {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-            color: var(--white);
+        .accordion-header[aria-expanded="true"] {
+            background: linear-gradient(to right, var(--gray-50), var(--white));
+            border-bottom: 1px solid var(--gray-200);
         }
         .accordion-title {
-            font-size: 1.1rem;
-            font-weight: 600;
             display: flex;
             align-items: center;
-            gap: var(--space-3);
+            gap: 0.75rem;
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--primary-dark);
         }
-        .school-logo {
-            width: 40px;
-            height: 40px;
-            border-radius: var(--radius-md);
-            object-fit: contain;
-            background: var(--white);
-            padding: 4px;
+        .accordion-title i {
+            color: var(--accent-gold);
+            font-size: 1.25rem;
         }
         .accordion-icon {
-            font-size: 1.2rem;
-            transition: transform var(--transition-base);
+            color: var(--accent-gold);
+            transition: transform 0.3s ease;
         }
-        .accordion-header.active .accordion-icon {
+        .accordion-header[aria-expanded="true"] .accordion-icon {
             transform: rotate(180deg);
         }
+
+        /* Accordion Content */
         .accordion-content {
             max-height: 0;
             overflow: hidden;
-            transition: max-height 0.3s ease;
+            transition: max-height 0.4s ease-out;
+            background: var(--white);
         }
-        .accordion-content.active {
-            max-height: 500px;
+        .accordion-content[aria-expanded="true"] {
+            max-height: 400px; /* enough for content */
+            transition: max-height 0.5s ease-in-out;
         }
         .accordion-body {
-            padding: var(--space-6);
-            border-top: 1px solid var(--neutral-200);
+            padding: 1.5rem;
+            border-top: 1px solid var(--gray-200);
         }
-        .school-details {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: var(--space-4);
+
+        /* School Info Layout */
+        .school-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            align-items: center;
         }
-        @media (min-width: 640px) {
-            .school-details {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-        .detail-item {
+        .school-logo-wrapper {
+            flex-shrink: 0;
+            width: 90px;
+            height: 90px;
+            background: var(--gray-100);
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            gap: var(--space-2);
-            color: var(--neutral-700);
+            justify-content: center;
+            padding: 0.5rem;
+            box-shadow: var(--shadow-sm);
         }
-        .detail-item i {
-            color: var(--accent);
-            width: 20px;
+        .school-logo {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
         }
-        .school-btn {
+        .school-details {
+            flex: 1;
+            min-width: 200px;
+        }
+        .school-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--primary-dark);
+            margin-bottom: 0.5rem;
+        }
+        .school-location {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin-bottom: 1rem;
+        }
+        .school-location i {
+            color: var(--accent-gold);
+            width: 1rem;
+        }
+        .btn-facebook {
             display: inline-flex;
             align-items: center;
-            gap: var(--space-2);
-            padding: var(--space-3) var(--space-5);
-            background: #1877F2;
-            color: var(--white);
-            text-decoration: none;
-            border-radius: var(--radius-md);
+            gap: 0.5rem;
+            background: linear-gradient(135deg, #1877F2, #0D5BB5);
+            color: white;
+            padding: 0.6rem 1.2rem;
+            border-radius: 2rem;
+            font-size: 0.875rem;
             font-weight: 600;
-            margin-top: var(--space-4);
-            transition: all var(--transition-base);
+            text-decoration: none;
+            transition: var(--transition);
+            border: none;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
         }
-        .school-btn:hover {
-            background: #1465D6;
+        .btn-facebook:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+            filter: brightness(1.05);
         }
-        .school-btn.disabled {
-            background: var(--neutral-200);
-            color: var(--neutral-500);
+        .btn-facebook.disabled {
+            background: var(--gray-200);
+            color: var(--gray-600);
             cursor: not-allowed;
-        }
-        .school-btn.disabled:hover {
-            background: var(--neutral-200);
+            transform: none;
+            box-shadow: none;
         }
 
-        /* Empty State */
+        /* Empty state */
         .empty-state {
             text-align: center;
-            padding: var(--space-12) var(--space-4);
+            padding: 3rem;
+            background: var(--white);
+            border-radius: 1rem;
+            box-shadow: var(--shadow-md);
         }
         .empty-state i {
-            font-size: 4rem;
-            color: var(--neutral-200);
-            margin-bottom: var(--space-4);
+            font-size: 3rem;
+            color: var(--gray-300);
+            margin-bottom: 1rem;
         }
         .empty-state h3 {
-            font-size: 1.5rem;
-            color: var(--neutral-700);
-            margin-bottom: var(--space-2);
-        }
-        .empty-state p {
-            color: var(--neutral-500);
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
         }
 
+        /* Responsive */
         @media (max-width: 768px) {
-            .page-header h1 {
-                font-size: 2rem;
-            }
+            .page-header h1 { font-size: 1.8rem; }
+            .page-header p { font-size: 0.95rem; }
+            .container { padding: 2rem 1rem; }
+            .accordion-header { padding: 1rem; }
+            .accordion-title { font-size: 0.9rem; }
+            .school-info { flex-direction: column; text-align: center; }
+            .school-location { justify-content: center; }
+            .school-logo-wrapper { width: 70px; height: 70px; margin: 0 auto; }
         }
     </style>
 </head>
 <body>
-    <!-- Header -->
     <?php include __DIR__ . '/includes/navbar.php'; ?>
 
-    <!-- Page Header -->
     <section class="page-header">
         <h1>Affiliated Schools</h1>
-        <p>The 𝗜𝗘𝗖𝗘𝗣-𝗟𝗦𝗖 brings together affiliated higher education institutions, united in one frame through connection, collaboration, and shared purpose.</p>
+        <p>The IECEP-LSC brings together affiliated higher education institutions, united in connection, collaboration, and shared purpose.</p>
     </section>
 
-    <!-- Schools Accordion -->
     <div class="container">
         <?php if (!empty($schoolsToShow)): ?>
-            <div class="accordion">
-                <?php $index = 1; foreach ($schoolsToShow as $school): ?>
+            <div class="accordion-group">
+                <?php foreach ($schoolsToShow as $index => $school): 
+                    $logo = !empty($school['logo']) ? htmlspecialchars($school['logo']) : '/IECEP-LSC-MEMSYS/public/assets/icons/default-school.png';
+                    $facebook = !empty($school['facebook_url']) ? htmlspecialchars($school['facebook_url']) : '';
+                ?>
                     <div class="accordion-item">
-                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                        <div class="accordion-header" 
+                             role="button" 
+                             tabindex="0" 
+                             aria-expanded="false"
+                             onclick="toggleAccordion(this)">
                             <div class="accordion-title">
-                                <?php 
-                                $schoolName = $school['name'];
-                                $logoPath = isset($schoolLogos[$schoolName]) ? $schoolLogos[$schoolName] : ASSETS_URL . '/icons/iecep-logo.png';
-                                ?>
-                                <img src="<?php echo $logoPath; ?>" alt="<?php echo htmlspecialchars($schoolName); ?>" class="school-logo">
-                                <span><?php echo htmlspecialchars($schoolName); ?></span>
+                                <i class="fas fa-university"></i>
+                                <span><?php echo htmlspecialchars($school['name']); ?></span>
                             </div>
                             <i class="fas fa-chevron-down accordion-icon"></i>
                         </div>
-                        <div class="accordion-content">
+                        <div class="accordion-content" aria-expanded="false">
                             <div class="accordion-body">
-                                <div class="school-details">
-                                    <div class="detail-item">
-                                        <i class="fas fa-university"></i>
-                                        <span><?php echo htmlspecialchars($school['name']); ?></span>
+                                <div class="school-info">
+                                    <div class="school-logo-wrapper">
+                                        <img src="<?php echo $logo; ?>" 
+                                             alt="<?php echo htmlspecialchars($school['name']); ?>" 
+                                             class="school-logo"
+                                             onerror="this.src='/IECEP-LSC-MEMSYS/public/assets/icons/default-school.png';">
                                     </div>
-                                    <div class="detail-item">
-                                        <i class="fas fa-users"></i>
-                                        <span>
-                                            <?php 
-                                            $memberCount = $school['member_count'] ?? 0;
-                                            echo $memberCount > 0 ? $memberCount . ' Registered Members' : 'Active Member';
-                                            ?>
-                                        </span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <i class="fas fa-circle-check"></i>
-                                        <span>Status: Active</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <i class="fas fa-calendar"></i>
-                                        <span>Member since: <?php echo !empty($school['created_at']) ? date('Y', strtotime($school['created_at'])) : 'N/A'; ?></span>
+                                    <div class="school-details">
+                                        <div class="school-name"><?php echo htmlspecialchars($school['name']); ?></div>
+                                        <div class="school-location">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                            <span><?php echo htmlspecialchars($school['location'] ?? 'Laguna, Philippines'); ?></span>
+                                        </div>
+                                        <?php if ($facebook): ?>
+                                            <a href="<?php echo $facebook; ?>" target="_blank" rel="noopener noreferrer" class="btn-facebook">
+                                                <i class="fab fa-facebook-f"></i> Visit Facebook Page
+                                            </a>
+                                        <?php else: ?>
+                                            <span class="btn-facebook disabled">
+                                                <i class="fas fa-link"></i> No Link Available
+                                            </span>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
-                                <?php if (!empty($school['facebook_url'])): ?>
-                                    <a href="<?php echo htmlspecialchars($school['facebook_url']); ?>" target="_blank" rel="noopener noreferrer" class="school-btn">
-                                        <i class="fab fa-facebook"></i> Visit Facebook Page
-                                    </a>
-                                <?php else: ?>
-                                    <span class="school-btn disabled">
-                                        <i class="fas fa-link"></i> No Facebook Link Available
-                                    </span>
-                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
-                <?php $index++; endforeach; ?>
+                <?php endforeach; ?>
             </div>
         <?php else: ?>
             <div class="empty-state">
                 <i class="fas fa-university"></i>
                 <h3>No Affiliated Schools Yet</h3>
-                <p>Check back soon for updates on our affiliated institutions.</p>
+                <p>Check back soon for updates on our partner institutions.</p>
             </div>
         <?php endif; ?>
     </div>
 
     <script>
         function toggleAccordion(header) {
+            const isExpanded = header.getAttribute('aria-expanded') === 'true';
             const content = header.nextElementSibling;
-            const isActive = header.classList.contains('active');
             
-            // Close all accordions
+            // Close all other accordions
             document.querySelectorAll('.accordion-header').forEach(h => {
-                h.classList.remove('active');
-                h.nextElementSibling.classList.remove('active');
+                if (h !== header) {
+                    h.setAttribute('aria-expanded', 'false');
+                    const otherContent = h.nextElementSibling;
+                    if (otherContent) otherContent.setAttribute('aria-expanded', 'false');
+                }
             });
             
-            // Open clicked accordion if it wasn't active
-            if (!isActive) {
-                header.classList.add('active');
-                content.classList.add('active');
-            }
+            // Toggle current
+            header.setAttribute('aria-expanded', !isExpanded);
+            if (content) content.setAttribute('aria-expanded', !isExpanded);
         }
+        
+        // Optional: allow keyboard Enter/Space to trigger
+        document.querySelectorAll('.accordion-header').forEach(header => {
+            header.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleAccordion(header);
+                }
+            });
+        });
     </script>
 
-    <!-- Footer -->
     <?php include __DIR__ . '/includes/footer-new.php'; ?>
 </body>
 </html>

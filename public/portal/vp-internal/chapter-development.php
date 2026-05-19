@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * VP Internal Chapter Development - Uses Dynamic Sidebar
  */

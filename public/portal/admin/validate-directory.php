@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * Validate Member Directory
  * Post-approval page for validating and assigning membership IDs

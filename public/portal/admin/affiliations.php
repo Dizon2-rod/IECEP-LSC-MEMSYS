@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../bootstrap.php';
 $current_page = 'affiliations';
 error_reporting(0);
 ini_set('display_errors', 0);
@@ -12,36 +13,91 @@ $user = get_user_info();
 require_once SRC_PATH . 'lib/SupabaseClient.php';
 require_once SRC_PATH . 'lib/BlockchainService.php';
 
-// Initialize Services
 $supabase = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 $blockchain = new \App\Lib\BlockchainService($supabase);
 
 $applications = [];
 try {
-    // Fetch applications from Supabase
     $applications = $supabase->select('pending_affiliations', null, 'submitted_at', 'DESC');
     
-    // Process Blockchain hashes and verification counts for the UI
     foreach ($applications as &$app) {
         $app['verified_count'] = 0;
+        $docs = [];
+        
         if (!empty($app['documents'])) {
-            $docs = is_string($app['documents']) ? json_decode($app['documents'], true) : $app['documents'];
-            if (is_array($docs)) {
-                foreach ($docs as $key => &$doc) {
-                    if (isset($doc['content']) && $key !== 'review_notes') {
-                        // 1. Calculate Blockchain Hash for the file
-                        $pureBase64 = preg_replace('/^data:[^;]+;base64,/', '', $doc['content']);
-                        $doc['blockchain_hash'] = hash('sha256', base64_decode($pureBase64));
-                        
-                        // 2. Count if document is marked as verified
-                        if (!empty($doc['verified'])) {
-                            $app['verified_count']++;
-                        }
-                    }
-                }
-                $app['documents'] = $docs;
+            $docsData = is_string($app['documents']) ? json_decode($app['documents'], true) : $app['documents'];
+            if (is_array($docsData)) {
+                $docs = $docsData;
             }
         }
+        
+        if (empty($docs)) {
+            $fileFields = [
+                'letter_of_intent' => 'Letter of Intent',
+                'endorsement_letter' => 'Endorsement Letter',
+                'constitution_by_laws' => 'Constitution & By-Laws',
+                'officers_cvs' => 'Officers CVs',
+                'organizational_chart' => 'Organizational Chart',
+                'member_directory' => 'Member Directory'
+            ];
+            foreach ($fileFields as $field => $label) {
+                if (!empty($app[$field])) {
+                    $filePath = $app[$field];
+                    $localPath = str_replace('/IECEP-LSC-MEMSYS/public/', __DIR__ . '/../../', $filePath);
+                    if (file_exists($localPath)) {
+                        $fileContent = file_get_contents($localPath);
+                        $base64Content = base64_encode($fileContent);
+                        $mimeType = mime_content_type($localPath);
+                        $fileName = basename($localPath);
+                        $pureBase64 = preg_replace('/^data:[^;]+;base64,/', '', $base64Content);
+                        $docs[$field] = [
+                            'name' => $fileName,
+                            'label' => $label,
+                            'content' => $base64Content,
+                            'type' => $mimeType,
+                            'verified' => false,
+                            'blockchain_hash' => hash('sha256', base64_decode($pureBase64))
+                        ];
+                    }
+                }
+            }
+            
+            // Save the documents structure back to the database for future use
+            if (!empty($docs)) {
+                try {
+                    $supabase->update('pending_affiliations', [
+                        'documents' => json_encode($docs),
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ], $app['id']);
+                } catch (Exception $e) {
+                    error_log("Failed to save documents structure: " . $e->getMessage());
+                }
+            }
+        } else {
+            // Ensure all document keys have the verified field and blockchain_hash
+            foreach ($docs as $key => &$doc) {
+                if (!isset($doc['verified'])) {
+                    $doc['verified'] = false;
+                }
+                if (isset($doc['content']) && $key !== 'review_notes' && !isset($doc['blockchain_hash'])) {
+                    $pureBase64 = preg_replace('/^data:[^;]+;base64,/', '', $doc['content']);
+                    $doc['blockchain_hash'] = hash('sha256', base64_decode($pureBase64));
+                }
+            }
+        }
+        
+        if (!empty($docs)) {
+            foreach ($docs as $key => &$doc) {
+                if (isset($doc['content']) && $key !== 'review_notes') {
+                    $pureBase64 = preg_replace('/^data:[^;]+;base64,/', '', $doc['content']);
+                    $doc['blockchain_hash'] = hash('sha256', base64_decode($pureBase64));
+                    if (!empty($doc['verified']) && $doc['verified'] === true) {
+                        $app['verified_count']++;
+                    }
+                }
+            }
+        }
+        $app['documents'] = $docs;
     }
 } catch (Exception $e) {
     error_log("Affiliations Load Error: " . $e->getMessage());
@@ -54,162 +110,227 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Affiliation Applications | IECEP-LSC Blockchain</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/font-awesome.css">
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/dashboard.css">
     
     <style>
         :root {
-            --navy: #0B1D4A; --navy-light: #1E3A6E; --gold: #D4AF37;
-            --gray-50: #f8fafc; --gray-100: #f1f5f9; --gray-200: #e2e8f0;
-            --gray-500: #64748b; --gray-900: #0f172a;
-            --success: #10b981; --success-light: #d1fae5;
-            --error: #ef4444; --error-light: #fee2e2;
-            --warning: #f59e0b; --warning-light: #fef3c7;
-            --info: #3b82f6; --info-light: #dbeafe;
+            --navy: #0B1D4A; --navy-dark: #061131; --navy-light: #1E3A6E;
+            --gold: #C5A059; --gold-hover: #B38F4D;
+            --slate-50: #F8FAFC; --slate-100: #F1F5F9; --slate-200: #E2E8F0;
+            --slate-400: #94A3B8; --slate-600: #475569; --slate-900: #0F172A;
+            --success: #10B981; --success-bg: #DCFCE7;
+            --error: #EF4444; --error-bg: #FEE2E2;
+            --warning: #F59E0B; --warning-bg: #FEF3C7;
+            --info: #3B82F6; --info-bg: #DBEAFE;
+            --radius: 12px;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
-        /* SIDEBAR ISOLATION: Protects the sidebar UI from leakage */
-        .dashboard-scope { font-family: 'Inter', sans-serif; color: var(--gray-900); }
-        .dashboard-scope .section-header { margin-bottom: 36px; display: flex; justify-content: space-between; align-items: center; }
-        .dashboard-scope .section-header h2 { font-size: 2rem; font-weight: 700; color: var(--navy); margin: 0; }
+        .dashboard-scope { font-family: 'Inter', sans-serif; color: var(--slate-900); padding-bottom: 40px; }
+        .section-header { margin-bottom: 32px; display: flex; justify-content: space-between; align-items: flex-end; }
+        .section-header h2 { font-size: 1.875rem; font-weight: 800; color: var(--navy); margin: 0; letter-spacing: -0.025em; }
+        .section-header p { color: var(--slate-600); margin: 4px 0 0 0; font-size: 0.95rem; }
 
-        /* Stats Grid */
-        .dashboard-scope .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 32px; }
-        .dashboard-scope .stat-card { background: white; padding: 24px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid var(--gray-200); }
-        .dashboard-scope .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; font-size: 1.25rem; }
-        .dashboard-scope .stat-icon.pending { background: var(--info-light); color: var(--info); }
-        .dashboard-scope .stat-icon.approved { background: var(--success-light); color: var(--success); }
-        .dashboard-scope .stat-icon.rejected { background: var(--error-light); color: var(--error); }
-        .dashboard-scope .stat-value { font-size: 2rem; font-weight: 700; color: var(--gray-900); }
-        .dashboard-scope .stat-label { font-size: 0.875rem; color: var(--gray-500); }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 40px; }
+        .stat-card { background: white; padding: 24px; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--slate-200); display: flex; align-items: center; gap: 20px; transition: transform 0.2s ease; }
+        .stat-card:hover { transform: translateY(-4px); }
+        .stat-icon { width: 56px; height: 56px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+        .stat-icon.pending { background: var(--info-bg); color: var(--info); }
+        .stat-icon.approved { background: var(--success-bg); color: var(--success); }
+        .stat-icon.rejected { background: var(--error-bg); color: var(--error); }
+        .stat-details { display: flex; flex-direction: column; }
+        .stat-value { font-size: 1.75rem; font-weight: 800; color: var(--slate-900); line-height: 1; }
+        .stat-label { font-size: 0.875rem; color: var(--slate-600); font-weight: 500; margin-top: 4px; }
 
-        /* Application Cards */
-        .dashboard-scope .application-card { background: white; padding: 28px; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid var(--gray-200); margin-bottom: 20px; position: relative; overflow: hidden; transition: transform 0.2s ease; }
-        .dashboard-scope .application-card:hover { transform: translateY(-3px); }
-        .dashboard-scope .application-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--gray-300); }
-        .dashboard-scope .application-card.pending_review::before { background: var(--navy); }
-        .dashboard-scope .application-card.approved::before { background: var(--success); }
-        .dashboard-scope .application-card.rejected::before { background: var(--error); }
+        .application-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--slate-200); margin-bottom: 24px; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .application-card:hover { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border-color: var(--gold); }
+        .card-accent { height: 4px; width: 100%; }
+        .pending_review .card-accent { background: var(--info); }
+        .approved .card-accent { background: var(--success); }
+        .rejected .card-accent { background: var(--error); }
 
-        .dashboard-scope .application-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-        .dashboard-scope .application-info h3 { color: var(--gray-900); font-size: 1.25rem; margin: 0; }
-        .dashboard-scope .status-badge { padding: 6px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; }
-        .dashboard-scope .status-badge.pending_review { background: var(--info-light); color: var(--info); }
-        .dashboard-scope .status-badge.approved { background: var(--success-light); color: var(--success); }
-        .dashboard-scope .status-badge.rejected { background: var(--error-light); color: var(--error); }
+        .application-main { padding: 24px; }
+        .application-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .application-info h3 { color: var(--navy); font-size: 1.25rem; font-weight: 700; margin: 0 0 4px 0; }
+        .application-info .email { color: var(--slate-400); font-size: 0.875rem; }
 
-        .dashboard-scope .application-details { background: var(--gray-50); padding: 20px; border-radius: 12px; margin-bottom: 20px; font-size: 0.875rem; color: var(--gray-700); line-height: 1.7; }
-        
-        .dashboard-scope .verification-bar { 
-            display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 8px; margin-bottom: 20px;
-            background: <?php echo 'var(--warning-light)'; ?>; color: var(--warning); border: 1px solid var(--warning);
+        .status-badge { padding: 6px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+        .status-badge.pending_review { background: var(--info-bg); color: var(--info); }
+        .status-badge.approved { background: var(--success-bg); color: var(--success); }
+        .status-badge.rejected { background: var(--error-bg); color: var(--error); }
+
+        .application-details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; background: var(--slate-50); padding: 20px; border-radius: var(--radius); margin-bottom: 24px; border: 1px solid var(--slate-100); }
+        .detail-item { display: flex; flex-direction: column; gap: 4px; }
+        .detail-label { font-size: 0.75rem; text-transform: uppercase; color: var(--slate-400); font-weight: 600; }
+        .detail-value { font-size: 0.9rem; color: var(--slate-900); font-weight: 500; }
+
+        .payment-summary-box { 
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%); 
+            border: 1px solid var(--slate-200); 
+            border-radius: var(--radius); 
+            padding: 16px; 
+            margin-bottom: 24px; 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 12px; 
         }
-        .dashboard-scope .verification-bar.complete { background: var(--success-light); color: var(--success); border: 1px solid var(--success); }
+        .payment-item { display: flex; flex-direction: column; }
+        .payment-label { font-size: 0.7rem; color: var(--slate-400); text-transform: uppercase; font-weight: 600; }
+        .payment-value { font-size: 1rem; font-weight: 700; color: var(--navy); }
+        .payment-value.highlight { color: var(--gold); }
 
-        .dashboard-scope .application-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-        .dashboard-scope .btn { padding: 10px 18px; border-radius: 10px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px; border: none; }
-        .dashboard-scope .btn-outline { background: white; border: 1.5px solid var(--gray-200); color: var(--gray-700); }
-        .dashboard-scope .btn-success { background: var(--success); color: white; }
-        .dashboard-scope .btn-warning { background: var(--warning); color: white; }
-        .dashboard-scope .btn-danger { background: var(--error); color: white; }
+        .verification-container { margin-bottom: 24px; }
+        .verification-text { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 0.875rem; font-weight: 600; }
+        .progress-bg { height: 10px; background: var(--slate-200); border-radius: 5px; overflow: hidden; position: relative; }
+        .progress-fill { height: 100%; background: var(--gold); transition: width 0.5s ease; box-shadow: 0 0 10px rgba(197, 160, 89, 0.5); }
+        .progress-fill.complete { background: var(--success); }
 
-        /* Modals */
-        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 2000; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 32px; border-radius: 20px; width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto; position: relative; }
-        .modal-close-btn { position: absolute; right: 20px; top: 20px; cursor: pointer; border: none; background: none; font-size: 1.5rem; }
+        .application-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+        .btn { padding: 10px 20px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px; border: none; }
+        .btn-outline { background: white; border: 1px solid var(--slate-200); color: var(--slate-600); }
+        .btn-outline:hover { background: var(--slate-100); border-color: var(--slate-400); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-warning { background: var(--warning); color: white; }
+        .btn-danger { background: var(--error); color: white; }
 
-        .documents-list { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
-        .document-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 8px; }
-        .blockchain-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(--success-light); color: var(--success); border-radius: 6px; font-size: 0.7rem; font-weight: 700; margin-top: 6px; }
+        .modal { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(8px); z-index: 2000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 0; border-radius: 20px; width: 90%; max-width: 800px; max-height: 90vh; overflow: hidden; position: relative; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        .modal-header { padding: 24px; background: var(--navy); color: white; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 24px; overflow-y: auto; max-height: calc(90vh - 80px); }
+        .modal-close-btn { background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; opacity: 0.7; }
+
+        .documents-list { display: flex; flex-direction: column; gap: 12px; }
+        .document-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; background: var(--slate-50); border: 1px solid var(--slate-200); border-radius: var(--radius); transition: all 0.2s ease; }
+        .blockchain-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; background: var(--success-bg); color: var(--success); border-radius: 4px; font-size: 0.65rem; font-weight: 800; margin-top: 6px; }
 
         .preview-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 3000; align-items: center; justify-content: center; }
         .preview-container { width: 95%; height: 95vh; background: white; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
         .preview-header { padding: 15px; background: var(--navy); color: white; display: flex; justify-content: space-between; align-items: center; }
-        .preview-body { flex: 1; display: flex; justify-content: center; align-items: center; overflow: auto; background: #525659; }
+        .preview-body { flex: 1; display: flex; justify-content: center; align-items: center; overflow: auto; background: #334155; }
         .preview-body img { max-width: 100%; max-height: 100%; object-fit: contain; }
         .preview-body iframe { width: 100%; height: 100%; border: none; }
 
         .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
-        .toast { padding: 15px 25px; border-radius: 8px; color: white; font-weight: 500; animation: slideIn 0.3s ease; min-width: 250px; }
+        .toast { padding: 16px 24px; border-radius: 12px; color: white; font-weight: 600; animation: slideIn 0.3s ease; min-width: 300px; box-shadow: 0 10px 15px rgba(0,0,0,0.2); }
         .toast.success { background: var(--success); }
         .toast.error { background: var(--error); }
-        @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     </style>
 </head>
-<body>
+<body class="dashboard-scope">
     <div class="toast-container" id="toastContainer"></div>
 
     <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
     <main class="main-content">
-        <div class="dashboard-scope">
-            <header class="section-header">
-                <div>
-                    <h2>Affiliation Applications</h2>
-                    <p>Secure Blockchain-Verified Institutional Review</p>
-                </div>
-            </header>
+        <header class="section-header">
+            <div>
+                <h2>Affiliation Applications</h2>
+                <p>Review and verify institutional documents with Blockchain integrity.</p>
+            </div>
+        </header>
 
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-icon pending"><i class="fas fa-clock"></i></div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon pending"><i class="fas fa-clock"></i></div>
+                <div class="stat-details">
                     <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => in_array($a['status'] ?? '', ['pending', 'pending_review', 'resubmitted']))); ?></div>
                     <div class="stat-label">Pending Review</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon approved"><i class="fas fa-check-circle"></i></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon approved"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-details">
                     <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => $a['status'] === 'approved')); ?></div>
                     <div class="stat-label">Approved</div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon rejected"><i class="fas fa-times-circle"></i></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon rejected"><i class="fas fa-times-circle"></i></div>
+                <div class="stat-details">
                     <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => $a['status'] === 'rejected')); ?></div>
                     <div class="stat-label">Rejected</div>
                 </div>
             </div>
+        </div>
 
-            <?php if (empty($applications)): ?>
-                <div style="text-align: center; padding: 50px; background: white; border-radius: 16px; border: 2px dashed var(--gray-300);">
-                    <i class="fas fa-folder-open" style="font-size: 3rem; color: var(--gray-300);"></i>
-                    <h3 style="color: var(--gray-500);">No applications found</h3>
-                </div>
-            <?php else: ?>
-                <div class="applications-list">
-                    <?php foreach ($applications as $app): 
-                        $status = $app['status'] ?? 'pending_review';
-                        $vCount = $app['verified_count'] ?? 0;
-                    ?>
-                        <div class="application-card <?php echo $status; ?>">
+        <?php if (empty($applications)): ?>
+            <div style="text-align: center; padding: 80px; background: white; border-radius: var(--radius); border: 2px dashed var(--slate-200); box-shadow: var(--shadow);">
+                <i class="fas fa-folder-open" style="font-size: 4rem; color: var(--slate-200); margin-bottom: 20px;"></i>
+                <h3 style="color: var(--slate-400); font-weight: 500;">No applications awaiting review.</h3>
+            </div>
+        <?php else: ?>
+            <div class="applications-list">
+                <?php foreach ($applications as $app): 
+                    $status = $app['status'] ?? 'pending_review';
+                    $vCount = $app['verified_count'] ?? 0;
+                    $progress = ($vCount / 6) * 100;
+                ?>
+                    <div class="application-card <?php echo $status; ?>">
+                        <div class="card-accent"></div>
+                        <div class="application-main">
                             <div class="application-header">
                                 <div class="application-info">
                                     <h3><?php echo htmlspecialchars($app['institution_name'] ?? 'N/A'); ?></h3>
-                                    <span><?php echo htmlspecialchars($app['email'] ?? 'N/A'); ?></span>
+                                    <span class="email"><?php echo htmlspecialchars($app['email'] ?? 'N/A'); ?></span>
                                 </div>
-                                <div class="application-meta">
-                                    <span class="status-badge <?php echo $status; ?>">
-                                        <?php echo ucfirst(str_replace('_', ' ', $status)); ?>
-                                    </span>
-                                </div>
+                                <span class="status-badge <?php echo $status; ?>">
+                                    <?php echo ucfirst(str_replace('_', ' ', $status)); ?>
+                                </span>
                             </div>
                             
-                            <div class="application-details">
-                                <p><strong>Contact:</strong> <?php echo htmlspecialchars($app['contact_person'] ?? 'N/A'); ?> (<?php echo htmlspecialchars($app['contact_position'] ?? 'N/A'); ?>)</p>
-                                <p><strong>Phone:</strong> <?php echo htmlspecialchars($app['contact_phone'] ?? 'N/A'); ?></p>
-                                <p><strong>Address:</strong> <?php echo htmlspecialchars($app['address'] ?? 'N/A'); ?></p>
+                            <div class="application-details-grid">
+                                <div class="detail-item">
+                                    <span class="detail-label">Contact Person</span>
+                                    <span class="detail-value"><?php echo htmlspecialchars($app['contact_person'] ?? 'N/A'); ?></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Position</span>
+                                    <span class="detail-value"><?php echo htmlspecialchars($app['contact_position'] ?? 'N/A'); ?></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Phone Number</span>
+                                    <span class="detail-value"><?php echo htmlspecialchars($app['contact_phone'] ?? 'N/A'); ?></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Institution Address</span>
+                                    <span class="detail-value"><?php echo htmlspecialchars($app['institution_address'] ?? 'N/A'); ?></span>
+                                </div>
                             </div>
 
-                            <div class="verification-bar <?php echo ($vCount >= 6) ? 'complete' : ''; ?>">
-                                <i class="fas <?php echo ($vCount >= 6) ? 'fa-check-circle' : 'fa-exclamation-circle'; ?>"></i>
-                                <span><strong>Verification Progress:</strong> <?php echo $vCount; ?> / 6 documents verified</span>
+                            <div class="payment-summary-box">
+                                <div class="payment-item">
+                                    <span class="payment-label">Receipt Number</span>
+                                    <span class="payment-value"><?php echo htmlspecialchars($app['receipt_number'] ?? 'N/A'); ?></span>
+                                </div>
+                                <div class="payment-item">
+                                    <span class="payment-label">Total Members</span>
+                                    <span class="payment-value"><?php echo htmlspecialchars($app['total_members'] ?? '0'); ?></span>
+                                </div>
+                                <div class="payment-item">
+                                    <span class="payment-label">Total Fee</span>
+                                    <span class="payment-value highlight">₱<?php echo number_format((float)($app['total_fee'] ?? 0), 2); ?></span>
+                                </div>
+                            </div>
+
+                            <div class="verification-container">
+                                <div class="verification-text">
+                                    <span style="color: var(--slate-600);">Verification Progress</span>
+                                    <span id="vcount-<?php echo $app['id']; ?>" style="color: var(--navy); font-weight: 700;"><?php echo $vCount; ?> / 6 Docs Verified</span>
+                                </div>
+                                <div class="progress-bg">
+                                    <div id="progress-<?php echo $app['id']; ?>" class="progress-fill <?php echo ($vCount >= 6) ? 'complete' : ''; ?>" style="width: <?php echo $progress; ?>%"></div>
+                                </div>
                             </div>
 
                             <div class="application-actions">
                                 <button onclick="viewDocuments('<?php echo $app['id']; ?>')" class="btn btn-outline">
-                                    <i class="fas fa-file-alt"></i> View Documents
+                                    <i class="fas fa-file-alt"></i> Review Documents
                                 </button>
                                 <?php if (in_array($status, ['pending', 'pending_review', 'resubmitted'])): ?>
-                                    <button onclick="approveApplication('<?php echo $app['id']; ?>')" class="btn btn-success" <?php echo ($vCount < 6) ? 'disabled style="opacity:0.5; cursor:not-allowed"' : ''; ?>>
+                                    <button id="approve-<?php echo $app['id']; ?>" onclick="approveApplication('<?php echo $app['id']; ?>')" class="btn btn-success" <?php echo ($vCount < 6) ? 'disabled style="opacity:0.5; cursor:not-allowed"' : ''; ?>>
                                         <i class="fas fa-check"></i> Approve
                                     </button>
                                     <button onclick="showRequestChangesModal('<?php echo $app['id']; ?>')" class="btn btn-warning">
@@ -221,18 +342,22 @@ try {
                                 <?php endif; ?>
                             </div>
                         </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php endif; ?>
-        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </main>
 
     <!-- DOCUMENTS MODAL -->
     <div id="documentsModal" class="modal">
         <div class="modal-content">
-            <button class="modal-close-btn" onclick="closeDocumentsModal()">&times;</button>
-            <h3 style="color: var(--navy); margin-bottom: 20px;"><i class="fas fa-shield-alt"></i> Blockchain Verified Documents</h3>
-            <div id="documentsList" class="documents-list"></div>
+            <div class="modal-header">
+                <h3 style="margin:0;"><i class="fas fa-shield-alt"></i> Blockchain Verified Documents</h3>
+                <button class="modal-close-btn" onclick="closeDocumentsModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="documentsList" class="documents-list"></div>
+            </div>
         </div>
     </div>
 
@@ -247,25 +372,38 @@ try {
         </div>
     </div>
 
-    <!-- Request Changes / Reject Modals -->
+    <!-- Request Changes Modal -->
     <div id="requestChangesModal" class="modal">
         <div class="modal-content">
-            <h3>Request Changes</h3>
-            <textarea id="changesInstructions" style="width:100%; height:120px; margin: 20px 0; padding:10px; border-radius:8px; border:1px solid var(--gray-200);" placeholder="Specify what needs to be updated..."></textarea>
-            <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button onclick="closeRequestChangesModal()" class la="btn btn-outline">Cancel</button>
-                <button onclick="confirmRequestChanges()" class="btn btn-warning">Send Request</button>
+            <div class="modal-header">
+                <h3>Request Changes</h3>
+                <button class="modal-close-btn" style="color:white;" onclick="closeRequestChangesModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color:var(--slate-600); margin-bottom:15px;">Please specify which documents need correction or what information is missing.</p>
+                <textarea id="changesInstructions" style="width:100%; height:150px; padding:15px; border-radius:var(--radius); border:1px solid var(--slate-200); font-family:inherit;" placeholder="Example: The Letter of Intent is missing the official seal..."></textarea>
+                <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+                    <button onclick="closeRequestChangesModal()" class="btn btn-outline">Cancel</button>
+                    <button onclick="confirmRequestChanges()" class="btn btn-warning">Send Request</button>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Reject Modal -->
     <div id="rejectModal" class="modal">
         <div class="modal-content">
-            <h3>Reject Application</h3>
-            <textarea id="rejectionReason" style="width:100%; height:120px; margin: 20px 0; padding:10px; border-radius:8px; border:1px solid var(--gray-200);" placeholder="Reason for rejection..."></textarea>
-            <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button onclick="closeRejectModal()" class la="btn btn-outline">Cancel</button>
-                <button onclick="confirmReject()" class="btn btn-danger">Confirm Reject</button>
+            <div class="modal-header" style="background:var(--error);">
+                <h3>Reject Application</h3>
+                <button class="modal-close-btn" style="color:white;" onclick="closeRejectModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color:var(--slate-600); margin-bottom:15px;">Provide a detailed reason why this application cannot be approved.</p>
+                <textarea id="rejectionReason" style="width:100%; height:150px; padding:15px; border-radius:var(--radius); border:1px solid var(--slate-200); font-family:inherit;" placeholder="Example: Institution does not meet the minimum member requirement..."></textarea>
+                <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
+                    <button onclick="closeRejectModal()" class="btn btn-outline">Cancel</button>
+                    <button onclick="confirmReject()" class="btn btn-danger">Confirm Reject</button>
+                </div>
             </div>
         </div>
     </div>
@@ -287,7 +425,7 @@ try {
         function base64ToBlobUrl(base64, mime) {
             try {
                 let pureBase64 = base64.includes(',') ? base64.split(',')[1] : base64;
-                pureBase64 = pureBase64.replace(/\s+/g, '');
+                pureBase64 = pureBase64.replace(/\s+/g, ''); 
                 const byteCharacters = atob(pureBase64);
                 const byteNumbers = new Array(byteCharacters.length);
                 for (let i = 0; i < byteCharacters.length; i++) {
@@ -296,40 +434,44 @@ try {
                 const byteArray = new Uint8Array(byteNumbers);
                 const blob = new Blob([byteArray], { type: mime });
                 return URL.createObjectURL(blob);
-            } catch (e) {
-                console.error("Conversion Error:", e);
-                return null;
-            }
+            } catch (e) { return null; }
         }
 
         window.viewDocuments = function(id) {
             const app = applicationsData.find(a => a.id === id);
             if (!app) return showToast('error', 'Application not found');
-
+            
             const list = document.getElementById('documentsList');
             list.innerHTML = '';
-
+            
             let docsObj = {};
-            try {
-                docsObj = typeof app.documents === 'string' ? JSON.parse(app.documents) : (app.documents || {});
+            try { 
+                docsObj = typeof app.documents === 'string' ? JSON.parse(app.documents) : (app.documents || {}); 
             } catch(e) { docsObj = {}; }
 
-            activeDocs = Object.keys(docsObj)
-                .filter(k => k !== 'review_notes')
-                .map(key => docsObj[key]);
+            const docKeys = Object.keys(docsObj).filter(k => k !== 'review_notes');
+            activeDocs = docKeys.map(key => docsObj[key]);
 
-            if (activeDocs.length === 0) {
-                list.innerHTML = '<p style="text-align:center; color:var(--gray-500);">No documents uploaded.</p>';
+            if (docKeys.length === 0) {
+                list.innerHTML = '<p style="text-align:center; color:var(--slate-400);">No documents uploaded.</p>';
             } else {
-                activeDocs.forEach((doc, index) => {
+                docKeys.forEach((key, index) => {
+                    const doc = docsObj[key];
                     const hash = doc.blockchain_hash ? doc.blockchain_hash.substring(0, 16) + '...' : 'No Hash';
+                    const isVerified = doc.verified === true;
+                    
                     list.innerHTML += `
-                        <div class="document-item">
+                        <div id="doc-row-${id}-${index}" class="document-item" style="${isVerified ? 'border-left: 5px solid var(--success); background: #f0fdf4;' : ''}">
                             <div class="doc-info">
-                                <div style="font-weight:600;"><i class="fas fa-file"></i> ${doc.name || 'Unnamed File'}</div>
+                                <div id="doc-name-${id}-${index}" style="font-weight:600; color:var(--slate-900);">
+                                    <i class="fas fa-file-pdf" style="color:var(--error); margin-right:8px;"></i> 
+                                    ${doc.name || 'Unnamed File'}
+                                    ${isVerified ? '<span style="color:var(--success); margin-left:10px;"><i class="fas fa-check-circle"></i> Verified</span>' : ''}
+                                </div>
                                 <div class="blockchain-badge"><i class="fas fa-link"></i> BC-Hash: ${hash}</div>
                             </div>
-                            <div style="display:flex; gap:10px;">
+                            <div id="doc-btns-${id}-${index}" style="display:flex; gap:10px;">
+                                ${!isVerified ? `<button class="btn btn-success" onclick="verifyDocument('${id}', '${key}', ${index})">Verify</button>` : ''}
                                 <button class="btn btn-outline" onclick="previewDoc(${index})">View</button>
                                 <button class="btn btn-outline" onclick="downloadDoc(${index})">Download</button>
                             </div>
@@ -339,24 +481,92 @@ try {
             document.getElementById('documentsModal').style.display = 'flex';
         };
 
+        window.verifyDocument = async function(appId, docKey, index) {
+            const formData = new FormData();
+            formData.append('action', 'verify_document');
+            formData.append('application_id', appId);
+            formData.append('doc_key', docKey);
+
+            try {
+                const res = await fetch('/IECEP-LSC-MEMSYS/public/portal/admin/affiliation_action.php', { 
+                    method: 'POST', 
+                    body: formData 
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast('success', 'Document verified!');
+                    
+                    // 1. Update the Document Row in Modal
+                    const row = document.getElementById(`doc-row-${appId}-${index}`);
+                    const nameDiv = document.getElementById(`doc-name-${appId}-${index}`);
+                    const btnDiv = document.getElementById(`doc-btns-${appId}-${index}`);
+                    
+                    row.style.borderLeft = '5px solid var(--success)';
+                    row.style.background = '#f0fdf4';
+                    nameDiv.innerHTML += `<span style="color:var(--success); margin-left:10px;"><i class="fas fa-check-circle"></i> Verified</span>`;
+                    btnDiv.innerHTML = `
+                        <button class="btn btn-outline" onclick="previewDoc(${index})">View</button>
+                        <button class="btn btn-outline" onclick="downloadDoc(${index})">Download</button>
+                    `;
+
+                    // 2. Update Progress Bar and Count on Main Page
+                    const app = applicationsData.find(a => a.id === appId);
+                    app.verified_count++;
+                    
+                    const vCountText = document.getElementById(`vcount-${appId}`);
+                    const progressFill = document.getElementById(`progress-${appId}`);
+                    
+                    if(vCountText) vCountText.innerText = `${app.verified_count} / 6 Docs Verified`;
+                    if(progressFill) {
+                        const newWidth = (app.verified_count / 6) * 100;
+                        progressFill.style.width = newWidth + '%';
+                        if(app.verified_count >= 6) progressFill.classList.add('complete');
+                    }
+
+                    // 3. Enable Approve Button if count reached 6
+                    if(app.verified_count >= 6) {
+                        const approveBtn = document.getElementById(`approve-${appId}`);
+                        if(approveBtn) {
+                            approveBtn.disabled = false;
+                            approveBtn.style.opacity = '1';
+                            approveBtn.style.cursor = 'pointer';
+                        }
+                    }
+                } else {
+                    showToast('error', 'Error: ' + data.error);
+                }
+            } catch (e) {
+                showToast('error', 'Server connection error');
+            }
+        };
+
         window.previewDoc = function(index) {
             const doc = activeDocs[index];
             if (!doc) return;
-
             const body = document.getElementById('previewBody');
             document.getElementById('previewTitle').innerText = doc.name;
-            
             const ext = (doc.name || '').split('.').pop().toLowerCase();
             const mime = doc.type || '';
             const blobUrl = base64ToBlobUrl(doc.content, mime);
 
             if (!blobUrl) {
-                body.innerHTML = '<div style="text-align:center; color:white;">Error loading document content.</div>';
+                body.innerHTML = '<div style="text-align:center; color:white;">Error loading content.</div>';
                 document.getElementById('previewModal').style.display = 'flex';
                 return;
             }
 
-            if (mime === 'application/pdf' || ext === 'pdf') {
+            if (['xls', 'xlsx', 'csv'].includes(ext)) {
+                body.innerHTML = `
+                    <div style="text-align:center; color:white; padding:2rem;">
+                        <i class="fas fa-file-excel" style="font-size:4rem; color:var(--success); margin-bottom:1rem;"></i>
+                        <h3>Excel Document</h3>
+                        <p>This type of file cannot be previewed in the browser.</p>
+                        <a href="${blobUrl}" download="${doc.name}" class="btn btn-success" style="text-decoration:none; margin-top:1rem;">
+                            <i class="fas fa-download"></i> Download to View
+                        </a>
+                    </div>`;
+            } else if (mime === 'application/pdf' || ext === 'pdf') {
                 body.innerHTML = `<iframe src="${blobUrl}" style="width:100%; height:100%; border:none;"></iframe>`;
             } else if (mime.startsWith('image/') || ['jpg','jpeg','png','gif'].includes(ext)) {
                 body.innerHTML = `<img src="${blobUrl}" style="max-width:100%; max-height:100%; object-fit:contain;">`;
@@ -383,9 +593,8 @@ try {
             document.getElementById('previewBody').innerHTML = '';
         };
 
-        // ACTION LOGIC
         window.approveApplication = async function(id) {
-            if (!confirm('Approve this affiliation?')) return;
+            if (!confirm('Are you sure you want to approve this affiliation?')) return;
             const formData = new FormData();
             formData.append('action', 'approve');
             formData.append('application_id', id);

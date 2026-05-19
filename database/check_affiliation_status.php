@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Verification Script: Check Affiliation Approval Status
  * 

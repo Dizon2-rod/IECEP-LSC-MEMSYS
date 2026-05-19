@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 // Reset Password Page
 // GET /public/reset-password.php?token=TOKEN
 

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 // Simple autoloader for IECEP-LSC MEMSYS
 
 // Include Composer autoloader if available

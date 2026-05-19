@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * includes/helpers/validation.php - Input Validation Helper Functions
  * 

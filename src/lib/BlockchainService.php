@@ -1,9 +1,28 @@
 <?php
-
 declare(strict_types=1);
 
 namespace App\Lib;
 
+require_once __DIR__ . '/../../bootstrap.php';
+
+/**
+ * BlockchainService - Hash-Chained Audit Trail (Blockchain-Style)
+ * 
+ * This service implements an immutable audit log using cryptographic hash chaining,
+ * similar to blockchain technology. It does NOT use a public cryptocurrency blockchain.
+ * 
+ * How it works:
+ * - Each record is hashed using SHA256
+ * - Each record stores the hash of the previous record (creating a chain)
+ * - Any tampering with historical records breaks the chain and is detectable
+ * - This provides tamper-proof audit trails for compliance and security
+ * 
+ * Use cases:
+ * - Document integrity verification
+ * - Membership change tracking
+ * - Transaction audit trails
+ * - Compliance attendance records
+ */
 class BlockchainService
 {
     private \App\Lib\SupabaseClient $db;

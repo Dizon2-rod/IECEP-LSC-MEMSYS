@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * School Officer Members - Uses Dynamic Sidebar
  */

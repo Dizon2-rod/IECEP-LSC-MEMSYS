@@ -1,163 +1,198 @@
 <?php
-session_start();
-require_once __DIR__ . '/autoload.php';
-require_once __DIR__ . '/includes/supabase.php';
-require_once __DIR__ . '/includes/paths.php';
+require_once __DIR__ . '/bootstrap.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Former Presidents - IECEP-LSC MEMSYS</title>
+    <title>Legacy of Leadership - IECEP-LSC MEMSYS</title>
     <?php include __DIR__ . '/includes/head-meta.php'; ?>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Playfair+Display:italic,wght@700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary-dark: #0B1D4A;
+            --primary-main: #1A3A8A;
+            --accent-gold: #C5A059;
+            --accent-light: #F9F6EE;
+            --text-main: #1F2937;
+            --text-muted: #6B7280;
+            --white: #FFFFFF;
+            --shadow-elegant: 0 15px 30px rgba(0,0,0,0.08);
+            --transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FDFDFD;
+            color: var(--text-main);
+        }
+
+        /* --- HERO SECTION (unchanged, but slightly smaller padding) --- */
         .page-hero {
             position: relative;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 50%, var(--primary) 100%);
+            background: var(--primary-dark);
             color: var(--white);
-            padding: 140px var(--space-4) var(--space-12);
+            padding: 120px 0 80px 0;
             text-align: center;
             overflow: hidden;
         }
-        .page-hero::before {
-            content: '';
+        .hero-overlay {
             position: absolute;
             inset: 0;
             background: url('public/uploads/features/1776563415_hero.png') center/cover no-repeat;
-            opacity: 0.15;
+            opacity: 0.1;
+            mix-blend-mode: overlay;
         }
         .page-hero-content {
             position: relative;
-            z-index: 1;
-            max-width: 800px;
+            z-index: 2;
+            max-width: 700px;
             margin: 0 auto;
-            animation: fadeInUp 0.8s ease-out;
+            padding: 0 1.5rem;
         }
         .page-hero h1 {
-            font-size: clamp(2.5rem, 5vw, 3.5rem);
+            font-size: clamp(2rem, 5vw, 3rem);
             font-weight: 800;
-            margin-bottom: var(--space-3);
-            letter-spacing: -0.02em;
+            margin-bottom: 1rem;
+            letter-spacing: -0.03em;
         }
         .page-hero p {
-            font-size: 1.25rem;
-            opacity: 0.95;
+            font-size: 1rem;
+            font-weight: 300;
+            opacity: 0.8;
         }
 
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .presidents-section {
-            padding: var(--space-12) 0;
-            background: var(--neutral-100);
-        }
-
-        .presidents-subtitle {
-            text-align: center;
-            font-size: 0.875rem;
-            font-weight: 700;
-            color: var(--accent);
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-            margin-bottom: var(--space-2);
-        }
-
-        .presidents-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: var(--space-6);
-            max-width: 1200px;
+        /* --- TIMELINE SECTION (compact) --- */
+        .legacy-container {
+            padding: 60px 0;
+            max-width: 1000px;
             margin: 0 auto;
-            padding: 0 var(--space-2);
-        }
-        @media (min-width: 640px) {
-            .presidents-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        @media (min-width: 1024px) {
-            .presidents-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-
-        .president-card {
-            background: var(--white);
-            border-radius: var(--radius-lg);
-            padding: var(--space-8) var(--space-6);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            text-align: center;
-            transition: all var(--transition-base);
-            border: 1px solid var(--neutral-200);
             position: relative;
-            overflow: hidden;
         }
-        .president-card::before {
+        
+        /* Vertical line - thinner */
+        .legacy-container::before {
             content: '';
             position: absolute;
+            left: 50%;
             top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--accent), #F5A623);
-            transform: scaleX(0);
-            transition: transform var(--transition-base);
-        }
-        .president-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 24px rgba(0,0,0,0.12);
-        }
-        .president-card:hover::before {
-            transform: scaleX(1);
+            bottom: 0;
+            width: 1px;
+            background: linear-gradient(to bottom, transparent, var(--accent-gold), transparent);
+            transform: translateX(-50%);
         }
 
-        .president-icon {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+        .timeline-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 70px;
+            position: relative;
+        }
+
+        .timeline-item:nth-child(even) {
+            flex-direction: row-reverse;
+        }
+
+        /* Timeline Dot - smaller */
+        .timeline-dot {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 14px;
+            height: 14px;
+            background: var(--accent-gold);
+            border: 3px solid var(--white);
             border-radius: 50%;
+            z-index: 2;
+            box-shadow: 0 0 0 3px rgba(197, 160, 89, 0.2);
+        }
+
+        /* President Card - smaller padding and width */
+        .president-card {
+            width: 45%;
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: 20px;
+            box-shadow: var(--shadow-elegant);
+            transition: var(--transition);
+            border: 1px solid #F3F4F6;
+            position: relative;
+        }
+        .president-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 35px rgba(0,0,0,0.1);
+            border-color: var(--accent-gold);
+        }
+
+        /* Portrait - smaller */
+        .portrait-area {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--primary-main), var(--primary-dark));
+            border-radius: 50%;
+            margin-bottom: 1rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--white);
-            font-size: 2rem;
-            margin: 0 auto var(--space-4);
-            box-shadow: 0 4px 15px rgba(11, 29, 74, 0.3);
+            color: white;
+            font-size: 1.5rem;
+            border: 3px solid var(--accent-light);
+            box-shadow: 0 5px 12px rgba(0,0,0,0.1);
         }
 
-        .president-term-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, var(--accent) 0%, #F5A623 100%);
-            color: var(--primary);
-            padding: var(--space-1) var(--space-3);
-            border-radius: var(--radius-full);
+        /* Typography - smaller fonts */
+        .term-label {
             font-size: 0.7rem;
             font-weight: 700;
+            color: var(--accent-gold);
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: var(--space-3);
+            letter-spacing: 1.5px;
+            margin-bottom: 0.3rem;
+            display: block;
         }
-
-        .president-name {
-            color: var(--primary);
-            font-weight: 700;
-            font-size: 1.25rem;
-            margin-bottom: var(--space-2);
+        .pres-name {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--primary-dark);
+            margin-bottom: 0.6rem;
+            line-height: 1.3;
         }
-
-        .president-term {
-            font-weight: 600;
-            color: var(--neutral-700);
-            font-size: 1rem;
-            margin-bottom: var(--space-3);
-        }
-
-        .president-quote {
-            color: var(--neutral-500);
-            font-size: 0.95rem;
-            line-height: 1.6;
+        .pres-quote {
+            font-family: 'Playfair Display', serif;
+            font-size: 0.9rem;
             font-style: italic;
+            color: var(--text-muted);
+            line-height: 1.5;
+            position: relative;
+            padding-left: 1rem;
+        }
+        .pres-quote::before {
+            content: '"';
+            position: absolute;
+            left: 0;
+            top: -5px;
+            font-size: 1.4rem;
+            color: var(--accent-gold);
+            opacity: 0.5;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .legacy-container::before { left: 20px; }
+            .timeline-dot { left: 20px; }
+            .timeline-item, .timeline-item:nth-child(even) {
+                flex-direction: row;
+                justify-content: flex-start;
+            }
+            .president-card {
+                width: calc(100% - 60px);
+                margin-left: 40px;
+                padding: 1.2rem;
+            }
+            .pres-name { font-size: 1rem; }
+            .pres-quote { font-size: 0.8rem; }
         }
     </style>
 </head>
@@ -165,78 +200,57 @@ require_once __DIR__ . '/includes/paths.php';
     <?php include __DIR__ . '/includes/navbar.php'; ?>
 
     <section class="page-hero">
+        <div class="hero-overlay"></div>
         <div class="page-hero-content">
-            <h1>Former Presidents</h1>
-            <p>Honoring the leaders who shaped IECEP-LSC's legacy</p>
+            <h1>Legacy of Leadership</h1>
+            <p>A tribute to the visionary presidents who have guided the IECEP-LSC through eras of innovation and growth since 2022.</p>
         </div>
     </section>
 
-    <section class="presidents-section">
-        <div class="container">
-            <div class="presidents-subtitle">Leadership Legacy</div>
-            <h2 class="section-title">Past Presidents</h2>
+    <main class="legacy-container">
+        
+        <!-- 2024-2025: Most Recent -->
+        <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <article class="president-card">
+                <div class="portrait-area"><i class="fas fa-user-tie"></i></div>
+                <span class="term-label">2024 — 2025</span>
+                <h3 class="pres-name">Rhyan Castillo</h3>
+                <p class="pres-quote">"Continuing the tradition of excellence by bridging the gap between academic theory and professional practice."</p>
+            </article>
+            <div style="width: 45%;"></div>
+        </div>
 
-            <div class="presidents-grid">
-                <div class="president-card">
-                    <div class="president-icon">
-                        <i class="fas fa-user-tie"></i>
-                    </div>
-                    <span class="president-term-badge">2023-2024</span>
-                    <h3 class="president-name">[President Name]</h3>
-                    <div class="president-term">President 2023-2024</div>
-                    <p class="president-quote">"Leading with vision and integrity to build a stronger IECEP-LSC community."</p>
-                </div>
+        <!-- 2023-2024 -->
+        <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div style="width: 45%;"></div>
+            <article class="president-card">
+                <div class="portrait-area"><i class="fas fa-user-tie"></i></div>
+                <span class="term-label">2023 — 2024</span>
+                <h3 class="pres-name">[President Name]</h3>
+                <p class="pres-quote">"Leading with vision and integrity to build a stronger and more inclusive IECEP-LSC community."</p>
+            </article>
+        </div>
 
-                <div class="president-card">
-                    <div class="president-icon">
-                        <i class="fas fa-user-tie"></i>
-                    </div>
-                    <span class="president-term-badge">2022-2023</span>
-                    <h3 class="president-name">[President Name]</h3>
-                    <div class="president-term">President 2022-2023</div>
-                    <p class="president-quote">"Empowering students to excel in electronics engineering through innovation and collaboration."</p>
-                </div>
+        <!-- 2022-2023 -->
+        <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <article class="president-card">
+                <div class="portrait-area"><i class="fas fa-user-tie"></i></div>
+                <span class="term-label">2022 — 2023</span>
+                <h3 class="pres-name">[President Name]</h3>
+                <p class="pres-quote">"Empowering students to excel in electronics engineering through innovation and relentless collaboration."</p>
+            </article>
+            <div style="width: 45%;"></div>
+        </div>
 
-                <div class="president-card">
-                    <div class="president-icon">
-                        <i class="fas fa-user-tie"></i>
-                    </div>
-                    <span class="president-term-badge">2021-2022</span>
-                    <h3 class="president-name">[President Name]</h3>
-                    <div class="president-term">President 2021-2022</div>
-                    <p class="president-quote">"Building bridges between academia and industry for future engineers."</p>
-                </div>
+    </main>
 
-                <div class="president-card">
-                    <div class="president-icon">
-                        <i class="fas fa-user-tie"></i>
-                    </div>
-                    <span class="president-term-badge">2020-2021</span>
-                    <h3 class="president-name">[President Name]</h3>
-                    <div class="president-term">President 2020-2021</div>
-                    <p class="president-quote">"Navigating challenges with resilience and strengthening our chapter's foundation."</p>
-                </div>
-
-                <div class="president-card">
-                    <div class="president-icon">
-                        <i class="fas fa-user-tie"></i>
-                    </div>
-                    <span class="president-term-badge">2019-2020</span>
-                    <h3 class="president-name">[President Name]</h3>
-                    <div class="president-term">President 2019-2020</div>
-                    <p class="president-quote">"Fostering excellence in education and professional development for all members."</p>
-                </div>
-
-                <div class="president-card">
-                    <div class="president-icon">
-                        <i class="fas fa-user-tie"></i>
-                    </div>
-                    <span class="president-term-badge">2018-2019</span>
-                    <h3 class="president-name">[President Name]</h3>
-                    <div class="president-term">President 2018-2019</div>
-                    <p class="president-quote">"Establishing the groundwork for future generations of electronics engineers."</p>
-                </div>
-            </div>
+    <section style="text-align: center; padding: 40px 2rem; background: var(--accent-light);">
+        <div style="max-width: 600px; margin: 0 auto;">
+            <h2 style="color: var(--primary-dark); font-weight: 800; font-size: 1.3rem; margin-bottom: 0.5rem;">The Torchbearers</h2>
+            <p style="color: var(--text-muted); line-height: 1.6; font-size: 0.85rem;">Each term represents a chapter of growth. The leadership of our former presidents serves as the foundation upon which our current successes are built.</p>
         </div>
     </section>
 

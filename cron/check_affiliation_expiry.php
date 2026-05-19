@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/bootstrap.php';
 /**
  * Affiliation Validity Checker
  * Article IV, Section 4: Affiliation valid for one (1) academic year

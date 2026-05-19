@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 // Dynamic Sidebar - Adapts to user role
 // This file should be included after auth_check.php
 

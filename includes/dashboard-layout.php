@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * Unified Dashboard Layout Template
  * Used by all role-based dashboards

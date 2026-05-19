@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../../bootstrap.php';
 declare(strict_types=1);
 
 namespace App\Lib;
@@ -17,6 +18,15 @@ class ComplianceEngine
 
     /**
      * Calculate compliance score for an institution
+     * 
+     * Constitution Art. V Sec. 3 Requirements:
+     * - 40% participation rate (attending members / total members)
+     * - At least 1 hosted event per year
+     * 
+     * Compliance Status:
+     * - compliant: participation >= 40% AND hosted_events >= 1
+     * - at_risk: participation < 40% OR hosted_events < 1
+     * 
      * @param string $institutionId
      * @param int $year
      * @return float
@@ -51,32 +61,39 @@ class ComplianceEngine
             'status' => 'eq.completed'
         ]));
 
-        // 4. Calculate score (50% participation, 50% hosting)
+        // 4. Determine compliance status per Constitution Art. V Sec. 3
+        // Both conditions must be met: participation >= 40% AND hosted_events >= 1
+        $isCompliant = ($participationRate >= 40 && $hostedEvents >= 1);
+        $complianceStatus = $isCompliant ? 'compliant' : 'at_risk';
+
+        // 5. Calculate score (50% participation, 50% hosting)
         $participationScore = $participationRate >= 40 ? 50 : ($participationRate / 40) * 50;
         $hostingScore = $hostedEvents >= 1 ? 50 : 0;
         $overallScore = min($participationScore + $hostingScore, 100);
 
-        // 5. Upsert compliance score
+        // 6. Upsert compliance score
         $this->db->upsert('compliance_scores', [
             'institution_id' => $institutionId,
             'year' => $year,
             'participation_rate' => round($participationRate, 2),
             'hosted_event_count' => $hostedEvents,
             'overall_score' => round($overallScore, 2),
+            'compliance_status' => $complianceStatus,
             'last_updated' => date('Y-m-d H:i:s')
         ]);
 
-        // 6. Record in blockchain
+        // 7. Record in blockchain (hash-chained audit trail)
         $this->blockchain->record('compliance_attendance', $institutionId . '-' . $year, [
             'institution_id' => $institutionId,
             'year' => $year,
             'score' => round($overallScore, 2),
             'participation_rate' => round($participationRate, 2),
-            'hosted_events' => $hostedEvents
+            'hosted_events' => $hostedEvents,
+            'compliance_status' => $complianceStatus
         ]);
 
-        // 7. Send alert if below threshold
-        if ($overallScore < 75) {
+        // 8. Send alert if at risk
+        if ($complianceStatus === 'at_risk') {
             $this->sendComplianceAlert($institutionId, $overallScore);
         }
 

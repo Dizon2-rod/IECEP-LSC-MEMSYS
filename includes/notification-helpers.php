@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 /**
  * Notification helper functions for IECEP-LSC MEMSYS.
  */

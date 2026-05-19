@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 // Fallback email configuration for testing
 return [
     'email' => [

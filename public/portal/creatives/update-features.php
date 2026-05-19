@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/../bootstrap.php';
 $current_page = basename(__FILE__, '.php');
 // IECEP-LSC MEMSYS - Features Update Script
 // Creatives & Publication Committee can use this to update features content

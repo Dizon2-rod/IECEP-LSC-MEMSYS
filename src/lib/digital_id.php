@@ -1,6 +1,7 @@
 <?php
 namespace App\Lib;
 
+require_once __DIR__ . '/../../bootstrap.php';
 class DigitalIdService
 {
     private array $config;
