@@ -1,0 +1,15 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Allow direct access to existing files and directories
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Route API requests to src/api
+    RewriteRule ^IECEP-LSC-MEMSYS/api/(.*)$ src/api/index.php [QSA,L]
+    RewriteRule ^api/(.*)$ src/api/index.php [QSA,L]
+
+    # Route everything else to public directory
+    RewriteRule ^(.*)$ public/$1 [QSA,L]
+</IfModule>

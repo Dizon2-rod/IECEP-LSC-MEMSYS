@@ -1,0 +1,27 @@
+# PHP Configuration for File Uploads
+php_value upload_max_filesize 64M
+php_value post_max_size 128M
+php_value max_file_uploads 20
+php_value max_execution_time 120
+php_value max_input_time 120
+php_value memory_limit 256M
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Handle login requests - redirect to login.php
+    RewriteRule ^login\.html$ login.php [R=301,L]
+
+    # Allow direct access to existing files and directories (including API files)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    # Route to PHP if exists, otherwise route to HTML
+    RewriteCond %{REQUEST_FILENAME}.php -f
+    RewriteRule ^(.*)$ $1.php [QSA,L]
+
+    # Route unmatched requests to index.php for SPA compatibility
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>

@@ -1,0 +1,430 @@
+<?php
+use App\Lib\SupabaseClient;
+
+// Prevent session blocking issues
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Ensure paths.php exists before requiring to prevent timeout
+$pathsFile = __DIR__ . '/includes/paths.php';
+if (!file_exists($pathsFile)) {
+    die('Configuration error: paths.php not found');
+}
+require_once __DIR__ . '/bootstrap.php';
+
+// Prevent caching
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+header('Expires: 0');
+
+
+
+// Handle logout
+if ((isset($_GET['logout']) && $_GET['logout'] === 'true') || (isset($_POST['logout']))) {
+    $user_id = $_SESSION['user_id'] ?? null;
+    log_audit('logout', 'users', $user_id, null, null);
+    
+    $_SESSION = [];
+    session_unset();
+    session_destroy();
+    session_write_close();
+    setcookie(session_name(), '', time() - 42000, '/');
+    header('Location: ' . BASE_URL . '/index.php');
+    exit;
+}
+
+// Redirect to dashboard if already logged in
+if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
+    $role = $_SESSION['role'] ?? '';
+    $redirectMap = [
+        'admin'          => PORTAL_URL . '/admin/dashboard.php',
+        'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
+    ];
+    $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/school-officer/dashboard.php';
+    header('Location: ' . $redirectUrl);
+    exit;
+}
+
+$error = '';
+$email = '';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    $password = trim($_POST['password'] ?? '');
+
+    // Validate input
+    if (empty($email) || empty($password)) {
+        $error = 'Please enter both email and password.';
+    } else {
+
+        // Authenticate via Supabase Auth (production-only)
+        try {
+            require_once __DIR__ . '/includes/supabase.php';
+            require_once __DIR__ . '/src/lib/SupabaseClient.php';
+
+            $config = require __DIR__ . '/includes/supabase.php';
+            $supabaseService = new SupabaseClient($config['url'], $config['service_role_key']);
+
+            $loginSuccess = false;
+            $authFallback = false;
+            $authError = null;
+
+            $users = $supabaseService->select('users', ['email' => 'eq.' . $email]);
+            if (!empty($users) && is_array($users)) {
+                $user = $users[0];
+                
+                error_log("=== LOGIN DEBUG ===");
+                error_log("Email found: " . $email);
+                error_log("Has password hash: " . (!empty($user['password']) ? 'YES' : 'NO'));
+                error_log("Password provided length: " . strlen($password));
+                
+                if (!empty($user['password']) && password_verify($password, $user['password'])) {
+                    error_log("Password verification: SUCCESS");
+                    if (empty($user['is_active'])) {
+                        $error = 'Your account has been deactivated. Please contact the administrator.';
+                    } else {
+                        $profiles = $supabaseService->select('user_profiles', ['user_id' => 'eq.' . $user['id']]);
+                        if (empty($profiles)) {
+                            error_log("Login: legacy users table found for email=$email but no matching user_profiles row for user_id={$user['id']}. Falling back to Supabase Auth.");
+                            $authFallback = true;
+                        } else {
+                            $profile = $profiles[0];
+                            $loginSuccess = true;
+                            $mustChangePassword = !empty($user['must_change_password']);
+                            $userId = $user['id'];
+                            $userEmail = $user['email'];
+                            $fullName = $user['full_name'] ?? '';
+                        }
+                    }
+                } else {
+                    error_log("Password verification: FAILED for email=" . $email);
+                    error_log("Password hash from DB: " . substr($user['password'] ?? '', 0, 20) . "...");
+                    $authFallback = true;
+                }
+            } else {
+                error_log("User not found in database for email: " . $email);
+                $authFallback = true;
+            }
+
+            if (!$loginSuccess && $authFallback) {
+                try {
+                    $authResult = $supabaseService->authSignIn($email, $password);
+                    $authUser = $authResult['user'] ?? ($authResult['data']['user'] ?? null);
+
+                    if (!empty($authUser['id'])) {
+                        $userId = $authUser['id'];
+                        $userEmail = $authUser['email'] ?? $email;
+                        $fullName = $authUser['user_metadata']['full_name'] ?? $authUser['full_name'] ?? '';
+
+                        $profiles = $supabaseService->select('user_profiles', ['user_id' => 'eq.' . $userId]);
+                        error_log("Login: Supabase auth user_id=$userId profile query result=" . json_encode($profiles));
+
+                        if (!empty($profiles) && is_array($profiles)) {
+                            $profile = $profiles[0];
+                            $loginSuccess = true;
+                            // Check force_password_change from profile, or must_change_password from user metadata
+                            $mustChangePassword = !empty($profile['force_password_change']) || 
+                                                !empty($authUser['user_metadata']['must_change_password']);
+                        } else {
+                            error_log("Login: Supabase auth succeeded but no user_profiles row for user_id=$userId");
+                            $error = 'Your account has not been fully configured. Please contact the administrator.';
+                        }
+                    } else {
+                        error_log('Login: Supabase authSignIn returned no user object for email=' . $email . ' response=' . json_encode($authResult));
+                        $error = 'Invalid email or password. Please try again.';
+                    }
+                } catch (Exception $e) {
+                    error_log('Login: Supabase authSignIn failed for email=' . $email . ' error=' . $e->getMessage());
+                    $authError = $e->getMessage();
+                }
+            }
+
+            if ($loginSuccess) {
+                error_log("=== LOGIN SUCCESS ===");
+                error_log("Email: " . $userEmail);
+                error_log("Role: " . ($profile['role'] ?? 'N/A'));
+                error_log("Must change password: " . ($mustChangePassword ? 'YES' : 'NO'));
+                
+                $_SESSION['user_id']   = $userId;
+                $_SESSION['email']     = $userEmail;
+                $_SESSION['full_name'] = $fullName;
+                $_SESSION['role']      = $profile['role'] ?? 'member';
+                $_SESSION['logged_in'] = true;
+
+                $_SESSION['user'] = [
+                    'id'    => $userId,
+                    'email' => $userEmail,
+                    'name'  => $fullName,
+                    'role'  => $profile['role'] ?? 'member',
+                    'must_change_password' => !empty($mustChangePassword)
+                ];
+                
+                // Audit log successful login
+                log_audit('login', 'users', $userId, null, ['email' => $userEmail, 'role' => $profile['role'] ?? 'member']);
+
+                if (!empty($mustChangePassword)) {
+                    $_SESSION['require_password_change'] = true;
+                    header('Location: ' . BASE_URL . '/change-password.php?first=1');
+                    exit;
+                }
+
+                $redirectMap = [
+                    'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
+                    'admin'          => PORTAL_URL . '/admin/dashboard.php',
+                    'member'         => PORTAL_URL . '/member/dashboard.php',
+                ];
+                $role = $profile['role'] ?? 'school_officer';
+                $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/school-officer/dashboard.php';
+                header('Location: ' . $redirectUrl);
+                exit;
+            }
+
+            if (!$error) {
+                // Audit log failed login attempt
+                error_log("=== LOGIN FAILED ===");
+                error_log("Email: " . $email);
+                error_log("Login success: " . ($loginSuccess ? 'YES' : 'NO'));
+                error_log("Auth fallback triggered: " . ($authFallback ? 'YES' : 'NO'));
+                
+                log_audit('login_failed', 'users', null, null, ['email' => $email]);
+                $error = 'Invalid email or password. Please try again.';
+            }
+        } catch (Exception $e) {
+            error_log("Login error: " . $e->getMessage());
+            // --- Test Accounts Fallback (Development Only) ---
+            // Only use if APP_ENV is 'development'
+            if (defined('APP_ENV') && APP_ENV === 'development') {
+                $testAccounts = require __DIR__ . '/includes/test-accounts.php';
+                if (isset($testAccounts[$email]) && $testAccounts[$email]['password'] === $password) {
+                    // Test account login
+                    $_SESSION['logged_in'] = true;
+                    $_SESSION['email'] = $email;
+                    $_SESSION['role'] = $testAccounts[$email]['role'];
+                    $_SESSION['full_name'] = $testAccounts[$email]['full_name'];
+                    $_SESSION['user_id'] = 'test-' . md5($email); // Mock user ID for testing
+                    
+                    // Store user info in 'user' array for compatibility
+                    $_SESSION['user'] = [
+                        'id' => 'test-' . md5($email),
+                        'email' => $email,
+                        'name' => $testAccounts[$email]['full_name'],
+                        'role' => $testAccounts[$email]['role'],
+                        'must_change_password' => false
+                    ];
+                    
+                    // Redirect to role-based dashboard
+                    $redirectMap = [
+                        'admin'                  => PORTAL_URL . '/admin/dashboard.php',
+                        'school_officer'         => PORTAL_URL . '/school-officer/dashboard.php',
+                        'member'                 => PORTAL_URL . '/member/dashboard.php',
+                    ];
+                    $role = $testAccounts[$email]['role'];
+                    $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/school-officer/dashboard.php';
+                    header('Location: ' . $redirectUrl);
+                    exit;
+                }
+            }
+            $error = 'A system error occurred. Please try again later.';
+        }
+    }
+}
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - IECEP-LSC MEMSYS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Times+New+Roman:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            min-height: 100vh;
+            background: url('public/assets/icons/hero.png') center/cover no-repeat;
+            position: relative;
+            overflow: hidden;
+        }
+        .login-container { display: flex; width: 100%; min-height: 100vh; }
+        .login-left {
+            flex: 1; display: flex; flex-direction: column; justify-content: space-between;
+            align-items: center; padding: 60px 40px; color: white; text-align: center;
+            position: relative; z-index: 1;
+        }
+        .logo-container { margin-bottom: 40px; }
+        .logo-container img {
+            width: 200px; height: 200px; object-fit: contain;
+            margin-left:20px; margin-right: -100px; margin-top: 50px; margin-bottom: 30px;
+        }
+        .organization-title {
+            font-family: 'Times New Roman', Arial, serif;
+            font-size: 2.2rem; font-weight: 800; margin-bottom: 20px;
+            margin-left:20px; margin-right: -100px; line-height: 1.3; letter-spacing: 1px; word-spacing: 2px;
+        }
+        .organization-subtitle {
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 1.7rem; font-weight: 700; margin-left:20px; margin-right: -100px; margin-bottom: 100px;
+        }
+        .tagline {
+            font-size: 2rem; font-family: 'Times New Roman MT', Times, serif;
+            margin-top: -250px; margin-bottom: 20px; margin-left: 20px; margin-right: -100px; line-height: 1.5;
+        }
+        .schools-row {
+            display: flex; justify-content: center; align-items: center; gap: 15px;
+            margin-top: 10px; margin-left:20px; margin-right: -100px; padding: 30px 0 0 0; flex-wrap: wrap;
+        }
+        .schools-row img {
+            max-width: 80px; height: auto; transition: transform 0.3s ease;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); flex-shrink: 0;
+        }
+        .schools-row img:hover { transform: scale(1.1); }
+        .login-right { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px; }
+        .login-card {
+            background: white; border-radius: 80px; padding: 50px 40px;
+            width: 100%; max-width: 550px; box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+        }
+        .login-title {
+            font-size: 2.5rem; font-weight: 700; font-style: italic; color: #000;
+            margin-bottom: 40px; text-align: center;
+        }
+        .form-group { margin-bottom: 25px; position: relative; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; font-size: 0.9rem; }
+        .input-wrapper { position: relative; }
+        .input-wrapper i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #999; font-size: 1rem; }
+        .form-group input {
+            width: 100%; padding: 16px 48px 16px 50px;
+            border: 2px solid #e2e8f0; border-radius: 12px;
+            font-size: 1rem; transition: all 0.3s; background: #f8fafc;
+        }
+        .form-group input:focus { outline: none; border-color: #0A2F6C; background: white; box-shadow: 0 0 0 3px rgba(10,47,108,0.1); }
+        #togglePassword { user-select: none; transition: color 0.2s ease; left: auto; }
+        #togglePassword:hover { color: #0A2F6C !important; }
+        .form-options { display: flex; justify-content: space-between; align-items: center; margin: 25px 0; font-size: 0.9rem; }
+        .form-options label { display: flex; align-items: center; gap: 8px; color: #666; cursor: pointer; }
+        .form-options input[type="checkbox"] { width: auto; margin: 0; }
+        .form-options a { color: #0A2F6C; text-decoration: none; font-weight: 500; }
+        .form-options a:hover { color: #F5A623; }
+        .btn-login {
+            width: 100%; background: #0A2F6C; color: white; border: none;
+            padding: 16px; border-radius: 12px; font-size: 1rem; font-weight: 600;
+            cursor: pointer; transition: all 0.3s; margin-bottom: 20px;
+        }
+        .btn-login:hover { background: #333; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+        .divider { display: flex; align-items: center; margin: 25px 0; color: #999; font-size: 0.9rem; }
+        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #e2e8f0; }
+        .divider span { padding: 0 15px; }
+        .btn-google {
+            width: 100%; background: white; color: #333; border: 2px solid #e2e8f0;
+            padding: 14px; border-radius: 12px; font-size: 1rem; font-weight: 500;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: 0.3s;
+        }
+        .btn-google:hover { border-color: #0A2F6C; background: #f8fafc; }
+        .btn-google img { width: 20px; height: 20px; }
+        .error-message {
+            background: #fee2e2; color: #dc2626; padding: 12px 16px; border-radius: 8px;
+            margin-bottom: 20px; font-size: 0.9rem; text-align: center; border-left: 4px solid #dc2626;
+        }
+        .test-accounts { background: #f8fafc; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 0.75rem; }
+        .test-accounts h4 { color: #0A2F6C; margin-bottom: 10px; font-size: 0.85rem; }
+        .test-accounts div { margin-bottom: 3px; color: #666; }
+        .btn-back-home {
+            display: inline-flex; align-items: center; gap: 8px; background: #f8fafc; color: #0A2F6C;
+            text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 0.9rem; font-weight: 500;
+            border: 2px solid #e2e8f0; transition: all 0.3s ease;
+        }
+        .btn-back-home:hover { background: #0A2F6C; color: white; border-color: #0A2F6C; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10,47,108,0.2); }
+        @media (max-width: 768px) {
+            .login-container { flex-direction: column; }
+            .login-left { padding: 30px 20px; min-height: 40vh; }
+            .organization-title { font-size: 1.5rem; }
+            .organization-subtitle { font-size: 1.3rem; }
+            .schools-row { gap: 8px; }
+            .schools-row img { max-width: 80px; }
+            .login-right { padding: 20px; min-height: 60vh; }
+            .login-card { padding: 30px 25px; }
+            .login-title { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-left">
+            <div>
+                <div class="logo-container">
+                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/iecep-logo.png" alt="IECEP-LSC Logo">
+                </div>
+                <h1 class="organization-title">INSTITUTE OF ELECTRONICS ENGINEERS OF THE PHILIPPINES</h1>
+                <h2 class="organization-subtitle">LAGUNA STUDENT CHAPTER</h2>
+            </div>
+            <div style="width: 100%;">
+                <p class="tagline">One LSC. One IECEP.</p>
+                <div class="schools-row">
+                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/LETRAN.png" alt="Colegio de San Juan de Letrán">
+                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/LSPU-SCC.png" alt="LSPU - Santa Cruz Campus">
+                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/LSPU-SPCC.png" alt="LSPU - San Pablo City Campus">
+                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/MMCL.webp" alt="Malayan Colleges Laguna">
+                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/PUP-STA ROSA.png" alt="PUP - Santa Rosa Campus">
+                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/UC-PNC.png" alt="University of Calamba">
+                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/UPHSD.png" alt="UPHSD">
+                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/UPHSL-BINAN.png" alt="UPHSL - Biñán">
+                </div>
+            </div>
+        </div>
+        <div class="login-right">
+            <div class="login-card">
+                <h2 class="login-title">Log In</h2>
+                <?php if ($error): ?>
+                    <div class="error-message"><?php echo htmlspecialchars($error); ?></div>
+                <?php endif; ?>
+                <form method="POST" action="">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <div class="input-wrapper">
+                            <i class="fas fa-envelope"></i>
+                            <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($email); ?>" required placeholder="Enter your email">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="input-wrapper" style="position: relative;">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="password" name="password" required placeholder="Enter your password">
+                            <i class="fas fa-eye-slash" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999; font-size: 1rem; pointer-events: auto;"></i>
+                        </div>
+                    </div>
+
+                    <script>
+                        const passwordInput = document.getElementById('password');
+                        const togglePasswordBtn = document.getElementById('togglePassword');
+
+                        togglePasswordBtn.addEventListener('click', function() {
+                            if (passwordInput.type === 'password') {
+                                passwordInput.type = 'text';
+                                togglePasswordBtn.classList.remove('fa-eye-slash');
+                                togglePasswordBtn.classList.add('fa-eye');
+                            } else {
+                                passwordInput.type = 'password';
+                                togglePasswordBtn.classList.remove('fa-eye');
+                                togglePasswordBtn.classList.add('fa-eye-slash');
+                            }
+                        });
+                    </script>
+
+                    <div class="form-options">
+                        <label><input type="checkbox" name="remember"> Remember Me</label>
+                        <a href="<?php echo BASE_URL; ?>/public/forgot-password.php">Forgot Password?</a>
+                    </div>
+                    <button type="submit" class="btn-login">Log in</button>
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <a href="index.php" class="btn-back-home"><i class="fas fa-arrow-left"></i> Back to Homepage</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

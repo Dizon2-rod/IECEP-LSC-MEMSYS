@@ -1,0 +1,104 @@
+/*!
+ * Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com
+ * License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License)
+ * Copyright 2023 Fonticons, Inc.
+ */
+/* Font Awesome 6.5.1 - Local Hosted Version */
+@font-face {
+  font-family: 'Font Awesome 6 Free';
+  font-style: normal;
+  font-weight: 900;
+  font-display: block;
+  src: url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-solid-900.woff2") format("woff2"),
+       url("https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/webfonts/fa-solid-900.ttf") format("truetype");
+}
+
+.fa,
+.fas,
+.fa-solid {
+  font-weight: 900;
+  font-family: 'Font Awesome 6 Free', sans-serif;
+}
+
+/* Common Icons Used in IECEP-LSC MEMSYS */
+.fa-handshake-simple::before { content: "\f81c"; }
+.fa-newspaper::before { content: "\f1ea"; }
+.fa-arrow-right::before { content: "\f061"; }
+.fa-star::before { content: "\f005"; }
+.fa-calendar-days::before { content: "\f073"; }
+.fa-envelope::before { content: "\f0e0"; }
+.fa-circle-check::before { content: "\f058"; }
+.fa-circle-exclamation::before { content: "\f06a"; }
+.fa-paper-plane::before { content: "\f1d8"; }
+.fa-chevron-down::before { content: "\f078"; }
+.fa-chevron-up::before { content: "\f077"; }
+.fa-xmark::before { content: "\f00d"; }
+.fa-sign-in-alt::before { content: "\f2f6"; }
+.fa-search-dollar::before { content: "\f688"; }
+.fa-search::before { content: "\f002"; }
+.fa-spinner::before { content: "\f110"; }
+.fa-check-circle::before { content: "\f058"; }
+.fa-exclamation-circle::before { content: "\f06a"; }
+.fa-print::before { content: "\f02f"; }
+.fa-redo::before { content: "\f01e"; }
+.fa-home::before { content: "\f015"; }
+.fa-id-card::before { content: "\f2c2"; }
+.fa-qrcode::before { content: "\f029"; }
+.fa-keyboard::before { content: "\f11c"; }
+.fa-camera::before { content: "\f030"; }
+.fa-upload::before { content: "\f093"; }
+.fa-tachometer-alt::before { content: "\f3fd"; }
+.fa-building::before { content: "\f1ad"; }
+.fa-users::before { content: "\f0c0"; }
+.fa-graduation-cap::before { content: "\f19d"; }
+.fa-calendar::before { content: "\f133"; }
+.fa-credit-card::before { content: "\f09d"; }
+.fa-chart-bar::before { content: "\f080"; }
+.fa-cog::before { content: "\f013"; }
+.fa-crown::before { content: "\f521"; }
+.fa-university::before { content: "\f19c"; }
+.fa-trophy::before { content: "\f091"; }
+.fa-history::before { content: "\f1da"; }
+.fa-palette::before { content: "\f53f"; }
+.fa-bullhorn::before { content: "\f0a1"; }
+.fa-images::before { content: "\f302"; }
+.fa-file-alt::before { content: "\f15c"; }
+.fa-balance-scale::before { content: "\f24e"; }
+.fa-coins::before { content: "\f51e"; }
+.fa-money-bill-wave::before { content: "\f53a"; }
+.fa-exchange-alt::before { content: "\f362"; }
+.fa-chart-line::before { content: "\f201"; }
+.fa-wallet::before { content: "\f555"; }
+.fa-receipt::before { content: "\f543"; }
+.fa-user-plus::before { content: "\f234"; }
+.fa-clock::before { content: "\f017"; }
+.fa-check-circle::before { content: "\f058"; }
+.fa-folder-open::before { content: "\f07b"; }
+.fa-certificate::before { content: "\f0a3"; }
+.fa-user-circle::before { content: "\f2bd"; }
+.fa-file-contract::before { content: "\f56c"; }
+.fa-shield-alt::before { content: "\f3ed"; }
+.fa-sign-out-alt::before { content: "\f2f5"; }
+.fa-bars::before { content: "\f0c9"; }
+.fa-user::before { content: "\f007"; }
+.fa-user-shield::before { content: "\f505"; }
+.fa-search::before { content: "\f002"; }
+
+/* Animation for spinner */
+.fa-spin {
+  animation: fa-spin 2s infinite linear;
+}
+
+@keyframes fa-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Ensure icons display properly */
+.fas, .fa-solid {
+  display: inline-block;
+  font-style: normal;
+  font-variant: normal;
+  text-rendering: auto;
+  line-height: 1;
+}

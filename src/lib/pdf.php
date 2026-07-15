@@ -1,0 +1,83 @@
+<?php
+namespace App\Lib;
+
+use Dompdf\Dompdf;
+use Dompdf\Options;
+
+require_once __DIR__ . '/../../bootstrap.php';
+class PdfService
+{
+    private array $config;
+
+    public function __construct()
+    {
+        $this->config = include __DIR__ . '/../config/config.php';
+    }
+
+    public function generateReceipt(string $receiptId, string $payerName, float $amount, string $date, ?string $txHash = null, ?string $qrCodePath = null): string
+    {
+        $options = new Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+        $dompdf = new Dompdf($options);
+
+        $amountFormatted = '₱' . number_format($amount, 2);
+        $qrImg = '';
+        if ($qrCodePath && file_exists($qrCodePath)) {
+            $qrData = base64_encode(file_get_contents($qrCodePath));
+            $qrImg = "<img src='data:image/png;base64,{$qrData}' style='width:120px;height:120px;margin-top:12px' />";
+        }
+
+        $html = "
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <style>
+                body { font-family: 'Helvetica', 'Arial', sans-serif; margin: 0; padding: 20px; color: #343a40; }
+                .receipt { max-width: 600px; margin: 0 auto; border: 2px solid #0A2F6C; border-radius: 12px; padding: 32px; }
+                .header { text-align: center; border-bottom: 2px solid #F5A623; padding-bottom: 16px; margin-bottom: 20px; }
+                .header h1 { color: #0A2F6C; margin: 0; font-size: 20px; }
+                .header h2 { color: #F5A623; margin: 4px 0 0; font-size: 14px; }
+                .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+                .row .label { font-weight: bold; color: #0A2F6C; }
+                .row .value { text-align: right; }
+                .amount { font-size: 28px; color: #0A2F6C; font-weight: bold; text-align: center; margin: 20px 0; }
+                .footer { text-align: center; margin-top: 24px; padding-top: 16px; border-top: 2px solid #0A2F6C; font-size: 11px; color: #6c757d; }
+                .badge { display: inline-block; background: #28a745; color: white; padding: 4px 12px; border-radius: 12px; font-size: 11px; }
+            </style>
+        </head>
+        <body>
+            <div class='receipt'>
+                <div class='header'>
+                    <h1>IECEP-LSC</h1>
+                    <h2>Official Payment Receipt</h2>
+                </div>
+                <div class='row'>
+                    <span class='label'>Receipt No.</span>
+                    <span class='value'>{$receiptId}</span>
+                </div>
+                <div class='row'>
+                    <span class='label'>Payer</span>
+                    <span class='value'>{$payerName}</span>
+                </div>
+                <div class='row'>
+                    <span class='label'>Date</span>
+                    <span class='value'>{$date}</span>
+                </div>
+                <div class='amount'>{$amountFormatted}</div>
+                <div style='text-align:center;margin-top:20px'>{$qrImg}</div>
+                <div class='footer'>
+                    <span class='badge'>Official Receipt</span><br><br>
+                    This is an official payment receipt from IECEP-LSC.<br>
+                    IECEP-LSC MEMSYS &copy; " . date('Y') . "
+                </div>
+            </div>
+        </body>
+        </html>";
+
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->render();
+        return $dompdf->output();
+    }
+}

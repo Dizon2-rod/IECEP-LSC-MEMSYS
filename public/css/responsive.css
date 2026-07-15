@@ -1,0 +1,44 @@
+/* Additional responsive overrides */
+
+/* Grid system */
+.grid { display: grid; gap: 16px; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+@media (max-width: 1024px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 640px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+}
+
+/* Flex helpers */
+.flex-row { flex-direction: row; }
+.flex-col { flex-direction: column; }
+
+@media (max-width: 640px) {
+    .flex-row-responsive { flex-direction: column; }
+}
+
+/* Table responsive */
+@media (max-width: 640px) {
+    table { font-size: 12px; }
+    table th, table td { padding: 8px 10px; }
+}
+
+/* Form responsive */
+@media (max-width: 640px) {
+    .form-row { flex-direction: column; }
+    .form-row .form-group { width: 100%; }
+}
+
+/* Print styles */
+@media print {
+    .portal-sidebar, .portal-topbar, .bottom-nav, .btn, .navbar { display: none !important; }
+    .portal-main { margin-left: 0 !important; }
+    .portal-content { padding: 0 !important; }
+    body { background: white; }
+}
