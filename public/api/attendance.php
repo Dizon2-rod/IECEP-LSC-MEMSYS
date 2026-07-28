@@ -10,12 +10,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 require_once __DIR__ . '/../../includes/supabase.php';
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/middleware/auth.php';
+require_once __DIR__ . '/../../src/lib/BlockchainService.php';
 
 use App\Lib\Supabase;
 use App\Middleware\AuthMiddleware;
+use App\Lib\BlockchainService;
 
 $sb = new Supabase();
 $auth = new AuthMiddleware();
+$blockchain = new BlockchainService($sb->getClient());
+$GLOBALS['blockchain'] = $blockchain;
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 

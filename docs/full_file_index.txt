@@ -1,0 +1,480 @@
+﻿C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\.env.example
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\.gitignore
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\.htaccess
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\add_bootstrap.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\affiliated-schools.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\autoload.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\awards-distinctions.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\bootstrap.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\calendar-activity.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\change-password-old.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\change-password.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\check-affiliations.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\check-users.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\composer.json
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\composer.lock
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\composer.phar
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\contact-submit.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\contact.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\debug-reset-api.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\debug-supabase.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\diagnostic.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\error-checker.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\fix-affiliations.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\fix-requires.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\former-presidents.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\get-reset-token.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\iecep-hymn.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\iecep-officers.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\IMPLEMENTATION_PLAN.md
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\index.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\login.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\logout.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\mission-vision.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\objective.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\package-lock.json
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\package.json
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\php.ini
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\README.md
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\skills-lock.json
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\.vscode\settings.json
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\assets\icons\iecep-logo.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\cron\check_affiliation_expiry.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\cron\compliance_deadline_reminders.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\cron\compliance_update.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\cron\expire_memberships.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\database\additional_tables.sql
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\database\add_event_id_to_transactions.sql
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\database\enhancements_sql.sql
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\database\fix_blockchain_schema.sql
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\database\supabase_complete_query.sql
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\database\xampp_localhost_complete_query.sql
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\database\migrations\002_events_compliance.sql
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\database\migrations\003_cbl_compliance_system.sql
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\database\migrations\004_auto_generate_accounts.sql
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\database\migrations\005_pending_affiliations.sql
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\database\migrations\006_member_id_counter.sql
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\docs\CODE_CLEANUP_ORGANIZATION.md
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\docs\COLLOQUIUM_PRESENTATION_SCRIPT.md
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\docs\full_file_index.txt
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\docs\MANUAL_TESTING_CHECKLIST.md
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\docs\SYSTEM_DOCUMENTATION.md
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\docs\THESIS_DOCUMENTATION_HELPER.md
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\audit.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\collaboration-components.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\config.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\csrf.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\dashboard-layout.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\database.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\db.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\email.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\email_fallback.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\footer-new.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\footer.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\head-meta.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\lib
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\navbar.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\notification-helpers.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\paths.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\role-config.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\sidebar.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\supabase-admin.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\supabase.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\test-accounts.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\data\announcements.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\data\features.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\data\graphics.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\data\publications.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\data\schools_mapping.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\data\team.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\helpers\cbl_fee_calculator.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\helpers\participation_calculator.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\helpers\validation.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\includes\middleware\auth.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\logs\.gitignore
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\logs\error.log
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\migrations\create_revision_requests.sql
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\.htaccess
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\announcements.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\apply.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\blockchain-explorer.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\change-password.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\dashboard.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\edit-affiliation.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\forgot-password.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\logout.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\manifest.json
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\offline.html
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\offline.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\privacy-policy.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\quick-links.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\recent-activities.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\reset-password.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\revise-affiliation.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\sw.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\thank-you.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\transparency.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\verify-2fa.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\verify-certificate.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\verify-document.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\verify-hash.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\verify-member.html
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\verify-member.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\verify-payment.html
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\verify-payment.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\admin\pending-affiliations.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\.htaccess
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\adjust-fees.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\affiliate.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\affiliate_backup.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\affiliate_old.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\affiliation-review-action.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\affiliation-revision.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\affiliation_status.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\announcements.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\attendance.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\auditor.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\auth.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\blockchain-verify.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\blockchain.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\bootstrap.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\calculate-fees.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\certificate-issue.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\collaboration.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\committee.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\compliance-documents.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\compliance-report.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\compliance-trend.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\compliance.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\cron-auto-renew.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\cron-check-deadlines.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\cron-compliance-check.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\cron-monthly-report.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\digital-id.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\disable-2fa.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\email.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\enable-2fa.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\event-qr-checkin.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\event-registration.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\events.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\export-members.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\financial-report.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\generate-membership-id.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\generate-receipt.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\import-members.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\index.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\institution-details.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\member-directory.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\member.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\newsletter.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\notifications.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\officer.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\partners.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\pro.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\process-member-batch.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\registration.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\renew-membership.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\request-password-reset.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\reset-password.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\save-subscription.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\secretary.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\send-digital-id.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\send-notification.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\send-reminder.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\simulate-payment-fixed.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\simulate-payment-test.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\simulate-payment.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\simulate-payment.php.backup
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\submit-affiliation.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\super-admin.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\surveys.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\track-email.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\treasurer.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\upload-profile-picture.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\users.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\verify-2fa.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\verify-blockchain-chain.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\verify-chain.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\verify-member.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\verify-payment.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\verify-transaction.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\vp-academic.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\analytics.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\assign-membership-id.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\backup-restore.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\bulk-assign-ids.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\bulk-export.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\bulk-import.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\contact-messages.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\email-templates.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\export-validated-directory.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\get-documents.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\messaging.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\newsletter.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\push-notifications.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\revenue-forecast.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\role-permissions.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\system-logs.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\admin\verify-document.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\affiliate\submit-affiliation.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\affiliate\upload-directory.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\blockchain\explorer.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\blockchain\merkle-verify.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\blockchain\verify-chain.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\compliance\reports.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\cron\auto-adjust-fees.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\documents\memoranda.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\documents\policy-checklist.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\documents\repository.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\president\compliance-heatmap.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\school-officer\financial.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\school-officer\renewal.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\super-admin\audit-logs.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\super-admin\cron-jobs.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\super-admin\cron-management.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\super-admin\impersonation.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\super-admin\system-health.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\super-admin\system-settings.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\treasurer\event-reports.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\treasurer\fee-waiver.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\treasurer\financial-reports.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\treasurer\financial-verification.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\treasurer\invoices.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\api\treasurer\verify-payment.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\css\font-awesome.css
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\css\professional.css
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\css\style.css
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\css\styles.css
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\icons\hero.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\icons\iecep-logo.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\icons\LETRAN.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\icons\logo.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\icons\LSPU-SCC.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\icons\LSPU-SPCC.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\icons\MMCL.webp
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\icons\PUP-STA ROSA.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\icons\UC-PNC.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\icons\UPHSD.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\icons\UPHSL-BINAN.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\images\hero-bg.jpg
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\js\affiliate.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\js\app.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\js\charts.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\js\header.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\js\notifications.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\js\offline-manager.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\js\offline.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\js\realtime.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\js\supabase-auth.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\js\supabase-realtime.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\js\toast.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\assets\uploads\affiliations\.gitkeep
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\css\components.css
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\css\dashboard.css
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\css\design-tokens.css
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\css\landing.css
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\css\portal.css
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\css\responsive.css
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\css\style.css
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\includes\approval-notification-bell.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\includes\approval-notifications-modal.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\api-handler.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\app.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\auth.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\config.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\context-switcher.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\dashboard.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\member-directory-parser.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\notifications.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\offline-sync-reference.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\offline-sync.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\pwa.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\realtime.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\supabase-auth.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\supabase-client.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\portal\asst-secretary.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\portal\auditor.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\portal\committee.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\portal\member.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\portal\officer.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\portal\president.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\portal\pro.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\portal\registration.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\portal\secretary.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\portal\treasurer.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\portal\vp-academic.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\portal\vp-external.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\js\portal\vp-internal.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\auth_check.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\bootstrap.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\dashboard.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\affiliation_action.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\analytics.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\contact-messages.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\dashboard.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\decision-support.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\digital-id.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\documents.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\enable-2fa.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\import-members.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\list-batches.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\member-directory.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\messages.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\newsletter.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\payments.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\policy-compliance.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\push.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\surveys.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\transparency.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\users.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\validate-directory.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\analytics\dashboard.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\blockchain\explorer.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\blockchain\health.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\communication\announcements.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\communication\newsletter.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\compliance\dashboard.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\compliance\reports.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\documents\memoranda.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\documents\repository.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\events\list.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\financial\dashboard.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\financial\reports.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\financial\transactions.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\financial\transparency.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\institutions\list.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\members\batch-process.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\members\list.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\members\profile.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\system\settings.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\admin\system\users.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\member\certificate.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\member\dashboard.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\member\digital-id.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\member\events.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\member\payments.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\member\profile.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\member\surveys.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\school-officer\dashboard.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\school-officer\compliance\status.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\school-officer\digital-id\send.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\school-officer\documents\list.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\school-officer\financial\fee-waiver.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\school-officer\financial\receipts.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\school-officer\financial\reports.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\school-officer\members\list.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\portal\school-officer\members\upload.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03a3ae45c_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03a3cca45_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03a3cdfa7_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03a3ced15_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03a3d04f4_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03a3d0d4a_Membership Affiliation Directory (Responses).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03eb8b25f_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03eb95166_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03eb95e80_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03eb969a8_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03eb984bb_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03eb98e9f_Membership Affiliation Directory (Responses).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03fcc437a_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03fcedd2c_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03fceec2f_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03fcef79d_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03fcf0f68_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c03fcf19a4_Membership Affiliation Directory (Responses).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c0475bb960_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c04760f265_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c047610410_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c04761113e_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c047612b30_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c047613432_Membership Affiliation Directory (Responses).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c253fdadd9_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c253fe4de4_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c253fe5a0a_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c25401db26_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c25401f1a3_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c25401fbae_Membership Affiliation Directory (TRY).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3498e9e4f_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3498f40b5_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c349900a28_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c34990162e_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c349953a73_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c349954256_Membership Affiliation Directory (TRY).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3b2119a68_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3b212395b_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3b2124869_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3b212550e_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3b2126ec6_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3b2159113_Membership Affiliation Directory (TRY).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3cd449d62_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3cd4536ad_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3cd454492_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3cd454f46_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3cd456630_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3cd456fa0_Membership Affiliation Directory (TRY).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3e437771d_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3e4383460_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3e43842c5_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3e4384d44_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3e4386387_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c3e4386dc2_Membership Affiliation Directory (TRY).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c40c5f39dd_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c40c6093de_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c40c609fe6_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c40c60abde_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c40c60c304_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c40c60caf6_Membership Affiliation Directory (TRY).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c429560ad6_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4295834ca_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c429584114_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c429584c8c_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4295864d5_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c429586cf6_Membership Affiliation Directory (TRY).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c45a0c27f1_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c45a0cc507_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c45a0cd1fc_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c45a0cea04_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c45a0d0125_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c45a0d0bb4_Membership Affiliation Directory (TRY).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4b664d31d_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4b66576d8_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4b6658423_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4b66591b5_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4b665ab08_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4b665b417_Membership Affiliation Directory (TRY).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4ff61513c_6a0c4b664d31d_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4ff61fcd9_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4ff620c3e_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4ff62180d_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4ff622fbf_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c4ff65d4d3_Membership Affiliation Directory (TRY).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c88f2e8be1_AFEE-DOC4_IECEP MEMBERSHIP DIRECTORY.docx - UPHSL PIECES.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c88f303ec6_Narrative Report Network Defence.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c88f304bf1_IECEP-LSC-2025-CONSTITUTION-AND-BYLAWS.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c88f305895_List of Officers (A.Y 2022-2023).pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c88f307041_CCS-DAYS-SOFTWARE-EXPO.pdf
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\affiliations\6a0c88f307c7c_Membership Affiliation Directory (TRY).xlsx
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\features\1776563415_hero.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\features\1776563415_Screenshot 2025-05-13 193335.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\features\1776563416_iecep-logo.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\features\1779017377_CCS3.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\features\1779017378_CCS1.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\public\uploads\features\1779017378_CCS2.png
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\src\config\config.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\src\lib\BlockchainService.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\src\lib\ComplianceEngine.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\src\lib\csv.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\src\lib\digital_id.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\src\lib\EmailService.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\src\lib\FeeCalculator.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\src\lib\MerkleTree.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\src\lib\pdf.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\src\lib\qrcode.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\src\lib\SimpleHttpClient.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\src\lib\supabase.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\src\lib\SupabaseClient.php
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\tools\generate-vapid.js
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\tools\supabase-utils\supabase\client.ts
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\tools\supabase-utils\supabase\middleware.ts
+C:\Users\ADMIN\Documents\xampp\htdocs\IECEP-LSC-MEMSYS\tools\supabase-utils\supabase\server.ts

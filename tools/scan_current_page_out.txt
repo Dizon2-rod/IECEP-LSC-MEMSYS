@@ -1,0 +1,19 @@
+﻿php : PHP Warning:  PHP Startup: Unable to load dynamic library 'mysqli' 
+(tried: C:\php\ext\mysqli (The specified module could not be found), 
+C:\php\ext\php_mysqli.dll (The specified module could not be found)) in 
+Unknown on line 0
+At line:1 char:1
++ php tools/scan_current_page.php 2>&1 | Out-File -Encoding utf8 tools/ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (PHP Warning:  P...known on line 0 
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+PHP Warning:  PHP Startup: Unable to load dynamic library 'openssl' (tried: 
+C:\php\ext\openssl (The specified module could not be found), 
+C:\php\ext\php_openssl.dll (The specified module could not be found)) in 
+Unknown on line 0
+PHP Warning:  PHP Startup: Unable to load dynamic library 'pdo_mysql' (tried: 
+C:\php\ext\pdo_mysql (The specified module could not be found), 
+C:\php\ext\php_pdo_mysql.dll (The specified module could not be found)) in 
+Unknown on line 0

@@ -1,4 +1,6 @@
 <?php
+require_once dirname(__DIR__, 2) . '/public/portal/auth_check.php';
+
 require_once __DIR__ . '/../../../includes/config.php';
 require_once __DIR__ . '/../../../includes/middleware/auth.php';
 

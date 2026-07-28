@@ -1,7 +1,14 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 
-$supabase = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+require_once __DIR__ . '/includes/supabase.php';
+require_once __DIR__ . '/src/lib/BlockchainService.php';
+
+use App\Lib\Supabase;
+use App\Lib\BlockchainService;
+
+$sb = new Supabase();
+$blockchain = new BlockchainService($sb->getClient());
 
 $searchResult = null;
 $searchError = null;
@@ -13,18 +20,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $searchError = 'Please enter a hash to verify';
     } else {
         try {
-            // Search across all blockchain records
-            $records = $supabase->select('blockchain_records', [
-                'or' => 'data_hash.eq.' . $hash . ',data_json.ilike.%' . $hash . '%',
-                'order' => 'created_at.desc',
-                'limit' => 10,
-            ]);
+            // Use BlockchainService to check if hash exists
+            $hashCheck = $blockchain->hashExists($hash);
             
-            if (!empty($records)) {
+            if ($hashCheck['exists']) {
+                // Get additional details about the record
+                $record = $hashCheck['record'];
                 $searchResult = [
                     'found' => true,
-                    'count' => count($records),
-                    'records' => $records,
+                    'count' => 1,
+                    'records' => [$record],
                 ];
             } else {
                 $searchResult = [
@@ -271,12 +276,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php foreach ($searchResult['records'] as $record): ?>
                             <div class="record-item">
                                 <span class="record-type">
-                                    <?php echo ucfirst(str_replace('_', ' ', $record['record_type'] ?? 'Unknown')); ?>
+                                    <?php echo ucfirst(str_replace('_', ' ', $record['entity_type'] ?? $record['record_type'] ?? 'Unknown')); ?>
                                 </span>
                                 <div class="record-details">
-                                    <div><strong>Reference ID:</strong> <?php echo htmlspecialchars($record['reference_id'] ?? 'N/A'); ?></div>
+                                    <div><strong>Entity ID:</strong> <?php echo htmlspecialchars($record['entity_id'] ?? $record['reference_id'] ?? 'N/A'); ?></div>
                                     <div><strong>Recorded:</strong> <?php echo $record['created_at'] ? date('F d, Y g:i A', strtotime($record['created_at'])) : 'N/A'; ?></div>
-                                    <div><strong>Hash:</strong> <code><?php echo htmlspecialchars(substr($record['data_hash'] ?? '', 0, 32)); ?>...</code></div>
+                                    <div><strong>Hash:</strong> <code><?php echo htmlspecialchars(substr($record['data_hash'] ?? $record['record_hash'] ?? $record['transaction_hash'] ?? '', 0, 32)); ?>...</code></div>
                                 </div>
                             </div>
                         <?php endforeach; ?>

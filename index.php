@@ -11,7 +11,7 @@ header('Expires: 0');
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 header('X-XSS-Protection: 1; mode=block');
-header("Content-Security-Policy: script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdn.skypack.dev; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fcm.googleapis.com https://updates.push.services.mozilla.com https://cdn.jsdelivr.net https://*.googleapis.com https://*.supabase.co wss://*.supabase.co;");
+header("Content-Security-Policy: script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdn.skypack.dev https://connect.facebook.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https:; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; connect-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fcm.googleapis.com https://updates.push.services.mozilla.com https://cdn.jsdelivr.net https://*.googleapis.com https://*.supabase.co wss://*.supabase.co https://connect.facebook.net https://www.facebook.com;");
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -23,6 +23,22 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/bootstrap.php';
+
+$facebookPageUrl = 'https://www.facebook.com/IECEPLSC';
+try {
+    $supabaseClient = getSupabaseClient();
+    if ($supabaseClient) {
+        $settings = $supabaseClient->select('system_settings', [
+            'key' => 'eq.facebook_page_url',
+            'limit' => '1'
+        ]);
+        if (!empty($settings[0]['value'])) {
+            $facebookPageUrl = $settings[0]['value'];
+        }
+    }
+} catch (Exception $e) {
+    // Default to the official Facebook page if setting fetch fails.
+}
 
 // ============================================================
 //  Helper: check required PHP extensions
@@ -473,6 +489,9 @@ try {
 </head>
 <body>
 
+<div id="fb-root"></div>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v17.0"></script>
+
 <?php include __DIR__ . '/includes/navbar.php'; ?>
 
 <!-- ═══════════════════════════════════════════════════════════ Hero -->
@@ -508,25 +527,69 @@ try {
 <!-- ═══════════════════════════════════════════════════════════ What's New -->
 <section id="features" class="section whats-new">
     <div class="container">
-        <h2 class="section-title">What's New?</h2>
-        <div class="cards-grid" id="announcements-grid">
-            <div class="card">
-                <div class="card-image"><i class="fas fa-newspaper"></i></div>
-                <div class="card-content">
-                    <div class="card-meta"><span class="card-date">Loading...</span><span>·</span><span class="card-category">News</span></div>
-                    <h3 class="card-title">Loading announcements...</h3>
-                    <p class="card-text">Please wait while we fetch the latest updates.</p>
+        <div class="section-heading text-center">
+            <h2 class="section-title">What's New?</h2>
+            <p class="section-subtitle">Stay tuned to the latest chapter announcements, upcoming events, and community updates.</p>
+        </div>
+
+        <div class="whats-new-grid">
+            <div class="card whats-new-card">
+                <div class="card-header">
+                    <div class="card-icon"><i class="fas fa-bullhorn"></i></div>
+                    <div>
+                        <h3 class="card-title">Latest Announcements</h3>
+                        <p class="card-subtitle">Fresh updates from IECEP-LSC.</p>
+                    </div>
+                </div>
+                <div class="card-body" id="announcements-grid">
+                    <div class="empty-state">
+                        <i class="fas fa-newspaper"></i>
+                        <p>Loading announcements…</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card whats-new-card">
+                <div class="card-header">
+                    <div class="card-icon"><i class="fas fa-calendar-check"></i></div>
+                    <div>
+                        <h3 class="card-title">Upcoming Events</h3>
+                        <p class="card-subtitle">Register for what’s coming next.</p>
+                    </div>
+                </div>
+                <div class="card-body" id="events-grid">
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-alt"></i>
+                        <p>Loading events…</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card whats-new-card facebook-card">
+                <div class="card-header">
+                    <div class="card-icon"><i class="fab fa-facebook"></i></div>
+                    <div>
+                        <h3 class="card-title">Follow Us on Facebook</h3>
+                        <p class="card-subtitle">See the latest posts, reminders, and chapter highlights.</p>
+                    </div>
+                </div>
+                <div class="card-body facebook-card-body">
+                    <div class="fb-page"
+                         data-href="<?= htmlspecialchars($facebookPageUrl, ENT_QUOTES) ?>"
+                         data-tabs="timeline"
+                         data-width="500"
+                         data-height="500"
+                         data-small-header="false"
+                         data-adapt-container-width="true"
+                         data-hide-cover="false"
+                         data-show-facepile="true">
+                        <blockquote cite="<?= htmlspecialchars($facebookPageUrl, ENT_QUOTES) ?>" class="fb-xfbml-parse-ignore">
+                            <a href="<?= htmlspecialchars($facebookPageUrl, ENT_QUOTES) ?>">IECEP-LSC</a>
+                        </blockquote>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-</section>
-
-<!-- ═══════════════════════════════════════════════════════════ Upcoming Events -->
-<section id="upcoming-events" class="section upcoming-events" style="display: none;">
-    <div class="container">
-        <h2 class="section-title">Upcoming Events</h2>
-        <div class="cards-grid" id="events-grid"></div>
     </div>
 </section>
 
@@ -1871,87 +1934,121 @@ document.addEventListener('DOMContentLoaded', function () {
     // ── Supabase Announcements & Events ─────────────────────────────────────
     const SUPABASE_URL = '<?php echo defined('SUPABASE_URL') ? SUPABASE_URL : ''; ?>';
     const SUPABASE_ANON_KEY = '<?php echo defined('SUPABASE_ANON_KEY') ? SUPABASE_ANON_KEY : ''; ?>';
-    
+    const FACEBOOK_PAGE_URL = '<?= htmlspecialchars($facebookPageUrl, ENT_QUOTES) ?>';
+    const IS_LOGGED_IN = <?= isset($_SESSION['user']) ? 'true' : 'false' ?>;
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function formatLongDate(value) {
+        if (!value) return 'TBD';
+        return new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+
     if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-        // Load Supabase JS client
         const script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
         script.onload = function() {
             const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            
-            // Fetch announcements
+
             async function fetchAnnouncements() {
+                const grid = document.getElementById('announcements-grid');
+                if (!grid) return;
+
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-newspaper"></i>
+                        <p>Loading announcements…</p>
+                    </div>
+                `;
+
                 try {
                     const { data: announcements, error } = await supabase
                         .from('announcements')
                         .select('*')
                         .or('is_global.eq.true,target_roles.cs.{member}')
                         .order('created_at', { ascending: false })
-                        .limit(5);
-                    
+                        .limit(3);
+
                     if (error) throw error;
-                    
-                    const grid = document.getElementById('announcements-grid');
+
                     if (!announcements || announcements.length === 0) {
                         grid.innerHTML = `
-                            <div class="card">
-                                <div class="card-image"><i class="fas fa-newspaper"></i></div>
-                                <div class="card-content">
-                                    <div class="card-meta"><span class="card-date">${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span><span>·</span><span class="card-category">News</span></div>
-                                    <h3 class="card-title">IECEP News</h3>
-                                    <p class="card-text">Stay updated with the latest news and announcements from IECEP-LSC.</p>
-                                </div>
+                            <div class="empty-state">
+                                <i class="fas fa-bullhorn"></i>
+                                <p>No recent announcements.</p>
                             </div>
                         `;
                         return;
                     }
-                    
-                    grid.innerHTML = announcements.map(ann => {
-                        const date = new Date(ann.created_at);
+
+                    grid.innerHTML = announcements.map((announcement) => {
+                        const date = new Date(announcement.created_at);
                         const formattedDate = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-                        const isNew = (Date.now() - date.getTime()) < (7 * 24 * 60 * 60 * 1000);
-                        const body = ann.content || ann.description || '';
-                        const truncatedBody = body.length > 150 ? body.substring(0, 150) + '...' : body;
-                        const showReadMore = body.length > 150;
-                        
+                        const body = String(announcement.body || announcement.content || announcement.description || '');
+                        const excerpt = body.length > 120 ? `${body.slice(0, 120).trimEnd()}…` : body;
+                        const isTruncated = body.length > 120;
+                        const title = escapeHtml(announcement.title || 'Announcement');
+                        const safeExcerpt = escapeHtml(excerpt);
+                        const safeBody = escapeHtml(body);
+
                         return `
-                            <div class="card">
-                                <div class="card-image">
-                                    <i class="fas fa-newspaper"></i>
-                                    ${isNew ? '<span class="new-badge">New</span>' : ''}
+                            <article class="announcement-item">
+                                <div class="announcement-meta">
+                                    <span class="announcement-date">${formattedDate}</span>
                                 </div>
-                                <div class="card-content">
-                                    <div class="card-meta">
-                                        <span class="card-date">${formattedDate}</span>
-                                        <span>·</span>
-                                        <span class="card-category">${ann.category || 'News'}</span>
-                                    </div>
-                                    <h3 class="card-title">${ann.title || 'Announcement'}</h3>
-                                    <p class="card-text">${truncatedBody}</p>
-                                    ${showReadMore ? `<a href="#" class="card-link">Read More <i class="fas fa-arrow-right"></i></a>` : ''}
-                                </div>
-                            </div>
+                                <h4 class="announcement-title">${title}</h4>
+                                <p class="announcement-body">${safeExcerpt}</p>
+                                ${isTruncated ? `<button type="button" class="announcement-toggle" data-full-text="${safeBody}">Read more</button>` : ''}
+                            </article>
                         `;
                     }).join('');
-                    
+
+                    grid.querySelectorAll('.announcement-toggle').forEach((button) => {
+                        button.addEventListener('click', function () {
+                            const isExpanded = this.getAttribute('data-expanded') === 'true';
+                            const bodyEl = this.previousElementSibling;
+                            if (isExpanded) {
+                                bodyEl.innerHTML = bodyEl.dataset.shortText || bodyEl.innerHTML;
+                                this.textContent = 'Read more';
+                                this.setAttribute('data-expanded', 'false');
+                            } else {
+                                const fullText = this.getAttribute('data-full-text');
+                                bodyEl.dataset.shortText = bodyEl.innerHTML;
+                                bodyEl.innerHTML = fullText;
+                                this.textContent = 'Show less';
+                                this.setAttribute('data-expanded', 'true');
+                            }
+                        });
+                    });
                 } catch (err) {
                     console.error('Error fetching announcements:', err);
-                    const grid = document.getElementById('announcements-grid');
                     grid.innerHTML = `
-                        <div class="card">
-                            <div class="card-image"><i class="fas fa-newspaper"></i></div>
-                            <div class="card-content">
-                                <div class="card-meta"><span class="card-date">${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span><span>·</span><span class="card-category">News</span></div>
-                                <h3 class="card-title">IECEP News</h3>
-                                <p class="card-text">Stay updated with the latest news and announcements from IECEP-LSC.</p>
-                            </div>
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>Unable to load announcements right now.</p>
                         </div>
                     `;
                 }
             }
-            
-            // Fetch upcoming events
+
             async function fetchEvents() {
+                const grid = document.getElementById('events-grid');
+                if (!grid) return;
+
+                grid.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-calendar-alt"></i>
+                        <p>Loading events…</p>
+                    </div>
+                `;
+
                 try {
                     const { data: events, error } = await supabase
                         .from('events')
@@ -1959,66 +2056,76 @@ document.addEventListener('DOMContentLoaded', function () {
                         .eq('is_public', true)
                         .gte('start_date', new Date().toISOString())
                         .order('start_date', { ascending: true })
-                        .limit(5);
-                    
+                        .limit(3);
+
                     if (error) throw error;
-                    
-                    const eventsSection = document.getElementById('upcoming-events');
-                    const eventsGrid = document.getElementById('events-grid');
-                    
+
                     if (!events || events.length === 0) {
-                        eventsSection.style.display = 'none';
-                        return;
-                    }
-                    
-                    eventsSection.style.display = 'block';
-                    eventsGrid.innerHTML = events.map(event => {
-                        const startDate = new Date(event.start_date);
-                        const formattedDate = startDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-                        const formattedTime = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-                        const isLoggedIn = <?php echo isset($_SESSION['user']) ? 'true' : 'false'; ?>;
-                        const registerLink = isLoggedIn 
-                            ? `/IECEP-LSC-MEMSYS/public/register-event.php?event_id=${event.id}`
-                            : '/IECEP-LSC-MEMSYS/login.php';
-                        
-                        return `
-                            <div class="card event-card">
-                                <div class="card-image">
-                                    <i class="fas fa-calendar-alt"></i>
-                                </div>
-                                <div class="card-content">
-                                    <div class="card-meta">
-                                        <span class="card-date">${formattedDate}</span>
-                                        <span>·</span>
-                                        <span class="card-category">${event.event_type || 'Event'}</span>
-                                    </div>
-                                    <h3 class="card-title">${event.title || 'Event'}</h3>
-                                    <p class="card-text">
-                                        <i class="fas fa-clock me-2"></i>${formattedTime}
-                                        ${event.venue ? `<br><i class="fas fa-map-marker-alt me-2"></i>${event.venue}` : ''}
-                                    </p>
-                                    <a href="${registerLink}" class="card-link">Register <i class="fas fa-arrow-right"></i></a>
-                                </div>
+                        grid.innerHTML = `
+                            <div class="empty-state">
+                                <i class="fas fa-calendar-times"></i>
+                                <p>No upcoming events.</p>
                             </div>
                         `;
+                        return;
+                    }
+
+                    grid.innerHTML = events.map((event) => {
+                        const startDate = new Date(event.start_date);
+                        const formattedDate = formatLongDate(event.start_date);
+                        const formattedTime = startDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+                        const registerLink = IS_LOGGED_IN
+                            ? `/IECEP-LSC-MEMSYS/public/register-event.php?event_id=${event.id}`
+                            : '/IECEP-LSC-MEMSYS/login.php';
+                        const venue = escapeHtml(event.venue || 'Venue to be announced');
+                        const title = escapeHtml(event.title || 'Event');
+
+                        return `
+                            <article class="event-item">
+                                <div class="event-date-block">
+                                    <span>${formattedDate}</span>
+                                </div>
+                                <h4 class="event-title">${title}</h4>
+                                <p class="event-meta"><i class="fas fa-clock"></i> ${formattedTime}</p>
+                                <p class="event-meta"><i class="fas fa-map-marker-alt"></i> ${venue}</p>
+                                <a href="${registerLink}" class="btn btn-secondary register-btn">Register</a>
+                            </article>
+                        `;
                     }).join('');
-                    
                 } catch (err) {
                     console.error('Error fetching events:', err);
+                    grid.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <p>Unable to load events right now.</p>
+                        </div>
+                    `;
                 }
             }
-            
-            // Initial fetch
+
             fetchAnnouncements();
             fetchEvents();
-            
-            // Real-time subscription for new announcements
+
             supabase
                 .channel('announcements-channel')
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'announcements' }, (payload) => {
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'announcements' }, () => {
                     fetchAnnouncements();
                 })
                 .subscribe();
+
+            supabase
+                .channel('events-channel')
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' }, () => {
+                    fetchEvents();
+                })
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'events' }, () => {
+                    fetchEvents();
+                })
+                .subscribe();
+
+            if (window.FB && window.FB.XFBML) {
+                window.FB.XFBML.parse(document.querySelector('.facebook-card-body'));
+            }
         };
         document.head.appendChild(script);
     }

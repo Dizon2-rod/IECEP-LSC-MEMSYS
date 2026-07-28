@@ -52,6 +52,8 @@ if (empty($batchId)) {
 
 $emailSvc = new EmailService();
 $sb = new Supabase();
+$blockchain = new BlockchainService($sb->getClient());
+$GLOBALS['blockchain'] = $blockchain;
 
 function getMembershipPrefix(Supabase $sb): string
 {

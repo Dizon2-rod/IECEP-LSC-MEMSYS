@@ -19,19 +19,20 @@ $recordTypes = [
     'event_attendance',
     'transaction',
     'compliance_attendance',
+    'certificate',
 ];
 
 $blockchainStats = [];
 foreach ($recordTypes as $type) {
     try {
         $records = $supabase->select('blockchain_records', [
-            'record_type' => 'eq.' . $type,
+            'entity_type' => 'eq.' . $type,
             'order' => 'created_at.desc',
             'limit' => 1,
         ]);
         
         $totalResult = $supabase->select('blockchain_records', [
-            'record_type' => 'eq.' . $type,
+            'entity_type' => 'eq.' . $type,
         ]);
         
         $total = count($totalResult);
@@ -235,13 +236,13 @@ foreach ($recordTypes as $type) {
             resultDiv.style.display = 'none';
             
             try {
-                const response = await fetch('/api/verify-blockchain-chain.php', {
+                const response = await fetch('/api/blockchain/verify-chain.php', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        record_type: recordType
+                        entity_type: recordType
                     })
                 });
                 

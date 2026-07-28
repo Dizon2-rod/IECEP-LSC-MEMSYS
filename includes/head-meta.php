@@ -42,6 +42,39 @@ define('HEAD_META_INCLUDED', true);
 <?php endif; ?>
 <link rel="stylesheet" href="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/assets/css/font-awesome.css">
 <link rel="stylesheet" href="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/assets/css/professional.css">
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const storedMode = localStorage.getItem('iecepDarkMode');
+        const body = document.body;
+        const toggleButtons = Array.from(document.querySelectorAll('#darkModeToggle, #sidebarDarkModeToggle'));
+
+        function setMode(dark) {
+            if (dark) {
+                body.classList.add('dark-mode');
+            } else {
+                body.classList.remove('dark-mode');
+            }
+            localStorage.setItem('iecepDarkMode', dark ? 'dark' : 'light');
+            toggleButtons.forEach(button => {
+                const icon = button.querySelector('i');
+                if (!icon) return;
+                icon.classList.toggle('fa-moon', !dark);
+                icon.classList.toggle('fa-sun', dark);
+            });
+        }
+
+        if (storedMode === 'dark') {
+            setMode(true);
+        }
+
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const dark = !body.classList.contains('dark-mode');
+                setMode(dark);
+            });
+        });
+    });
+</script>
 <style>
     /* Design Tokens */
     :root {

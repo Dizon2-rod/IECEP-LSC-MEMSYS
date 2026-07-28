@@ -1,4 +1,6 @@
 <?php
+if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
+
 require_once __DIR__ . '/bootstrap.php';
 // auth_check.php - Central Authorization Checker for IECEP-LSC MEMSYS
 if (session_status() === PHP_SESSION_NONE) {

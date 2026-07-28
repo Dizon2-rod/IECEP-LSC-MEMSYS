@@ -1,4 +1,5 @@
 <?php
+if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
 require_once __DIR__ . '/../bootstrap.php';
 /**
  * School Officer Members - Uses Dynamic Sidebar

@@ -63,8 +63,8 @@ try {
         <main class="main-content">
             <div class="container py-5">
                 <div class="mb-4">
-                    <h1 class="h2 mb-2">Welcome, <?= htmlspecialchars($member['full_name'] ?? 'Member') ?></h1>
-                    <p class="text-muted">Your IECEP-LSC Member Dashboard</p>
+                    <h1 class="h2 mb-2">Welcome back, <?= htmlspecialchars($member['full_name'] ?? 'Member') ?>!</h1>
+                    <p class="text-muted">Today is <?= date('F j, Y'); ?> — Manage your member profile, digital ID, events, and payments in one place.</p>
                 </div>
 
                 <!-- Summary Cards -->

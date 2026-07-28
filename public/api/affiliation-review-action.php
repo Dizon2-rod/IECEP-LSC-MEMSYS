@@ -14,9 +14,11 @@ require_once __DIR__ . '/../../includes/paths.php';
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../src/lib/SupabaseClient.php';
 require_once __DIR__ . '/../../src/lib/EmailService.php';
+require_once __DIR__ . '/../../src/lib/BlockchainService.php';
 
 use App\Lib\SupabaseClient;
 use App\Lib\EmailService;
+use App\Lib\BlockchainService;
 
 // Define BASE_PUBLIC_URL constant
 if (!defined('BASE_PUBLIC_URL')) {
@@ -41,6 +43,8 @@ if (!in_array($userRole, ['registration', 'committee_registration', 'admin', 'su
 $config = require __DIR__ . '/../../includes/supabase.php';
 $supabase = new SupabaseClient($config['url'], $config['service_role_key']);
 $emailService = new EmailService();
+$blockchain = new BlockchainService($supabase);
+$GLOBALS['blockchain'] = $blockchain;
 
 // Get POST data
 $action = $_POST['action'] ?? '';

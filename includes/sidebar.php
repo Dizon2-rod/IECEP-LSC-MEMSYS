@@ -15,6 +15,13 @@ require_once __DIR__ . '/../includes/role-config.php';
 $base_public_url = '/IECEP-LSC-MEMSYS/public';
 $base_root_url = '/IECEP-LSC-MEMSYS';
 
+function buildSidebarLink(string $url, string $publicBase): string {
+    if (strpos($url, '/') === 0) {
+        return htmlspecialchars($url, ENT_QUOTES);
+    }
+    return htmlspecialchars(rtrim($publicBase, '/') . '/' . ltrim($url, '/'), ENT_QUOTES);
+}
+
 // Get user info with fallbacks
 $user = isset($_SESSION['user']) ? $_SESSION['user'] : [];
 
@@ -570,6 +577,9 @@ function isMenuItemActive($item_url, $current_page) {
                 <i class="fas fa-bell"></i>
                 <span id="notificationCount" class="notification-count"></span>
             </button>
+            <button id="sidebarDarkModeToggle" class="sidebar-dark-toggle" type="button" aria-label="Toggle dark mode">
+                <i class="fas fa-moon"></i>
+            </button>
         </div>
         <div class="user-role-badge">
             <?php echo htmlspecialchars($menu_config['badge']); ?>
@@ -587,7 +597,7 @@ function isMenuItemActive($item_url, $current_page) {
         <ul class="nav-menu">
             <?php foreach ($menu_config['items'] as $item): ?>
                 <li>
-                    <a href="<?php echo $base_public_url . htmlspecialchars($item['url']); ?>" 
+                    <a href="<?php echo buildSidebarLink($item['url'], $base_public_url); ?>" 
                        class="<?php echo isMenuItemActive($item['url'], $current_page) ? 'active' : ''; ?>">
                         <i class="fas <?php echo htmlspecialchars($item['icon']); ?>"></i>
                         <span><?php echo htmlspecialchars($item['label']); ?></span>

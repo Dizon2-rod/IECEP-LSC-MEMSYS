@@ -1,4 +1,6 @@
 <?php
+require_once dirname(__DIR__, 1) . '/public/portal/auth_check.php';
+
 require_once __DIR__ . '/../../../includes/config.php';
 require_once __DIR__ . '/../../../includes/middleware/auth.php';
 
@@ -11,6 +13,8 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
 $current_page = 'dashboard';
 $user = $_SESSION['user'];
 $displayName = $user['user_metadata']['full_name'] ?? $user['email'] ?? 'Administrator';
+$roleDisplay = 'Administrator';
+$currentDate = date('F j, Y');
 
 try {
     $supabase = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -208,7 +212,11 @@ try {
                 </div>
                 <div class="welcome-badge">
                     <i class="fas fa-user-circle"></i>
-                    <span><strong><?php echo htmlspecialchars($displayName); ?></strong> &bull; <?php echo $role_display; ?></span>
+                    <span><strong><?php echo htmlspecialchars($displayName); ?></strong> • <?php echo htmlspecialchars($roleDisplay); ?></span>
+                </div>
+                <div class="welcome-badge" style="margin-top: 0.75rem; background: rgba(212,175,55,0.12); color: #0B1D4A; box-shadow: none; border: 1px solid rgba(212,175,55,0.25);">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span><?php echo htmlspecialchars($currentDate); ?> — Manage members, schools, finances, and compliance from here.</span>
                 </div>
             </header>
 

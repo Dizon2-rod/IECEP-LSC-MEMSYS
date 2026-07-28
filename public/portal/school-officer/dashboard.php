@@ -1,4 +1,6 @@
 <?php
+require_once dirname(__DIR__, 1) . '/public/portal/auth_check.php';
+
 require_once __DIR__ . '/../../../includes/config.php';
 require_once __DIR__ . '/../../../includes/middleware/auth.php';
 
@@ -12,6 +14,7 @@ $current_page = 'dashboard';
 $user = $_SESSION['user'];
 $userName = $user['user_metadata']['full_name'] ?? $user['email'] ?? 'Officer';
 $userEmail = $user['email'] ?? '';
+$currentDate = date('F j, Y');
 
 // Get user's institution
 $db = $GLOBALS['supabaseClient'] ?? null;
@@ -275,8 +278,9 @@ if ($db) {
                 <div class="header-content">
                     <div>
                         <h1>School Officer Dashboard</h1>
-                        <p class="welcome-message">Welcome back, <?php echo htmlspecialchars($userName); ?></p>
-                        <p class="school-info"><?php echo htmlspecialchars($schoolName); ?></p>
+                        <p class="welcome-message">Welcome back, <?php echo htmlspecialchars($userName); ?>!</p>
+                        <p class="school-info"><?php echo htmlspecialchars($currentDate); ?> • <?php echo htmlspecialchars($schoolName); ?></p>
+                        <p style="margin-top:0.75rem; color:#475569; max-width:560px;">Your school chapter is ready for member updates, attendance tracking, and compliance reporting.</p>
                     </div>
                     <div class="header-actions">
                         <div class="user-menu">

@@ -1,4 +1,6 @@
 <?php
+require_once dirname(__DIR__, 1) . '/public/portal/auth_check.php';
+
 require_once __DIR__ . '/../bootstrap.php';
 $current_page = basename(__FILE__, '.php');
 require_once '../../includes/config.php';

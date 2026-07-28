@@ -1,4 +1,5 @@
 <?php
+if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
 require_once __DIR__ . '/../../includes/auth_check.php';
 require_role(['member']);
 
@@ -72,8 +73,8 @@ if (!$certificate) {
     $issueDate = date('Y-m-d');
     
     // Record on blockchain
-    $blockchain = new BlockchainService();
-    $blockchainHash = $blockchain->record('certificate', $certificateNumber, [
+    $blockchain = new BlockchainService($supabase);
+    $blockchainResult = $blockchain->record('certificate', $certificateNumber, [
         'member_id' => $member_id,
         'member_name' => $member['full_name'],
         'event_id' => $event_id,
@@ -82,6 +83,8 @@ if (!$certificate) {
         'certificate_number' => $certificateNumber,
         'issued_at' => date('c')
     ]);
+    
+    $blockchainHash = $blockchainResult['hash'] ?? null;
     
     // Create certificate record
     $certResult = $supabase->insert('certificates', [
