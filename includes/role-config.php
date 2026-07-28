@@ -25,6 +25,7 @@ $ROLE_NAVIGATION = [
             ['icon' => 'fa-file-alt', 'label' => 'Document Repository', 'url' => '/portal/admin/documents/repository.php'],
             ['icon' => 'fa-file-contract', 'label' => 'Memoranda', 'url' => '/portal/admin/documents/memoranda.php'],
             ['icon' => 'fa-bullhorn', 'label' => 'Announcements', 'url' => '/portal/admin/communication/announcements.php'],
+            ['icon' => 'fa-star', 'label' => 'Featured Cards', 'url' => '/portal/admin/featured-cards.php'],
             ['icon' => 'fa-envelope', 'label' => 'Newsletter', 'url' => '/portal/admin/communication/newsletter.php'],
             ['icon' => 'fa-chart-pie', 'label' => 'Analytics', 'url' => '/portal/admin/analytics/dashboard.php'],
             ['icon' => 'fa-cog', 'label' => 'System Settings', 'url' => '/portal/admin/system/settings.php'],

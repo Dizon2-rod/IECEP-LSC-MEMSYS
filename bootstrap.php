@@ -19,6 +19,22 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 
 // ============================================================================
+// 1.1 RUNTIME PHP EXTENSIONS CHECK
+// ============================================================================
+// Detect missing but commonly required PHP extensions and log guidance.
+$__required_php_extensions = ['curl', 'json', 'openssl', 'mbstring', 'mysqli', 'pdo_mysql'];
+$__missing_php_extensions = array_filter($__required_php_extensions, fn($e) => !extension_loaded($e));
+if (!empty($__missing_php_extensions)) {
+    $msg = '[Bootstrap] WARNING: Missing PHP extensions: ' . implode(', ', $__missing_php_extensions) . '.';
+    $msg .= ' Install and enable them in your php.ini to avoid runtime issues.';
+    error_log($msg);
+    // Expose a small helper for runtime checks
+    if (!defined('MISSING_PHP_EXTENSIONS')) {
+        define('MISSING_PHP_EXTENSIONS', implode(',', $__missing_php_extensions));
+    }
+}
+
+// ============================================================================
 // 2. SESSION INITIALIZATION
 // ============================================================================
 if (session_status() === PHP_SESSION_NONE) {
