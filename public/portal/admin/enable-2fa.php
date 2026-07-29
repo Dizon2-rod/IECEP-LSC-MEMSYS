@@ -1,11 +1,11 @@
 <?php
-require_once __DIR__ . '/../../includes/auth_check.php';
+require_once __DIR__ . '/../auth_check.php';
 require_role(['admin']);
 
-require_once __DIR__ . '/../../includes/role-config.php';
-require_once __DIR__ . '/../../bootstrap.php';
+require_once __DIR__ . '/../../../includes/role-config.php';
+require_once __DIR__ . '/../bootstrap.php';
 
-require_once __DIR__ . '/../../includes/lib/BlockchainService.php';
+require_once __DIR__ . '/../../../src/lib/BlockchainService.php';
 
 $current_page = 'security';
 
@@ -46,12 +46,12 @@ $qrUrl = "otpauth://totp/{$issuer}:{$account}?secret={$mfaSecret}&issuer={$issue
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <?php require_once __DIR__ . '/../../includes/head-meta.php'; ?>
+    <?php require_once __DIR__ . '/../../../includes/head-meta.php'; ?>
     <title>Enable Two-Factor Authentication - Admin Portal</title>
 </head>
 <body>
     <div class="dashboard-container">
-        <?php require_once __DIR__ . '/../../includes/sidebar.php'; ?>
+        <?php require_once __DIR__ . '/../../../includes/sidebar.php'; ?>
         
         <main class="main-content">
             <div class="container py-5">

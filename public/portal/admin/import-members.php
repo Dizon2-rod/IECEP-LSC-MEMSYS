@@ -1,9 +1,8 @@
 ﻿<?php
-require_once dirname(__DIR__, 1) . '/public/portal/auth_check.php';
+require_once __DIR__ . '/../auth_check.php';
 
 if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
 require_once __DIR__ . '/../bootstrap.php';
-require_once __DIR__ . '/../../bootstrap.php';
 
 // Check authentication
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {

@@ -1,8 +1,8 @@
 <?php
-require_once dirname(__DIR__, 2) . '/public/portal/auth_check.php';
+require_once __DIR__ . '/../../auth_check.php';
 
 if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
-require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../../bootstrap.php';
 /**
  * School Officer Affiliation Form
  * Upload all 6 required documents including member directory
@@ -11,8 +11,8 @@ require_once __DIR__ . '/../bootstrap.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-require_once __DIR__ . '/../../includes/config.php';
-require_once __DIR__ . '/../../includes/csrf.php';
+require_once __DIR__ . '/../../../../includes/config.php';
+require_once __DIR__ . '/../../../../includes/csrf.php';
 
 // Check if user is logged in as school officer
 if (!isset($_SESSION['logged_in']) || $_SESSION['user']['role'] !== 'school_officer') {

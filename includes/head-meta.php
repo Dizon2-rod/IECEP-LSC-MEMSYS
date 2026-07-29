@@ -42,6 +42,7 @@ define('HEAD_META_INCLUDED', true);
 <?php endif; ?>
 <link rel="stylesheet" href="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/assets/css/font-awesome.css">
 <link rel="stylesheet" href="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/assets/css/professional.css">
+<link rel="stylesheet" href="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/css/portal-polish.css">
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const storedMode = localStorage.getItem('iecepDarkMode');

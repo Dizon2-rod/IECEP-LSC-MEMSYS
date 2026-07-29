@@ -4,8 +4,8 @@
  * Generates PDF compliance reports for institutions
  */
 
-require_once __DIR__ . '/../../includes/config.php';
-require_once __DIR__ . '/../../includes/middleware/auth.php';
+require_once __DIR__ . '/../../../includes/config.php';
+require_once __DIR__ . '/../../../includes/middleware/auth.php';
 
 header('Content-Type: application/json');
 
@@ -203,6 +203,8 @@ function generateComplianceReportHTML($report) {
     $institution = $report['institution'];
     $compliance = $report['compliance'];
     $stats = $report['statistics'];
+    $institutionAddress = $institution['address'] ?? 'N/A';
+    $institutionContact = $institution['contact_email'] ?? 'N/A';
     
     $statusColor = $compliance && $compliance['compliance_status'] === 'compliant' ? '#10b981' : '#f59e0b';
     $statusText = $compliance ? ucfirst($compliance['compliance_status']) : 'Not Evaluated';
@@ -218,8 +220,8 @@ function generateComplianceReportHTML($report) {
         <div style='background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;'>
             <h2 style='color: #0B1D4A; margin-bottom: 15px;'>{$institution['name']}</h2>
             <p style='margin: 5px 0;'><strong>Status:</strong> <span style='color: {$statusColor}; font-weight: bold;'>{$statusText}</span></p>
-            <p style='margin: 5px 0;'><strong>Address:</strong> {$institution['address'] ?? 'N/A'}</p>
-            <p style='margin: 5px 0;'><strong>Contact:</strong> {$institution['contact_email'] ?? 'N/A'}</p>
+            <p style='margin: 5px 0;'><strong>Address:</strong> {$institutionAddress}</p>
+            <p style='margin: 5px 0;'><strong>Contact:</strong> {$institutionContact}</p>
         </div>
         
         <h3 style='color: #0B1D4A; margin-bottom: 15px;'>Compliance Statistics</h3>
@@ -276,7 +278,7 @@ function generateComplianceReportHTML($report) {
             $html .= "<tr>
                 <td style='padding: 12px; border-bottom: 1px solid #ddd;'>{$event['title']}</td>
                 <td style='padding: 12px; border-bottom: 1px solid #ddd;'>{$event['start_date']}</td>
-                <td style='padding: 12px; border-bottom: 1px solid #ddd;'>{$event['venue'] ?? 'N/A'}</td>
+                <td style='padding: 12px; border-bottom: 1px solid #ddd;'>" . ($event['venue'] ?? 'N/A') . "</td>
             </tr>";
         }
     }

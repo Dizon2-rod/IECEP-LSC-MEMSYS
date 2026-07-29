@@ -2,12 +2,7 @@
 if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
 require_once __DIR__ . '/../auth_check.php';
 require_role(['admin', 'super_admin']);
-require_once __DIR__ . '/../../includes/db.php';
-<?php
-require_once __DIR__ . '/../auth_check.php';
-require_role(['admin', 'super_admin']);
-
-require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../../includes/db.php';
 
 $db = Database::getInstance();
 
@@ -191,7 +186,7 @@ $monthlyTrend = $db->fetchAll("SELECT
 </head>
 <body>
     <div class="container">
-        <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
+        <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
         
         <main class="main-content">
             <div class="page-header">

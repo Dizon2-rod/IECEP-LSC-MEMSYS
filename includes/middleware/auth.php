@@ -1,14 +1,14 @@
 <?php
 namespace App\Middleware;
 
-require_once __DIR__ . '/../bootstrap.php';
+require_once dirname(__DIR__, 2) . '/bootstrap.php';
 class AuthMiddleware
 {
     private $supabase;
 
     public function __construct()
     {
-        require_once __DIR__ . '/../lib/supabase.php';
+        require_once dirname(__DIR__, 2) . '/src/lib/supabase.php';
         $this->supabase = new \App\Lib\Supabase();
     }
 

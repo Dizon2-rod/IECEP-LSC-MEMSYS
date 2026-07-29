@@ -1,5 +1,5 @@
 <?php
-require_once dirname(__DIR__, 1) . '/public/portal/auth_check.php';
+require_once __DIR__ . '/../auth_check.php';
 
 require_once __DIR__ . '/../../../includes/config.php';
 require_once __DIR__ . '/../../../includes/middleware/auth.php';
@@ -45,6 +45,7 @@ if ($db) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/dashboard.css">
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/portal-polish.css">
     <style>
         :root {
             --navy: #0A2F6C;

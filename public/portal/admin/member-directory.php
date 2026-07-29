@@ -1,6 +1,6 @@
 <?php
 if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
-require_once __DIR__ . '/auth_check.php';
+require_once dirname(__DIR__, 1) . '/auth_check.php';
 require_role(['admin', 'super_admin', 'committee_registration']);
 ?>
 <!DOCTYPE html>

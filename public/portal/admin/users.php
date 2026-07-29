@@ -1,11 +1,11 @@
 <?php
-require_once dirname(__DIR__, 1) . '/public/portal/auth_check.php';
+require_once __DIR__ . '/../auth_check.php';
 
 require_once __DIR__ . '/../bootstrap.php';
 $current_page = basename(__FILE__, '.php');
-require_once '../../includes/config.php';
-require_once '../../includes/database.php';
-require_once '../../includes/role-config.php';
+require_once '../../../includes/config.php';
+require_once '../../../includes/database.php';
+require_once '../../../includes/role-config.php';
 
 // Check if user is logged in and has admin permissions
 if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['eb_admin', 'eb_president', 'eb_vp_internal'])) {

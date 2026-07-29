@@ -1,11 +1,11 @@
 <?php
 if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
-require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../../bootstrap.php';
 /**
  * School Officer Members - Uses Dynamic Sidebar
  */
 
-require_once __DIR__ . '/../auth_check.php';
+require_once __DIR__ . '/../../auth_check.php';
 require_role(['school_officer', 'admin', 'super_admin']);
 
 require_once __DIR__ . '/../../../includes/paths.php';

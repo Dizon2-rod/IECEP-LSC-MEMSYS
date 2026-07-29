@@ -1,8 +1,8 @@
 <?php
-require_once dirname(__DIR__, 2) . '/public/portal/auth_check.php';
+require_once __DIR__ . '/../../auth_check.php';
 
-require_once __DIR__ . '/../../../includes/config.php';
-require_once __DIR__ . '/../../../includes/middleware/auth.php';
+require_once __DIR__ . '/../../../../includes/config.php';
+require_once __DIR__ . '/../../../../includes/middleware/auth.php';
 
 // Check if user is admin
 if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {

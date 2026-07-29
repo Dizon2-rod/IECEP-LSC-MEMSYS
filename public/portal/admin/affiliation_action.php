@@ -1,5 +1,5 @@
 <?php
-require_once dirname(__DIR__, 1) . '/public/portal/auth_check.php';
+require_once __DIR__ . '/../auth_check.php';
 
 require_once __DIR__ . '/../bootstrap.php';
 $current_page = basename(__FILE__, '.php');
@@ -73,8 +73,131 @@ try {
         sendResponse(true, 'Document verified successfully');
     }
 
+    // ---------- ADD NOTE ----------
+    if ($action === 'add_note') {
+        $note = trim($_POST['note'] ?? '');
+        if (empty($note)) sendResponse(false, '', 'Note is required');
+
+        $documents = json_decode($appData['documents'] ?? '[]', true) ?: [];
+        $documents['review_notes'] = $note;
+
+        $supabase->update('pending_affiliations', [
+            'documents' => json_encode($documents),
+            'updated_at' => date('Y-m-d H:i:s')
+        ], $applicationId);
+
+        sendResponse(true, 'Note added successfully');
+    }
+
+    // ---------- RESUBMIT ----------
+    if ($action === 'resubmit') {
+        $supabase->update('pending_affiliations', [
+            'status' => 'pending_review',
+            'updated_at' => date('Y-m-d H:i:s')
+        ], $applicationId);
+
+        sendResponse(true, 'Application resubmitted for review');
+    }
+
+    // ---------- RESUBMIT ----------
+    if ($action === 'resubmit') {
+        $supabase->update('pending_affiliations', [
+            'status' => 'under_review',
+            'updated_at' => date('Y-m-d H:i:s')
+        ], $applicationId);
+
+        sendResponse(true, 'Application resubmitted for review');
+    }
+
+    // ---------- BULK APPROVE ----------
+    if ($action === 'bulk_approve') {
+        $ids = json_decode($_POST['application_ids'] ?? '[]', true);
+        if (empty($ids)) sendResponse(false, '', 'No applications selected');
+
+        $supabase->setServiceRoleKey($config['service_role_key']);
+        require_once __DIR__ . '/../../../src/lib/EmailService.php';
+        $emailService = new \App\Lib\EmailService();
+
+        $results = [];
+        foreach ($ids as $id) {
+            $application = $supabase->select('pending_affiliations', ['id' => 'eq.' . $id]);
+            if (empty($application)) {
+                $results[] = ['id' => $id, 'success' => false, 'message' => 'Not found'];
+                continue;
+            }
+            $appData = $application[0];
+
+            // Skip if not in reviewable status
+            if (!in_array($appData['status'] ?? '', ['pending', 'under_review', 'requires_revision'])) {
+                $results[] = ['id' => $id, 'success' => false, 'message' => 'Invalid status: ' . ($appData['status'] ?? 'unknown')];
+                continue;
+            }
+
+            try {
+                // Create school officer account
+                $existingUsers = $supabase->select('users', ['email' => 'eq.' . $appData['email']]);
+                $userId = null;
+                $tempPassword = bin2hex(random_bytes(6));
+                $passwordHash = password_hash($tempPassword, PASSWORD_BCRYPT);
+
+                if (!empty($existingUsers)) {
+                    $userId = $existingUsers[0]['id'];
+                    $supabase->update('users', [
+                        'role' => 'school_officer',
+                        'password' => $passwordHash,
+                        'must_change_password' => 1,
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ], $userId);
+                } else {
+                    $userId = generateUUID();
+                    $supabase->insert('users', [
+                        'id' => $userId,
+                        'email' => $appData['email'],
+                        'password' => $passwordHash,
+                        'full_name' => $appData['contact_person'],
+                        'role' => 'school_officer',
+                        'must_change_password' => 1,
+                        'is_active' => 1,
+                        'created_at' => date('Y-m-d H:i:s')
+                    ]);
+                }
+
+                $supabase->update('pending_affiliations', [
+                    'status' => 'approved',
+                    'approved_at' => date('Y-m-d H:i:s'),
+                    'portal_user_id' => $userId,
+                    'login_credentials_sent' => 1,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ], $id);
+
+                try {
+                    $emailService->sendSchoolAccountCredentials(
+                        $appData['email'],
+                        $appData['institution_name'],
+                        $tempPassword,
+                        $appData['contact_person'] ?? ''
+                    );
+                } catch (Exception $e) {
+                    error_log("Bulk approve email error: " . $e->getMessage());
+                }
+
+                $results[] = ['id' => $id, 'success' => true, 'message' => 'Approved'];
+            } catch (Exception $e) {
+                $results[] = ['id' => $id, 'success' => false, 'message' => $e->getMessage()];
+            }
+        }
+
+        $successCount = count(array_filter($results, fn($r) => $r['success']));
+        sendResponse(true, "$successCount of " . count($results) . " applications approved", $results);
+    }
+
     // ---------- APPROVE ----------
     if ($action === 'approve') {
+        // Skip if not in reviewable status
+        if (!in_array($appData['status'] ?? '', ['pending', 'under_review', 'requires_revision'])) {
+            sendResponse(false, '', 'Application is not in a reviewable status');
+        }
+        
         // Bypass RLS using Service Role Key
         $supabase->setServiceRoleKey($config['service_role_key']);
         
@@ -274,9 +397,9 @@ try {
     if ($action === 'request_changes') {
         if (empty($_POST['changes_instructions'])) sendResponse(false, '', 'Instructions required');
         $documents = json_decode($appData['documents'] ?? '[]', true) ?: [];
-        $documents['changes_instructions'] = $_POST['changes_instructions'];
+        $documents['review_notes'] = $_POST['changes_instructions'];
         $supabase->update('pending_affiliations', [
-            'status' => 'changes_requested',
+            'status' => 'requires_revision',
             'documents' => json_encode($documents),
             'updated_at' => date('Y-m-d H:i:s')
         ], $applicationId);

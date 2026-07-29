@@ -128,6 +128,100 @@ The system includes the following modules and features:
 
 ---
 
+## Chapter 3: Methodology
+
+### 3.1 Baseline Data and System Requirements
+
+#### 3.1.1 Current System Assessment (Baseline Data)
+
+**Pre-Implementation Baseline (2024-2025):**
+
+- **Total Affiliated Institutions:** 4 schools (PUP-Sta. Mesa, DLSU-Manila, UPLB, UST)
+- **Total Registered Members:** 780 members across all institutions
+- **Average Annual Event Attendance:** 65% of registered members
+- **Manual Certificate Processing Time:** 3-5 business days per certificate
+- **Member Data Update Frequency:** Monthly (batch updates)
+- **Compliance Monitoring Method:** Manual spreadsheet tracking
+- **Communication Method:** Email blasts (untracked delivery)
+- **Average Response Time to Member Inquiries:** 48-72 hours
+- **Data Entry Error Rate:** Approximately 12% due to manual processes
+- **Storage Method:** Physical files + scattered digital spreadsheets
+- **Backup Frequency:** Weekly manual backups
+- **System Downtime:** N/A (no centralized system)
+
+**Specific Baseline Metrics:**
+
+1. **Member Registration Process:**
+   - Average time to register new member: 2-3 days
+   - Required forms: 3 paper forms
+   - Verification process: Manual cross-reference with school records
+   - Error rate in data entry: 15%
+
+2. **Event Management:**
+   - Event announcement lead time: 2 weeks
+   - Registration method: Paper sign-up sheets
+   - Attendance tracking: Manual check-in lists
+   - Certificate issuance: 7-14 days post-event
+   - Maximum event capacity: Limited by venue only
+
+3. **Financial Tracking:**
+   - Fee collection method: Manual cash/check processing
+   - Receipt generation: Manual pre-numbered receipts
+   - Reconciliation time: 5-7 business days
+   - Late fee calculation: Manual spreadsheet formulas
+   - Payment reminders: Phone calls and individual emails
+
+4. **Compliance Monitoring:**
+   - Attendance tracking: Manual sign-in sheets
+   - Compliance calculation: Monthly manual review
+   - Non-compliance notifications: Individual emails
+   - Trend analysis: Not available
+   - Reporting: Quarterly manual reports
+
+#### 3.1.2 Target System Performance (Post-Implementation Goals)
+
+**Expected Improvements (2026-2027):**
+
+- **Member Registration Time:** Reduce to < 30 minutes
+- **Certificate Generation:** Instant (real-time)
+- **Data Entry Error Rate:** Reduce to < 2%
+- **Member Data Update Frequency:** Real-time
+- **Compliance Monitoring:** Automated real-time tracking
+- **Communication Delivery:** Tracked email with 95%+ delivery rate
+- **Response Time:** < 24 hours for standard inquiries
+- **System Availability:** 99.5% uptime
+- **Backup Frequency:** Automated daily backups with redundancy
+- **Event Registration:** Online with instant confirmation
+- **Fee Calculation:** Automated with instant notifications
+
+**Quantitative Targets:**
+
+1. **Operational Efficiency:**
+   - 80% reduction in administrative time spent on data entry
+   - 90% reduction in certificate processing time
+   - 95% reduction in data entry errors
+   - 75% reduction in member inquiry response time
+
+2. **Member Engagement:**
+   - Increase event registration rate from 65% to 85%
+   - Increase certificate download rate from 40% to 90%
+   - Increase member profile completion rate to 95%
+   - Increase survey response rate from 30% to 60%
+
+3. **Financial Management:**
+   - 100% automated fee calculations
+   - Real-time financial reporting
+   - Automated payment reminders
+   - 90% reduction in reconciliation time
+
+4. **Compliance Monitoring:**
+   - Real-time compliance status visibility
+   - Automated compliance trend analysis
+   - Proactive non-compliance alerts
+   - Monthly automated compliance reports
+
+---
+
 ## Chapter 2: Review of Related Literature
 
 ### 2.1 Member Management Systems

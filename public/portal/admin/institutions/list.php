@@ -1,11 +1,11 @@
 <?php
 
-require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../../bootstrap.php';
 $current_page = 'affiliations';
 error_reporting(0);
 ini_set('display_errors', 0);
 
-require_once __DIR__ . '/../auth_check.php';
+require_once __DIR__ . '/../../auth_check.php';
 require_once INCLUDES_PATH . 'config.php';
 require_role(['admin', 'super_admin', 'registration', 'committee_registration']);
 
@@ -147,9 +147,11 @@ try {
         .application-card { background: white; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--slate-200); margin-bottom: 24px; overflow: hidden; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .application-card:hover { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); border-color: var(--gold); }
         .card-accent { height: 4px; width: 100%; }
-        .pending_review .card-accent { background: var(--info); }
-        .approved .card-accent { background: var(--success); }
-        .rejected .card-accent { background: var(--error); }
+.pending_review .card-accent { background: var(--info); }
+.approved .card-accent { background: var(--success); }
+.rejected .card-accent { background: var(--error); }
+.under_review .card-accent { background: var(--info); }
+.requires_revision .card-accent { background: var(--warning); }
 
         .application-main { padding: 24px; }
         .application-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
@@ -157,9 +159,11 @@ try {
         .application-info .email { color: var(--slate-400); font-size: 0.875rem; }
 
         .status-badge { padding: 6px 12px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-        .status-badge.pending_review { background: var(--info-bg); color: var(--info); }
-        .status-badge.approved { background: var(--success-bg); color: var(--success); }
-        .status-badge.rejected { background: var(--error-bg); color: var(--error); }
+.status-badge.pending_review { background: var(--info-bg); color: var(--info); }
+.status-badge.approved { background: var(--success-bg); color: var(--success); }
+.status-badge.rejected { background: var(--error-bg); color: var(--error); }
+.status-badge.under_review { background: var(--info-bg); color: var(--info); }
+.status-badge.requires_revision { background: var(--warning-bg); color: var(--warning); }
 
         .application-details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; background: var(--slate-50); padding: 20px; border-radius: var(--radius); margin-bottom: 24px; border: 1px solid var(--slate-100); }
         .detail-item { display: flex; flex-direction: column; gap: 4px; }
@@ -230,13 +234,38 @@ try {
                 <h2>Affiliation Applications</h2>
                 <p>Review and verify institutional documents with Blockchain integrity.</p>
             </div>
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <span id="selectedCount" style="display: none; color: var(--slate-600); font-weight: 600;"></span>
+                <button id="bulkApproveBtn" onclick="bulkApprove()" class="btn btn-success" style="display: none;" disabled>
+                    <i class="fas fa-check-double"></i> Bulk Approve Selected
+                </button>
+            </div>
         </header>
+
+        <!-- Bulk Actions Bar -->
+        <div id="bulkActionsBar" style="display: none; background: white; padding: 16px 24px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 24px; border: 1px solid var(--slate-200);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" style="width: 18px; height: 18px; cursor: pointer;">
+                    <label for="selectAll" style="font-weight: 600; cursor: pointer; margin: 0;">Select All</label>
+                    <span id="selectedCountText" style="color: var(--slate-600);"></span>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button onclick="bulkApprove()" class="btn btn-success" id="bulkApproveBtn2">
+                        <i class="fas fa-check-double"></i> Approve Selected
+                    </button>
+                    <button onclick="addNotesToSelected()" class="btn btn-outline">
+                        <i class="fas fa-sticky-note"></i> Add Notes
+                    </button>
+                </div>
+            </div>
+        </div>
 
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-icon pending"><i class="fas fa-clock"></i></div>
                 <div class="stat-details">
-                    <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => in_array($a['status'] ?? '', ['pending', 'pending_review', 'resubmitted']))); ?></div>
+                    <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => in_array($a['status'] ?? '', ['pending', 'under_review', 'requires_revision']))); ?></div>
                     <div class="stat-label">Pending Review</div>
                 </div>
             </div>
@@ -272,9 +301,14 @@ try {
                         <div class="card-accent"></div>
                         <div class="application-main">
                             <div class="application-header">
-                                <div class="application-info">
-                                    <h3><?php echo htmlspecialchars($app['institution_name'] ?? 'N/A'); ?></h3>
-                                    <span class="email"><?php echo htmlspecialchars($app['email'] ?? 'N/A'); ?></span>
+                                <div class="application-info" style="display: flex; align-items: center; gap: 12px;">
+                                    <input type="checkbox" class="app-checkbox" data-id="<?php echo $app['id']; ?>" 
+                                           onchange="updateBulkActions()" style="width: 18px; height: 18px; cursor: pointer;"
+                                           <?php echo in_array($status, ['pending', 'pending_review', 'resubmitted']) ? '' : 'disabled'; ?>>
+                                    <div>
+                                        <h3><?php echo htmlspecialchars($app['institution_name'] ?? 'N/A'); ?></h3>
+                                        <span class="email"><?php echo htmlspecialchars($app['email'] ?? 'N/A'); ?></span>
+                                    </div>
                                 </div>
                                 <span class="status-badge <?php echo $status; ?>">
                                     <?php echo ucfirst(str_replace('_', ' ', $status)); ?>
@@ -325,11 +359,36 @@ try {
                                 </div>
                             </div>
 
+                            <!-- Review Notes -->
+                            <?php
+                                $docsObj = json_decode($app['documents'] ?? '{}', true) ?: [];
+                                $reviewNotes = $docsObj['review_notes'] ?? '';
+                    $status = $app['status'] ?? 'under_review';
+                            ?>
+                            <div style="background: var(--slate-50); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; border: 1px solid var(--slate-200);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                    <label style="font-weight: 600; color: var(--slate-700); font-size: 0.875rem;">
+                                        <i class="fas fa-sticky-note"></i> Review Notes
+                                    </label>
+                                    <?php if ($status === 'requires_revision'): ?>
+                                        <button onclick="resubmitApplication('<?php echo $app['id']; ?>')" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-redo"></i> Resubmit
+                                        </button>
+                                    <?php endif; ?>
+                                </div>
+                                <textarea id="notes-<?php echo $app['id']; ?>" style="width: 100%; height: 80px; padding: 12px; border-radius: 8px; border: 1px solid var(--slate-200); font-family: inherit; font-size: 0.875rem;" placeholder="Add review notes here..."><?php echo htmlspecialchars($reviewNotes); ?></textarea>
+                                <div style="text-align: right; margin-top: 8px;">
+                                    <button onclick="saveNote('<?php echo $app['id']; ?>')" class="btn btn-sm btn-outline">
+                                        <i class="fas fa-save"></i> Save Note
+                                    </button>
+                                </div>
+                            </div>
+
                             <div class="application-actions">
                                 <button onclick="viewDocuments('<?php echo $app['id']; ?>')" class="btn btn-outline">
                                     <i class="fas fa-file-alt"></i> Review Documents
                                 </button>
-                                <?php if (in_array($status, ['pending', 'pending_review', 'resubmitted'])): ?>
+                                <?php if (in_array($status, ['pending', 'under_review', 'requires_revision'])): ?>
                                     <button id="approve-<?php echo $app['id']; ?>" onclick="approveApplication('<?php echo $app['id']; ?>')" class="btn btn-success" <?php echo ($vCount < 6) ? 'disabled style="opacity:0.5; cursor:not-allowed"' : ''; ?>>
                                         <i class="fas fa-check"></i> Approve
                                     </button>
@@ -630,6 +689,101 @@ try {
             const res = await fetch('/IECEP-LSC-MEMSYS/public/portal/admin/affiliation_action.php', { method: 'POST', body: formData });
             const data = await res.json();
             if (data.success) { showToast('success', 'Application rejected'); closeRejectModal(); setTimeout(() => location.reload(), 1500); }
+        };
+
+        window.saveNote = async function(id) {
+            const note = document.getElementById('notes-' + id).value;
+            const formData = new FormData();
+            formData.append('action', 'add_note');
+            formData.append('application_id', id);
+            formData.append('note', note);
+            const res = await fetch('/IECEP-LSC-MEMSYS/public/portal/admin/affiliation_action.php', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) showToast('success', 'Note saved');
+            else showToast('error', 'Error: ' + data.error);
+        };
+
+        window.resubmitApplication = async function(id) {
+            if (!confirm('Resubmit this application for review?')) return;
+            const formData = new FormData();
+            formData.append('action', 'resubmit');
+            formData.append('application_id', id);
+            const res = await fetch('/IECEP-LSC-MEMSYS/public/portal/admin/affiliation_action.php', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (data.success) { showToast('success', 'Resubmitted for review'); setTimeout(() => location.reload(), 1500); }
+            else showToast('error', 'Error: ' + data.error);
+        };
+
+        window.updateBulkActions = function() {
+            const checkboxes = document.querySelectorAll('.app-checkbox:checked');
+            const count = checkboxes.length;
+            const bulkBtn = document.getElementById('bulkApproveBtn');
+            const bulkBtn2 = document.getElementById('bulkApproveBtn2');
+            const bulkBar = document.getElementById('bulkActionsBar');
+            const selectedCountText = document.getElementById('selectedCountText');
+            const selectAll = document.getElementById('selectAll');
+
+            if (count > 0) {
+                bulkBtn.style.display = 'inline-flex';
+                bulkBtn.disabled = false;
+                bulkBtn2.style.display = 'inline-flex';
+                bulkBtn2.disabled = false;
+                bulkBar.style.display = 'block';
+                selectedCountText.textContent = count + ' selected';
+            } else {
+                bulkBtn.style.display = 'none';
+                bulkBtn2.style.display = 'none';
+                bulkBar.style.display = 'none';
+                selectAll.checked = false;
+            }
+        };
+
+        window.toggleSelectAll = function() {
+            const selectAll = document.getElementById('selectAll');
+            const checkboxes = document.querySelectorAll('.app-checkbox:not([disabled])');
+            checkboxes.forEach(cb => cb.checked = selectAll.checked);
+            updateBulkActions();
+        };
+
+        window.bulkApprove = async function() {
+            const checkboxes = document.querySelectorAll('.app-checkbox:checked');
+            if (checkboxes.length === 0) return showToast('info', 'No applications selected');
+
+            if (!confirm('Approve ' + checkboxes.length + ' selected applications?')) return;
+
+            const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+            const formData = new FormData();
+            formData.append('action', 'bulk_approve');
+            formData.append('application_ids', JSON.stringify(ids));
+
+            const res = await fetch('/IECEP-LSC-MEMSYS/public/portal/admin/affiliation_action.php', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast('success', data.message);
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast('error', 'Error: ' + data.error);
+            }
+        };
+
+        window.addNotesToSelected = async function() {
+            const checkboxes = document.querySelectorAll('.app-checkbox:checked');
+            if (checkboxes.length === 0) return showToast('info', 'No applications selected');
+
+            const note = prompt('Enter note for selected applications:');
+            if (!note) return;
+
+            const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+            for (const id of ids) {
+                const formData = new FormData();
+                formData.append('action', 'add_note');
+                formData.append('application_id', id);
+                formData.append('note', note);
+                await fetch('/IECEP-LSC-MEMSYS/public/portal/admin/affiliation_action.php', { method: 'POST', body: formData });
+            }
+            showToast('success', 'Notes added to selected applications');
+            setTimeout(() => location.reload(), 1000);
         };
 
         window.onclick = (e) => {

@@ -1,9 +1,9 @@
 <?php
-require_once dirname(__DIR__, 2) . '/public/portal/auth_check.php';
+require_once __DIR__ . '/../../auth_check.php';
 
 if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
-require_once __DIR__ . '/../../includes/config.php';
-require_once __DIR__ . '/../../includes/middleware/auth.php';
+require_once __DIR__ . '/../../../../includes/config.php';
+require_once __DIR__ . '/../../../../includes/middleware/auth.php';
 
 // Check if user is admin
 if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['admin', 'super_admin'])) {

@@ -1,5 +1,5 @@
 <?php
-require_once dirname(__DIR__, 1) . '/public/portal/auth_check.php';
+require_once __DIR__ . '/../auth_check.php';
 
 require_once __DIR__ . '/../../../includes/config.php';
 require_once __DIR__ . '/../../../includes/middleware/auth.php';
@@ -43,6 +43,7 @@ try {
     <!-- We remove professional.css if it contains global body/main-content styles 
          to prevent it from fighting with sidebar.php -->
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/dashboard.css">
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/portal-polish.css">
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/styles.css">
 
     <style>

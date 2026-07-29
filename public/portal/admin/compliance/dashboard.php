@@ -1,9 +1,9 @@
 <?php
 if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
-require_once __DIR__ . '/../auth_check.php';
+require_once __DIR__ . '/../../auth_check.php';
 require_role(['admin', 'super_admin', 'eb_president']);
 
-require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../../includes/db.php';
 
 $db = Database::getInstance();
 

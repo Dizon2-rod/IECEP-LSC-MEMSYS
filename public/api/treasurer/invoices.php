@@ -4,8 +4,8 @@
  * Handles invoice creation, management, and PDF generation
  */
 
-require_once __DIR__ . '/../../includes/config.php';
-require_once __DIR__ . '/../../includes/middleware/auth.php';
+require_once __DIR__ . '/../../../includes/config.php';
+require_once __DIR__ . '/../../../includes/middleware/auth.php';
 
 header('Content-Type: application/json');
 
@@ -176,7 +176,7 @@ try {
                     $filters['status'] = 'eq.' . $status;
                 }
                 if (!empty($memberId)) {
-                    $filters['member_id'] => 'eq.' . $memberId;
+                    $filters['member_id'] = 'eq.' . $memberId;
                 }
                 $filters['order'] = 'created_at.desc';
                 
@@ -252,7 +252,7 @@ try {
                 $member = $memberData[0] ?? null;
                 
                 // Generate PDF using DOMPDF
-                require_once __DIR__ . '/../../src/lib/pdf.php';
+require_once __DIR__ . '/../../../src/lib/pdf.php';
                 $pdfService = new \App\Lib\PDFService();
                 
                 $html = generateInvoiceHTML($invoice, $member);

@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../bootstrap.php';
 // config.php - Application Configuration
 // Load Composer autoloader if available (dependencies installed)
-$composerAutoload = __DIR__ . '/../../vendor/autoload.php';
+$composerAutoload = __DIR__ . '/../vendor/autoload.php';
 if (file_exists($composerAutoload)) {
     require_once $composerAutoload;
 }
@@ -72,7 +72,7 @@ if (!function_exists('validateEnv')) {
     }
 }
 
-loadEnv(__DIR__ . '/../../.env');
+loadEnv(__DIR__ . '/../.env');
 
 // Application Constants - Only define if not already defined by bootstrap.php
 if (!defined('APP_NAME')) {
@@ -305,6 +305,7 @@ if (!class_exists('App\\Lib\\SupabaseClient')) {
 
 if (class_exists('App\\Lib\\SupabaseClient')) {
     $supabaseClient = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    $GLOBALS['supabaseClient'] = $supabaseClient;
     
     // Initialize BlockchainService globally
     if (!isset($GLOBALS['blockchain'])) {

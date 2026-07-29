@@ -4,8 +4,8 @@
  * Centralized document storage with categorization
  */
 
-require_once __DIR__ . '/../../includes/config.php';
-require_once __DIR__ . '/../../includes/middleware/auth.php';
+require_once __DIR__ . '/../../../includes/config.php';
+require_once __DIR__ . '/../../../includes/middleware/auth.php';
 
 header('Content-Type: application/json');
 
@@ -128,7 +128,7 @@ try {
                 if (!empty($description)) $updateData['description'] = $description;
                 
                 if (!empty($updateData)) {
-                    $db->update('documents', $updateData)->eq('id', $documentId)->update();
+                    $db->update('documents', $updateData, $documentId);
                 }
                 
                 echo json_encode([
@@ -257,7 +257,7 @@ try {
                 }
                 
                 // Delete database record
-                $db->delete('documents')->eq('id', $documentId)->delete();
+                $db->delete('documents', $documentId);
                 
                 echo json_encode([
                     'success' => true,

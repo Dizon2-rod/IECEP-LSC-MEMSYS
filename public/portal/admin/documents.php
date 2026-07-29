@@ -3,7 +3,7 @@ if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
 require_once __DIR__ . '/../auth_check.php';
 require_role(['admin', 'super_admin', 'eb_secretary']);
 
-require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../../includes/db.php';
 
 $db = Database::getInstance();
 
@@ -320,7 +320,7 @@ $categories = $db->fetchAll("SELECT DISTINCT category FROM documents WHERE categ
             e.preventDefault();
             const formData = new FormData(this);
             
-            fetch('<?php echo BASE_URL; ?>/api/upload-document.php', {
+            fetch('<?php echo PUBLIC_URL; ?>/api/documents/repository.php?action=upload', {
                 method: 'POST',
                 body: formData
             })
@@ -336,19 +336,33 @@ $categories = $db->fetchAll("SELECT DISTINCT category FROM documents WHERE categ
         });
 
         function downloadDocument(id) {
-            window.location.href = '<?php echo BASE_URL; ?>/api/download-document.php?id=' + id;
+            fetch('<?php echo PUBLIC_URL; ?>/api/documents/repository.php?action=detail&document_id=' + encodeURIComponent(id))
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success && result.document.file_path) {
+                        window.location.href = '<?php echo PUBLIC_URL; ?>' + result.document.file_path;
+                    } else {
+                        alert('Document is not available for download.');
+                    }
+                });
         }
 
         function viewDocument(id) {
-            window.open('<?php echo BASE_URL; ?>/api/view-document.php?id=' + id, '_blank');
+            fetch('<?php echo PUBLIC_URL; ?>/api/documents/repository.php?action=detail&document_id=' + encodeURIComponent(id))
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success && result.document.file_path) {
+                        window.open('<?php echo PUBLIC_URL; ?>' + result.document.file_path, '_blank', 'noopener');
+                    } else {
+                        alert('Document preview is not available.');
+                    }
+                });
         }
 
         function deleteDocument(id) {
             if (confirm('Are you sure you want to delete this document?')) {
-                fetch('<?php echo BASE_URL; ?>/api/delete-document.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: id })
+                fetch('<?php echo PUBLIC_URL; ?>/api/documents/repository.php?action=delete&document_id=' + encodeURIComponent(id), {
+                    method: 'DELETE'
                 })
                 .then(response => response.json())
                 .then(result => {

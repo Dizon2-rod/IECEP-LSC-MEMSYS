@@ -1,6 +1,10 @@
 <?php
 namespace App\Lib;
 
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
 require_once __DIR__ . '/../../bootstrap.php';
 class CsvService
 {
@@ -86,5 +90,38 @@ class CsvService
         }
 
         return $errors;
+    }
+
+    public function exportToExcel(array $data, array $headers, string $filePath): bool
+    {
+        try {
+            $spreadsheet = new Spreadsheet();
+            $sheet = $spreadsheet->getActiveSheet();
+
+            // Set headers
+            $col = 1;
+            foreach ($headers as $header) {
+                $sheet->setCellValueByColumnAndRow($col, 1, $header);
+                $col++;
+            }
+
+            // Set data
+            $row = 2;
+            foreach ($data as $rowData) {
+                $col = 1;
+                foreach ($headers as $header) {
+                    $sheet->setCellValueByColumnAndRow($col, $row, $rowData[$header] ?? '');
+                    $col++;
+                }
+                $row++;
+            }
+
+            $writer = new Xlsx($spreadsheet);
+            $writer->save($filePath);
+            return true;
+        } catch (\Exception $e) {
+            error_log("Excel export error: " . $e->getMessage());
+            return false;
+        }
     }
 }

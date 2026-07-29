@@ -1,11 +1,11 @@
 <?php
-require_once dirname(__DIR__, 2) . '/public/portal/auth_check.php';
+require_once __DIR__ . '/../../auth_check.php';
 
 if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
-require_once __DIR__ . '/../bootstrap.php';
-require_once __DIR__ . '/../../../includes/config.php';
-require_once __DIR__ . '/../../../includes/database.php';
-require_once __DIR__ . '/../../../includes/helpers/cbl_fee_calculator.php';
+require_once __DIR__ . '/../../bootstrap.php';
+require_once __DIR__ . '/../../../../includes/config.php';
+require_once __DIR__ . '/../../../../includes/database.php';
+require_once __DIR__ . '/../../../../includes/helpers/cbl_fee_calculator.php';
 
 if (session_status() === PHP_SESSION_NONE) {
     session_start();

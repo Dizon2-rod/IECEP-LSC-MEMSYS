@@ -71,6 +71,12 @@ spl_autoload_register(function ($class) {
     return false;
 });
 
+// Backward compatibility for legacy pages that instantiate SupabaseClient
+// without its App\Lib namespace. New code should use App\Lib\SupabaseClient.
+if (!class_exists('SupabaseClient') && class_exists('App\\Lib\\SupabaseClient')) {
+    class_alias('App\\Lib\\SupabaseClient', 'SupabaseClient');
+}
+
 // ============================================================================
 // 6. ENVIRONMENT VARIABLES FROM .ENV FILE
 // ============================================================================
@@ -81,7 +87,12 @@ if (file_exists(PROJECT_ROOT . '/.env')) {
             list($key, $value) = explode('=', $line, 2);
             $key = trim($key);
             $value = trim($value);
+            if ((str_starts_with($value, '"') && str_ends_with($value, '"')) ||
+                (str_starts_with($value, "'") && str_ends_with($value, "'"))) {
+                $value = substr($value, 1, -1);
+            }
             $_ENV[$key] = $value;
+            $_SERVER[$key] = $value;
             putenv("$key=$value");
         }
     }

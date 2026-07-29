@@ -1,9 +1,11 @@
 <?php
-require_once __DIR__ . '/../includes/auth_check.php';
+require_once __DIR__ . '/../portal/auth_check.php';
 require_role(['school_officer']);
 
-require_once __DIR__ . '/../bootstrap.php';
-require_once __DIR__ . '/../src/lib/EmailService.php';
+require_once __DIR__ . '/../../bootstrap.php';
+require_once __DIR__ . '/../../src/lib/EmailService.php';
+require_once __DIR__ . '/../../src/lib/BlockchainService.php';
+require_once __DIR__ . '/../../vendor/autoload.php';
 
 header('Content-Type: application/json');
 
@@ -60,17 +62,12 @@ try {
             
             if (!$digitalIdUrl) {
                 // Generate digital ID if not exists
-                require_once __DIR__ . '/../src/lib/BlockchainService.php';
                 $blockchain = new \App\Lib\BlockchainService($supabase);
                 
                 // Generate QR code using Endroid QR Code library
-                require_once __DIR__ . '/../vendor/autoload.php';
-                use Endroid\QrCode\QrCode;
-                use Endroid\QrCode\Writer\PngWriter;
-                
                 $verifyUrl = APP_URL . '/verify-member.php?id=' . $member['membership_id'];
-                $qrCode = QrCode::create($verifyUrl);
-                $writer = new PngWriter();
+                $qrCode = \Endroid\QrCode\QrCode::create($verifyUrl);
+                $writer = new \Endroid\QrCode\Writer\PngWriter();
                 $result = $writer->write($qrCode);
                 
                 // Save QR code

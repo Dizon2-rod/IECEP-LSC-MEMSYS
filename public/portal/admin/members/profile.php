@@ -1,9 +1,9 @@
 <?php
 if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
-require_once __DIR__ . '/auth_check.php';
+require_once dirname(__DIR__, 2) . '/auth_check.php';
 require_role(['admin', 'super_admin', 'committee_registration']);
 
-require_once __DIR__ . '/../../includes/db.php';
+require_once __DIR__ . '/../../../../includes/db.php';
 
 $db = Database::getInstance();
 $memberId = $_GET['id'] ?? '';

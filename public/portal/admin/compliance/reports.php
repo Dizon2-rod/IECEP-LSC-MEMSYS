@@ -1,9 +1,9 @@
 <?php
-require_once dirname(__DIR__, 2) . '/public/portal/auth_check.php';
+require_once __DIR__ . '/../../auth_check.php';
 
 if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
-require_once __DIR__ . '/../../includes/config.php';
-require_once __DIR__ . '/../../includes/middleware/auth.php';
+require_once __DIR__ . '/../../../../includes/config.php';
+require_once __DIR__ . '/../../../../includes/middleware/auth.php';
 
 // Check if user is admin
 if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['admin', 'super_admin', 'auditor'])) {
@@ -195,7 +195,7 @@ if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['ad
                     </div>
                     <div class="col-md-6 text-end">
                         <span class="status-badge status-${compliance ? compliance.compliance_status : 'not_evaluated'}">
-                            ${compliance ? ucfirst(compliance.compliance_status) : 'Not Evaluated'}
+                            ${compliance ? formatStatus(compliance.compliance_status) : 'Not Evaluated'}
                         </span>
                     </div>
                 </div>
@@ -279,6 +279,12 @@ if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['ad
         function formatDate(dateStr) {
             const date = new Date(dateStr);
             return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function formatStatus(status) {
+            return String(status || '')
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, char => char.toUpperCase());
         }
         
         // Initialize

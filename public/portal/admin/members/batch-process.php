@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../../bootstrap.php';
 /**
  * public/portal/admin/bulk-import.php
  * 
@@ -7,7 +7,7 @@ require_once __DIR__ . '/../bootstrap.php';
  * Allows CSV upload of new users with role assignment
  */
 
-require_once __DIR__ . '/../auth_check.php';
+require_once __DIR__ . '/../../auth_check.php';
 
 // Enforce admin role
 if (!require_role(['admin'], false)) {

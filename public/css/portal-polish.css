@@ -1,0 +1,50 @@
+/* Shared portal experience for Admin, School Officer, and Member accounts. */
+:root {
+    --portal-navy: #0a1f4e;
+    --portal-navy-2: #163b78;
+    --portal-gold: #e6b630;
+    --portal-bg: #f4f7fb;
+    --portal-border: #e4eaf2;
+    --portal-text: #182230;
+}
+
+body { background: var(--portal-bg); color: var(--portal-text); }
+.main-content { background: var(--portal-bg); min-height: 100vh; }
+.main-content > .container, .main-content > .dashboard-scope, .dashboard-scope { max-width: 1500px; }
+.dashboard-header, .page-header {
+    border: 1px solid var(--portal-border);
+    border-radius: 18px;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, .06);
+}
+.dashboard-header h1, .page-header h1, .dashboard-scope .header-title h1 { color: var(--portal-navy); letter-spacing: -.03em; }
+.dashboard-scope .stat-card, .stat-card, .card, .content-card {
+    border: 1px solid var(--portal-border);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
+}
+.dashboard-scope .stat-card, .stat-card { border-radius: 18px; }
+.dashboard-scope .stat-card:hover, .stat-card:hover, .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 32px rgba(15, 23, 42, .10);
+}
+.sidebar { background: linear-gradient(180deg, var(--portal-navy) 0%, #071636 100%); }
+.sidebar-header { background: linear-gradient(140deg, #163b78 0%, var(--portal-navy) 72%) !important; }
+.sidebar .nav-link.active, .sidebar a.active {
+    background: linear-gradient(90deg, rgba(230,182,48,.22), rgba(230,182,48,.08)) !important;
+    color: #ffe18a !important;
+    border-left-color: var(--portal-gold) !important;
+}
+.sidebar a:hover { background: rgba(255,255,255,.08) !important; }
+.btn-primary, .dashboard-scope .btn-primary {
+    background: linear-gradient(135deg, var(--portal-navy-2), var(--portal-navy) !important;
+    border: 0;
+    box-shadow: 0 6px 14px rgba(10,31,78,.18);
+}
+.btn-primary:hover, .dashboard-scope .btn-primary:hover { filter: brightness(1.12); transform: translateY(-1px); }
+.table, .data-table { border-color: var(--portal-border); }
+.table thead th, .data-table th { background: #f8fafc; color: var(--portal-navy); border-bottom: 1px solid var(--portal-border); }
+.badge, .status-badge { border-radius: 999px; font-weight: 700; letter-spacing: .01em; }
+@media (max-width: 767.98px) {
+    .main-content { padding-top: 4.5rem !important; }
+    .dashboard-header, .page-header { border-radius: 14px; }
+    .dashboard-scope .stats-grid, .stats-grid, .grid-responsive { gap: 1rem; }
+}
