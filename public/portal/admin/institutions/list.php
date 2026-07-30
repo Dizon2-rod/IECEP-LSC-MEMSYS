@@ -281,11 +281,11 @@ foreach ($applications as &$app) {
             </div>
         <?php else: ?>
             <div class="applications-list">
-                <?php foreach ($applications as $app): 
-                    $status = $app['status'] ?? 'pending_review';
-                    $vCount = $app['verified_count'] ?? 0;
-                    $progress = ($vCount / 6) * 100;
-                ?>
+        <?php foreach ($applications as $app): 
+            $status = $app['status'] ?? 'pending';
+            $vCount = $app['verified_count'] ?? 0;
+            $progress = ($vCount / 6) * 100;
+        ?>
                     <div class="application-card <?php echo $status; ?>">
                         <div class="card-accent"></div>
                         <div class="application-main">
@@ -350,9 +350,12 @@ foreach ($applications as &$app) {
 
                             <!-- Review Notes -->
                             <?php
-                                $docsObj = json_decode($app['documents'] ?? '{}', true) ?: [];
+                                $docsObj = [];
+                                if (!empty($app['documents'])) {
+                                    $docsObj = is_string($app['documents']) ? json_decode($app['documents'], true) : $app['documents'];
+                                }
                                 $reviewNotes = $docsObj['review_notes'] ?? '';
-                    $status = $app['status'] ?? 'under_review';
+                                $status = $app['status'] ?? 'under_review';
                             ?>
                             <div style="background: var(--slate-50); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; border: 1px solid var(--slate-200);">
                                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
