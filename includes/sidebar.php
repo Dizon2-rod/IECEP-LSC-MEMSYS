@@ -586,11 +586,11 @@ function isMenuItemActive($item_url, $current_page) {
         <p><?php echo htmlspecialchars($portal_title); ?></p>
         <div class="sidebar-actions">
             <button id="notificationBell" class="notification-bell" type="button" aria-label="Notifications">
-                <i class="fas fa-bell"></i>
+                <svg class="svg-inline--fa fa-bell" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="bell" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" data-fa-i2svg=""><path fill="currentColor" d="M224 0c-17.7 0-32 14.3-32 32V51.2C119 66 64 130.6 64 208v18.8c0 47-17.3 92.4-48.5 127.6l-7.4 8.3c-8.4 9.4-10.4 22.9-5.3 34.4S19.4 416 32 416H416c12.6 0 24-7.4 29.2-18.9s3.1-25-5.3-34.4l-7.4-8.3C401.3 319.2 384 273.9 384 226.8V208c0-77.4-55-142-128-156.8V32c0-17.7-14.3-32-32-32zm45.3 493.3c12-12 18.7-28.3 18.7-45.3H224 160c0 17 6.7 33.3 18.7 45.3s28.3 18.7 45.3 18.7s33.3-6.7 45.3-18.7z"></path></svg>
                 <span id="notificationCount" class="notification-count"></span>
             </button>
             <button id="sidebarDarkModeToggle" class="sidebar-dark-toggle" type="button" aria-label="Toggle dark mode">
-                <i class="fas fa-moon"></i>
+                <svg class="svg-inline--fa fa-moon" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="moon" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" data-fa-i2svg=""><path fill="currentColor" d="M223.5 32C100 32 0 132.3 0 256S100 480 223.5 480c60.6 0 115.5-24.2 155.8-63.4c5-4.9 6.3-12.5 3.1-18.7s-10.1-9.7-17-8.5c-9.8 1.7-19.8 2.6-30.1 2.6c-96.9 0-175.5-78.8-175.5-176c0-65.8 36-123.1 89.3-153.3c6.1-3.5 9.2-10.5 7.7-17.3s-7.3-11.9-14.3-12.5c-6.3-.5-12.6-.8-19-.8z"></path></svg>
             </button>
         </div>
         <div class="user-role-badge">
@@ -653,19 +653,18 @@ if (typeof window.sidebarInitialized === 'undefined') {
         const sidebar = document.getElementById('sidebar');
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
+        const notificationBell = document.getElementById('notificationBell');
+        const notificationDropdown = document.getElementById('notificationDropdown');
+        const notificationCount = document.getElementById('notificationCount');
+        const darkModeToggle = document.getElementById('sidebarDarkModeToggle');
         
-        function toggleSidebar() {
-            sidebar.classList.toggle('open');
-            sidebarOverlay.classList.toggle('active');
-            
-            // Prevent body scroll when sidebar is open on mobile
-            if (window.innerWidth <= 767) {
-                if (sidebar.classList.contains('open')) {
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    document.body.style.overflow = '';
-                }
-            }
+        // ============================================
+        // SIDEBAR STATE MANAGEMENT
+        // ============================================
+        function openSidebar() {
+            sidebar.classList.add('open');
+            sidebarOverlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
         }
         
         function closeSidebar() {
@@ -674,9 +673,21 @@ if (typeof window.sidebarInitialized === 'undefined') {
             document.body.style.overflow = '';
         }
         
+        function toggleSidebar() {
+            if (sidebar.classList.contains('open')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        }
+        
         // Toggle sidebar
         if (sidebarToggle) {
-            sidebarToggle.addEventListener('click', toggleSidebar);
+            sidebarToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleSidebar();
+            });
         }
         
         // Close sidebar when clicking overlay
@@ -697,6 +708,115 @@ if (typeof window.sidebarInitialized === 'undefined') {
                 closeSidebar();
             }
         });
+        
+        // ============================================
+        // SIDEBAR NAVIGATION - STABLE STATE
+        // ============================================
+        // Ensure clicking nav links doesn't break sidebar state
+        const navLinks = sidebar.querySelectorAll('.nav-menu a');
+        navLinks.forEach(function(link) {
+            link.addEventListener('click', function() {
+                // On mobile, close sidebar after clicking a link
+                if (window.innerWidth <= 767) {
+                    // Small delay to allow navigation to start
+                    setTimeout(closeSidebar, 100);
+                }
+            });
+        });
+        
+        // ============================================
+        // NOTIFICATION BELL
+        // ============================================
+        if (notificationBell && notificationDropdown) {
+            notificationBell.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                notificationDropdown.classList.toggle('open');
+                
+                // Close sidebar if it's open on mobile
+                if (window.innerWidth <= 767 && sidebar.classList.contains('open')) {
+                    setTimeout(closeSidebar, 150);
+                }
+            });
+            
+            // Close notification dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!notificationBell.contains(e.target) && !notificationDropdown.contains(e.target)) {
+                    notificationDropdown.classList.remove('open');
+                }
+            });
+        }
+        
+        // ============================================
+        // DARK MODE TOGGLE
+        // ============================================
+        if (darkModeToggle) {
+            darkModeToggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                document.body.classList.toggle('dark-mode');
+                
+                // Optional: save preference to localStorage
+                const isDark = document.body.classList.contains('dark-mode');
+                localStorage.setItem('darkMode', isDark ? '1' : '0');
+                
+                // Close sidebar on mobile after toggling
+                if (window.innerWidth <= 767 && sidebar.classList.contains('open')) {
+                    setTimeout(closeSidebar, 150);
+                }
+            });
+            
+            // Restore dark mode preference
+            if (localStorage.getItem('darkMode') === '1') {
+                document.body.classList.add('dark-mode');
+            }
+        }
+        
+        // ============================================
+        // PREVENT SIDEBAR STATE CORRUPTION
+        // ============================================
+        // Ensure sidebar is visible on desktop regardless of mobile state
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 767) {
+                sidebar.classList.remove('open');
+                sidebarOverlay.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+        
+        // ============================================
+        // NOTIFICATION COUNT BADGE
+        // ============================================
+        function updateNotificationCount(count) {
+            if (notificationCount) {
+                if (count > 0) {
+                    notificationCount.textContent = count > 99 ? '99+' : count;
+                    notificationCount.classList.add('visible');
+                } else {
+                    notificationCount.classList.remove('visible');
+                }
+            }
+        }
+        
+        // Expose function globally for real-time updates
+        window.updateNotificationCount = updateNotificationCount;
+        
+        // ============================================
+        // LOAD NOTIFICATIONS
+        // ============================================
+        function loadNotifications() {
+            // Placeholder for notification loading logic
+            // This can be extended to fetch from an API endpoint
+            const notificationList = document.querySelector('.notification-list');
+            if (notificationList) {
+                // Example: load notifications here
+                // For now, show empty state
+                notificationList.innerHTML = '<li class="notification-empty">No notifications</li>';
+            }
+        }
+        
+        // Load notifications on init
+        loadNotifications();
     });
 }
 </script>
