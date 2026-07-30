@@ -181,147 +181,6 @@ function isMenuItemActive($item_url, $current_page) {
     margin-top: 16px;
 }
 
-#sidebar .notification-bell {
-    position: relative;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    color: #fff;
-    padding: 10px 12px;
-    border-radius: 999px;
-    cursor: pointer;
-    transition: background 0.25s ease, transform 0.2s ease;
-}
-
-#sidebar .notification-bell:hover {
-    background: rgba(255, 255, 255, 0.14);
-    transform: translateY(-1px);
-}
-
-#sidebar .notification-count {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    min-width: 18px;
-    height: 18px;
-    background: #ef4444;
-    color: #fff;
-    font-size: 0.72rem;
-    line-height: 18px;
-    border-radius: 999px;
-    text-align: center;
-    padding: 0 5px;
-    display: none;
-}
-
-#sidebar .notification-count.visible {
-    display: inline-flex;
-}
-
-#sidebar .notification-dropdown {
-    display: none;
-    position: absolute;
-    top: 134px;
-    right: 20px;
-    width: 320px;
-    background: rgba(15, 23, 42, 0.98);
-    backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 20px;
-    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.25);
-    z-index: 1100;
-    overflow: hidden;
-}
-
-#sidebar .notification-dropdown.open {
-    display: block;
-}
-
-#sidebar .notification-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 14px 18px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    color: #fff;
-    font-weight: 700;
-}
-
-#sidebar .notification-clear {
-    background: transparent;
-    border: none;
-    color: rgba(255, 255, 255, 0.65);
-    cursor: pointer;
-    font-size: 0.9rem;
-}
-
-#sidebar .notification-controls {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 12px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.03);
-}
-
-#sidebar .notification-action {
-    flex: 1;
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #fff;
-    padding: 8px 10px;
-    border-radius: 999px;
-    cursor: pointer;
-    font-size: 0.85rem;
-    text-align: center;
-}
-
-#sidebar .notification-action:hover {
-    background: rgba(255, 255, 255, 0.15);
-}
-
-#sidebar .notification-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    max-height: 320px;
-    overflow-y: auto;
-}
-
-#sidebar .notification-item {
-    padding: 16px 18px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    color: rgba(255, 255, 255, 0.92);
-}
-
-#sidebar .notification-item.unread {
-    background: rgba(255, 255, 255, 0.05);
-}
-
-#sidebar .notification-item:last-child {
-    border-bottom: none;
-}
-
-#sidebar .notification-title {
-    font-weight: 700;
-    margin-bottom: 6px;
-}
-
-#sidebar .notification-body {
-    font-size: 0.9rem;
-    margin-bottom: 8px;
-}
-
-#sidebar .notification-time {
-    font-size: 0.78rem;
-    opacity: 0.7;
-}
-
-#sidebar .notification-empty {
-    padding: 18px;
-    color: rgba(255, 255, 255, 0.75);
-    text-align: center;
-}
-
 #sidebar .sidebar-nav {
     flex: 1;
     padding: 20px 0;
@@ -560,13 +419,7 @@ function isMenuItemActive($item_url, $current_page) {
         display: none !important;
     }
 }
-.notification-item {
-    cursor: pointer;
-}
-
-.notification-item.read {
-    opacity: 0.85;
-}</style>
+</style>
 
 <!-- Mobile Toggle Button -->
 <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
@@ -584,27 +437,8 @@ function isMenuItemActive($item_url, $current_page) {
             <h3>IECEP-LSC</h3>
         </div>
         <p><?php echo htmlspecialchars($portal_title); ?></p>
-        <div class="sidebar-actions">
-            <button id="notificationBell" class="notification-bell" type="button" aria-label="Notifications">
-                <svg class="svg-inline--fa fa-bell" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="bell" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" data-fa-i2svg=""><path fill="currentColor" d="M224 0c-17.7 0-32 14.3-32 32V51.2C119 66 64 130.6 64 208v18.8c0 47-17.3 92.4-48.5 127.6l-7.4 8.3c-8.4 9.4-10.4 22.9-5.3 34.4S19.4 416 32 416H416c12.6 0 24-7.4 29.2-18.9s3.1-25-5.3-34.4l-7.4-8.3C401.3 319.2 384 273.9 384 226.8V208c0-77.4-55-142-128-156.8V32c0-17.7-14.3-32-32-32zm45.3 493.3c12-12 18.7-28.3 18.7-45.3H224 160c0 17 6.7 33.3 18.7 45.3s28.3 18.7 45.3 18.7s33.3-6.7 45.3-18.7z"></path></svg>
-                <span id="notificationCount" class="notification-count"></span>
-            </button>
-            <button id="sidebarDarkModeToggle" class="sidebar-dark-toggle" type="button" aria-label="Toggle dark mode">
-                <svg class="svg-inline--fa fa-moon" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="moon" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" data-fa-i2svg=""><path fill="currentColor" d="M223.5 32C100 32 0 132.3 0 256S100 480 223.5 480c60.6 0 115.5-24.2 155.8-63.4c5-4.9 6.3-12.5 3.1-18.7s-10.1-9.7-17-8.5c-9.8 1.7-19.8 2.6-30.1 2.6c-96.9 0-175.5-78.8-175.5-176c0-65.8 36-123.1 89.3-153.3c6.1-3.5 9.2-10.5 7.7-17.3s-7.3-11.9-14.3-12.5c-6.3-.5-12.6-.8-19-.8z"></path></svg>
-            </button>
-        </div>
-        <div class="user-role-badge">
-            <?php echo htmlspecialchars($menu_config['badge']); ?>
-        </div>
     </div>
-    <div id="notificationDropdown" class="notification-dropdown">
-        <div class="notification-header">
-            <span>Notifications</span>
-            <button type="button" class="notification-clear" onclick="document.getElementById('notificationDropdown').classList.remove('open')">Close</button>
-        </div>
-        <ul class="notification-list"></ul>
-    </div>
-
+    
     <nav class="sidebar-nav">
         <ul class="nav-menu">
             <?php foreach ($menu_config['items'] as $item): ?>
@@ -653,10 +487,6 @@ if (typeof window.sidebarInitialized === 'undefined') {
         const sidebar = document.getElementById('sidebar');
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
-        const notificationBell = document.getElementById('notificationBell');
-        const notificationDropdown = document.getElementById('notificationDropdown');
-        const notificationCount = document.getElementById('notificationCount');
-        const darkModeToggle = document.getElementById('sidebarDarkModeToggle');
         
         // ============================================
         // SIDEBAR STATE MANAGEMENT
@@ -702,13 +532,6 @@ if (typeof window.sidebarInitialized === 'undefined') {
             }
         });
         
-        // Handle window resize
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 767) {
-                closeSidebar();
-            }
-        });
-        
         // ============================================
         // SIDEBAR NAVIGATION - STABLE STATE
         // ============================================
@@ -725,54 +548,6 @@ if (typeof window.sidebarInitialized === 'undefined') {
         });
         
         // ============================================
-        // NOTIFICATION BELL
-        // ============================================
-        if (notificationBell && notificationDropdown) {
-            notificationBell.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                notificationDropdown.classList.toggle('open');
-                
-                // Close sidebar if it's open on mobile
-                if (window.innerWidth <= 767 && sidebar.classList.contains('open')) {
-                    setTimeout(closeSidebar, 150);
-                }
-            });
-            
-            // Close notification dropdown when clicking outside
-            document.addEventListener('click', function(e) {
-                if (!notificationBell.contains(e.target) && !notificationDropdown.contains(e.target)) {
-                    notificationDropdown.classList.remove('open');
-                }
-            });
-        }
-        
-        // ============================================
-        // DARK MODE TOGGLE
-        // ============================================
-        if (darkModeToggle) {
-            darkModeToggle.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                document.body.classList.toggle('dark-mode');
-                
-                // Optional: save preference to localStorage
-                const isDark = document.body.classList.contains('dark-mode');
-                localStorage.setItem('darkMode', isDark ? '1' : '0');
-                
-                // Close sidebar on mobile after toggling
-                if (window.innerWidth <= 767 && sidebar.classList.contains('open')) {
-                    setTimeout(closeSidebar, 150);
-                }
-            });
-            
-            // Restore dark mode preference
-            if (localStorage.getItem('darkMode') === '1') {
-                document.body.classList.add('dark-mode');
-            }
-        }
-        
-        // ============================================
         // PREVENT SIDEBAR STATE CORRUPTION
         // ============================================
         // Ensure sidebar is visible on desktop regardless of mobile state
@@ -783,40 +558,6 @@ if (typeof window.sidebarInitialized === 'undefined') {
                 document.body.style.overflow = '';
             }
         });
-        
-        // ============================================
-        // NOTIFICATION COUNT BADGE
-        // ============================================
-        function updateNotificationCount(count) {
-            if (notificationCount) {
-                if (count > 0) {
-                    notificationCount.textContent = count > 99 ? '99+' : count;
-                    notificationCount.classList.add('visible');
-                } else {
-                    notificationCount.classList.remove('visible');
-                }
-            }
-        }
-        
-        // Expose function globally for real-time updates
-        window.updateNotificationCount = updateNotificationCount;
-        
-        // ============================================
-        // LOAD NOTIFICATIONS
-        // ============================================
-        function loadNotifications() {
-            // Placeholder for notification loading logic
-            // This can be extended to fetch from an API endpoint
-            const notificationList = document.querySelector('.notification-list');
-            if (notificationList) {
-                // Example: load notifications here
-                // For now, show empty state
-                notificationList.innerHTML = '<li class="notification-empty">No notifications</li>';
-            }
-        }
-        
-        // Load notifications on init
-        loadNotifications();
     });
 }
 </script>
