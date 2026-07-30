@@ -580,7 +580,7 @@ function isMenuItemActive($item_url, $current_page) {
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
         <div class="sidebar-brand">
-            <img src="<?php echo $base_public_url; ?>/assets/icons/iecep-logo.png" alt="IECEP-LSC Logo">
+            <img src="<?php echo $base_public_url; ?>/assets/icons/iecep-logo.png" alt="IECEP-LSC Logo" style="width: 36px; height: auto; flex-shrink: 0;">
             <h3>IECEP-LSC</h3>
         </div>
         <p><?php echo htmlspecialchars($portal_title); ?></p>

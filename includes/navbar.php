@@ -27,7 +27,7 @@ $userRole = $_SESSION['role'] ?? '';
 <header class="header">
     <div class="header-container">
         <a href="<?php echo BASE_URL; ?>/" class="logo">
-            <img src="<?php echo ASSETS_URL; ?>/icons/iecep-logo.png" alt="IECEP-LSC Logo" class="logo-img">
+            <img src="<?php echo ASSETS_URL; ?>/icons/iecep-logo.png" alt="IECEP-LSC Logo" class="logo-img" style="height: 40px; width: auto;">
             <span>IECEP-LSC MEMSYS</span>
         </a>
         
