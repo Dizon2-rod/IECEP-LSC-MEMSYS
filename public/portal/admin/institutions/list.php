@@ -396,8 +396,19 @@ foreach ($applications as &$app) {
                 <button class="modal-close-btn" style="color:white;" onclick="closeRequestChangesModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <p style="color:var(--slate-600); margin-bottom:15px;">Please specify which documents need correction or what information is missing.</p>
-                <textarea id="changesInstructions" style="width:100%; height:150px; padding:15px; border-radius:var(--radius); border:1px solid var(--slate-200); font-family:inherit;" placeholder="Example: The Letter of Intent is missing the official seal..."></textarea>
+                <p style="color:var(--slate-600); margin-bottom:15px;">Select the documents that need correction and add notes for each.</p>
+                
+                <div id="requestChangesDocList" style="margin-bottom:20px;">
+                    <p style="color:var(--slate-400); text-align:center; padding:20px;">Loading documents...</p>
+                </div>
+                
+                <div style="background:var(--slate-50); border-radius:var(--radius); padding:15px; margin-bottom:20px; border:1px solid var(--slate-200);">
+                    <label style="font-weight:600; color:var(--slate-700); display:block; margin-bottom:8px;">
+                        <i class="fas fa-comment-dots"></i> General Instructions
+                    </label>
+                    <textarea id="changesInstructions" style="width:100%; height:100px; padding:12px; border-radius:8px; border:1px solid var(--slate-200); font-family:inherit;" placeholder="Example: The Letter of Intent is missing the official seal..."></textarea>
+                </div>
+                
                 <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
                     <button onclick="closeRequestChangesModal()" class="btn btn-outline">Cancel</button>
                     <button onclick="confirmRequestChanges()" class="btn btn-warning">Send Request</button>
@@ -620,18 +631,74 @@ foreach ($applications as &$app) {
             else { showToast('error', 'Error: ' + data.error); }
         };
 
-        window.showRequestChangesModal = (id) => { currentAppId = id; document.getElementById('requestChangesModal').style.display = 'flex'; };
+        window.showRequestChangesModal = (id) => { 
+            currentAppId = id; 
+            const app = applicationsData.find(a => a.id === id);
+            if (!app) return showToast('error', 'Application not found');
+            
+            const docList = document.getElementById('requestChangesDocList');
+            docList.innerHTML = '';
+            
+            let docsObj = {};
+            try { 
+                docsObj = typeof app.documents === 'string' ? JSON.parse(app.documents) : (app.documents || {}); 
+            } catch(e) { docsObj = {}; }
+            
+            const docKeys = Object.keys(docsObj).filter(k => k !== 'review_notes');
+            
+            if (docKeys.length === 0) {
+                docList.innerHTML = '<p style="color:var(--slate-400); text-align:center; padding:20px;">No documents uploaded.</p>';
+            } else {
+                docList.innerHTML = '<div style="display:flex; flex-direction:column; gap:12px;">';
+                docKeys.forEach((key, index) => {
+                    const doc = docsObj[key];
+                    const docName = doc.name || key;
+                    docList.innerHTML += `
+                        <div style="display:flex; align-items:flex-start; gap:12px; padding:12px; background:white; border:1px solid var(--slate-200); border-radius:var(--radius);">
+                            <input type="checkbox" id="req-doc-${index}" data-doc-key="${key}" data-doc-name="${docName}" 
+                                   style="width:18px; height:18px; margin-top:4px; cursor:pointer;">
+                            <div style="flex:1;">
+                                <label for="req-doc-${index}" style="font-weight:600; color:var(--slate-900); cursor:pointer; display:block; margin-bottom:6px;">
+                                    <i class="fas fa-file-pdf" style="color:var(--error); margin-right:6px;"></i> ${docName}
+                                </label>
+                                <textarea id="req-doc-note-${index}" placeholder="Note for this document..." 
+                                          style="width:100%; height:60px; padding:8px; border-radius:6px; border:1px solid var(--slate-200); font-size:0.85rem; font-family:inherit; resize:vertical;"></textarea>
+                            </div>
+                        </div>`;
+                });
+                docList.innerHTML += '</div>';
+            }
+            
+            document.getElementById('requestChangesModal').style.display = 'flex';
+        };
         window.closeRequestChangesModal = () => document.getElementById('requestChangesModal').style.display = 'none';
         window.confirmRequestChanges = async function() {
-            const note = document.getElementById('changesInstructions').value;
-            if (!note) return showToast('info', 'Please provide instructions');
+            const generalNote = document.getElementById('changesInstructions').value;
+            if (!generalNote) return showToast('info', 'Please provide general instructions');
+            
+            const checkboxes = document.querySelectorAll('#requestChangesDocList input[type="checkbox"]:checked');
+            if (checkboxes.length === 0) return showToast('info', 'Please select at least one document');
+            
+            const selectedDocs = [];
+            checkboxes.forEach(cb => {
+                const note = document.getElementById('req-doc-note-' + cb.id.split('-')[2]).value;
+                selectedDocs.push({
+                    key: cb.dataset.docKey,
+                    name: cb.dataset.docName,
+                    note: note
+                });
+            });
+            
             const formData = new FormData();
             formData.append('action', 'request_changes');
             formData.append('application_id', currentAppId);
-            formData.append('changes_instructions', note);
+            formData.append('changes_instructions', generalNote);
+            formData.append('selected_documents', JSON.stringify(selectedDocs));
+            
             const res = await fetch('/IECEP-LSC-MEMSYS/public/portal/admin/affiliation_action.php', { method: 'POST', body: formData });
             const data = await res.json();
             if (data.success) { showToast('success', 'Request sent!'); closeRequestChangesModal(); setTimeout(() => location.reload(), 1500); }
+            else showToast('error', 'Error: ' + data.error);
         };
 
         window.showRejectModal = (id) => { currentAppId = id; document.getElementById('rejectModal').style.display = 'flex'; };

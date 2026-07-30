@@ -396,8 +396,22 @@ try {
     // ---------- REQUEST CHANGES ----------
     if ($action === 'request_changes') {
         if (empty($_POST['changes_instructions'])) sendResponse(false, '', 'Instructions required');
+        
         $documents = json_decode($appData['documents'] ?? '[]', true) ?: [];
         $documents['review_notes'] = $_POST['changes_instructions'];
+        $documents['review_notes_history'] = $documents['review_notes_history'] ?? [];
+        $documents['review_notes_history'][] = [
+            'note' => $_POST['changes_instructions'],
+            'date' => date('Y-m-d H:i:s'),
+            'admin' => $user['full_name'] ?? 'Admin'
+        ];
+        
+        $selectedDocs = [];
+        if (!empty($_POST['selected_documents'])) {
+            $selectedDocs = json_decode($_POST['selected_documents'], true) ?: [];
+        }
+        $documents['selected_documents'] = $selectedDocs;
+        
         $supabase->update('pending_affiliations', [
             'status' => 'requires_revision',
             'documents' => json_encode($documents),
