@@ -67,7 +67,15 @@ $portal_title = $portal_names[$role] ?? 'Dashboard';
 // Function to check if menu item is active
 function isMenuItemActive($item_url, $current_page) {
     $item_page = basename(parse_url($item_url, PHP_URL_PATH), '.php');
-    return $current_page === $item_page;
+    if ($current_page === $item_page) {
+        return true;
+    }
+    $item_path = parse_url($item_url, PHP_URL_PATH) ?? '';
+    $script_path = parse_url($_SERVER['SCRIPT_NAME'] ?? '', PHP_URL_PATH) ?? '';
+    if ($item_path && $script_path && $script_path === $item_path) {
+        return true;
+    }
+    return false;
 }
 ?>
 

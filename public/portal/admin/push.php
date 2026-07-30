@@ -87,7 +87,7 @@ include '../../includes/dashboard-layout.php';
 ?>
 
 <div class="dashboard-container">
-    <?php include '../../includes/sidebar.php'; ?>
+    <?php include '../../../includes/sidebar.php'; ?>
 
     <main class="main-content">
         <div class="container">

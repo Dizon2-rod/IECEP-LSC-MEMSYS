@@ -1,7 +1,7 @@
 <?php
 
 require_once __DIR__ . '/../../bootstrap.php';
-$current_page = 'affiliations';
+$current_page = 'list';
 
 require_once __DIR__ . '/../../auth_check.php';
 require_role(['admin', 'super_admin', 'registration', 'committee_registration']);
@@ -9,21 +9,32 @@ require_role(['admin', 'super_admin', 'registration', 'committee_registration'])
 $user = get_user_info();
 
 $applications = [];
+$pendingApps = [];
+$approvedApps = [];
+$rejectedApps = [];
 $dataSource = 'supabase';
 try {
     require_once SRC_PATH . 'lib/SupabaseClient.php';
     $supabase = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    $applications = $supabase->select('pending_affiliations', null, 'submitted_at', 'DESC');
     
-    if (!is_array($applications)) {
-        $applications = [];
-    } elseif (isset($applications['code']) && isset($applications['message'])) {
-        $applications = [];
-    }
+    $pendingApps = $supabase->select('pending_affiliations', ['status' => 'eq.pending']);
+    $approvedApps = $supabase->select('pending_affiliations', ['status' => 'eq.approved']);
+    $rejectedApps = $supabase->select('pending_affiliations', ['status' => 'eq.rejected']);
+    
+    $applications = array_merge(
+        is_array($pendingApps) ? $pendingApps : [],
+        is_array($approvedApps) ? $approvedApps : [],
+        is_array($rejectedApps) ? $rejectedApps : []
+    );
+    
+    if (!is_array($pendingApps)) $pendingApps = [];
+    if (!is_array($approvedApps)) $approvedApps = [];
+    if (!is_array($rejectedApps)) $rejectedApps = [];
+    if (!is_array($applications)) $applications = [];
 } catch (Exception $e) {
     error_log("Supabase affiliations load failed: " . $e->getMessage());
     $dataSource = 'none';
-    $applications = [];
+    $applications = $pendingApps = $approvedApps = $rejectedApps = [];
 }
 
 foreach ($applications as &$app) {
@@ -172,6 +183,13 @@ foreach ($applications as &$app) {
         .toast.success { background: var(--success); }
         .toast.error { background: var(--error); }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        .tabs { display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid var(--slate-200); }
+        .tab-btn { padding: 12px 24px; background: none; border: none; border-bottom: 3px solid transparent; cursor: pointer; font-weight: 600; color: var(--slate-600); transition: all 0.2s ease; font-family: 'Inter', sans-serif; }
+        .tab-btn:hover { color: var(--navy); }
+        .tab-btn.active { color: var(--navy); border-bottom-color: var(--gold); }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
     </style>
 </head>
 <body class="dashboard-scope">
@@ -193,6 +211,12 @@ foreach ($applications as &$app) {
             </div>
         </header>
 
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('pending')">Pending Review (<?php echo count($pendingApps); ?>)</button>
+            <button class="tab-btn" onclick="switchTab('approved')">Approved (<?php echo count($approvedApps); ?>)</button>
+            <button class="tab-btn" onclick="switchTab('rejected')">Rejected (<?php echo count($rejectedApps); ?>)</button>
+        </div>
+
         <!-- Bulk Actions Bar -->
         <div id="bulkActionsBar" style="display: none; background: white; padding: 16px 24px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 24px; border: 1px solid var(--slate-200);">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -212,156 +236,168 @@ foreach ($applications as &$app) {
             </div>
         </div>
 
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon pending"><i class="fas fa-clock"></i></div>
-                <div class="stat-details">
-                    <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => is_array($a) && in_array($a['status'] ?? '', ['pending', 'under_review', 'requires_revision']))); ?></div>
-                    <div class="stat-label">Pending Review</div>
+        <div class="tab-panel active" id="tab-pending">
+            <?php if (empty($pendingApps)): ?>
+                <div style="text-align: center; padding: 80px; background: white; border-radius: var(--radius); border: 2px dashed var(--slate-200); box-shadow: var(--shadow);">
+                    <i class="fas fa-folder-open" style="font-size: 4rem; color: var(--slate-200); margin-bottom: 20px;"></i>
+                    <h3 style="color: var(--slate-400); font-weight: 500;">No applications awaiting review.</h3>
                 </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon approved"><i class="fas fa-check-circle"></i></div>
-                <div class="stat-details">
-                    <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => is_array($a) && $a['status'] === 'approved')); ?></div>
-                    <div class="stat-label">Approved</div>
+            <?php else: ?>
+                <div style="background: white; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--slate-200); overflow: hidden;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: var(--slate-50); border-bottom: 2px solid var(--slate-200);">
+                                <th style="padding: 16px; text-align: left; font-weight: 700; color: var(--navy);">Institution Name</th>
+                                <th style="padding: 16px; text-align: left; font-weight: 700; color: var(--navy);">Date Submitted</th>
+                                <th style="padding: 16px; text-align: left; font-weight: 700; color: var(--navy);">Status</th>
+                                <th style="padding: 16px; text-align: right; font-weight: 700; color: var(--navy);">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($pendingApps as $app): 
+                                if (!is_array($app)) continue;
+                                $status = $app['status'] ?? 'pending';
+                            ?>
+                                <tr style="border-bottom: 1px solid var(--slate-100); transition: background 0.2s;" onmouseover="this.style.background='var(--slate-50)'" onmouseout="this.style.background='white'">
+                                    <td style="padding: 16px;">
+                                        <div style="font-weight: 600; color: var(--navy);"><?php echo htmlspecialchars($app['institution_name'] ?? 'N/A'); ?></div>
+                                        <div style="font-size: 0.85rem; color: var(--slate-400);"><?php echo htmlspecialchars($app['email'] ?? 'N/A'); ?></div>
+                                    </td>
+                                    <td style="padding: 16px; color: var(--slate-600);"><?php echo htmlspecialchars($app['submitted_at'] ?? 'N/A'); ?></td>
+                                    <td style="padding: 16px;"><span class="status-badge <?php echo $status; ?>"><?php echo ucfirst(str_replace('_', ' ', $status)); ?></span></td>
+                                    <td style="padding: 16px; text-align: right;">
+                                        <button onclick="viewDocuments('<?php echo $app['id']; ?>')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">
+                                            <i class="fas fa-file-alt"></i> Review
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon rejected"><i class="fas fa-times-circle"></i></div>
-                <div class="stat-details">
-                    <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => is_array($a) && $a['status'] === 'rejected')); ?></div>
-                    <div class="stat-label">Rejected</div>
-                </div>
-            </div>
+            <?php endif; ?>
         </div>
 
-        <?php if (empty($applications)): ?>
-            <div style="text-align: center; padding: 80px; background: white; border-radius: var(--radius); border: 2px dashed var(--slate-200); box-shadow: var(--shadow);">
-                <i class="fas fa-folder-open" style="font-size: 4rem; color: var(--slate-200); margin-bottom: 20px;"></i>
-                <h3 style="color: var(--slate-400); font-weight: 500;">No applications awaiting review.</h3>
-            </div>
-        <?php else: ?>
-            <div class="applications-list">
-        <?php foreach ($applications as $app): 
-            if (!is_array($app)) {
-                continue;
-            }
-            $status = $app['status'] ?? 'pending';
-            $vCount = $app['verified_count'] ?? 0;
-            $progress = ($vCount / 6) * 100;
-        ?>
-                    <div class="application-card <?php echo $status; ?>">
-                        <div class="card-accent"></div>
-                        <div class="application-main">
-                            <div class="application-header">
-                                <div class="application-info" style="display: flex; align-items: center; gap: 12px;">
-                                    <input type="checkbox" class="app-checkbox" data-id="<?php echo $app['id']; ?>" 
-                                           onchange="updateBulkActions()" style="width: 18px; height: 18px; cursor: pointer;"
-                                           <?php echo in_array($status, ['pending', 'pending_review', 'resubmitted']) ? '' : 'disabled'; ?>>
-                                    <div>
-                                        <h3><?php echo htmlspecialchars($app['institution_name'] ?? 'N/A'); ?></h3>
-                                        <span class="email"><?php echo htmlspecialchars($app['email'] ?? 'N/A'); ?></span>
+        <div class="tab-panel" id="tab-approved">
+            <?php if (empty($approvedApps)): ?>
+                <div style="text-align: center; padding: 80px; background: white; border-radius: var(--radius); border: 2px dashed var(--slate-200); box-shadow: var(--shadow);">
+                    <i class="fas fa-folder-open" style="font-size: 4rem; color: var(--slate-200); margin-bottom: 20px;"></i>
+                    <h3 style="color: var(--slate-400); font-weight: 500;">No approved applications.</h3>
+                </div>
+            <?php else: ?>
+                <div class="applications-list">
+                    <?php foreach ($approvedApps as $app): 
+                        if (!is_array($app)) continue;
+                        $status = $app['status'] ?? 'approved';
+                        $vCount = $app['verified_count'] ?? 0;
+                        $progress = ($vCount / 6) * 100;
+                    ?>
+                        <div class="application-card <?php echo $status; ?>">
+                            <div class="card-accent"></div>
+                            <div class="application-main">
+                                <div class="application-header">
+                                    <div class="application-info" style="display: flex; align-items: center; gap: 12px;">
+                                        <div>
+                                            <h3><?php echo htmlspecialchars($app['institution_name'] ?? 'N/A'); ?></h3>
+                                            <span class="email"><?php echo htmlspecialchars($app['email'] ?? 'N/A'); ?></span>
+                                        </div>
+                                    </div>
+                                    <span class="status-badge <?php echo $status; ?>">
+                                        <?php echo ucfirst(str_replace('_', ' ', $status)); ?>
+                                    </span>
+                                </div>
+                                
+                                <div class="application-details-grid">
+                                    <div class="detail-item">
+                                        <span class="detail-label">Contact Person</span>
+                                        <span class="detail-value"><?php echo htmlspecialchars($app['contact_person'] ?? 'N/A'); ?></span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Position</span>
+                                        <span class="detail-value"><?php echo htmlspecialchars($app['contact_position'] ?? 'N/A'); ?></span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Phone Number</span>
+                                        <span class="detail-value"><?php echo htmlspecialchars($app['contact_phone'] ?? 'N/A'); ?></span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Institution Address</span>
+                                        <span class="detail-value"><?php echo htmlspecialchars($app['institution_address'] ?? 'N/A'); ?></span>
                                     </div>
                                 </div>
-                                <span class="status-badge <?php echo $status; ?>">
-                                    <?php echo ucfirst(str_replace('_', ' ', $status)); ?>
-                                </span>
-                            </div>
-                            
-                            <div class="application-details-grid">
-                                <div class="detail-item">
-                                    <span class="detail-label">Contact Person</span>
-                                    <span class="detail-value"><?php echo htmlspecialchars($app['contact_person'] ?? 'N/A'); ?></span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Position</span>
-                                    <span class="detail-value"><?php echo htmlspecialchars($app['contact_position'] ?? 'N/A'); ?></span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Phone Number</span>
-                                    <span class="detail-value"><?php echo htmlspecialchars($app['contact_phone'] ?? 'N/A'); ?></span>
-                                </div>
-                                <div class="detail-item">
-                                    <span class="detail-label">Institution Address</span>
-                                    <span class="detail-value"><?php echo htmlspecialchars($app['institution_address'] ?? 'N/A'); ?></span>
-                                </div>
-                            </div>
 
-                            <div class="payment-summary-box">
-                                <div class="payment-item">
-                                    <span class="payment-label">Receipt Number</span>
-                                    <span class="payment-value"><?php echo htmlspecialchars($app['receipt_number'] ?? 'N/A'); ?></span>
-                                </div>
-                                <div class="payment-item">
-                                    <span class="payment-label">Total Members</span>
-                                    <span class="payment-value"><?php echo htmlspecialchars($app['total_members'] ?? '0'); ?></span>
-                                </div>
-                                <div class="payment-item">
-                                    <span class="payment-label">Total Fee</span>
-                                    <span class="payment-value highlight">₱<?php echo number_format((float)($app['total_fee'] ?? 0), 2); ?></span>
-                                </div>
-                            </div>
-
-                            <div class="verification-container">
-                                <div class="verification-text">
-                                    <span style="color: var(--slate-600);">Verification Progress</span>
-                                    <span id="vcount-<?php echo $app['id']; ?>" style="color: var(--navy); font-weight: 700;"><?php echo $vCount; ?> / 6 Docs Verified</span>
-                                </div>
-                                <div class="progress-bg">
-                                    <div id="progress-<?php echo $app['id']; ?>" class="progress-fill <?php echo ($vCount >= 6) ? 'complete' : ''; ?>" style="width: <?php echo $progress; ?>%"></div>
-                                </div>
-                            </div>
-
-                            <!-- Review Notes -->
-                            <?php
-                                $docsObj = [];
-                                if (!empty($app['documents'])) {
-                                    $docsObj = is_string($app['documents']) ? json_decode($app['documents'], true) : $app['documents'];
-                                }
-                                $reviewNotes = $docsObj['review_notes'] ?? '';
-                                $status = $app['status'] ?? 'under_review';
-                            ?>
-                            <div style="background: var(--slate-50); border-radius: var(--radius); padding: 16px; margin-bottom: 20px; border: 1px solid var(--slate-200);">
-                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                    <label style="font-weight: 600; color: var(--slate-700); font-size: 0.875rem;">
-                                        <i class="fas fa-sticky-note"></i> Review Notes
-                                    </label>
-                                    <?php if ($status === 'requires_revision'): ?>
-                                        <button onclick="resubmitApplication('<?php echo $app['id']; ?>')" class="btn btn-sm btn-primary">
-                                            <i class="fas fa-redo"></i> Resubmit
-                                        </button>
-                                    <?php endif; ?>
-                                </div>
-                                <textarea id="notes-<?php echo $app['id']; ?>" style="width: 100%; height: 80px; padding: 12px; border-radius: 8px; border: 1px solid var(--slate-200); font-family: inherit; font-size: 0.875rem;" placeholder="Add review notes here..."><?php echo htmlspecialchars($reviewNotes); ?></textarea>
-                                <div style="text-align: right; margin-top: 8px;">
-                                    <button onclick="saveNote('<?php echo $app['id']; ?>')" class="btn btn-sm btn-outline">
-                                        <i class="fas fa-save"></i> Save Note
+                                <div class="application-actions">
+                                    <button onclick="viewDocuments('<?php echo $app['id']; ?>')" class="btn btn-outline">
+                                        <i class="fas fa-file-alt"></i> Review Documents
                                     </button>
                                 </div>
-                            </div>
-
-                            <div class="application-actions">
-                                <button onclick="viewDocuments('<?php echo $app['id']; ?>')" class="btn btn-outline">
-                                    <i class="fas fa-file-alt"></i> Review Documents
-                                </button>
-                                <?php if (in_array($status, ['pending', 'under_review', 'requires_revision'])): ?>
-                                    <button id="approve-<?php echo $app['id']; ?>" onclick="approveApplication('<?php echo $app['id']; ?>')" class="btn btn-success" <?php echo ($vCount < 6) ? 'disabled style="opacity:0.5; cursor:not-allowed"' : ''; ?>>
-                                        <i class="fas fa-check"></i> Approve
-                                    </button>
-                                    <button onclick="showRequestChangesModal('<?php echo $app['id']; ?>')" class="btn btn-warning">
-                                        <i class="fas fa-clock"></i> Request Changes
-                                    </button>
-                                    <button onclick="showRejectModal('<?php echo $app['id']; ?>')" class="btn btn-danger">
-                                        <i class="fas fa-times"></i> Reject
-                                    </button>
-                                <?php endif; ?>
                             </div>
                         </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        <?php endif; ?>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <div class="tab-panel" id="tab-rejected">
+            <?php if (empty($rejectedApps)): ?>
+                <div style="text-align: center; padding: 80px; background: white; border-radius: var(--radius); border: 2px dashed var(--slate-200); box-shadow: var(--shadow);">
+                    <i class="fas fa-folder-open" style="font-size: 4rem; color: var(--slate-200); margin-bottom: 20px;"></i>
+                    <h3 style="color: var(--slate-400); font-weight: 500;">No rejected applications.</h3>
+                </div>
+            <?php else: ?>
+                <div class="applications-list">
+                    <?php foreach ($rejectedApps as $app): 
+                        if (!is_array($app)) continue;
+                        $status = $app['status'] ?? 'rejected';
+                        $vCount = $app['verified_count'] ?? 0;
+                        $progress = ($vCount / 6) * 100;
+                    ?>
+                        <div class="application-card <?php echo $status; ?>">
+                            <div class="card-accent"></div>
+                            <div class="application-main">
+                                <div class="application-header">
+                                    <div class="application-info" style="display: flex; align-items: center; gap: 12px;">
+                                        <div>
+                                            <h3><?php echo htmlspecialchars($app['institution_name'] ?? 'N/A'); ?></h3>
+                                            <span class="email"><?php echo htmlspecialchars($app['email'] ?? 'N/A'); ?></span>
+                                        </div>
+                                    </div>
+                                    <span class="status-badge <?php echo $status; ?>">
+                                        <?php echo ucfirst(str_replace('_', ' ', $status)); ?>
+                                    </span>
+                                </div>
+                                
+                                <div class="application-details-grid">
+                                    <div class="detail-item">
+                                        <span class="detail-label">Contact Person</span>
+                                        <span class="detail-value"><?php echo htmlspecialchars($app['contact_person'] ?? 'N/A'); ?></span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Position</span>
+                                        <span class="detail-value"><?php echo htmlspecialchars($app['contact_position'] ?? 'N/A'); ?></span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Phone Number</span>
+                                        <span class="detail-value"><?php echo htmlspecialchars($app['contact_phone'] ?? 'N/A'); ?></span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Institution Address</span>
+                                        <span class="detail-value"><?php echo htmlspecialchars($app['institution_address'] ?? 'N/A'); ?></span>
+                                    </div>
+                                </div>
+
+                                <div class="application-actions">
+                                    <button onclick="viewDocuments('<?php echo $app['id']; ?>')" class="btn btn-outline">
+                                        <i class="fas fa-file-alt"></i> Review Documents
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+        </div>
     </main>
 
     <!-- DOCUMENTS MODAL -->
@@ -814,6 +850,14 @@ foreach ($applications as &$app) {
             if (e.target.classList.contains('modal')) {
                 document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
             }
+        };
+
+        window.switchTab = function(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
         };
     </script>
 </body>

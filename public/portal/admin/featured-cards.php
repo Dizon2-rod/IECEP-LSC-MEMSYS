@@ -263,7 +263,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 <div class="portal-shell">
-    <?php require_once dirname(__DIR__, 2) . '/includes/sidebar.php'; ?>
+    <?php require_once dirname(__DIR__, 3) . '/includes/sidebar.php'; ?>
     <main class="portal-main">
         <div class="page-header">
             <div>

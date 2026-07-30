@@ -109,7 +109,7 @@ $current_page = 'receipt';
     </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
+    <?php include __DIR__ . '/../../../../includes/sidebar.php'; ?>
     
     <div class="main-content">
         <div class="receipt-container">

@@ -57,7 +57,7 @@ $current_page = 'transparency';
 </head>
 <body>
     <?php include __DIR__ . '/../../../includes/header.php'; ?>
-    <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
+    <?php include __DIR__ . '/../../../../includes/sidebar.php'; ?>
     
     <div class="main-content">
         <div class="container">

@@ -24,7 +24,7 @@ $user = get_user_info();
 </head>
 <body>
     <div class="dashboard-container">
-        <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
+        <?php include __DIR__ . '/../../../../includes/sidebar.php'; ?>
         
         <main class="main-content main-content-with-sidebar">
             <header class="dashboard-header">

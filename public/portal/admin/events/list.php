@@ -19,7 +19,7 @@ $pageTitle = 'Event Management';
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/portal.css">
 </head>
 <body>
-    <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
+    <?php include __DIR__ . '/../../../../includes/sidebar.php'; ?>
     
     <div class="main-content">
         <div class="page-header">

@@ -5,7 +5,7 @@ require_role(['admin']);
 require_once __DIR__ . '/../../../includes/role-config.php';
 require_once __DIR__ . '/../../bootstrap.php';
 
-$current_page = 'blockchain-health';
+$current_page = 'health';
 
 $supabase = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -157,7 +157,7 @@ foreach ($recordTypes as $type) {
 </head>
 <body>
     <div class="dashboard-container">
-        <?php require_once __DIR__ . '/../../../includes/sidebar.php'; ?>
+        <?php require_once __DIR__ . '/../../../../includes/sidebar.php'; ?>
         
         <main class="main-content">
             <div class="container py-5">

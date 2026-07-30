@@ -218,7 +218,7 @@ $members = $db->fetchAll("SELECT up.user_id, up.full_name, i.name as institution
 </head>
 <body>
     <div class="container">
-        <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
+        <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
         
         <main class="main-content">
             <div class="page-header">

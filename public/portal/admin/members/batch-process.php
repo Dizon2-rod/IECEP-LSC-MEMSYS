@@ -18,7 +18,7 @@ if (!require_role(['admin'], false)) {
 
 // Get page title
 $page_title = "Bulk User Import";
-$current_page = 'bulk-import';
+$current_page = 'batch-process';
 ?>
 <!DOCTYPE html>
 <html lang="en">

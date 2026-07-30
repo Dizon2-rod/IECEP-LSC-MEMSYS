@@ -24,8 +24,22 @@ try {
     $totalMembersCount = is_array($totalMembersData) ? count($totalMembersData) : 0;
     $institutionsData = $supabase->select('institutions', ['select' => 'id']);
     $totalSchoolsCount = is_array($institutionsData) ? count($institutionsData) : 0;
+    $currentYear = date('Y');
+    $transactionsData = $supabase->select('transactions', [
+        'status' => 'eq.paid',
+        'created_at' => 'gte.' . $currentYear . '-01-01T00:00:00',
+        'select' => 'amount'
+    ]);
+    $totalCollections = 0;
+    if (is_array($transactionsData)) {
+        foreach ($transactionsData as $tx) {
+            $totalCollections += floatval($tx['amount'] ?? 0);
+        }
+    }
 } catch (Exception $e) {
     $pendingAffiliationsCount = $totalMembersCount = $totalSchoolsCount = 0;
+    $totalCollections = 0;
+    $loadError = true;
 }
 ?>
 <!DOCTYPE html>
@@ -256,7 +270,7 @@ try {
                 <div class="stat-card">
                     <div class="stat-icon icon-emerald"><i class="fas fa-wallet"></i></div>
                     <div class="stat-details">
-                        <h3>₱0.00</h3>
+                        <h3 title="<?php echo isset($loadError) ? 'Unable to load' : ''; ?>">₱<?php echo number_format($totalCollections, 2); ?></h3>
                         <p>Total Collections</p>
                     </div>
                 </div>
@@ -272,7 +286,7 @@ try {
                             <strong style="color: #0B1D4A; display: block;">Affiliation Management</strong>
                             <span style="font-size: 0.85rem;">Review and approve school requests to enable student registration.</span>
                         </div>
-                        <a href="<?php echo PORTAL_URL; ?>/admin/affiliations.php" class="btn-primary">
+                        <a href="<?php echo PORTAL_URL; ?>/admin/institutions/list.php" class="btn-primary">
                             Manage Requests <i class="fas fa-arrow-right"></i>
                         </a>
                     </div>
