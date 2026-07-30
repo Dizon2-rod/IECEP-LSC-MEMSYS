@@ -14,18 +14,23 @@ try {
     require_once SRC_PATH . 'lib/SupabaseClient.php';
     $supabase = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     $applications = $supabase->select('pending_affiliations', null, 'submitted_at', 'DESC');
+    
+    if (!is_array($applications)) {
+        error_log("Supabase returned non-array for pending_affiliations: " . json_encode($applications));
+        $applications = [];
+    }
 } catch (Exception $e) {
     error_log("Supabase affiliations load failed: " . $e->getMessage());
     $dataSource = 'none';
-}
-
-if ($dataSource === 'none' || empty($applications)) {
     $applications = [];
 }
 
-    foreach ($applications as &$app) {
-        $app['verified_count'] = 0;
-        $docs = [];
+foreach ($applications as &$app) {
+    if (!is_array($app)) {
+        continue;
+    }
+    $app['verified_count'] = 0;
+    $docs = [];
         
         if (!empty($app['documents'])) {
             $docsData = is_string($app['documents']) ? json_decode($app['documents'], true) : $app['documents'];
