@@ -53,6 +53,22 @@ try {
 
     $application = $supabase->select('pending_affiliations', ['id' => 'eq.' . $applicationId]);
     if (empty($application)) {
+        $application = null;
+    }
+    
+    if (!$application) {
+        require_once __DIR__ . '/../../../includes/db.php';
+        try {
+            $db = Database::getInstance();
+            $stmt = $db->prepare("SELECT * FROM pending_affiliations WHERE id = ?");
+            $stmt->execute([$applicationId]);
+            $application = $stmt->fetchAll();
+        } catch (Exception $e) {
+            $application = null;
+        }
+    }
+    
+    if (empty($application)) {
         sendResponse(false, '', 'Application not found');
     }
     $appData = $application[0];

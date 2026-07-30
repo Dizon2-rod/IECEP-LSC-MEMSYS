@@ -136,7 +136,7 @@ $current_page = 'bulk-import';
     <?php include __DIR__ . '/../../includes/navbar.php'; ?>
     
     <div class="dashboard-container">
-        <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
+        <?php include __DIR__ . '/../../../../includes/sidebar.php'; ?>
         
         <main class="dashboard-content">
             <div class="import-container">
