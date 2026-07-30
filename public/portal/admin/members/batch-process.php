@@ -23,7 +23,7 @@ $current_page = 'batch-process';
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <?php include __DIR__ . '/../../includes/head-meta.php'; ?>
+    <?php include __DIR__ . '/../../../../includes/head-meta.php'; ?>
     <title><?= htmlspecialchars($page_title) ?> - IECEP-LSC</title>
     <style>
         .import-container {
@@ -133,7 +133,7 @@ $current_page = 'batch-process';
     </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../../includes/navbar.php'; ?>
+    <?php include __DIR__ . '/../../../../includes/navbar.php'; ?>
     
     <div class="dashboard-container">
         <?php include __DIR__ . '/../../../../includes/sidebar.php'; ?>

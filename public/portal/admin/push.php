@@ -17,7 +17,7 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['admin', 'eb_p
 $message = '';
 $messageType = 'success';
 
-$config = require __DIR__ . '/../../includes/supabase.php';
+$config = require __DIR__ . '/../../../includes/supabase.php';
 $supabase = new App\Lib\SupabaseClient($config['url'], $config['service_role_key']);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

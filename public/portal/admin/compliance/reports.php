@@ -51,7 +51,7 @@ if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['ad
     </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../../includes/header.php'; ?>
+    <?php include __DIR__ . '/../../../../includes/header.php'; ?>
     
     <div class="container mt-4">
         <div class="row mb-4">

@@ -16,7 +16,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Import Members - IECEP-LSC Admin</title>
-    <?php include __DIR__ . '/../../includes/head-meta.php'; ?>
+    <?php include __DIR__ . '/../../../includes/head-meta.php'; ?>
     <style>
         .import-container {
             max-width: 800px;
@@ -299,7 +299,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../../includes/navbar.php'; ?>
+    <?php include __DIR__ . '/../../../includes/navbar.php'; ?>
 
     <div class="import-container">
         <div class="import-card">
@@ -542,7 +542,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
         }
     </script>
 
-    <?php include __DIR__ . '/../../includes/footer-new.php'; ?>
+    <?php include __DIR__ . '/../../../includes/footer-new.php'; ?>
 </body>
 </html>
 
