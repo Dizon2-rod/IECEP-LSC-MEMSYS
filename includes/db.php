@@ -140,6 +140,10 @@ class Database {
         return $this->connection->rollBack();
     }
 
+    public function escape($value) {
+        return $this->connection->quote($value);
+    }
+
     public function lastInsertId() {
         return $this->connection->lastInsertId();
     }

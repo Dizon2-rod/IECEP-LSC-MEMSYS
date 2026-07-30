@@ -163,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif ($fileSize > $maxSize) {
                 $errorMessage = 'Uploaded image must be 5MB or smaller.';
             } else {
-                $supabaseConfig = require dirname(__DIR__, 2) . '/includes/supabase.php';
+    $supabaseConfig = require dirname(__DIR__, 3) . '/includes/supabase.php';
                 if (!empty($supabaseConfig['service_role_key'])) {
                     $uploadedImageUrl = uploadToSupabaseStorage($file, $supabaseConfig);
                 }

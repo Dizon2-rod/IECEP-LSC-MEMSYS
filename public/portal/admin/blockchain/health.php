@@ -2,8 +2,8 @@
 require_once __DIR__ . '/../../auth_check.php';
 require_role(['admin']);
 
-require_once __DIR__ . '/../../../includes/role-config.php';
-require_once __DIR__ . '/../../bootstrap.php';
+require_once __DIR__ . '/../../../../includes/role-config.php';
+require_once __DIR__ . '/../../../../bootstrap.php';
 
 $current_page = 'health';
 

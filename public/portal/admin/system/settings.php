@@ -8,7 +8,7 @@ $current_page = basename(__FILE__, '.php');
 require_once __DIR__ . '/../../auth_check.php';
 require_role(['admin', 'super_admin']);
 
-require_once __DIR__ . '/../../../includes/paths.php';
+require_once __DIR__ . '/../../../../includes/paths.php';
 
 $user = get_user_info();
 ?>
