@@ -10,7 +10,7 @@ $memberId = $_GET['id'] ?? '';
 $mode = $_GET['mode'] ?? 'view';
 
 if (empty($memberId)) {
-    header('Location: member-directory.php');
+    header('Location: ../member-directory.php');
     exit;
 }
 
@@ -22,7 +22,7 @@ $member = $db->fetchOne("SELECT m.*, i.name as institution_name, i.acronym as in
     WHERE m.id = ?", [$memberId]);
 
 if (!$member) {
-    header('Location: member-directory.php');
+    header('Location: ../member-directory.php');
     exit;
 }
 
