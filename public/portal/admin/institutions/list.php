@@ -2,96 +2,52 @@
 
 require_once __DIR__ . '/../../bootstrap.php';
 $current_page = 'affiliations';
-error_reporting(0);
-ini_set('display_errors', 0);
 
 require_once __DIR__ . '/../../auth_check.php';
-require_once INCLUDES_PATH . 'config.php';
-require_once INCLUDES_PATH . 'db.php';
 require_role(['admin', 'super_admin', 'registration', 'committee_registration']);
 
 $user = get_user_info();
 
 $applications = [];
+$dataSource = 'supabase';
 try {
-    $db = Database::getInstance();
-    $stmt = $db->query("SELECT * FROM pending_affiliations ORDER BY submitted_at DESC");
-    $applications = $stmt->fetchAll();
+    require_once SRC_PATH . 'lib/SupabaseClient.php';
+    $supabase = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    $applications = $supabase->select('pending_affiliations', null, 'submitted_at', 'DESC');
 } catch (Exception $e) {
-    error_log("Local MySQL affiliations load failed: " . $e->getMessage());
+    error_log("Supabase affiliations load failed: " . $e->getMessage());
+    $dataSource = 'none';
+}
+
+if ($dataSource === 'none' || empty($applications)) {
     $applications = [];
 }
 
-foreach ($applications as &$app) {
-    $app['verified_count'] = 0;
-    $docs = [];
-    
-    if (!empty($app['documents'])) {
-        $docsData = is_string($app['documents']) ? json_decode($app['documents'], true) : $app['documents'];
-        if (is_array($docsData)) {
-            $docs = $docsData;
-        }
-    }
-    
-    if (empty($docs)) {
-        $fileFields = [
-            'letter_of_intent' => 'Letter of Intent',
-            'endorsement_letter' => 'Endorsement Letter',
-            'constitution_by_laws' => 'Constitution & By-Laws',
-            'officers_cvs' => 'Officers CVs',
-            'organizational_chart' => 'Organizational Chart',
-            'member_directory' => 'Member Directory'
-        ];
-        foreach ($fileFields as $field => $label) {
-            if (!empty($app[$field])) {
-                $filePath = $app[$field];
-                $localPath = str_replace('/IECEP-LSC-MEMSYS/public/', __DIR__ . '/../../', $filePath);
-                if (file_exists($localPath)) {
-                    $fileContent = file_get_contents($localPath);
-                    $base64Content = base64_encode($fileContent);
-                    $mimeType = mime_content_type($localPath);
-                    $fileName = basename($localPath);
-                    $pureBase64 = preg_replace('/^data:[^;]+;base64,/', '', $base64Content);
-                    $docs[$field] = [
-                        'name' => $fileName,
-                        'label' => $label,
-                        'content' => $base64Content,
-                        'type' => $mimeType,
-                        'verified' => false,
-                        'blockchain_hash' => hash('sha256', base64_decode($pureBase64))
-                    ];
-                }
+    foreach ($applications as &$app) {
+        $app['verified_count'] = 0;
+        $docs = [];
+        
+        if (!empty($app['documents'])) {
+            $docsData = is_string($app['documents']) ? json_decode($app['documents'], true) : $app['documents'];
+            if (is_array($docsData)) {
+                $docs = $docsData;
             }
         }
         
         if (!empty($docs)) {
-            $app['documents'] = $docs;
-        }
-    } else {
-        foreach ($docs as $key => &$doc) {
-            if (!isset($doc['verified'])) {
-                $doc['verified'] = false;
-            }
-            if (isset($doc['content']) && $key !== 'review_notes' && !isset($doc['blockchain_hash'])) {
-                $pureBase64 = preg_replace('/^data:[^;]+;base64,/', '', $doc['content']);
-                $doc['blockchain_hash'] = hash('sha256', base64_decode($pureBase64));
-            }
-        }
-    }
-    
-    if (!empty($docs)) {
-        foreach ($docs as $key => &$doc) {
-            if (isset($doc['content']) && $key !== 'review_notes') {
-                $pureBase64 = preg_replace('/^data:[^;]+;base64,/', '', $doc['content']);
-                $doc['blockchain_hash'] = hash('sha256', base64_decode($pureBase64));
-                if (!empty($doc['verified']) && $doc['verified'] === true) {
-                    $app['verified_count']++;
+            foreach ($docs as $key => &$doc) {
+                if (isset($doc['content']) && $key !== 'review_notes') {
+                    $pureBase64 = preg_replace('/^data:[^;]+;base64,/', '', $doc['content']);
+                    $doc['blockchain_hash'] = hash('sha256', base64_decode($pureBase64));
+                    if (!empty($doc['verified']) && $doc['verified'] === true) {
+                        $app['verified_count']++;
+                    }
                 }
             }
         }
+        $app['documents'] = $docs;
     }
-    $app['documents'] = $docs;
-}
+    unset($app);
 ?>
 <!DOCTYPE html>
 <html lang="en">
