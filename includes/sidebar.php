@@ -96,7 +96,7 @@ function isMenuItemActive($item_url, $current_page) {
     --sidebar-transition: all 0.3s ease;
 }
 
-.sidebar {
+#sidebar {
     width: 260px;
     background: var(--sidebar-primary);
     color: var(--sidebar-white);
@@ -113,18 +113,18 @@ function isMenuItemActive($item_url, $current_page) {
     box-shadow: var(--sidebar-shadow-lg);
 }
 
-.sidebar.mobile-hidden {
+#sidebar.mobile-hidden {
     transform: translateX(-100%);
 }
 
-.sidebar-header {
+#sidebar .sidebar-header {
     padding: 28px 20px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.15);
     text-align: center;
     background: linear-gradient(135deg, rgba(11, 29, 74, 0.95) 0%, rgba(30, 58, 110, 0.95) 100%);
 }
 
-.sidebar-brand {
+#sidebar .sidebar-brand {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -132,13 +132,13 @@ function isMenuItemActive($item_url, $current_page) {
     margin-bottom: 12px;
 }
 
-.sidebar-brand img {
+#sidebar .sidebar-brand img {
     width: 36px;
     height: auto;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
-.sidebar-brand h3 {
+#sidebar .sidebar-brand h3 {
     font-size: 1.4rem;
     font-weight: 800;
     margin: 0;
@@ -148,7 +148,7 @@ function isMenuItemActive($item_url, $current_page) {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-.sidebar-header p {
+#sidebar .sidebar-header p {
     font-size: 1.1rem;
     font-weight: 600;
     opacity: 0.95;
@@ -158,7 +158,7 @@ function isMenuItemActive($item_url, $current_page) {
     letter-spacing: 0.01em;
 }
 
-.user-role-badge {
+#sidebar .user-role-badge {
     background: rgba(196, 154, 0, 0.25);
     color: #C49A00;
     padding: 8px 16px;
@@ -175,13 +175,13 @@ function isMenuItemActive($item_url, $current_page) {
     letter-spacing: 0.05em;
 }
 
-.sidebar-actions {
+#sidebar .sidebar-actions {
     display: flex;
     justify-content: center;
     margin-top: 16px;
 }
 
-.notification-bell {
+#sidebar .notification-bell {
     position: relative;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.14);
@@ -192,12 +192,12 @@ function isMenuItemActive($item_url, $current_page) {
     transition: background 0.25s ease, transform 0.2s ease;
 }
 
-.notification-bell:hover {
+#sidebar .notification-bell:hover {
     background: rgba(255, 255, 255, 0.14);
     transform: translateY(-1px);
 }
 
-.notification-count {
+#sidebar .notification-count {
     position: absolute;
     top: -6px;
     right: -6px;
@@ -213,11 +213,11 @@ function isMenuItemActive($item_url, $current_page) {
     display: none;
 }
 
-.notification-count.visible {
+#sidebar .notification-count.visible {
     display: inline-flex;
 }
 
-.notification-dropdown {
+#sidebar .notification-dropdown {
     display: none;
     position: absolute;
     top: 134px;
@@ -232,11 +232,11 @@ function isMenuItemActive($item_url, $current_page) {
     overflow: hidden;
 }
 
-.notification-dropdown.open {
+#sidebar .notification-dropdown.open {
     display: block;
 }
 
-.notification-header {
+#sidebar .notification-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -246,7 +246,7 @@ function isMenuItemActive($item_url, $current_page) {
     font-weight: 700;
 }
 
-.notification-clear {
+#sidebar .notification-clear {
     background: transparent;
     border: none;
     color: rgba(255, 255, 255, 0.65);
@@ -254,7 +254,7 @@ function isMenuItemActive($item_url, $current_page) {
     font-size: 0.9rem;
 }
 
-.notification-controls {
+#sidebar .notification-controls {
     display: flex;
     justify-content: space-between;
     gap: 8px;
@@ -263,7 +263,7 @@ function isMenuItemActive($item_url, $current_page) {
     background: rgba(255, 255, 255, 0.03);
 }
 
-.notification-action {
+#sidebar .notification-action {
     flex: 1;
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.12);
@@ -275,11 +275,11 @@ function isMenuItemActive($item_url, $current_page) {
     text-align: center;
 }
 
-.notification-action:hover {
+#sidebar .notification-action:hover {
     background: rgba(255, 255, 255, 0.15);
 }
 
-.notification-list {
+#sidebar .notification-list {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -287,57 +287,57 @@ function isMenuItemActive($item_url, $current_page) {
     overflow-y: auto;
 }
 
-.notification-item {
+#sidebar .notification-item {
     padding: 16px 18px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     color: rgba(255, 255, 255, 0.92);
 }
 
-.notification-item.unread {
+#sidebar .notification-item.unread {
     background: rgba(255, 255, 255, 0.05);
 }
 
-.notification-item:last-child {
+#sidebar .notification-item:last-child {
     border-bottom: none;
 }
 
-.notification-title {
+#sidebar .notification-title {
     font-weight: 700;
     margin-bottom: 6px;
 }
 
-.notification-body {
+#sidebar .notification-body {
     font-size: 0.9rem;
     margin-bottom: 8px;
 }
 
-.notification-time {
+#sidebar .notification-time {
     font-size: 0.78rem;
     opacity: 0.7;
 }
 
-.notification-empty {
+#sidebar .notification-empty {
     padding: 18px;
     color: rgba(255, 255, 255, 0.75);
     text-align: center;
 }
 
-.sidebar-nav {
+#sidebar .sidebar-nav {
     flex: 1;
     padding: 20px 0;
 }
 
-.nav-menu {
+#sidebar .nav-menu {
     list-style: none;
     margin: 0;
     padding: 0;
 }
 
-.nav-menu li {
+#sidebar .nav-menu li {
     margin-bottom: 2px;
 }
 
-.nav-menu a {
+#sidebar .nav-menu a {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -351,12 +351,12 @@ function isMenuItemActive($item_url, $current_page) {
     position: relative;
 }
 
-.nav-menu a:hover {
+#sidebar .nav-menu a:hover {
     background: rgba(255, 255, 255, 0.1);
     color: var(--sidebar-white);
 }
 
-.nav-menu a.active {
+#sidebar .nav-menu a.active {
     background: rgba(196, 154, 0, 0.15);
     color: var(--sidebar-accent);
     border-left: 4px solid #C49A00;
@@ -364,7 +364,7 @@ function isMenuItemActive($item_url, $current_page) {
     position: relative;
 }
 
-.nav-menu a.active::before {
+#sidebar .nav-menu a.active::before {
     content: '';
     position: absolute;
     left: 0;
@@ -375,25 +375,25 @@ function isMenuItemActive($item_url, $current_page) {
     box-shadow: 0 0 8px rgba(196, 154, 0, 0.4);
 }
 
-.nav-menu i {
+#sidebar .nav-menu i {
     width: 20px;
     text-align: center;
     font-size: 0.9rem;
 }
 
-.sidebar-footer {
+#sidebar .sidebar-footer {
     padding: 20px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.user-info {
+#sidebar .user-info {
     display: flex;
     align-items: center;
     gap: 12px;
     margin-bottom: 16px;
 }
 
-.user-avatar {
+#sidebar .user-avatar {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -411,7 +411,7 @@ function isMenuItemActive($item_url, $current_page) {
     overflow: hidden;
 }
 
-.user-avatar::before {
+#sidebar .user-avatar::before {
     content: '';
     position: absolute;
     top: 0;
@@ -422,7 +422,7 @@ function isMenuItemActive($item_url, $current_page) {
     border-radius: 50%;
 }
 
-.user-avatar img {
+#sidebar .user-avatar img {
     width: 100%;
     height: 100%;
     border-radius: 50%;
@@ -430,25 +430,29 @@ function isMenuItemActive($item_url, $current_page) {
     border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
-.user-details {
+#sidebar .user-details {
     flex: 1;
 }
 
-.user-name {
+#sidebar .user-name {
     font-weight: 600;
     font-size: 0.9rem;
     color: var(--sidebar-white);
     font-family: 'Inter', sans-serif;
 }
 
-.user-email {
+#sidebar .user-email {
     font-size: 0.8rem;
     color: rgba(255, 255, 255, 0.6);
     margin-top: 2px;
     font-family: 'Inter', sans-serif;
 }
 
-.logout-btn {
+#sidebar .sidebar-pwa-actions {
+    margin-bottom: 12px;
+}
+
+#sidebar .logout-btn {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -463,7 +467,7 @@ function isMenuItemActive($item_url, $current_page) {
     font-family: 'Inter', sans-serif;
 }
 
-.logout-btn:hover {
+#sidebar .logout-btn:hover {
     background: rgba(239, 68, 68, 0.3);
     color: #f87171;
 }
@@ -513,7 +517,7 @@ function isMenuItemActive($item_url, $current_page) {
 }
 
 /* Sidebar itself */
-.sidebar {
+#sidebar {
     position: fixed;
     top: 0;
     left: 0;
@@ -536,10 +540,10 @@ function isMenuItemActive($item_url, $current_page) {
 
 /* Mobile: hide sidebar off-canvas */
 @media (max-width: 767.98px) {
-    .sidebar {
+    #sidebar {
         transform: translateX(-100%);
     }
-    .sidebar.open {
+    #sidebar.open {
         transform: translateX(0);
     }
     .main-content {
@@ -651,12 +655,12 @@ if (typeof window.sidebarInitialized === 'undefined') {
         const sidebarOverlay = document.getElementById('sidebarOverlay');
         
         function toggleSidebar() {
-            sidebar.classList.toggle('active');
+            sidebar.classList.toggle('open');
             sidebarOverlay.classList.toggle('active');
             
             // Prevent body scroll when sidebar is open on mobile
             if (window.innerWidth <= 767) {
-                if (sidebar.classList.contains('active')) {
+                if (sidebar.classList.contains('open')) {
                     document.body.style.overflow = 'hidden';
                 } else {
                     document.body.style.overflow = '';
@@ -665,7 +669,7 @@ if (typeof window.sidebarInitialized === 'undefined') {
         }
         
         function closeSidebar() {
-            sidebar.classList.remove('active');
+            sidebar.classList.remove('open');
             sidebarOverlay.classList.remove('active');
             document.body.style.overflow = '';
         }
@@ -682,7 +686,7 @@ if (typeof window.sidebarInitialized === 'undefined') {
         
         // Close sidebar on escape key
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && sidebar.classList.contains('active')) {
+            if (e.key === 'Escape' && sidebar.classList.contains('open')) {
                 closeSidebar();
             }
         });

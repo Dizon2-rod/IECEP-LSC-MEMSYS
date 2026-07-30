@@ -74,8 +74,15 @@ try {
         .dashboard-scope .dashboard-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
+            gap: 1.5rem;
             margin-bottom: 2rem;
+        }
+
+        .dashboard-scope .header-badges {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
         }
 
         .dashboard-scope .header-title h1 {
@@ -225,13 +232,15 @@ try {
                 <div class="header-title">
                     <h1>Admin Dashboard</h1>
                 </div>
-                <div class="welcome-badge">
-                    <i class="fas fa-user-circle"></i>
-                    <span><strong><?php echo htmlspecialchars($displayName); ?></strong> • <?php echo htmlspecialchars($roleDisplay); ?></span>
-                </div>
-                <div class="welcome-badge" style="margin-top: 0.75rem; background: rgba(212,175,55,0.12); color: #0B1D4A; box-shadow: none; border: 1px solid rgba(212,175,55,0.25);">
-                    <i class="fas fa-calendar-alt"></i>
-                    <span><?php echo htmlspecialchars($currentDate); ?> — Manage members, schools, finances, and compliance from here.</span>
+                <div class="header-badges">
+                    <div class="welcome-badge">
+                        <i class="fas fa-user-circle"></i>
+                        <span><strong><?php echo htmlspecialchars($displayName); ?></strong> • <?php echo htmlspecialchars($roleDisplay); ?></span>
+                    </div>
+                    <div class="welcome-badge" style="background: rgba(212,175,55,0.12); color: #0B1D4A; box-shadow: none; border: 1px solid rgba(212,175,55,0.25);">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span><?php echo htmlspecialchars($currentDate); ?> — Manage members, schools, finances, and compliance from here.</span>
+                    </div>
                 </div>
             </header>
 
