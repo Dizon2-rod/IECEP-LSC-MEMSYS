@@ -19,7 +19,7 @@ $member_id = $_SESSION['member_id'] ?? $user['member_id'] ?? null;
 $event_id = $_GET['event_id'] ?? null;
 
 if (!$member_id || !$event_id) {
-    header('Location: /login.php');
+    header('Location: ' . BASE_URL . '/login.php');
     exit;
 }
 
@@ -282,3 +282,4 @@ $dompdf->render();
 header('Content-Type: application/pdf');
 header('Content-Disposition: attachment; filename="certificate_' . $certificate['certificate_number'] . '.pdf"');
 echo $dompdf->output();
+

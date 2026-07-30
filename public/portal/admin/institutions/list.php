@@ -397,7 +397,6 @@ foreach ($applications as &$app) {
                 </div>
             <?php endif; ?>
         </div>
-        </div>
     </main>
 
     <!-- DOCUMENTS MODAL -->

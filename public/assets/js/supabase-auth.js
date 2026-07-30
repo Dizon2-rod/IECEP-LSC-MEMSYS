@@ -37,7 +37,8 @@ const SupabaseAuth = {
         localStorage.removeItem(this.TOKEN_KEY);
         localStorage.removeItem(this.USER_KEY);
         supabase.auth.signOut();
-        window.location.href = '/login.php';
+        const basePath = window.location.pathname.split('/')[1] ? '/' + window.location.pathname.split('/')[1] + '/' : '/';
+        window.location.href = basePath + 'login.php';
     },
 
     isLoggedIn() {
@@ -214,7 +215,8 @@ const SupabaseAuth = {
     // Check if on correct portal page
     async requireAuth(requiredRole = null) {
         if (!this.isLoggedIn()) {
-            window.location.href = '/login.php';
+            const basePath = window.location.pathname.split('/')[1] ? '/' + window.location.pathname.split('/')[1] + '/' : '/';
+            window.location.href = basePath + 'login.php';
             return null;
         }
 

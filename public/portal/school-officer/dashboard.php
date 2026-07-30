@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../../includes/middleware/auth.php';
 
 // Check if user is school_officer
 if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_officer') {
-    header('Location: /login.php');
+    header('Location: ' . BASE_URL . '/login.php');
     exit;
 }
 

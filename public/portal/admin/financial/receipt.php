@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../../../includes/config.php';
 require_once __DIR__ . '/../../../../includes/middleware/auth.php';
 
 if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-    header('Location: /login.php');
+    header('Location: ' . BASE_URL . '/login.php');
     exit;
 }
 
@@ -226,3 +226,4 @@ $current_page = 'receipt';
     </script>
 </body>
 </html>
+

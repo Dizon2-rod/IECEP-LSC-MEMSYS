@@ -11,7 +11,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'school_officer') {
-    header('Location: /login.php');
+    header('Location: ' . BASE_URL . '/login.php');
     exit;
 }
 
@@ -144,3 +144,4 @@ $totalFee = calculateTotalFee($memberCount);
     </script>
 </body>
 </html>
+

@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../../../includes/middleware/auth.php';
 
 // Check if user is admin
 if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['admin', 'super_admin', 'auditor'])) {
-    header('Location: /login.php');
+    header('Location: ' . BASE_URL . '/login.php');
     exit;
 }
 ?>
@@ -294,3 +294,4 @@ if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['ad
     </script>
 </body>
 </html>
+

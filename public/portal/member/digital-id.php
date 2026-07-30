@@ -11,7 +11,7 @@ $user = get_user_info();
 $member_id = $_SESSION['member_id'] ?? $user['member_id'] ?? null;
 
 if (!$member_id) {
-    header('Location: /login.php');
+    header('Location: ' . BASE_URL . '/login.php');
     exit;
 }
 
@@ -214,3 +214,4 @@ $hasDigitalId = !empty($digitalIdUrl);
     </script>
 </body>
 </html>
+

@@ -197,8 +197,9 @@ The project is organized into the following primary folders:
   - Count active members and distinct attendance records.
   - Compute participation rate and hosted event count.
   - Derive compliance status:
-    - `compliant` if participation >= 40% and hosted events >= 1
-    - `at_risk` otherwise.
+    - `compliant` (participation ≥ 40% and hosted events ≥ 1)
+    - `at_risk` (one condition fails)
+    - `non_compliant` (both conditions fail)
   - Store compliance scores in `compliance_scores` via upsert.
   - Record compliance calculations in blockchain audit trail.
   - Send alert notifications to school officers when an institution is at risk.
@@ -289,7 +290,7 @@ The system core data tables include:
 - `user_profiles.institution_id` → `institutions.id`
 - `members.institution_id` → `institutions.id`
 - `transactions.institution_id` → `institutions.id`
-- `attendance.institution_id` → `institutions.id`
+- `attendance.event_id` → `events.id`
 - `attendance.user_id` → `user_profiles.id`
 - `compliance_scores.institution_id` → `institutions.id`
 - `blockchain_records.entity_id` → matched business records by type
@@ -389,7 +390,7 @@ The ER model is based on the following relationships:
 ### Financial and Payment Workflow
 
 1. Fees are calculated using `public/api/calculate-fees.php` and internal fee calculators.
-2. Payments may be simulated through `public/api/simulate-payment.php`.
+2. Note: A simulation helper exists for testing purposes (`public/api/simulate-payment.php`), but live payments are recorded manually by the treasurer.
 3. Transactions are stored in `transactions`.
 4. Receipts are generated through `public/api/generate-receipt.php`.
 

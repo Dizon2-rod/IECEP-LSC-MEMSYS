@@ -37,14 +37,22 @@ if ((isset($_GET['logout']) && $_GET['logout'] === 'true') || (isset($_POST['log
 
 // Redirect to dashboard if already logged in
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
-    $role = $_SESSION['role'] ?? '';
-    $redirectMap = [
-        'admin'          => PORTAL_URL . '/admin/dashboard.php',
-        'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
-    ];
-    $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/school-officer/dashboard.php';
-    header('Location: ' . $redirectUrl);
-    exit;
+    if (!isset($_SESSION['user'])) {
+        session_unset();
+        session_destroy();
+        session_write_close();
+        setcookie(session_name(), '', time() - 42000, '/');
+    } else {
+        $role = $_SESSION['role'] ?? '';
+        $redirectMap = [
+            'admin'          => PORTAL_URL . '/admin/dashboard.php',
+            'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
+            'member'         => PORTAL_URL . '/member/dashboard.php',
+        ];
+        $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php';
+        header('Location: ' . $redirectUrl);
+        exit;
+    }
 }
 
 $error = '';

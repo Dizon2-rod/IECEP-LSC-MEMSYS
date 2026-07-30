@@ -6,7 +6,7 @@ require_once __DIR__ . '/../../../../includes/middleware/auth.php';
 
 // Check if user is admin
 if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
-    header('Location: /login.php');
+    header('Location: ' . BASE_URL . '/login.php');
     exit;
 }
 
@@ -418,3 +418,4 @@ $current_page = 'reports';
     </script>
 </body>
 </html>
+

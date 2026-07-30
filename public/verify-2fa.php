@@ -9,7 +9,7 @@ $supabase = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 $user = $_SESSION['user'] ?? null;
 if (!$user) {
-    header('Location: /login.php');
+    header('Location: ' . BASE_URL . '/login.php');
     exit;
 }
 

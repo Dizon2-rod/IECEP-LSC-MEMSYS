@@ -304,16 +304,9 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     if (strpos($currentPath, 'apply.php') === false) {
         $role = $_SESSION['user']['role'] ?? '';
         $redirectMap = [
-            'eb_president'         => PORTAL_URL . '/super-admin/dashboard.php',
-            'admin'                => PORTAL_URL . '/admin/dashboard.php',
-            'school_officer'       => PORTAL_URL . '/school-officer/dashboard.php',
-            'member'               => PORTAL_URL . '/member/dashboard.php',
-            'eb_pro_1'             => PORTAL_URL . '/creatives/dashboard.php',
-            'committee_creatives'  => PORTAL_URL . '/creatives/dashboard.php',
-            'eb_pro_2'             => PORTAL_URL . '/logistics/dashboard.php',
-            'eb_treasurer'         => PORTAL_URL . '/treasurer/dashboard.php',
-            'eb_auditor'           => PORTAL_URL . '/auditor/dashboard.php',
-            'eb_secretary_general' => PORTAL_URL . '/secretary/dashboard.php',
+            'admin'          => PORTAL_URL . '/admin/dashboard.php',
+            'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
+            'member'         => PORTAL_URL . '/member/dashboard.php',
         ];
         header('Location: ' . ($redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php'));
         exit;
