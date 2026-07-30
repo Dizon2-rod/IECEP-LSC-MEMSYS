@@ -17,7 +17,7 @@ try {
     require_once SRC_PATH . 'lib/SupabaseClient.php';
     $supabase = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     
-    $pendingApps = $supabase->select('pending_affiliations', ['status' => 'eq.pending']);
+    $pendingApps = $supabase->select('pending_affiliations', ['status' => 'eq.pending_review']);
     $approvedApps = $supabase->select('pending_affiliations', ['status' => 'eq.approved']);
     $rejectedApps = $supabase->select('pending_affiliations', ['status' => 'eq.rejected']);
     

@@ -309,6 +309,11 @@ try {
                     <label>Content</label>
                     <textarea name="content" required></textarea>
                 </div>
+                <div class="form-group">
+                    <label>Image (Optional - for infographics/event promos)</label>
+                    <input type="file" name="image" accept="image/*" id="announcementImage" onchange="previewImage(this)">
+                    <img id="imagePreview" style="display: none; margin-top: 10px; max-width: 200px; max-height: 200px; border-radius: 8px; border: 1px solid #ddd;">
+                </div>
                 <div class="modal-actions">
                     <button type="button" onclick="closeCreateModal()" class="btn btn-secondary">Cancel</button>
                     <button type="submit" class="btn btn-primary">Create</button>
@@ -337,13 +342,44 @@ try {
             document.getElementById('createModal').classList.remove('active');
         }
 
+        function previewImage(input) {
+            const preview = document.getElementById('imagePreview');
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.style.display = 'none';
+            }
+        }
+
         document.getElementById('createForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
             const data = Object.fromEntries(formData);
             
-            fetch('<?php echo BASE_URL; ?>/api/create-announcement.php', {
+            const imageInput = document.getElementById('announcementImage');
+            if (imageInput.files && imageInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    data.image = e.target.result;
+                    submitAnnouncement(data);
+                };
+                reader.readAsDataURL(imageInput.files[0]);
+            } else {
+                submitAnnouncement(data);
+            }
+        });
+
+        function submitAnnouncement(data) {
+            fetch('<?php echo BASE_URL; ?>/api/announcements.php?action=create', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             })

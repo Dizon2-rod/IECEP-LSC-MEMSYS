@@ -19,6 +19,7 @@ switch ($action) {
 
         $title = trim($_POST['title'] ?? '');
         $body = trim($_POST['body'] ?? '');
+        $image = trim($_POST['image'] ?? '');
 
         if (empty($title) || empty($body)) {
             http_response_code(400);
@@ -28,6 +29,11 @@ switch ($action) {
 
         // Sanitize HTML content
         $body = htmlspecialchars($body, ENT_QUOTES, 'UTF-8');
+
+        // Prepend image if provided
+        if (!empty($image)) {
+            $body = '<img src="' . htmlspecialchars($image, ENT_QUOTES, 'UTF-8') . '" style="max-width: 100%; height: auto; border-radius: 8px; margin-bottom: 12px;"><br>' . $body;
+        }
 
         $data = [
             'title' => $title,

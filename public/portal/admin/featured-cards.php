@@ -237,7 +237,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <style>
         body { font-family: 'Inter', sans-serif; background: #f5f7fb; color: #1f2937; }
         .portal-shell { display: flex; min-height: 100vh; }
-        .portal-main { flex: 1; padding: 2rem; }
+        .portal-main { flex: 1; padding: 2rem; margin-left: 260px; }
         .portal-card { background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(11, 29, 74, 0.08); border: 1px solid #eef2f7; padding: 1.5rem; }
         .page-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
         .page-title { margin: 0; color: #0B1D4A; font-size: 1.55rem; font-weight: 700; }
