@@ -44,7 +44,7 @@ foreach ($events as $event) {
 }
 
 // Get attendance
-$attendance = $db->fetchAll("SELECT ea.event_id, ea.member_id, ea.check_in_time, ea.created_at, m.institution_id 
+$attendance = $db->fetchAll("SELECT ea.event_id, ea.member_id, ea.check_in_time, m.institution_id 
     FROM event_attendees ea 
     JOIN members m ON ea.member_id = m.id
     WHERE ea.event_id IN ('" . implode("','", array_map([$db, 'escape'], $eventIds)) . "')");

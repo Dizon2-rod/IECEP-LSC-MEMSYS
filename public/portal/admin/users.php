@@ -568,7 +568,7 @@ function showToast(message, type) {
 }
 </script>
 
-<?php include '../../includes/footer.php'; ?>
+<?php include __DIR__ . '/../../../includes/footer.php'; ?>
 
 <?php
 function getRoleColor($role) {

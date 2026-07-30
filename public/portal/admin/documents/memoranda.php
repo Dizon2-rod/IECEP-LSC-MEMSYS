@@ -28,13 +28,19 @@ if (!empty($priority)) {
 $whereClause = implode(' AND ', $where);
 
 // Get memoranda
-$memoranda = $db->fetchAll("SELECT m.*, i.name as institution_name, up.full_name as created_by_name
-    FROM memoranda m
-    LEFT JOIN institutions i ON m.institution_id = i.id
-    LEFT JOIN user_profiles up ON m.created_by = up.user_id
-    WHERE $whereClause
-    ORDER BY m.created_at DESC
-    LIMIT 100", $params);
+$memoranda = [];
+try {
+    $memoranda = $db->fetchAll("SELECT m.*, i.name as institution_name, up.full_name as created_by_name
+        FROM memoranda m
+        LEFT JOIN institutions i ON m.institution_id = i.id
+        LEFT JOIN user_profiles up ON m.created_by = up.user_id
+        WHERE $whereClause
+        ORDER BY m.created_at DESC
+        LIMIT 100", $params);
+} catch (Exception $e) {
+    error_log("Memoranda query failed: " . $e->getMessage());
+    $memoranda = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

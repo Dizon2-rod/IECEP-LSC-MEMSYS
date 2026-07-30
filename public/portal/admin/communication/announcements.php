@@ -28,13 +28,19 @@ if (!empty($priority)) {
 $whereClause = implode(' AND ', $where);
 
 // Get announcements
-$announcements = $db->fetchAll("SELECT a.*, i.name as institution_name, up.full_name as created_by_name
-    FROM announcements a
-    LEFT JOIN institutions i ON a.institution_id = i.id
-    LEFT JOIN user_profiles up ON a.created_by = up.user_id
-    WHERE $whereClause
-    ORDER BY a.created_at DESC
-    LIMIT 100", $params);
+$announcements = [];
+try {
+    $announcements = $db->fetchAll("SELECT a.*, i.name as institution_name, up.full_name as created_by_name
+        FROM announcements a
+        LEFT JOIN institutions i ON a.institution_id = i.id
+        LEFT JOIN user_profiles up ON a.created_by = up.user_id
+        WHERE $whereClause
+        ORDER BY a.created_at DESC
+        LIMIT 100", $params);
+} catch (Exception $e) {
+    error_log("Announcements query failed: " . $e->getMessage());
+    $announcements = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

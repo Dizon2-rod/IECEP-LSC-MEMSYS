@@ -29,16 +29,28 @@ if (!empty($search)) {
 $whereClause = implode(' AND ', $where);
 
 // Get documents
-$documents = $db->fetchAll("SELECT d.*, i.name as institution_name, up.full_name as uploaded_by_name
-    FROM documents d
-    LEFT JOIN institutions i ON d.institution_id = i.id
-    LEFT JOIN user_profiles up ON d.uploaded_by = up.user_id
-    WHERE $whereClause
-    ORDER BY d.created_at DESC
-    LIMIT 100", $params);
+$documents = [];
+try {
+    $documents = $db->fetchAll("SELECT d.*, i.name as institution_name, up.full_name as uploaded_by_name
+        FROM documents d
+        LEFT JOIN institutions i ON d.institution_id = i.id
+        LEFT JOIN user_profiles up ON d.uploaded_by = up.user_id
+        WHERE $whereClause
+        ORDER BY d.created_at DESC
+        LIMIT 100", $params);
+} catch (Exception $e) {
+    error_log("Documents query failed: " . $e->getMessage());
+    $documents = [];
+}
 
 // Get categories
-$categories = $db->fetchAll("SELECT DISTINCT category FROM documents WHERE category IS NOT NULL ORDER BY category");
+$categories = [];
+try {
+    $categories = $db->fetchAll("SELECT DISTINCT category FROM documents WHERE category IS NOT NULL ORDER BY category");
+} catch (Exception $e) {
+    error_log("Documents categories query failed: " . $e->getMessage());
+    $categories = [];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

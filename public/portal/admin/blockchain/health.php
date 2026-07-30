@@ -56,7 +56,7 @@ foreach ($recordTypes as $type) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <?php require_once __DIR__ . '/../../../includes/head-meta.php'; ?>
+    <?php require_once __DIR__ . '/../../../../includes/head-meta.php'; ?>
     <title>Blockchain Health Check - Admin Portal</title>
     <style>
         .health-card {

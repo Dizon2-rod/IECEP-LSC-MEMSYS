@@ -56,7 +56,7 @@ $current_page = 'reports';
     </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../../../../includes/header.php'; ?>
+    <?php include __DIR__ . '/../../../../includes/navbar.php'; ?>
     <?php include __DIR__ . '/../../../../includes/sidebar.php'; ?>
     
     <div class="main-content">

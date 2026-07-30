@@ -87,7 +87,7 @@ function uploadToSupabaseStorage(array $uploadedFile, array $supabaseConfig): ?s
 }
 
 try {
-    $supabaseConfig = require dirname(__DIR__, 2) . '/includes/supabase.php';
+    $supabaseConfig = require dirname(__DIR__, 3) . '/includes/supabase.php';
     $supabaseClient = new \App\Lib\SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
     if (!empty($supabaseConfig['service_role_key'])) {
         $supabaseClient->setServiceRoleKey($supabaseConfig['service_role_key']);
