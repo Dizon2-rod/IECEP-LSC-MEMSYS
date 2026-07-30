@@ -16,7 +16,8 @@ try {
     $applications = $supabase->select('pending_affiliations', null, 'submitted_at', 'DESC');
     
     if (!is_array($applications)) {
-        error_log("Supabase returned non-array for pending_affiliations: " . json_encode($applications));
+        $applications = [];
+    } elseif (isset($applications['code']) && isset($applications['message'])) {
         $applications = [];
     }
 } catch (Exception $e) {
@@ -215,21 +216,21 @@ foreach ($applications as &$app) {
             <div class="stat-card">
                 <div class="stat-icon pending"><i class="fas fa-clock"></i></div>
                 <div class="stat-details">
-                    <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => in_array($a['status'] ?? '', ['pending', 'under_review', 'requires_revision']))); ?></div>
+                    <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => is_array($a) && in_array($a['status'] ?? '', ['pending', 'under_review', 'requires_revision']))); ?></div>
                     <div class="stat-label">Pending Review</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon approved"><i class="fas fa-check-circle"></i></div>
                 <div class="stat-details">
-                    <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => $a['status'] === 'approved')); ?></div>
+                    <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => is_array($a) && $a['status'] === 'approved')); ?></div>
                     <div class="stat-label">Approved</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon rejected"><i class="fas fa-times-circle"></i></div>
                 <div class="stat-details">
-                    <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => $a['status'] === 'rejected')); ?></div>
+                    <div class="stat-value"><?php echo count(array_filter($applications, fn($a) => is_array($a) && $a['status'] === 'rejected')); ?></div>
                     <div class="stat-label">Rejected</div>
                 </div>
             </div>
@@ -243,6 +244,9 @@ foreach ($applications as &$app) {
         <?php else: ?>
             <div class="applications-list">
         <?php foreach ($applications as $app): 
+            if (!is_array($app)) {
+                continue;
+            }
             $status = $app['status'] ?? 'pending';
             $vCount = $app['verified_count'] ?? 0;
             $progress = ($vCount / 6) * 100;
