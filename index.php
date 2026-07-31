@@ -37,8 +37,13 @@ try {
             $facebookPageUrl = $settings[0]['value'];
         }
 
+        $supabaseConfig = require INCLUDES_PATH . 'supabase.php';
+        if (!empty($supabaseConfig['service_role_key'])) {
+            $supabaseClient->setServiceRoleKey($supabaseConfig['service_role_key']);
+        }
+
         $rawCards = $supabaseClient->select('featured_cards');
-        if (is_array($rawCards)) {
+        if (is_array($rawCards) && !empty($rawCards) && isset($rawCards[0]['is_active'])) {
             $featuredCards = array_values(array_filter($rawCards, function ($card) {
                 return !empty($card['is_active']);
             }));
@@ -50,10 +55,16 @@ try {
                 }
                 return strcmp(($right['created_at'] ?? ''), ($left['created_at'] ?? ''));
             });
+        } elseif (is_array($rawCards) && !empty($rawCards) && isset($rawCards['message'])) {
+            error_log('Featured cards query error: ' . ($rawCards['message'] ?? 'Unknown error'));
+            $featuredCards = [];
+        } else {
+            error_log('Featured cards: no active cards found or empty table');
+            $featuredCards = [];
         }
     }
 } catch (Exception $e) {
-    // Fall back to the defaults if the remote data is unavailable.
+    error_log('Featured cards exception: ' . $e->getMessage());
 }
 
 // ============================================================
@@ -113,16 +124,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $supabaseConfig = require __DIR__ . '/includes/supabase.php';
             $supabaseClient = new SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
 
-            // Block already-registered emails
+            // Block only active applications (pending or under_review)
             $existing = $supabaseClient->select('pending_affiliations', ['email' => 'eq.' . $email]);
-            if (!empty($existing) && is_array($existing)) {
+            // Only treat as a match if the response contains actual records,
+            // not a Supabase error response (e.g. table or column does not exist)
+            if (is_array($existing) && isset($existing[0]) && is_array($existing[0])) {
                 $status = $existing[0]['status'] ?? '';
-                $message = $status === 'approved'
-                    ? 'This email is already registered with an approved affiliation. Please use a different email or contact support.'
-                    : 'You already have a pending affiliation application with this email. Please contact support for assistance.';
-                ob_end_clean();
-                echo json_encode(['success' => false, 'message' => $message, 'resubmit_available' => $status !== 'approved']);
-                exit;
+                if (in_array($status, ['pending', 'under_review'])) {
+                    $message = 'This email is already associated with an active application. Please check your status or contact support.';
+                    ob_end_clean();
+                    echo json_encode(['success' => false, 'message' => $message, 'resubmit_available' => true]);
+                    exit;
+                }
+                // For approved, rejected, or requires_revision statuses, allow re-application
             }
 
             // Generate & store 6-digit code
@@ -351,6 +365,7 @@ try {
 <head>
     <title>IECEP-LSC MEMSYS | Membership &amp; Affiliation Management System</title>
     <?php include __DIR__ . '/includes/head-meta.php'; ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/assets/css/styles.css">
     <style>
         /* ── Responsive overrides ─────────────────────────────────────────── */
         @media (max-width: 575.98px) {
@@ -501,6 +516,206 @@ try {
             .stats-grid { grid-template-columns: 1fr; }
             .stat-number { font-size: 2.5rem; }
         }
+
+        /* Featured Cards Grid */
+        .featured-cards-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+        @media (min-width: 640px) {
+            .featured-cards-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (min-width: 992px) {
+            .featured-cards-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+        .featured-card {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(11,29,74,0.06), 0 12px 40px rgba(11,29,74,0.04);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94), box-shadow 0.4s cubic-bezier(0.25,0.46,0.45,0.94), border-color 0.3s ease;
+            border: 1px solid rgba(226,232,240,0.8);
+            position: relative;
+            transform: translateY(0);
+        }
+        .featured-card::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 20px;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(212,175,55,0) 0%, rgba(212,175,55,0.3) 100%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+            pointer-events: none;
+        }
+        .featured-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 8px 32px rgba(11,29,74,0.12), 0 16px 64px rgba(11,29,74,0.08), 0 4px 12px rgba(212,175,55,0.12);
+            border-color: rgba(212,175,55,0.4);
+        }
+        .featured-card:hover::before {
+            opacity: 1;
+        }
+        .featured-card-image {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            overflow: hidden;
+            border-radius: 20px 20px 0 0;
+        }
+        .featured-card-image::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(11,29,74,0) 50%, rgba(11,29,74,0.45) 100%);
+            pointer-events: none;
+            transition: opacity 0.4s ease;
+        }
+        .featured-card:hover .featured-card-image::after {
+            opacity: 0.7;
+        }
+        .featured-card-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94);
+        }
+        .featured-card:hover .featured-card-image img {
+            transform: scale(1.08);
+        }
+        .featured-card-image-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0B1D4A 0%, #1E3A6E 50%, #132a5e 100%);
+            color: rgba(255,255,255,0.6);
+            font-size: 3rem;
+            position: relative;
+        }
+        .featured-card-image-placeholder::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 30% 30%, rgba(212,175,55,0.15) 0%, transparent 60%);
+        }
+        .featured-card-body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 2rem 2rem 2.25rem;
+            text-align: center;
+            flex: 1;
+            position: relative;
+            background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
+        }
+        .featured-card-body::before {
+            content: '';
+            width: 48px;
+            height: 3px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #D4AF37 0%, #F5D76E 100%);
+            margin-bottom: 0.5rem;
+            box-shadow: 0 1px 4px rgba(212,175,55,0.3);
+        }
+        .featured-card-title {
+            font-weight: 700;
+            font-size: 1.35rem;
+            color: #0B1D4A;
+            margin: 0;
+            line-height: 1.3;
+            letter-spacing: 0.01em;
+        }
+        .featured-card-description {
+            font-weight: 300;
+            font-size: 1rem;
+            color: #64748b;
+            margin: 0;
+            line-height: 1.7;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .featured-card-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            box-shadow: 0 4px 12px rgba(11,29,74,0.18), 0 1px 3px rgba(0,0,0,0.08);
+            text-decoration: none;
+            transition: all 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
+            border: none;
+            cursor: pointer;
+            margin-top: 0.75rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .featured-card-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .featured-card-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(11,29,74,0.25), 0 2px 8px rgba(212,175,55,0.2);
+            color: #fff;
+        }
+        .featured-card-btn:hover::before {
+            opacity: 1;
+        }
+        .featured-card-btn i {
+            transition: transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
+        }
+        .featured-card-btn:hover i {
+            transform: translateX(4px);
+        }
+        .featured-card-placeholder {
+            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%);
+            border: 2px dashed #d1d5db;
+            min-height: 420px;
+            justify-content: center;
+        }
+        .featured-card-placeholder .featured-card-image {
+            display: none;
+        }
+        .featured-card-placeholder .featured-card-body::before {
+            background: linear-gradient(90deg, #D4AF37 0%, #F5D76E 100%);
+            opacity: 0.5;
+        }
+        .featured-card-placeholder .featured-card-title {
+            color: #94a3b8;
+        }
+
+        @media (max-width: 768px) {
+            .featured-card { max-width: 100%; }
+            .featured-card-image { height: 200px; }
+            .featured-card-body { padding: 1.5rem; }
+            .featured-card-title { font-size: 1.2rem; }
+            .featured-card-description { font-size: 0.95rem; }
+        }
     </style>
 </head>
 <body>
@@ -555,36 +770,43 @@ try {
                         $imageUrl = trim((string)($card['image_url'] ?? ''));
                         $buttonText = trim((string)($card['button_text'] ?? 'Learn More'));
                         $buttonUrl = trim((string)($card['button_url'] ?? '#'));
-                        $gradientFrom = trim((string)($card['gradient_from'] ?? '#0B1D4A'));
-                        $gradientTo = trim((string)($card['gradient_to'] ?? '#132a5e'));
                         $buttonColor = trim((string)($card['button_color'] ?? '#0B1D4A'));
+                        $cardTitle = trim((string)($card['title'] ?? ''));
+                        $cardDescription = trim((string)($card['description'] ?? ''));
+                        $badgeText = trim((string)($card['badge_text'] ?? 'Featured'));
                     ?>
-                    <article class="card-featured">
-                        <div class="card-featured-header" style="background: linear-gradient(135deg, <?= h($gradientFrom) ?> 0%, <?= h($gradientTo) ?> 100%);">
+                    <article class="featured-card">
+                        <div class="featured-card-image">
                             <?php if ($imageUrl !== ''): ?>
-                                <img src="<?= h($imageUrl) ?>" alt="<?= h($card['title'] ?? 'Featured card') ?>" loading="lazy">
+                                <img src="<?= h($imageUrl) ?>" alt="<?= h($cardTitle) ?>" loading="lazy">
+                            <?php else: ?>
+                                <div class="featured-card-image-placeholder">
+                                    <i class="fas fa-image"></i>
+                                </div>
                             <?php endif; ?>
                         </div>
-                                        <div class="card-featured-body">
-                            <h3 class="card-featured-title"><?= h($card['title'] ?? '') ?></h3>
-                            <div class="card-description"><?= $card['description'] ?? '' ?></div>
-                        </div>
-                        <div class="card-featured-footer">
-                            <a href="<?= h($buttonUrl !== '' ? $buttonUrl : '#') ?>" class="card-featured-btn" style="background: <?= h($buttonColor) ?>;"><?= h($buttonText) ?></a>
+                        <div class="featured-card-body">
+                            <h3 class="featured-card-title"><?= h($cardTitle) ?></h3>
+                            <p class="featured-card-description"><?= html_entity_decode(strip_tags($cardDescription)) ?></p>
+                            <a href="<?= h($buttonUrl !== '' ? $buttonUrl : '#') ?>" class="featured-card-btn" style="background: <?= h($buttonColor) ?>;">
+                                <?= h($buttonText) ?>
+                                <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                            </a>
                         </div>
                     </article>
                 <?php endforeach; ?>
             <?php else: ?>
-                <div class="card card-whats-new">
-                    <div class="card-body text-center py-4">
-                        <div class="text-muted">No featured content at this time.</div>
+                <article class="featured-card featured-card-placeholder">
+                    <div class="featured-card-body">
+                        <h3 class="featured-card-title">Coming Soon</h3>
+                        <p class="featured-card-description">No featured content at this time – check back soon!</p>
+                        <a href="#features" class="featured-card-btn" style="background: #0B1D4A;">
+                            Explore
+                            <i class="fas fa-arrow-right" aria-hidden="true"></i>
+                        </a>
                     </div>
-                </div>
+                </article>
             <?php endif; ?>
-        </div>
-
-        <div class="text-center mt-3">
-            <a class="btn btn-secondary" href="<?= htmlspecialchars($facebookPageUrl, ENT_QUOTES) ?>" target="_blank" rel="noopener">Follow us on Facebook</a>
         </div>
     </div>
 </section>

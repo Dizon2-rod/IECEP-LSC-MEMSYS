@@ -46,23 +46,18 @@ if ($action === 'send-code') {
         $supabase = new SupabaseClient($config['url'], $config['anon_key']);
 
         $existingEmail = $supabase->select('pending_affiliations', ['email' => 'eq.' . $email]);
-        if (!empty($existingEmail) && is_array($existingEmail)) {
+        // Only treat as a match if the response contains actual records,
+        // not a Supabase error response (e.g. table or column does not exist)
+        if (is_array($existingEmail) && isset($existingEmail[0]) && is_array($existingEmail[0])) {
             $existingApp = $existingEmail[0];
             $status = $existingApp['status'] ?? '';
 
-            if ($status === 'approved') {
+            // Only block if the application is still active (pending or under_review)
+            // Approved, rejected, requires_revision, or other statuses allow re-application
+            if (in_array($status, ['pending', 'under_review'])) {
                 echo json_encode([
                     'success' => false,
-                    'message' => 'This email is already registered with an approved affiliation. Please use a different email or contact support.',
-                    'email_exists' => true,
-                    'status' => 'approved'
-                ]);
-                exit;
-            } else {
-                // Email exists but not approved - provide the resubmit link
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'This email is already registered with a pending application.',
+                    'message' => 'This email is already associated with an active application. Please check your status or contact support.',
                     'email_exists' => true,
                     'resubmit_available' => true,
                     'application_id' => $existingApp['id'],
@@ -70,6 +65,8 @@ if ($action === 'send-code') {
                 ]);
                 exit;
             }
+            // For approved, rejected, requires_revision, or other statuses, allow re-application
+            // Don't block - let them proceed with a new application
         }
 
         // Generate 6-digit code
@@ -263,27 +260,26 @@ if ($action === 'submit') {
 
         error_log("Total documents processed: " . count($documents));
 
-        // Check if email already exists (only for new submissions, not resubmissions)
+        // Check if email already exists (only block for active applications)
         if (empty($resubmitId)) {
             $existingEmail = $supabase->select('pending_affiliations', ['email' => 'eq.' . $contactEmail]);
-            if (!empty($existingEmail) && is_array($existingEmail)) {
+            // Only treat as a match if the response contains actual records,
+            // not a Supabase error response (e.g. table or column does not exist)
+            if (is_array($existingEmail) && isset($existingEmail[0]) && is_array($existingEmail[0])) {
                 $existingApp = $existingEmail[0];
                 $status = $existingApp['status'] ?? '';
 
-                if ($status === 'approved') {
-                    echo json_encode(['success' => false, 'error' => 'This email is already registered with an approved affiliation. Please use a different email or contact support.']);
-                    exit;
-                } else {
-                    // Email exists but not approved - provide the resubmit link
+                if (in_array($status, ['pending', 'under_review'])) {
                     echo json_encode([
                         'success' => false,
-                        'error' => 'You already have a pending affiliation application with this email.',
+                        'error' => 'This email is already associated with an active application. Please check your status or contact support.',
                         'resubmit_available' => true,
                         'application_id' => $existingApp['id'],
                         'current_status' => $status
                     ]);
                     exit;
                 }
+                // For approved, rejected, or requires_revision statuses, allow re-application
             }
         }
 

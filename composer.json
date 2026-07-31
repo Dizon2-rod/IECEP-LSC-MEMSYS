@@ -4,6 +4,11 @@
     "type": "project",
     "require": {
         "php": ">=8.1",
+        "ext-curl": "*",
+        "ext-gd": "*",
+        "ext-mbstring": "*",
+        "ext-openssl": "*",
+        "ext-fileinfo": "*",
         "phpmailer/phpmailer": "^6.9",
         "dompdf/dompdf": "^2.0",
         "endroid/qr-code": "^5.0",
@@ -19,11 +24,6 @@
     },
     "config": {
         "vendor-dir": "vendor",
-        "disable-tls": true,
-        "policy": {
-            "advisories": {
-                "block": false
-            }
-        }
+        "optimize-autoloader": true
     }
 }
