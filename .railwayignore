@@ -1,0 +1,33 @@
+-- IECEP-LSC MEMSYS - Railway Ignore File
+-- Excludes unnecessary files from Railway deployment builds
+
+-- Backup files
+*.bak
+*.old
+*.backup
+*_backup.php
+*_old.php
+
+-- Development directories
+tools/
+docs/
+tests/
+
+-- Local development files
+xampp_localhost_complete_query.sql
+
+-- IDE/Editor directories
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+-- Version control
+.git/
+
+-- Node.js dependencies
+node_modules/
+package-lock.json
+
+-- Composer phar binary
+composer.phar

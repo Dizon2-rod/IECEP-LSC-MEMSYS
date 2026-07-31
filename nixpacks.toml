@@ -1,0 +1,16 @@
+# nixpacks.toml - Railway deployment configuration for IECEP-LSC MEMSYS
+# Pins PHP 8.2 and installs required extensions for compatibility
+
+[build]
+builder = "nix"
+
+[phases.build]
+nixPkgs = ["php82", "php82Extensions.gd", "php82Extensions.curl", "php82Extensions.mbstring", "php82Extensions.openssl", "php82Extensions.fileinfo"]
+cmd = "COMPOSER_ALLOW_SUPERUSER=1 composer install --no-interaction --no-dev --ignore-platform-req=ext-gd"
+
+[phases.start]
+cmd = "php -S 0.0.0.0:$PORT -t public/"
+
+[env]
+PHP_VERSION = "8.2"
+COMPOSER_ALLOW_SUPERUSER = "1"
