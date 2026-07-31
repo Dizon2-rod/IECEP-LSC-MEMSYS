@@ -7,6 +7,36 @@ require_once __DIR__ . '/../../src/lib/Supabase.php';
 require_once __DIR__ . '/../../src/lib/BlockchainService.php';
 require_once __DIR__ . '/../../src/lib/EmailService.php';
 
+/**
+ * Upload a file to Supabase Storage
+ */
+function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+    $config = require __DIR__ . '/../../includes/supabase.php';
+    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
+    $fileContent = file_get_contents($tmpFile);
+    if ($fileContent === false) return null;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $fileContent,
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+            'Content-Type: ' . $mimeType,
+            'x-upsert: true',
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+    }
+    error_log("Supabase Storage upload failed ($httpCode): $response");
+    return null;
+}
+
 header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -24,7 +54,7 @@ if (!verify_csrf_token($_POST['csrf_token'] ?? '')) {
 $action = filter_var($_POST['action'] ?? '', FILTER_SANITIZE_STRING);
 $supabase = new Supabase();
 $blockchain = new BlockchainService();
-$email = new EmailService();
+$email = new \App\Lib\EmailService();
 
 try {
     if ($action === 'request_revision') {
@@ -125,11 +155,12 @@ try {
         if (!empty($_FILES)) {
             foreach ($_FILES as $key => $file) {
                 if ($file['error'] === UPLOAD_ERR_OK) {
-                    $upload_dir = __DIR__ . '/../../uploads/affiliations/';
-                    if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
+                    $mimeType = mime_content_type($file['tmp_name']) ?: $file['type'];
                     $filename = uniqid() . '_' . basename($file['name']);
-                    move_uploaded_file($file['tmp_name'], $upload_dir . $filename);
-                    $update_data[$key] = $filename;
+                    $supabaseUrl = uploadToSupabaseStorage('affiliations', 'revisions/' . $filename, $file['tmp_name'], $mimeType);
+                    if ($supabaseUrl) {
+                        $update_data[$key] = $supabaseUrl;
+                    }
                 }
             }
         }

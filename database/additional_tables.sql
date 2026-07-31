@@ -1,133 +1,139 @@
 -- =====================================================================
 -- IECEP-LSC MEMSYS - ADDITIONAL TABLES FOR NEW MODULES
--- MySQL/MariaDB Database Setup
+-- PostgreSQL (Supabase) Database Setup
 -- =====================================================================
 
 -- =====================================================================
 -- MESSAGES TABLE (Module 9.2)
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS messages (
-    id CHAR(36) PRIMARY KEY,
-    sender_id CHAR(36) NOT NULL,
-    receiver_id CHAR(36) NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    sender_id UUID NOT NULL,
+    receiver_id UUID NOT NULL,
     subject VARCHAR(255) NOT NULL,
     body TEXT NOT NULL,
     is_read BOOLEAN DEFAULT FALSE,
-    read_at TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_sender (sender_id),
-    INDEX idx_receiver (receiver_id),
-    INDEX idx_is_read (is_read),
-    INDEX idx_created_at (created_at DESC)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    read_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
+CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id);
+CREATE INDEX IF NOT EXISTS idx_messages_is_read ON messages(is_read);
+CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at DESC);
 
 -- =====================================================================
 -- MEMORANDA TABLE (Module 6.2)
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS memoranda (
-    id CHAR(36) PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
-    sent_by CHAR(36) NOT NULL,
-    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP NULL,
+    sent_by UUID NOT NULL,
+    sent_at TIMESTAMPTZ DEFAULT NOW(),
+    expires_at TIMESTAMPTZ,
     is_active BOOLEAN DEFAULT TRUE,
-    target_roles JSON,
-    target_institutions JSON,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_sent_by (sent_by),
-    INDEX idx_sent_at (sent_at DESC),
-    INDEX idx_is_active (is_active)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    target_roles JSONB DEFAULT '[]'::jsonb,
+    target_institutions JSONB DEFAULT '[]'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_memoranda_sent_by ON memoranda(sent_by);
+CREATE INDEX IF NOT EXISTS idx_memoranda_sent_at ON memoranda(sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_memoranda_is_active ON memoranda(is_active);
 
 -- =====================================================================
 -- DOCUMENTS TABLE WITH VERSION TRACKING (Module 6.1, 8.1, 8.2)
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS documents (
-    id CHAR(36) PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     title VARCHAR(255) NOT NULL,
     description TEXT,
-    category ENUM('affiliation', 'member_records', 'financial', 'compliance', 'memoranda', 'policy', 'constitution', 'bylaws', 'other') NOT NULL,
+    category TEXT NOT NULL CHECK (category IN ('affiliation', 'member_records', 'financial', 'compliance', 'memoranda', 'policy', 'constitution', 'bylaws', 'other')),
     file_name VARCHAR(255) NOT NULL,
     file_path VARCHAR(500) NOT NULL,
     file_size INT,
     mime_type VARCHAR(100),
     file_hash VARCHAR(64),
     version INT DEFAULT 1,
-    uploaded_by CHAR(36),
-    institution_id CHAR(36),
+    uploaded_by UUID,
+    institution_id UUID,
     is_public BOOLEAN DEFAULT FALSE,
-    expires_at TIMESTAMP NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_category (category),
-    INDEX idx_uploaded_by (uploaded_by),
-    INDEX idx_institution (institution_id),
-    INDEX idx_version (version),
-    INDEX idx_file_hash (file_hash)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category);
+CREATE INDEX IF NOT EXISTS idx_documents_uploaded_by ON documents(uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_documents_institution ON documents(institution_id);
+CREATE INDEX IF NOT EXISTS idx_documents_version ON documents(version);
+CREATE INDEX IF NOT EXISTS idx_documents_file_hash ON documents(file_hash);
 
 -- =====================================================================
 -- DOCUMENT VERSIONS TABLE (Module 8.2)
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS document_versions (
-    id CHAR(36) PRIMARY KEY,
-    document_id CHAR(36) NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    document_id UUID NOT NULL,
     version_number INT NOT NULL,
     file_name VARCHAR(255) NOT NULL,
     file_path VARCHAR(500) NOT NULL,
     file_size INT,
     file_hash VARCHAR(64),
-    uploaded_by CHAR(36),
+    uploaded_by UUID,
     change_notes TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_document_id (document_id),
-    INDEX idx_version_number (version_number),
-    INDEX idx_created_at (created_at DESC)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_document_versions_document_id ON document_versions(document_id);
+CREATE INDEX IF NOT EXISTS idx_document_versions_number ON document_versions(version_number);
+CREATE INDEX IF NOT EXISTS idx_document_versions_created_at ON document_versions(created_at DESC);
 
 -- =====================================================================
 -- POLICY COMPLIANCE TABLE (Module 6.3)
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS policy_compliance (
-    id CHAR(36) PRIMARY KEY,
-    institution_id CHAR(36) NOT NULL,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID NOT NULL,
     policy_name VARCHAR(255) NOT NULL,
     policy_description TEXT,
     is_compliant BOOLEAN DEFAULT FALSE,
-    completed_at TIMESTAMP NULL,
-    completed_by CHAR(36),
+    completed_at TIMESTAMPTZ,
+    completed_by UUID,
     notes TEXT,
     due_date DATE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_institution (institution_id),
-    INDEX idx_is_compliant (is_compliant),
-    INDEX idx_due_date (due_date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_policy_compliance_institution ON policy_compliance(institution_id);
+CREATE INDEX IF NOT EXISTS idx_policy_compliance_is_compliant ON policy_compliance(is_compliant);
+CREATE INDEX IF NOT EXISTS idx_policy_compliance_due_date ON policy_compliance(due_date);
 
 -- =====================================================================
 -- NEWSLETTER TABLE (Module 9.3)
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS newsletters (
-    id CHAR(36) PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     subject VARCHAR(255) NOT NULL,
     html_content TEXT NOT NULL,
     text_content TEXT,
-    sent_by CHAR(36) NOT NULL,
-    target_roles JSON,
-    target_institutions JSON,
-    sent_at TIMESTAMP NULL,
-    status ENUM('draft', 'scheduled', 'sent') DEFAULT 'draft',
-    scheduled_for TIMESTAMP NULL,
+    sent_by UUID NOT NULL,
+    target_roles JSONB DEFAULT '[]'::jsonb,
+    target_institutions JSONB DEFAULT '[]'::jsonb,
+    sent_at TIMESTAMPTZ,
+    status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'sent')),
+    scheduled_for TIMESTAMPTZ,
     recipient_count INT DEFAULT 0,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_sent_by (sent_by),
-    INDEX idx_status (status),
-    INDEX idx_sent_at (sent_at DESC)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_newsletters_sent_by ON newsletters(sent_by);
+CREATE INDEX IF NOT EXISTS idx_newsletters_status ON newsletters(status);
+CREATE INDEX IF NOT EXISTS idx_newsletters_sent_at ON newsletters(sent_at DESC);
 
 -- =====================================================================
 -- COMPLETION

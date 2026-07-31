@@ -20,7 +20,7 @@ if (empty($cron_secret) || $cron_secret !== ($_ENV['CRON_SECRET'] ?? getenv('CRO
 }
 
 $supabase = new Supabase();
-$email = new EmailService();
+$email = new \App\Lib\EmailService();
 $current_date = date('Y-m-d');
 $current_month = (int)date('m');
 $current_day = (int)date('d');

@@ -23,6 +23,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/includes/csrf.php';
 
 $facebookPageUrl = 'https://www.facebook.com/IECEPLSC';
 $featuredCards = [];
@@ -1611,6 +1612,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const res    = await fetch('/IECEP-LSC-MEMSYS/index.php', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'action=send_code&email=' + encodeURIComponent(email),
             });
@@ -1646,6 +1648,7 @@ document.addEventListener('DOMContentLoaded', function () {
         try {
             const res    = await fetch('/IECEP-LSC-MEMSYS/index.php', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'action=verify_code&email=' + encodeURIComponent(email) + '&code=' + encodeURIComponent(code),
             });
@@ -1836,6 +1839,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const response = await fetch('/IECEP-LSC-MEMSYS/public/api/simulate-payment.php', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'

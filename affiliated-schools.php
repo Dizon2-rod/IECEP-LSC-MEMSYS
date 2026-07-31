@@ -1,7 +1,6 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 
-// Static list of affiliated schools
 $staticSchools = [
     [
         'name' => 'Colegio de San Juan de Letrán',
@@ -46,43 +45,75 @@ $staticSchools = [
         'facebook_url' => 'https://www.facebook.com/UPHSDCalamba',
     ],
     [
-        'name' => 'University of Perpetual Help System Jonelta - Biñán Campus',
+        'name' => 'University of Perpetual Help System Jonelta - Biñan Campus',
         'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/UPHSL-BINAN.png',
-        'location' => 'Biñán, Laguna',
+        'location' => 'Biñan, Laguna',
         'facebook_url' => 'https://www.facebook.com/UPHSLBinan',
     ]
 ];
 
-// Get Supabase client
+function safeSelect($supabase, $table, $filters = []) {
+    try {
+        $result = $supabase->select($table, $filters);
+        if (!is_array($result)) return [];
+        if (isset($result['message']) && isset($result['details'])) return [];
+        if (array_keys($result) !== range(0, count($result) - 1)) return [];
+        return $result;
+    } catch (\Exception $e) {
+        error_log("safeSelect error for table '$table': " . $e->getMessage());
+        return [];
+    }
+}
+
 $supabase = supabase();
 $affiliatedSchools = [];
 
 if ($supabase) {
-    try {
-        $result = $supabase->select('affiliated_schools', null, 'name', 'ASC');
-        if (!empty($result) && is_array($result)) {
-            $affiliatedSchools = array_filter($result, function($school) {
-                return ($school['status'] ?? null) === 'active';
-            });
-            foreach ($affiliatedSchools as &$school) {
-                $schoolName = $school['name'];
-                foreach ($staticSchools as $staticSchool) {
-                    if ($staticSchool['name'] === $schoolName) {
-                        if (empty($school['logo'])) $school['logo'] = $staticSchool['logo'];
-                        if (empty($school['location'])) $school['location'] = $staticSchool['location'];
-                        if (empty($school['facebook_url'])) $school['facebook_url'] = $staticSchool['facebook_url'];
-                        break;
-                    }
+    $supabaseConfig = require __DIR__ . '/includes/supabase.php';
+    if (!empty($supabaseConfig['service_role_key'])) {
+        $supabase->setServiceRoleKey($supabaseConfig['service_role_key']);
+    }
+
+    $approvedSchools = safeSelect($supabase, 'affiliated_schools');
+    foreach ($approvedSchools as $school) {
+        if (($school['status'] ?? null) === 'active') {
+            $schoolName = $school['name'] ?? '';
+            $matchingStatic = null;
+            foreach ($staticSchools as $staticSchool) {
+                if ($staticSchool['name'] === $schoolName) {
+                    $matchingStatic = $staticSchool;
+                    break;
                 }
             }
+            $affiliatedSchools[] = [
+                'name'          => $schoolName,
+                'logo'          => $school['logo'] ?? ($matchingStatic['logo'] ?? null),
+                'location'      => $school['location'] ?? ($matchingStatic['location'] ?? null),
+                'facebook_url'  => $school['facebook_url'] ?? ($matchingStatic['facebook_url'] ?? null),
+                'status'        => 'active',
+                'source'        => 'affiliated_schools',
+            ];
         }
-    } catch (Exception $e) {
-        error_log("Affiliated schools fetch error: " . $e->getMessage());
-        $affiliatedSchools = [];
+    }
+
+    $pendingAffiliations = safeSelect($supabase, 'pending_affiliations');
+    foreach ($pendingAffiliations as $app) {
+        if (($app['status'] ?? 'pending') === 'pending') {
+            $affiliatedSchools[] = [
+                'name'          => $app['institution_name'] ?? $app['name'] ?? '',
+                'logo'          => $app['logo'] ?? null,
+                'location'      => $app['institution_address'] ?? $app['location'] ?? '',
+                'facebook_url'  => $app['facebook_url'] ?? '',
+                'status'        => 'pending',
+                'source'        => 'pending_affiliations',
+                'receipt_number'=> $app['receipt_number'] ?? null,
+                'submitted_at'  => $app['submitted_at'] ?? null,
+            ];
+        }
     }
 }
 
-$schoolsToShow = !empty($affiliatedSchools) ? $affiliatedSchools : $staticSchools;
+$schoolsToShow = $affiliatedSchools;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -335,6 +366,14 @@ $schoolsToShow = !empty($affiliatedSchools) ? $affiliatedSchools : $staticSchool
             margin-bottom: 0.5rem;
         }
 
+        .status-badge.pending {
+            background: #F59E0B;
+            color: var(--white);
+            font-size: 0.7rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 0.25rem;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .page-header h1 { font-size: 1.8rem; }
@@ -372,6 +411,9 @@ $schoolsToShow = !empty($affiliatedSchools) ? $affiliatedSchools : $staticSchool
                             <div class="accordion-title">
                                 <i class="fas fa-university"></i>
                                 <span><?php echo htmlspecialchars($school['name']); ?></span>
+                                <?php if (($school['status'] ?? '') === 'pending'): ?>
+                                    <span class="status-badge pending" style="margin-left:0.5rem;font-size:0.7rem;background:#F59E0B;color:#fff;padding:0.15rem 0.5rem;border-radius:0.25rem;">Pending Application</span>
+                                <?php endif; ?>
                             </div>
                             <i class="fas fa-chevron-down accordion-icon"></i>
                         </div>
@@ -390,6 +432,18 @@ $schoolsToShow = !empty($affiliatedSchools) ? $affiliatedSchools : $staticSchool
                                             <i class="fas fa-map-marker-alt"></i>
                                             <span><?php echo htmlspecialchars($school['location'] ?? 'Laguna, Philippines'); ?></span>
                                         </div>
+                                        <?php if (!empty($school['receipt_number'])): ?>
+                                            <div class="school-location" style="font-size:0.8rem;color:#6B7280;">
+                                                <i class="fas fa-receipt"></i>
+                                                <span>Receipt: <?php echo htmlspecialchars($school['receipt_number']); ?></span>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if (!empty($school['submitted_at'])): ?>
+                                            <div class="school-location" style="font-size:0.8rem;color:#6B7280;">
+                                                <i class="fas fa-clock"></i>
+                                                <span>Submitted: <?php echo htmlspecialchars(date('M j, Y', strtotime($school['submitted_at']))); ?></span>
+                                            </div>
+                                        <?php endif; ?>
                                         <?php if ($facebook): ?>
                                             <a href="<?php echo $facebook; ?>" target="_blank" rel="noopener noreferrer" class="btn-facebook">
                                                 <i class="fab fa-facebook-f"></i> Visit Facebook Page

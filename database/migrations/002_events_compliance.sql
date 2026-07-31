@@ -5,7 +5,32 @@
 -- 1. EVENTS MODULE
 -- ============================================
 
--- Events table
+-- Add missing columns to events table if they don't exist (table may pre-exist)
+DO $$ 
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='events' AND column_name='start_datetime') THEN
+    ALTER TABLE events ADD COLUMN start_datetime TIMESTAMPTZ;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='events' AND column_name='end_datetime') THEN
+    ALTER TABLE events ADD COLUMN end_datetime TIMESTAMPTZ;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='events' AND column_name='fee') THEN
+    ALTER TABLE events ADD COLUMN fee NUMERIC(10,2) DEFAULT 0;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='events' AND column_name='requires_payment') THEN
+    ALTER TABLE events ADD COLUMN requires_payment BOOLEAN DEFAULT false;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                 WHERE table_name='events' AND column_name='max_capacity') THEN
+    ALTER TABLE events ADD COLUMN max_capacity INT;
+  END IF;
+END $$;
+
+-- Events table (only creates if it doesn't exist yet)
 CREATE TABLE IF NOT EXISTS events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
@@ -142,27 +167,29 @@ CREATE INDEX IF NOT EXISTS idx_certificates_hash ON certificates(blockchain_hash
 -- 5. ENHANCED TRANSACTIONS
 -- ============================================
 
--- Add new columns to transactions table if not exists
+-- Add new columns to transactions table if table exists
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='transactions' AND column_name='transaction_type') THEN
-    ALTER TABLE transactions ADD COLUMN transaction_type TEXT DEFAULT 'payment';
-  END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='transactions' AND column_name='receipt_number') THEN
-    ALTER TABLE transactions ADD COLUMN receipt_number TEXT UNIQUE;
-  END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='transactions' AND column_name='blockchain_hash') THEN
-    ALTER TABLE transactions ADD COLUMN blockchain_hash TEXT;
-  END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='transactions' AND column_name='receipt_path') THEN
-    ALTER TABLE transactions ADD COLUMN receipt_path TEXT;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='transactions') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='transactions' AND column_name='transaction_type') THEN
+      ALTER TABLE transactions ADD COLUMN transaction_type TEXT DEFAULT 'payment';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='transactions' AND column_name='receipt_number') THEN
+      ALTER TABLE transactions ADD COLUMN receipt_number TEXT UNIQUE;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='transactions' AND column_name='blockchain_hash') THEN
+      ALTER TABLE transactions ADD COLUMN blockchain_hash TEXT;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='transactions' AND column_name='receipt_path') THEN
+      ALTER TABLE transactions ADD COLUMN receipt_path TEXT;
+    END IF;
   END IF;
 END $$;
 
@@ -217,17 +244,19 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
 -- 8. ENHANCED MEMBERS TABLE
 -- ============================================
 
--- Add membership expiry and renewal columns
+-- Add membership expiry and renewal columns (if table exists)
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='members' AND column_name='membership_expiry') THEN
-    ALTER TABLE members ADD COLUMN membership_expiry DATE;
-  END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='members' AND column_name='last_renewal_date') THEN
-    ALTER TABLE members ADD COLUMN last_renewal_date DATE;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='members') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='members' AND column_name='membership_expiry') THEN
+      ALTER TABLE members ADD COLUMN membership_expiry DATE;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='members' AND column_name='last_renewal_date') THEN
+      ALTER TABLE members ADD COLUMN last_renewal_date DATE;
+    END IF;
   END IF;
 END $$;
 
@@ -235,22 +264,24 @@ END $$;
 -- 9. ENHANCED NOTIFICATIONS
 -- ============================================
 
--- Add new columns to notifications table
+-- Add new columns to notifications table (if table exists)
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='notifications' AND column_name='type') THEN
-    ALTER TABLE notifications ADD COLUMN type TEXT DEFAULT 'info';
-  END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='notifications' AND column_name='action_url') THEN
-    ALTER TABLE notifications ADD COLUMN action_url TEXT;
-  END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='notifications' AND column_name='institution_id') THEN
-    ALTER TABLE notifications ADD COLUMN institution_id UUID REFERENCES institutions(id);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='notifications') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='notifications' AND column_name='type') THEN
+      ALTER TABLE notifications ADD COLUMN type TEXT DEFAULT 'info';
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='notifications' AND column_name='action_url') THEN
+      ALTER TABLE notifications ADD COLUMN action_url TEXT;
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='notifications' AND column_name='institution_id') THEN
+      ALTER TABLE notifications ADD COLUMN institution_id UUID REFERENCES institutions(id);
+    END IF;
   END IF;
 END $$;
 
@@ -258,17 +289,19 @@ END $$;
 -- 10. ATTENDANCE ENHANCEMENTS
 -- ============================================
 
--- Add institution_id to attendance if not exists
+-- Add institution_id to attendance if table exists and column is missing
 DO $$ 
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='attendance' AND column_name='institution_id') THEN
-    ALTER TABLE attendance ADD COLUMN institution_id UUID REFERENCES institutions(id);
-  END IF;
-  
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                 WHERE table_name='attendance' AND column_name='event_id') THEN
-    ALTER TABLE attendance ADD COLUMN event_id UUID REFERENCES events(id);
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='attendance') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='attendance' AND column_name='institution_id') THEN
+      ALTER TABLE attendance ADD COLUMN institution_id UUID REFERENCES institutions(id);
+    END IF;
+    
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                   WHERE table_name='attendance' AND column_name='event_id') THEN
+      ALTER TABLE attendance ADD COLUMN event_id UUID REFERENCES events(id);
+    END IF;
   END IF;
 END $$;
 
@@ -276,44 +309,70 @@ END $$;
 -- 11. ROW LEVEL SECURITY (RLS) POLICIES
 -- ============================================
 
--- Enable RLS on new tables
-ALTER TABLE events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE event_registrations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE event_attachments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE compliance_scores ENABLE ROW LEVEL SECURITY;
-ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE certificates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+-- Enable RLS on new tables (guard for tables that may not exist)
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='events') THEN
+    ALTER TABLE events ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='event_registrations') THEN
+    ALTER TABLE event_registrations ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='event_attachments') THEN
+    ALTER TABLE event_attachments ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='compliance_scores') THEN
+    ALTER TABLE compliance_scores ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='announcements') THEN
+    ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='certificates') THEN
+    ALTER TABLE certificates ENABLE ROW LEVEL SECURITY;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name='audit_logs') THEN
+    ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
 
 -- Events policies
+DROP POLICY IF EXISTS "Events are viewable by authenticated users" ON events;
 CREATE POLICY "Events are viewable by authenticated users" ON events
   FOR SELECT USING (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Events can be created by admins" ON events;
 CREATE POLICY "Events can be created by admins" ON events
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Events can be updated by admins" ON events;
 CREATE POLICY "Events can be updated by admins" ON events
   FOR UPDATE USING (auth.role() = 'authenticated');
 
 -- Event registrations policies
+DROP POLICY IF EXISTS "Users can view their own registrations" ON event_registrations;
 CREATE POLICY "Users can view their own registrations" ON event_registrations
   FOR SELECT USING (auth.uid() = user_id OR auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Users can register for events" ON event_registrations;
 CREATE POLICY "Users can register for events" ON event_registrations
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their registrations" ON event_registrations;
 CREATE POLICY "Users can update their registrations" ON event_registrations
   FOR UPDATE USING (auth.uid() = user_id OR auth.role() = 'authenticated');
 
 -- Certificates policies
+DROP POLICY IF EXISTS "Users can view their own certificates" ON certificates;
 CREATE POLICY "Users can view their own certificates" ON certificates
   FOR SELECT USING (true); -- Public verification
 
 -- Announcements policies
+DROP POLICY IF EXISTS "Announcements are viewable by authenticated users" ON announcements;
 CREATE POLICY "Announcements are viewable by authenticated users" ON announcements
   FOR SELECT USING (auth.role() = 'authenticated');
 
 -- Compliance scores policies
+DROP POLICY IF EXISTS "Compliance scores are viewable by authenticated users" ON compliance_scores;
 CREATE POLICY "Compliance scores are viewable by authenticated users" ON compliance_scores
   FOR SELECT USING (auth.role() = 'authenticated');
 

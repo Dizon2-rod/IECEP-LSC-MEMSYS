@@ -25,7 +25,7 @@ require_once __DIR__ . '/../../autoload.php';
 require_once __DIR__ . '/../../includes/supabase.php';
 require_once __DIR__ . '/../../includes/paths.php';
 
-$emailService = new EmailService();
+$emailService = new \App\Lib\EmailService();
 $action = $_GET['action'] ?? '';
 
 if ($action === 'send-code') {

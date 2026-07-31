@@ -22,7 +22,7 @@ ini_set('display_startup_errors', 1);
 // 1.1 RUNTIME PHP EXTENSIONS CHECK
 // ============================================================================
 // Detect missing but commonly required PHP extensions and log guidance.
-$__required_php_extensions = ['curl', 'json', 'openssl', 'mbstring', 'mysqli', 'pdo_mysql'];
+$__required_php_extensions = ['curl', 'json', 'openssl', 'mbstring'];
 $__missing_php_extensions = array_filter($__required_php_extensions, fn($e) => !extension_loaded($e));
 if (!empty($__missing_php_extensions)) {
     $msg = '[Bootstrap] WARNING: Missing PHP extensions: ' . implode(', ', $__missing_php_extensions) . '.';
@@ -37,7 +37,13 @@ if (!empty($__missing_php_extensions)) {
 // ============================================================================
 // 2. SESSION INITIALIZATION
 // ============================================================================
+// Configure session cookie BEFORE starting session (ini_set must be called
+// before session_start to take effect). If session.auto_start is enabled
+// in php.ini, the session may already be active — suppress warnings.
 if (session_status() === PHP_SESSION_NONE) {
+    ini_set('session.cookie_httponly', 1);
+    ini_set('session.cookie_samesite', 'Lax');
+    ini_set('session.use_strict_mode', 1);
     session_start();
 }
 

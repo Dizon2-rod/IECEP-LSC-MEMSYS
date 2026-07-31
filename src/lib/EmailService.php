@@ -2,9 +2,12 @@
 namespace App\Lib;
 
 require_once __DIR__ . '/../../bootstrap.php';
-require_once __DIR__ . '/../../vendor/phpmailer/phpmailer/src/PHPMailer.php';
-require_once __DIR__ . '/../../vendor/phpmailer/phpmailer/src/Exception.php';
-require_once __DIR__ . '/../../vendor/phpmailer/phpmailer/src/SMTP.php';
+
+if (file_exists(__DIR__ . '/../../vendor/phpmailer/phpmailer/src/PHPMailer.php')) {
+    require_once __DIR__ . '/../../vendor/phpmailer/phpmailer/src/PHPMailer.php';
+    require_once __DIR__ . '/../../vendor/phpmailer/phpmailer/src/Exception.php';
+    require_once __DIR__ . '/../../vendor/phpmailer/phpmailer/src/SMTP.php';
+}
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -40,8 +43,13 @@ class EmailService
         }
     }
 
-    private function createMailer(array $options = []): PHPMailer
+    private function createMailer(array $options = [])
     {
+        if (!class_exists('PHPMailer\PHPMailer\PHPMailer')) {
+            $this->lastError = 'PHPMailer is not installed. Install via: composer require phpmailer/phpmailer';
+            throw new \Exception('PHPMailer is not installed. Install via: composer require phpmailer/phpmailer');
+        }
+
         try {
             $mail = new PHPMailer(true);
             $mail->isSMTP();
@@ -87,7 +95,7 @@ class EmailService
             error_log("EmailService: SMTP configured with host={$mail->Host}, port={$mail->Port}, secure={$mail->SMTPSecure}, user={$this->config['email']['username']}");
             
             return $mail;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             $this->lastError = $e->getMessage();
             error_log('EmailService createMailer error: ' . $e->getMessage());
             throw $e;
@@ -115,13 +123,13 @@ class EmailService
             $result = $mail->send();
             error_log("Email verification sent to $to: " . ($result ? 'SUCCESS' : 'FAILED'));
             return $result;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email verification error: " . $e->getMessage());
             return false;
         }
     }
 
-    public function sendSchoolAccountCredentials(string $to, string $institutionName, string $password, string $contactPerson = '', string $loginUrl = null): bool
+    public function sendSchoolAccountCredentials(string $to, string $institutionName, string $password, string $contactPerson = '', ?string $loginUrl = null): bool
     {
         try {
             error_log("Preparing to send school account credentials email to: $to with password: $password");
@@ -185,7 +193,7 @@ class EmailService
             }
             
             return $result;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (school credentials): " . $e->getMessage());
             if (isset($mail)) {
                 error_log("PHPMailer Error Info: " . $mail->ErrorInfo);
@@ -248,7 +256,7 @@ class EmailService
             }
             
             return $result;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Existing account linked email error: " . $e->getMessage());
             return false;
         }
@@ -360,7 +368,7 @@ class EmailService
             }
             
             return $result;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (credentials): " . $e->getMessage());
             error_log("Exception trace: " . $e->getTraceAsString());
             return false;
@@ -382,7 +390,7 @@ class EmailService
                     <a href='{$loginUrl}' style='display:inline-block;padding:12px 24px;background:#F5A623;color:#fff;text-decoration:none;border-radius:8px;margin-top:12px'>Login Now</a>
                 </div>";
             return $mail->send();
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (affiliation approved): " . $e->getMessage());
             return false;
         }
@@ -410,7 +418,7 @@ class EmailService
                 </div>";
             $mail->AltBody = "IECEP-LSC Membership Renewal Confirmed\n\nDear {$memberName},\n\nYour IECEP-LSC membership has been renewed successfully.\n\nMembership ID: {$membershipId}\n" . (!empty($yearLevel) ? "Year Level: {$yearLevel}\n" : "") . "\nLogin URL: {$loginUrl}\n\nIf you have questions, contact the Registration Committee.";
             return $mail->send();
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (membership renewal): " . $e->getMessage());
             return false;
         }
@@ -463,7 +471,7 @@ class EmailService
             }
             
             return $result;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (school affiliation linked): " . $e->getMessage());
             return false;
         }
@@ -483,7 +491,7 @@ class EmailService
                     <p>You may reapply after addressing the concerns raised.</p>
                 </div>";
             return $mail->send();
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (affiliation rejected): " . $e->getMessage());
             return false;
         }
@@ -512,7 +520,7 @@ class EmailService
                     <p style='font-size:12px;color:#6c757d'>This is an automated notification from IECEP-LSC MEMSYS.</p>
                 </div>";
             return $mail->send();
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (affiliation resubmitted): " . $e->getMessage());
             return false;
         }
@@ -605,7 +613,7 @@ class EmailService
                     <p style='font-size:12px;color:#6c757d;text-align:center'>Best regards,<br>IECEP-LSC Registration Committee</p>
                 </div>";
             return $mail->send();
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (changes requested): " . $e->getMessage());
             return false;
         }
@@ -625,7 +633,7 @@ class EmailService
                     <p style='font-size:12px;color:#6c757d'>This is an official announcement from IECEP-LSC.</p>
                 </div>";
             return $mail->send();
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (announcement): " . $e->getMessage());
             return false;
         }
@@ -654,7 +662,7 @@ class EmailService
                 }
             }
             return $result;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             $this->lastError = $e->getMessage();
             error_log("Email error (notification): " . $e->getMessage());
             return false;
@@ -688,7 +696,7 @@ class EmailService
                 error_log("EmailService: notification succeeded on fallback transport 465");
             }
             return $result;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             $this->lastError = $e->getMessage();
             error_log("Email error (notification fallback 465): " . $e->getMessage());
             return false;
@@ -771,7 +779,7 @@ class EmailService
             $mail->AltBody = "IECEP-LSC Affiliation Application Received\n\nThank you for submitting your affiliation application for {$institutionName}.\n\nWhat happens next:\n1. Our Registration Committee will review your application\n2. You will receive a decision within 3-5 business days\n3. If approved, you'll receive further instructions for account setup\n\nIf you have questions, contact us at: ieceplsc24@gmail.com\n\n© 2025 IECEP-LSC MEMSYS – All rights reserved";
             
             return $mail->send();
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (affiliation confirmation): " . $e->getMessage());
             return false;
         }
@@ -804,7 +812,7 @@ class EmailService
             $mail->AltBody = "New Contact Form Submission\n\nName: {$name}\nEmail: {$email}\nSubject: {$subject}\n\nMessage: {$message}";
             
             return $mail->send();
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (contact form): " . $e->getMessage());
             return false;
         }
@@ -824,7 +832,7 @@ class EmailService
             $result = mail($to, $subject, $body, implode("\r\n", $headers));
             error_log("Fallback email result: " . ($result ? 'SUCCESS' : 'FAILED'));
             return $result;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Fallback email error: " . $e->getMessage());
             return false;
         }
@@ -882,7 +890,7 @@ class EmailService
             }
             
             return $result;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Test email error: " . $e->getMessage());
             error_log("Exception trace: " . $e->getTraceAsString());
             return false;
@@ -919,7 +927,7 @@ class EmailService
             }
             
             return $result;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Gmail SMTP connection test error: " . $e->getMessage());
             error_log("Exception trace: " . $e->getTraceAsString());
             return false;
@@ -964,7 +972,7 @@ class EmailService
             }
             
             return $result;
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Test credentials email exception: " . $e->getMessage());
             return false;
         }
@@ -1034,7 +1042,7 @@ class EmailService
             $mail->AltBody = "Welcome to IECEP-LSC!\n\nHi {$fullName},\n\nYour affiliation has been approved. Below are your account credentials:\n\nMembership ID: {$membershipId}\nEmail: {$toEmail}\nTemporary Password: {$password}\n\nIMPORTANT: You must change your password upon first login.\n\nLogin at: {$loginUrl}";
 
             return $mail->send();
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (member credentials): " . $e->getMessage());
             return false;
         }
@@ -1076,7 +1084,7 @@ class EmailService
             $mail->AltBody = "IECEP-LSC Membership Renewal Confirmed\n\nHi {$fullName},\n\nYour membership for " . date('Y') . " has been renewed.\nMembership ID: {$membershipId}\n\nYour existing credentials remain unchanged.\nLogin at: {$loginUrl}";
 
             return $mail->send();
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (renewal confirmation): " . $e->getMessage());
             return false;
         }
@@ -1193,7 +1201,7 @@ class EmailService
                 </div>";
             
             return $mail->send();
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Email error (send digital ID): " . $e->getMessage());
             return false;
         }

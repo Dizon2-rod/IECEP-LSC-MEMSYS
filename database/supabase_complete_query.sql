@@ -74,6 +74,8 @@ CREATE TRIGGER update_institutions_updated_at
 CREATE TABLE IF NOT EXISTS affiliated_schools (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL UNIQUE,
+    logo TEXT,
+    location TEXT,
     facebook_url TEXT,
     member_count INTEGER DEFAULT 0,
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'pending')),
@@ -83,6 +85,9 @@ CREATE TABLE IF NOT EXISTS affiliated_schools (
 
 CREATE INDEX IF NOT EXISTS idx_affiliated_schools_status ON affiliated_schools(status);
 CREATE INDEX IF NOT EXISTS idx_affiliated_schools_name ON affiliated_schools(name);
+
+ALTER TABLE affiliated_schools ADD COLUMN IF NOT EXISTS logo TEXT;
+ALTER TABLE affiliated_schools ADD COLUMN IF NOT EXISTS location TEXT;
 
 DROP TRIGGER IF EXISTS update_affiliated_schools_updated_at ON affiliated_schools;
 CREATE TRIGGER update_affiliated_schools_updated_at
@@ -385,6 +390,26 @@ CREATE TABLE IF NOT EXISTS pending_affiliations (
     institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
     applicant_id UUID REFERENCES user_profiles(id) ON DELETE SET NULL,
     application_type TEXT NOT NULL CHECK (application_type IN ('new_membership', 'renewal', 'upgrade', 'transfer')),
+    institution_name TEXT,
+    institution_address TEXT,
+    contact_person TEXT,
+    contact_position TEXT,
+    contact_email TEXT,
+    email TEXT,
+    contact_phone TEXT,
+    letter_of_intent TEXT,
+    endorsement_letter TEXT,
+    constitution_by_laws TEXT,
+    officers_cvs TEXT,
+    organizational_chart TEXT,
+    member_directory TEXT,
+    total_members INTEGER DEFAULT 0,
+    new_members INTEGER DEFAULT 0,
+    old_members INTEGER DEFAULT 0,
+    affiliation_fee DECIMAL(10,2) DEFAULT 0,
+    membership_total DECIMAL(10,2) DEFAULT 0,
+    total_fee DECIMAL(10,2) DEFAULT 0,
+    receipt_number TEXT,
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'under_review', 'approved', 'rejected', 'requires_revision')),
     submitted_at TIMESTAMPTZ DEFAULT NOW(),
     reviewed_at TIMESTAMPTZ,
@@ -405,11 +430,28 @@ CREATE TABLE IF NOT EXISTS pending_affiliations (
 CREATE INDEX IF NOT EXISTS idx_pending_affiliations_status ON pending_affiliations(status);
 CREATE INDEX IF NOT EXISTS idx_pending_affiliations_institution ON pending_affiliations(institution_id);
 
-DROP TRIGGER IF EXISTS update_pending_affiliations_updated_at ON pending_affiliations;
-CREATE TRIGGER update_pending_affiliations_updated_at
-    BEFORE UPDATE ON pending_affiliations
-    FOR EACH ROW
-    EXECUTE FUNCTION handle_updated_at();
+ALTER TABLE pending_affiliations ENABLE ROW LEVEL SECURITY;
+
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS institution_name TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS institution_address TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS contact_person TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS contact_position TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS contact_email TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS contact_phone TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS letter_of_intent TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS endorsement_letter TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS constitution_by_laws TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS officers_cvs TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS organizational_chart TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS member_directory TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS total_members INTEGER DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS new_members INTEGER DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS old_members INTEGER DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS affiliation_fee DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS membership_total DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS total_fee DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS receipt_number TEXT;
 
 CREATE TABLE IF NOT EXISTS affiliation_applications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -833,6 +875,19 @@ CREATE TABLE IF NOT EXISTS password_resets (
 
 CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token);
 CREATE INDEX IF NOT EXISTS idx_password_resets_email ON password_resets(email);
+
+CREATE TABLE IF NOT EXISTS verification_codes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT NOT NULL,
+    code TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    ip_address TEXT,
+    user_agent TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_verification_codes_email ON verification_codes(email);
+CREATE INDEX IF NOT EXISTS idx_verification_codes_code ON verification_codes(code);
 
 -- =====================================================================
 -- AUDIT & COMPLIANCE - LEVEL 3 (Depends on auth.users, institutions)
@@ -1317,6 +1372,7 @@ ALTER TABLE member_directory_imports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pending_affiliations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE verification_codes ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS service_role_full_access ON notifications;
 CREATE POLICY service_role_full_access ON notifications FOR ALL USING (true) WITH CHECK (true);
@@ -1350,6 +1406,9 @@ CREATE POLICY service_role_full_access ON transactions FOR ALL USING (true) WITH
 
 DROP POLICY IF EXISTS service_role_full_access ON members;
 CREATE POLICY service_role_full_access ON members FOR ALL USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS service_role_full_access ON verification_codes;
+CREATE POLICY service_role_full_access ON verification_codes FOR ALL USING (true) WITH CHECK (true);
 
 DROP POLICY IF EXISTS user_notifications_select ON notifications;
 CREATE POLICY user_notifications_select ON notifications

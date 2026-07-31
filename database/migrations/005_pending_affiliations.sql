@@ -20,7 +20,15 @@ CREATE TABLE IF NOT EXISTS pending_affiliations (
     submitted_at TIMESTAMP DEFAULT NOW(),
     ip_address TEXT,
     created_at TIMESTAMP DEFAULT NOW(),
-    updated_at TIMESTAMP DEFAULT NOW()
+    updated_at TIMESTAMP DEFAULT NOW(),
+    email TEXT,
+    total_members INTEGER DEFAULT 0,
+    new_members INTEGER DEFAULT 0,
+    old_members INTEGER DEFAULT 0,
+    affiliation_fee DECIMAL(10,2) DEFAULT 0,
+    membership_total DECIMAL(10,2) DEFAULT 0,
+    total_fee DECIMAL(10,2) DEFAULT 0,
+    receipt_number TEXT
 );
 
 -- Create index on status for faster queries
@@ -64,3 +72,13 @@ CREATE TRIGGER update_pending_affiliations_updated_at
     BEFORE UPDATE ON pending_affiliations
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
+
+-- Add missing columns to existing tables (safe if table was created without them)
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS total_members INTEGER DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS new_members INTEGER DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS old_members INTEGER DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS affiliation_fee DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS membership_total DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS total_fee DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS receipt_number TEXT;
