@@ -1,5 +1,5 @@
 <?php
-require_once dirname(__DIR__) . '/../bootstrap.php';
+require_once dirname(__DIR__) . '/bootstrap.php';
 
 $facebookPageUrl = 'https://www.facebook.com/IECEPLSC';
 $merchItems = [];
