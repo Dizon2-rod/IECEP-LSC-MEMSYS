@@ -251,7 +251,7 @@ define('HEAD_META_INCLUDED', true);
         min-height: 100vh;
     }
     .sidebar {
-        width: 280px;
+        width: 260px;
         background: var(--primary);
         color: white;
         position: fixed;
@@ -268,7 +268,7 @@ define('HEAD_META_INCLUDED', true);
     }
     .main-content {
         flex: 1;
-        margin-left: 280px;
+        margin-left: var(--sidebar-width, 260px);
         transition: margin-left 0.3s ease;
     }
     .main-content.sidebar-expanded {

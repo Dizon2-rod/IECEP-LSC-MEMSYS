@@ -34,7 +34,7 @@ try {
         throw new Exception('PhpSpreadsheet library not installed');
     }
 
-    $db = getDbConnection();
+    $supabase = getSupabaseClient();
     $batch_id = $_GET['batch_id'] ?? null;
 
     if (!$batch_id) {
@@ -45,9 +45,13 @@ try {
     }
 
     // Fetch batch info
-    $stmt = $db->prepare("SELECT * FROM upload_batches WHERE id = ?");
-    $stmt->execute([$batch_id]);
-    $batch = $stmt->fetch(PDO::FETCH_ASSOC);
+    $batchResponse = $supabase->from('upload_batches')
+        ->select('*')
+        ->eq('id', $batch_id)
+        ->limit(1)
+        ->execute();
+
+    $batch = $batchResponse->data[0] ?? null;
 
     if (!$batch) {
         header('Content-Type: application/json');
@@ -56,14 +60,13 @@ try {
         exit;
     }
 
-    // Fetch all import rows for this batch grouped by sheet
-    $stmt = $db->prepare("
-        SELECT * FROM membership_directory_imports 
-        WHERE batch_id = ? 
-        ORDER BY sheet_name, row_index
-    ");
-    $stmt->execute([$batch_id]);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    // Fetch all import rows for this batch
+    $rowsResponse = $supabase->from('membership_directory_imports')
+        ->select('*')
+        ->eq('batch_id', $batch_id)
+        ->execute();
+
+    $rows = $rowsResponse->data ?? [];
 
     // Create new spreadsheet
     $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
@@ -163,18 +166,5 @@ function log_audit($action, $table_name, $record_id, $old_data = null, $new_data
     if (function_exists('log_audit')) {
         call_user_func('log_audit', $action, $table_name, $record_id, $old_data, $new_data);
     }
-}
-
-function getDbConnection() {
-    static $db = null;
-    if ($db === null) {
-        $db = new PDO(
-            'pgsql:host=' . env('DB_HOST') . ';port=' . env('DB_PORT', 5432) . ';dbname=' . env('DB_NAME'),
-            env('DB_USER'),
-            env('DB_PASSWORD')
-        );
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    }
-    return $db;
 }
 ?>

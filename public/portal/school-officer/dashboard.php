@@ -24,11 +24,13 @@ $schoolName = 'Your School';
 if ($db) {
     try {
         $members = $db->select('members', ['user_id' => 'eq.' . $user['id']]);
-        if (!empty($members)) {
-            $institutionId = $members[0]['institution_id'];
-            $institutions = $db->select('institutions', ['id' => 'eq.' . $institutionId]);
-            if (!empty($institutions)) {
-                $schoolName = $institutions[0]['name'];
+        if (!empty($members) && is_array($members)) {
+            $institutionId = $members[0]['institution_id'] ?? null;
+            if ($institutionId) {
+                $institutions = $db->select('institutions', ['id' => 'eq.' . $institutionId]);
+                if (!empty($institutions) && is_array($institutions)) {
+                    $schoolName = $institutions[0]['name'] ?? $schoolName;
+                }
             }
         }
     } catch (Exception $e) {

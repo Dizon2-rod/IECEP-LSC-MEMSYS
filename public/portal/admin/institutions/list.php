@@ -201,10 +201,10 @@ foreach ($applications as &$app) {
         <header class="section-header">
             <div>
                 <h2>Affiliation Applications</h2>
-                <p>Review and verify institutional documents with Blockchain integrity.</p>
+                <p class="text-muted">Review and verify institutional documents with Blockchain integrity.</p>
             </div>
             <div style="display: flex; gap: 12px; align-items: center;">
-                <span id="selectedCount" style="display: none; color: var(--slate-600); font-weight: 600;"></span>
+                <span id="selectedCount" style="display: none; color: var(--portal-text-muted); font-weight: 600;"></span>
                 <button id="bulkApproveBtn" onclick="bulkApprove()" class="btn btn-success" style="display: none;" disabled>
                     <i class="fas fa-check-double"></i> Bulk Approve Selected
                 </button>
@@ -218,14 +218,14 @@ foreach ($applications as &$app) {
         </div>
 
         <!-- Bulk Actions Bar -->
-        <div id="bulkActionsBar" style="display: none; background: white; padding: 16px 24px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 24px; border: 1px solid var(--slate-200);">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div style="display: flex; align-items: center; gap: 12px;">
+        <div id="bulkActionsBar" class="content-card" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" style="width: 18px; height: 18px; cursor: pointer;">
                     <label for="selectAll" style="font-weight: 600; cursor: pointer; margin: 0;">Select All</label>
-                    <span id="selectedCountText" style="color: var(--slate-600);"></span>
+                    <span id="selectedCountText" style="color: var(--portal-text-muted);"></span>
                 </div>
-                <div style="display: flex; gap: 12px;">
+                <div style="display: flex; gap: 0.75rem;">
                     <button onclick="bulkApprove()" class="btn btn-success" id="bulkApproveBtn2">
                         <i class="fas fa-check-double"></i> Approve Selected
                     </button>
@@ -238,19 +238,19 @@ foreach ($applications as &$app) {
 
         <div class="tab-panel active" id="tab-pending">
             <?php if (empty($pendingApps)): ?>
-                <div style="text-align: center; padding: 80px; background: white; border-radius: var(--radius); border: 2px dashed var(--slate-200); box-shadow: var(--shadow);">
-                    <i class="fas fa-folder-open" style="font-size: 4rem; color: var(--slate-200); margin-bottom: 20px;"></i>
-                    <h3 style="color: var(--slate-400); font-weight: 500;">No applications awaiting review.</h3>
+                <div class="content-card text-center" style="padding: 4rem 2rem; border-style: dashed;">
+                    <i class="fas fa-folder-open" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
+                    <h3 class="text-muted" style="font-weight: 500;">No applications awaiting review.</h3>
                 </div>
             <?php else: ?>
-                <div style="background: white; border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--slate-200); overflow: hidden;">
-                    <table style="width: 100%; border-collapse: collapse;">
+                <div class="content-card" style="padding: 0; overflow: hidden;">
+                    <table class="table mb-0">
                         <thead>
-                            <tr style="background: var(--slate-50); border-bottom: 2px solid var(--slate-200);">
-                                <th style="padding: 16px; text-align: left; font-weight: 700; color: var(--navy);">Institution Name</th>
-                                <th style="padding: 16px; text-align: left; font-weight: 700; color: var(--navy);">Date Submitted</th>
-                                <th style="padding: 16px; text-align: left; font-weight: 700; color: var(--navy);">Status</th>
-                                <th style="padding: 16px; text-align: right; font-weight: 700; color: var(--navy);">Actions</th>
+                            <tr>
+                                <th>Institution Name</th>
+                                <th>Date Submitted</th>
+                                <th>Status</th>
+                                <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -258,15 +258,15 @@ foreach ($applications as &$app) {
                                 if (!is_array($app)) continue;
                                 $status = $app['status'] ?? 'pending';
                             ?>
-                                <tr style="border-bottom: 1px solid var(--slate-100); transition: background 0.2s;" onmouseover="this.style.background='var(--slate-50)'" onmouseout="this.style.background='white'">
-                                    <td style="padding: 16px;">
-                                        <div style="font-weight: 600; color: var(--navy);"><?php echo htmlspecialchars($app['institution_name'] ?? 'N/A'); ?></div>
-                                        <div style="font-size: 0.85rem; color: var(--slate-400);"><?php echo htmlspecialchars($app['email'] ?? 'N/A'); ?></div>
+                                <tr>
+                                    <td>
+                                        <div style="font-weight: 600; color: var(--portal-navy);"><?php echo htmlspecialchars($app['institution_name'] ?? 'N/A'); ?></div>
+                                        <div style="font-size: 0.85rem; color: var(--portal-text-muted);"><?php echo htmlspecialchars($app['email'] ?? 'N/A'); ?></div>
                                     </td>
-                                    <td style="padding: 16px; color: var(--slate-600);"><?php echo htmlspecialchars($app['submitted_at'] ?? 'N/A'); ?></td>
-                                    <td style="padding: 16px;"><span class="status-badge <?php echo $status; ?>"><?php echo ucfirst(str_replace('_', ' ', $status)); ?></span></td>
-                                    <td style="padding: 16px; text-align: right;">
-                                        <button onclick="viewDocuments('<?php echo $app['id']; ?>')" class="btn btn-outline" style="padding: 6px 12px; font-size: 0.8rem;">
+                                    <td><?php echo htmlspecialchars($app['submitted_at'] ?? 'N/A'); ?></td>
+                                    <td><span class="status-badge status-<?php echo $status; ?>"><?php echo ucfirst(str_replace('_', ' ', $status)); ?></span></td>
+                                    <td style="text-align: right;">
+                                        <button onclick="viewDocuments('<?php echo $app['id']; ?>')" class="btn btn-sm btn-outline">
                                             <i class="fas fa-file-alt"></i> Review
                                         </button>
                                     </td>
@@ -280,9 +280,9 @@ foreach ($applications as &$app) {
 
         <div class="tab-panel" id="tab-approved">
             <?php if (empty($approvedApps)): ?>
-                <div style="text-align: center; padding: 80px; background: white; border-radius: var(--radius); border: 2px dashed var(--slate-200); box-shadow: var(--shadow);">
-                    <i class="fas fa-folder-open" style="font-size: 4rem; color: var(--slate-200); margin-bottom: 20px;"></i>
-                    <h3 style="color: var(--slate-400); font-weight: 500;">No approved applications.</h3>
+                <div class="content-card text-center" style="padding: 4rem 2rem; border-style: dashed;">
+                    <i class="fas fa-folder-open" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 1rem;"></i>
+                    <h3 class="text-muted" style="font-weight: 500;">No approved applications.</h3>
                 </div>
             <?php else: ?>
                 <div class="applications-list">

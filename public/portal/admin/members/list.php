@@ -42,8 +42,10 @@ try {
         // Get all active institutions for school names
         $institutions = $supabase->select('institutions', ['status' => 'eq.active']);
         $schoolNames = [];
-        foreach ($institutions as $inst) {
-            $schoolNames[$inst['id']] = $inst['name'];
+        if ($institutions) {
+            foreach ($institutions as $inst) {
+                $schoolNames[$inst['id']] = $inst['name'];
+            }
         }
         
         foreach ($members as $member) {
@@ -78,47 +80,40 @@ try {
 $allSchools = [];
 try {
     $institutions = $supabase->select('institutions', ['status' => 'eq.active']);
-    foreach ($institutions as $inst) {
-        $allSchools[$inst['id']] = $inst['name'];
+    if ($institutions) {
+        foreach ($institutions as $inst) {
+            $allSchools[$inst['id']] = $inst['name'];
+        }
     }
 } catch (Exception $e) {
     $allSchools = [];
 }
 ?>
 <div class="main-content">
-    <div class="dashboard-header">
-        <div class="header-content">
-            <div>
-                <h1>Member Management</h1>
-                <p class="welcome-message">Members grouped by affiliated school</p>
-            </div>
+    <div class="page-header">
+        <div>
+            <h1><i class="fas fa-users"></i> Member Management</h1>
+            <p class="text-muted">Members grouped by affiliated school</p>
         </div>
     </div>
 
-    <!-- Statistics Cards -->
     <div class="stats-grid">
         <div class="stat-card">
-            <div class="stat-icon" style="background: var(--info-bg, #DBEAFE); color: var(--info, #3B82F6);">
-                <i class="fas fa-users"></i>
-            </div>
+            <div class="stat-icon icon-blue"><i class="fas fa-users"></i></div>
             <div class="stat-details">
                 <div class="stat-value"><?php echo number_format($totalMembers); ?></div>
                 <div class="stat-label">Total Members</div>
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon" style="background: #DCFCE7; color: #10B981;">
-                <i class="fas fa-school"></i>
-            </div>
+            <div class="stat-icon icon-emerald"><i class="fas fa-school"></i></div>
             <div class="stat-details">
                 <div class="stat-value"><?php echo number_format($totalSchools); ?></div>
                 <div class="stat-label">Active Schools</div>
             </div>
         </div>
         <div class="stat-card">
-            <div class="stat-icon" style="background: #FEF3C7; color: #F59E0B;">
-                <i class="fas fa-user-plus"></i>
-            </div>
+            <div class="stat-icon icon-gold"><i class="fas fa-user-plus"></i></div>
             <div class="stat-details">
                 <div class="stat-value"><?php echo $totalMembers > 0 ? number_format(round($totalMembers / max($totalSchools, 1), 1)) : 0; ?></div>
                 <div class="stat-label">Avg Members/School</div>
@@ -126,17 +121,15 @@ try {
         </div>
     </div>
 
-    <!-- Search and Filter -->
-    <div class="content-card" style="margin-bottom: 24px;">
-        <form method="GET" action="" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+    <div class="content-card">
+        <form method="GET" action="" class="d-flex gap-2 flex-wrap" style="margin-bottom: 1.5rem;">
             <div style="flex: 1; min-width: 250px;">
-                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--slate-700);">Search Members</label>
-                <input type="text" name="search" value="<?php echo htmlspecialchars($searchQuery); ?>" placeholder="Search by name, email, or school..." 
-                       style="width: 100%; padding: 10px 14px; border: 1px solid var(--slate-200); border-radius: 8px; font-size: 0.9rem;">
+                <label class="form-label">Search Members</label>
+                <input type="text" name="search" value="<?php echo htmlspecialchars($searchQuery); ?>" placeholder="Search by name, email, or school..." class="form-control">
             </div>
             <div style="min-width: 200px;">
-                <label style="display: block; font-weight: 600; margin-bottom: 6px; color: var(--slate-700);">Filter by School</label>
-                <select name="school" onchange="this.form.submit()" style="width: 100%; padding: 10px 14px; border: 1px solid var(--slate-200); border-radius: 8px; font-size: 0.9rem;">
+                <label class="form-label">Filter by School</label>
+                <select name="school" onchange="this.form.submit()" class="form-select">
                     <option value="">All Schools</option>
                     <?php foreach ($allSchools as $id => $name): ?>
                         <option value="<?php echo htmlspecialchars($id); ?>" <?php echo $filterSchool === $id ? 'selected' : ''; ?>>
@@ -145,16 +138,15 @@ try {
                     <?php endforeach; ?>
                 </select>
             </div>
-            <button type="submit" class="btn btn-primary" style="padding: 10px 20px;">
+            <button type="submit" class="btn btn-primary" style="align-self: flex-end;">
                 <i class="fas fa-search"></i> Search
             </button>
             <?php if ($searchQuery || $filterSchool): ?>
-                <a href="?" class="btn btn-outline" style="padding: 10px 20px; text-decoration: none;">
+                <a href="?" class="btn btn-outline" style="align-self: flex-end; text-decoration: none;">
                     <i class="fas fa-times"></i> Clear
                 </a>
             <?php endif; ?>
         </form>
-    </div>
 
     <!-- Members by School -->
     <?php if (empty($membersBySchool)): ?>
@@ -172,27 +164,25 @@ try {
         ?>
         
         <?php foreach ($membersBySchool as $schoolName => $members): ?>
-            <div class="content-card" style="margin-bottom: 24px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; cursor: pointer;" 
+            <div class="content-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; cursor: pointer;" 
                      onclick="toggleSchool('<?php echo htmlspecialchars($schoolName); ?>')">
-                    <div style="display: flex; align-items: center; gap: 16px;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
                         <div style="width: 48px; height: 48px; background: linear-gradient(135deg, #0B1D4A 0%, #1E3A6E 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.25rem;">
                             <i class="fas fa-school"></i>
                         </div>
                         <div>
-                            <h2 style="margin: 0; font-size: 1.25rem; color: var(--navy, #0B1D4A);">
+                            <h2 style="margin: 0; font-size: 1.1rem; color: var(--portal-navy); font-weight: 600;">
                                 <?php echo htmlspecialchars($schoolName); ?>
                             </h2>
-                            <p style="margin: 4px 0 0 0; color: var(--slate-500); font-size: 0.875rem;">
+                            <p style="margin: 2px 0 0 0; color: var(--portal-text-muted); font-size: 0.85rem;">
                                 <?php echo count($members); ?> member<?php echo count($members) !== 1 ? 's' : ''; ?>
                             </p>
                         </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span class="badge" style="background: var(--navy, #0B1D4A); color: white; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 700;">
-                            <?php echo count($members); ?>
-                        </span>
-                        <i id="arrow-<?php echo md5($schoolName); ?>" class="fas fa-chevron-down" style="color: var(--slate-400); transition: transform 0.3s;"></i>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <span class="badge badge-info"><?php echo count($members); ?></span>
+                        <i id="arrow-<?php echo md5($schoolName); ?>" class="fas fa-chevron-down" style="color: var(--portal-text-muted); transition: transform 0.3s;"></i>
                     </div>
                 </div>
 
@@ -213,31 +203,27 @@ try {
                             <tbody>
                                 <?php foreach ($members as $member): 
                                     $status = strtolower($member['membership_status'] ?? 'active');
-                                    $statusColors = [
-                                        'active' => 'background: #DCFCE7; color: #166534;',
-                                        'inactive' => 'background: #F1F5F9; color: #475569;',
-                                        'suspended' => 'background: #FEE2E2; color: #991B1B;',
-                                        'pending' => 'background: #FEF3C7; color: #92400E;'
+                                    $statusClass = [
+                                        'active' => 'badge-success',
+                                        'inactive' => 'badge-secondary',
+                                        'suspended' => 'badge-danger',
+                                        'pending' => 'badge-warning'
                                     ];
-                                    $statusStyle = $statusColors[$status] ?? 'background: #F1F5F9; color: #475569;';
+                                    $badgeClass = $statusClass[$status] ?? 'badge-secondary';
                                 ?>
                                     <tr>
                                         <td><strong><?php echo htmlspecialchars($member['member_id'] ?? 'N/A'); ?></strong></td>
                                         <td>
-                                            <div style="display: flex; align-items: center; gap: 10px;">
-                                                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #C49A00 0%, #D4AF37 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem;">
+                                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                                <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #0B1D4A, #D4AF37); color: white; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0;">
                                                     <?php echo strtoupper(substr($member['full_name'] ?? '?', 0, 1)); ?>
                                                 </div>
-                                                <?php echo htmlspecialchars($member['full_name'] ?? 'N/A'); ?>
+                                                <span style="font-weight: 500;"><?php echo htmlspecialchars($member['full_name'] ?? 'N/A'); ?></span>
                                             </div>
                                         </td>
                                         <td><?php echo htmlspecialchars($member['email'] ?? 'N/A'); ?></td>
                                         <td><?php echo ucfirst($member['membership_type'] ?? 'regular'); ?></td>
-                                        <td>
-                                            <span class="badge" style="<?php echo $statusStyle; ?> padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600;">
-                                                <?php echo ucfirst($status); ?>
-                                            </span>
-                                        </td>
+                                        <td><span class="badge <?php echo $badgeClass; ?>"><?php echo ucfirst($status); ?></span></td>
                                         <td><?php echo $member['last_login'] ? date('M j, Y g:i A', strtotime($member['last_login'])) : 'Never'; ?></td>
                                         <td>
                                             <a href="profile.php?member_id=<?php echo urlencode($member['id']); ?>" class="btn btn-sm btn-outline" title="View Profile">
@@ -413,4 +399,3 @@ function md5(string) {
     return temp.toLowerCase();
 }
 </script>
-<?php include_once __DIR__ . '/../../../../includes/footer.php'; ?>

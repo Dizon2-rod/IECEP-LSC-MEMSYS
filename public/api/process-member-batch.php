@@ -21,6 +21,36 @@ require_once __DIR__ . '/../../src/lib/supabase.php';
 require_once __DIR__ . '/../../src/lib/BlockchainService.php';
 require_once __DIR__ . '/../../includes/lib/EmailService.php';
 
+/**
+ * Upload a file to Supabase Storage
+ */
+function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+    $config = require __DIR__ . '/../../includes/supabase.php';
+    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
+    $fileContent = file_get_contents($tmpFile);
+    if ($fileContent === false) return null;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $fileContent,
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+            'Content-Type: ' . $mimeType,
+            'x-upsert: true',
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+    }
+    error_log("Supabase Storage upload failed ($httpCode): $response");
+    return null;
+}
+
 use App\Lib\Supabase;
 use App\Lib\EmailService;
 use App\Lib\BlockchainService;
@@ -177,19 +207,19 @@ function generateMemberDigitalId(Supabase $sb, string $memberId): void
     $writer = new \Endroid\QrCode\Writer\PngWriter();
     $result = $writer->write($qrCode);
 
-    $qrPath = __DIR__ . '/../../public/assets/qr/' . $memberId . '.png';
-    if (!is_dir(dirname($qrPath))) {
-        mkdir(dirname($qrPath), 0755, true);
-    }
+    $qrPath = sys_get_temp_dir() . '/' . $memberId . '.png';
     file_put_contents($qrPath, $result->getString());
+
+    $qrSupabaseUrl = uploadToSupabaseStorage('public', 'qr-codes/' . $memberId . '.png', $qrPath, 'image/png');
+    @unlink($qrPath);
 
     // Update member record
     $sb->from('members')
         ->eq('id', $memberId)
         ->update([
             'digital_id_hash' => $hash,
-            'qr_code' => '/assets/qr/' . $memberId . '.png',
-            'digital_id_url' => '/assets/qr/' . $memberId . '.png'
+            'qr_code' => $qrSupabaseUrl ?? '/assets/qr/' . $memberId . '.png',
+            'digital_id_url' => $qrSupabaseUrl ?? '/assets/qr/' . $memberId . '.png'
         ], true);
 }
 

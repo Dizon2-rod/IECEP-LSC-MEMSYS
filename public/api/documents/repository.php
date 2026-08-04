@@ -7,6 +7,36 @@
 require_once __DIR__ . '/../../../includes/config.php';
 require_once __DIR__ . '/../../../includes/middleware/auth.php';
 
+/**
+ * Upload a file to Supabase Storage
+ */
+function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+    $config = require __DIR__ . '/../../../includes/supabase.php';
+    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
+    $fileContent = file_get_contents($tmpFile);
+    if ($fileContent === false) return null;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $fileContent,
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+            'Content-Type: ' . $mimeType,
+            'x-upsert: true',
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+    }
+    error_log("Supabase Storage upload failed ($httpCode): $response");
+    return null;
+}
+
 header('Content-Type: application/json');
 
 try {
@@ -51,21 +81,16 @@ try {
                 // Generate unique filename
                 $fileExt = pathinfo($fileName, PATHINFO_EXTENSION);
                 $newFileName = uniqid() . '.' . $fileExt;
-                $uploadPath = __DIR__ . '/../../uploads/documents/' . $newFileName;
+                $objectPath = 'documents/' . $newFileName;
                 
-                // Create directory if it doesn't exist
-                $uploadDir = dirname($uploadPath);
-                if (!is_dir($uploadDir)) {
-                    mkdir($uploadDir, 0755, true);
-                }
+                $supabaseUrl = uploadToSupabaseStorage('documents', $objectPath, $fileTmp, $fileType);
                 
-                // Move uploaded file
-                if (!move_uploaded_file($fileTmp, $uploadPath)) {
-                    throw new Exception('Failed to upload file');
+                if (!$supabaseUrl) {
+                    throw new Exception('Failed to upload file to storage');
                 }
                 
                 // Hash document for blockchain verification
-                $fileContent = file_get_contents($uploadPath);
+                $fileContent = file_get_contents($fileTmp);
                 $fileHash = hash('sha256', $fileContent);
                 
                 // Insert document record
@@ -76,7 +101,7 @@ try {
                     'title' => $title,
                     'category' => $category,
                     'description' => $description,
-                    'file_path' => '/uploads/documents/' . $newFileName,
+                    'file_path' => $supabaseUrl,
                     'file_name' => $fileName,
                     'file_size' => $fileSize,
                     'mime_type' => $fileType,
@@ -88,7 +113,7 @@ try {
                 
                 // Record on blockchain
                 if (isset($GLOBALS['blockchain'])) {
-                    $GLOBALS['blockchain']->hashDocument($uploadPath, $fileName, $documentId);
+                    $GLOBALS['blockchain']->hashDocument($supabaseUrl, $fileName, $documentId);
                 }
                 
                 echo json_encode([
@@ -250,11 +275,21 @@ try {
                 
                 $document = $documents[0];
                 
-                // Delete file
-                $filePath = __DIR__ . '/../../' . ltrim($document['file_path'], '/');
-                if (file_exists($filePath)) {
-                    unlink($filePath);
-                }
+                // Delete file from Supabase Storage
+                $filePath = ltrim($document['file_path'], '/');
+                $config = require __DIR__ . '/../../../includes/supabase.php';
+                $deleteUrl = rtrim($config['url'], '/') . '/storage/v1/object/documents/' . $filePath;
+                $ch = curl_init($deleteUrl);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_CUSTOMREQUEST => 'DELETE',
+                    CURLOPT_HTTPHEADER => [
+                        'apikey: ' . $config['service_role_key'],
+                        'Authorization: Bearer ' . $config['service_role_key'],
+                    ],
+                ]);
+                curl_exec($ch);
+                curl_close($ch);
                 
                 // Delete database record
                 $db->delete('documents', $documentId);

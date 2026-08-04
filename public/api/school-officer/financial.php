@@ -1,8 +1,37 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/../../../includes/config.php';
-require_once __DIR__ . '/../../../includes/database.php';
 require_once __DIR__ . '/../../../includes/helpers/cbl_fee_calculator.php';
+
+/**
+ * Upload a file to Supabase Storage
+ */
+function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+    $config = require __DIR__ . '/../../../includes/supabase.php';
+    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
+    $fileContent = file_get_contents($tmpFile);
+    if ($fileContent === false) return null;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $fileContent,
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+            'Content-Type: ' . $mimeType,
+            'x-upsert: true',
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+    }
+    error_log("Supabase Storage upload failed ($httpCode): $response");
+    return null;
+}
 
 header('Content-Type: application/json');
 
@@ -17,6 +46,9 @@ if (!$userId) {
     echo json_encode(['error' => 'Unauthorized']);
     exit;
 }
+
+$supabaseConfig = require __DIR__ . '/../../../includes/supabase.php';
+$supabase = new \App\Lib\SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
 
 switch ($action) {
     case 'upload_payment':
@@ -38,24 +70,23 @@ switch ($action) {
         
         $proofUrl = null;
         if (isset($_FILES['proof_of_payment'])) {
-            $uploadDir = __DIR__ . '/../../../storage/payments/';
-            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-            
+            $mimeType = mime_content_type($_FILES['proof_of_payment']['tmp_name']) ?: $_FILES['proof_of_payment']['type'];
             $fileName = uniqid() . '_' . basename($_FILES['proof_of_payment']['name']);
-            $targetPath = $uploadDir . $fileName;
-            
-            if (move_uploaded_file($_FILES['proof_of_payment']['tmp_name'], $targetPath)) {
-                $proofUrl = '/storage/payments/' . $fileName;
-            }
+            $proofUrl = uploadToSupabaseStorage('payments', 'proofs/' . $fileName, $_FILES['proof_of_payment']['tmp_name'], $mimeType);
         }
         
-        $query = "INSERT INTO financial_records (school_id, amount, payment_type, payment_status, proof_of_payment) 
-                  VALUES ($1, $2, $3, 'Pending', $4) RETURNING id";
-        $result = pg_query_params($conn, $query, [$schoolId, $amount, $paymentType, $proofUrl]);
+        $result = $supabase->insert('financial_records', [
+            'school_id' => $schoolId,
+            'amount' => $amount,
+            'payment_type' => $paymentType,
+            'payment_status' => 'Pending',
+            'proof_of_payment' => $proofUrl,
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
         
         if ($result) {
-            $row = pg_fetch_assoc($result);
-            echo json_encode(['success' => true, 'record_id' => $row['id']]);
+            $recordId = is_array($result) && isset($result[0]['id']) ? $result[0]['id'] : null;
+            echo json_encode(['success' => true, 'record_id' => $recordId]);
         } else {
             http_response_code(500);
             echo json_encode(['error' => 'Failed to create record']);
@@ -71,15 +102,9 @@ switch ($action) {
             exit;
         }
         
-        $query = "SELECT * FROM financial_records WHERE school_id = $1 ORDER BY created_at DESC";
-        $result = pg_query_params($conn, $query, [$schoolId]);
+        $records = $supabase->select('financial_records', ['school_id' => 'eq.' . $schoolId, 'order' => 'created_at.desc']);
         
-        $records = [];
-        while ($row = pg_fetch_assoc($result)) {
-            $records[] = $row;
-        }
-        
-        echo json_encode(['records' => $records]);
+        echo json_encode(['records' => $records ?? []]);
         break;
         
     case 'calculate_fee':

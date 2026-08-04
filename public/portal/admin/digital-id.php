@@ -14,7 +14,6 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'eb_admin') {
 }
 
 $pageTitle = 'Digital ID Management';
-include '../../includes/dashboard-layout.php';
 
 // Get blockchain records for digital IDs
 try {
@@ -404,5 +403,3 @@ function showToast(message, type) {
     }
 }
 </script>
-
-<?php include __DIR__ . '/../../../includes/footer.php'; ?>

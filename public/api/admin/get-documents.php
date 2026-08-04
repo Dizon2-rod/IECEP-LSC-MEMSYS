@@ -20,37 +20,28 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 try {
-    $db = getDbConnection();
-    
+    $supabase = getSupabaseClient();
+
     $application_id = $_GET['application_id'] ?? null;
-    
+
     if (!$application_id) {
         throw new Exception('Application ID is required');
     }
-    
+
     // Fetch documents
-    $stmt = $db->prepare("
-        SELECT * FROM affiliation_documents
-        WHERE application_id = ?
-        ORDER BY 
-            CASE document_type
-                WHEN 'letter_of_intent' THEN 1
-                WHEN 'endorsement_letter' THEN 2
-                WHEN 'constitution_bylaws' THEN 3
-                WHEN 'officers_cv' THEN 4
-                WHEN 'org_chart' THEN 5
-                WHEN 'member_directory' THEN 6
-            END
-    ");
-    $stmt->execute([$application_id]);
-    $documents = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    
+    $response = $supabase->from('affiliation_documents')
+        ->select('*')
+        ->eq('application_id', $application_id)
+        ->execute();
+
+    $documents = $response->data ?? [];
+
     http_response_code(200);
     echo json_encode([
         'success' => true,
         'documents' => $documents
     ]);
-    
+
 } catch (Exception $e) {
     error_log("Get documents error: " . $e->getMessage());
     http_response_code(400);

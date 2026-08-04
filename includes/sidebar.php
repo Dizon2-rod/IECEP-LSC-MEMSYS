@@ -67,21 +67,27 @@ $portal_title = $portal_names[$role] ?? 'Dashboard';
 // Function to check if menu item is active
 function isMenuItemActive($item_url, $current_page) {
     $item_page = basename(parse_url($item_url, PHP_URL_PATH), '.php');
-    if ($current_page === $item_page) {
-        return true;
+    if ($current_page !== $item_page) {
+        return false;
     }
-    $item_path = parse_url($item_url, PHP_URL_PATH) ?? '';
-    $script_path = parse_url($_SERVER['SCRIPT_NAME'] ?? '', PHP_URL_PATH) ?? '';
-    if ($item_path && $script_path && $script_path === $item_path) {
-        return true;
+
+    $normalized_item_url = $item_url;
+    if (strpos($item_url, '/') !== 0) {
+        global $base_public_url;
+        $normalized_item_url = rtrim($base_public_url, '/') . '/' . ltrim($item_url, '/');
     }
-    return false;
+
+    $item_path = ltrim(parse_url($normalized_item_url, PHP_URL_PATH) ?? '', '/');
+    $script_path = ltrim(parse_url($_SERVER['SCRIPT_NAME'] ?? '', PHP_URL_PATH) ?? '', '/');
+
+    return $item_path !== '' && $script_path !== '' && $script_path === $item_path;
 }
 ?>
 
 <style>
 /* Dynamic Sidebar Styles */
 :root {
+    --sidebar-width: 260px;
     --sidebar-primary: #0B1D4A;
     --sidebar-primary-light: #1E3A6E;
     --sidebar-accent: #D4AF37;
@@ -368,25 +374,6 @@ function isMenuItemActive($item_url, $current_page) {
     display: block;
     opacity: 1;
     visibility: visible;
-}
-
-:root {
-    --sidebar-width: 260px;
-    --sidebar-transition: 0.3s ease;
-}
-
-/* Sidebar itself */
-#sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: var(--sidebar-width);
-    height: 100vh;
-    background: #0B1D4A;
-    z-index: 1000;
-    transform: translateX(0);
-    transition: transform var(--sidebar-transition);
-    overflow-y: auto;
 }
 
 /* Main content wrapper – desktop */

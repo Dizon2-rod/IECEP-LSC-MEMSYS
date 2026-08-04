@@ -138,22 +138,22 @@ if (!defined('ALLOWED_FILE_TYPES_ARRAY')) {
     define('ALLOWED_FILE_TYPES_ARRAY', array_filter(array_map('trim', explode(',', ALLOWED_FILE_TYPES))));
 }
 
-// XAMPP MySQL Configuration
-if (!defined('DB_HOST')) {
-    define('DB_HOST', env('DB_HOST', 'localhost'));
-}
-if (!defined('DB_PORT')) {
-    define('DB_PORT', env('DB_PORT', '3306'));
-}
-if (!defined('DB_NAME')) {
-    define('DB_NAME', env('DB_NAME', 'iecep_lsc_memsys'));
-}
-if (!defined('DB_USER')) {
-    define('DB_USER', env('DB_USER', 'root'));
-}
-if (!defined('DB_PASS')) {
-    define('DB_PASS', env('DB_PASS', ''));
-}
+// XAMPP MySQL Configuration — DISABLED for Railway (Supabase only)
+// if (!defined('DB_HOST')) {
+//     define('DB_HOST', env('DB_HOST', 'localhost'));
+// }
+// if (!defined('DB_PORT')) {
+//     define('DB_PORT', env('DB_PORT', '3306'));
+// }
+// if (!defined('DB_NAME')) {
+//     define('DB_NAME', env('DB_NAME', 'iecep_lsc_memsys'));
+// }
+// if (!defined('DB_USER')) {
+//     define('DB_USER', env('DB_USER', 'root'));
+// }
+// if (!defined('DB_PASS')) {
+//     define('DB_PASS', env('DB_PASS', ''));
+// }
 
 // Database Table Names
 if (!defined('TABLE_USERS')) {

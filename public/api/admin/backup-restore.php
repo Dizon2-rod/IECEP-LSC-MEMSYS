@@ -9,6 +9,80 @@ require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/../../../includes/config.php';
 require_once __DIR__ . '/../../../includes/auth.php';
 
+/**
+ * Upload a file to Supabase Storage
+ */
+function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+    $config = require __DIR__ . '/../../../includes/supabase.php';
+    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
+    $fileContent = file_get_contents($tmpFile);
+    if ($fileContent === false) return null;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $fileContent,
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+            'Content-Type: ' . $mimeType,
+            'x-upsert: true',
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+    }
+    error_log("Supabase Storage upload failed ($httpCode): $response");
+    return null;
+}
+
+/**
+ * Delete an object from Supabase Storage
+ */
+function deleteFromSupabaseStorage(string $bucket, string $path): bool {
+    $config = require __DIR__ . '/../../../includes/supabase.php';
+    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CUSTOMREQUEST => 'DELETE',
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return $httpCode >= 200 && $httpCode < 300;
+}
+
+/**
+ * List objects in a Supabase Storage bucket
+ */
+function listSupabaseStorageObjects(string $bucket, string $prefix = ''): array {
+    $config = require __DIR__ . '/../../../includes/supabase.php';
+    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket?prefix=" . urlencode($prefix) . "&limit=1000";
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return json_decode($response, true) ?? [];
+    }
+    return [];
+}
+
 header('Content-Type: application/json');
 
 // Verify admin/super_admin access
@@ -57,41 +131,30 @@ try {
  * List available backups
  */
 function handleListBackups() {
-    $backup_dir = __DIR__ . '/../../../storage/backups';
-    
-    if (!is_dir($backup_dir)) {
-        mkdir($backup_dir, 0755, true);
+    global $supabase;
+
+    $backups = [];
+    $objects = listSupabaseStorageObjects('backups', 'backup_');
+
+    foreach ($objects as $obj) {
+        $name = basename($obj['name'] ?? '');
+        if (!$name) continue;
+        $backups[] = [
+            'filename' => $name,
+            'size' => $obj['size'] ?? 0,
+            'size_mb' => round(($obj['size'] ?? 0) / 1024 / 1024, 2),
+            'created_at' => $obj['created_at'] ?? '',
+            'timestamp' => strtotime($obj['created_at'] ?? 'now')
+        ];
     }
-    
-    try {
-        $files = scandir($backup_dir);
-        $backups = [];
-        
-        foreach ($files as $file) {
-            if ($file !== '.' && $file !== '..' && is_file($backup_dir . '/' . $file)) {
-                $backups[] = [
-                    'filename' => $file,
-                    'size' => filesize($backup_dir . '/' . $file),
-                    'size_mb' => round(filesize($backup_dir . '/' . $file) / 1024 / 1024, 2),
-                    'created_at' => date('Y-m-d H:i:s', filemtime($backup_dir . '/' . $file)),
-                    'timestamp' => filemtime($backup_dir . '/' . $file)
-                ];
-            }
-        }
-        
-        // Sort by timestamp descending
-        usort($backups, fn($a, $b) => $b['timestamp'] <=> $a['timestamp']);
-        
-        echo json_encode([
-            'success' => true,
-            'backups' => $backups,
-            'total' => count($backups),
-            'backup_dir' => $backup_dir
-        ]);
-    } catch (Exception $e) {
-        http_response_code(500);
-        echo json_encode(['error' => $e->getMessage()]);
-    }
+
+    usort($backups, fn($a, $b) => $b['timestamp'] <=> $a['timestamp']);
+
+    echo json_encode([
+        'success' => true,
+        'backups' => $backups,
+        'total' => count($backups),
+    ]);
 }
 
 /**
@@ -99,41 +162,34 @@ function handleListBackups() {
  */
 function handleCreateBackup() {
     global $supabase;
-    
+
     $data = json_decode(file_get_contents('php://input'), true);
-    $backup_type = $data['type'] ?? 'full'; // full, partial, tables
-    $tables = $data['tables'] ?? []; // For partial backups
-    
+    $backup_type = $data['type'] ?? 'full';
+    $tables = $data['tables'] ?? [];
+
     try {
-        $backup_dir = __DIR__ . '/../../../storage/backups';
-        if (!is_dir($backup_dir)) {
-            mkdir($backup_dir, 0755, true);
-        }
-        
         $timestamp = date('Y-m-d_His');
         $filename = "backup_{$backup_type}_{$timestamp}.json";
-        $filepath = $backup_dir . '/' . $filename;
-        
-        // Collect backup data
+        $objectPath = 'backups/' . $filename;
+
         $backup_data = [
             'backup_type' => $backup_type,
             'created_at' => date('Y-m-d H:i:s'),
             'created_by' => $_SESSION['user_id'] ?? 'unknown',
             'tables' => []
         ];
-        
-        // Get list of critical tables
+
         $critical_tables = [
-            'user_profiles', 'members', 'institutions', 
+            'user_profiles', 'members', 'institutions',
             'transactions', 'pending_affiliations', 'events',
             'notifications', 'audit_logs'
         ];
-        
+
         foreach ($critical_tables as $table) {
             if ($backup_type === 'partial' && !in_array($table, $tables)) {
                 continue;
             }
-            
+
             try {
                 $response = $supabase->from($table)->select('*')->limit(100000)->execute();
                 $backup_data['tables'][$table] = [
@@ -144,19 +200,29 @@ function handleCreateBackup() {
                 $backup_data['tables'][$table] = ['error' => $e->getMessage()];
             }
         }
-        
-        // Save backup file
-        file_put_contents($filepath, json_encode($backup_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-        
-        echo json_encode([
-            'success' => true,
-            'message' => 'Backup created successfully',
-            'backup' => [
-                'filename' => $filename,
-                'size_mb' => round(filesize($filepath) / 1024 / 1024, 2),
-                'created_at' => $backup_data['created_at']
-            ]
-        ]);
+
+        $tmpFile = sys_get_temp_dir() . '/' . $filename;
+        file_put_contents($tmpFile, json_encode($backup_data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+        $backupSize = filesize($tmpFile);
+
+        $uploadUrl = uploadToSupabaseStorage('backups', $objectPath, $tmpFile, 'application/json');
+        @unlink($tmpFile);
+
+        if ($uploadUrl) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Backup created successfully',
+                'backup' => [
+                    'filename' => $filename,
+                    'size_mb' => round($backupSize / 1024 / 1024, 2),
+                    'created_at' => $backup_data['created_at']
+                ]
+            ]);
+        } else {
+            @unlink($tmpFile);
+            http_response_code(500);
+            echo json_encode(['error' => 'Failed to upload backup to Supabase Storage']);
+        }
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => $e->getMessage()]);
@@ -168,41 +234,52 @@ function handleCreateBackup() {
  */
 function handleRestore() {
     global $supabase;
-    
+
     $data = json_decode(file_get_contents('php://input'), true);
     $filename = $data['filename'] ?? '';
-    
+
     if (!$filename) {
         http_response_code(400);
         return json_encode(['error' => 'Filename required']);
     }
-    
+
     try {
-        $backup_dir = __DIR__ . '/../../../storage/backups';
-        $filepath = $backup_dir . '/' . basename($filename); // Prevent directory traversal
-        
-        if (!file_exists($filepath)) {
+        $objectPath = 'backups/' . basename($filename);
+        $config = require __DIR__ . '/../../../includes/supabase.php';
+        $downloadUrl = rtrim($config['url'], '/') . "/storage/v1/object/public/backups/{$objectPath}";
+
+        $ch = curl_init($downloadUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_HTTPHEADER => [
+                'apikey: ' . $config['service_role_key'],
+                'Authorization: Bearer ' . $config['service_role_key'],
+            ],
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode >= 400 || !$response) {
             http_response_code(404);
-            return json_encode(['error' => 'Backup file not found']);
+            return json_encode(['error' => 'Backup file not found in storage']);
         }
-        
-        $backup_data = json_decode(file_get_contents($filepath), true);
-        
+
+        $backup_data = json_decode($response, true);
+
         $result = [
             'success' => true,
             'message' => 'Restore completed',
             'restored_tables' => []
         ];
-        
-        // Restore each table
+
         foreach ($backup_data['tables'] as $table => $tableData) {
             if (isset($tableData['error'])) {
                 $result['restored_tables'][$table] = ['status' => 'error', 'message' => $tableData['error']];
                 continue;
             }
-            
+
             try {
-                // This is a simplified restore - full restore would require truncating and re-inserting
                 $result['restored_tables'][$table] = [
                     'status' => 'restored',
                     'rows' => $tableData['rows']
@@ -211,7 +288,7 @@ function handleRestore() {
                 $result['restored_tables'][$table] = ['status' => 'error', 'message' => $e->getMessage()];
             }
         }
-        
+
         echo json_encode($result);
     } catch (Exception $e) {
         http_response_code(500);
@@ -224,27 +301,25 @@ function handleRestore() {
  */
 function handleDeleteBackup() {
     $filename = $_GET['filename'] ?? '';
-    
+
     if (!$filename) {
         http_response_code(400);
         return json_encode(['error' => 'Filename required']);
     }
-    
+
     try {
-        $backup_dir = __DIR__ . '/../../../storage/backups';
-        $filepath = $backup_dir . '/' . basename($filename);
-        
-        if (!file_exists($filepath)) {
+        $objectPath = 'backups/' . basename($filename);
+        $deleted = deleteFromSupabaseStorage('backups', $objectPath);
+
+        if ($deleted) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Backup deleted'
+            ]);
+        } else {
             http_response_code(404);
-            return json_encode(['error' => 'Backup not found']);
+            echo json_encode(['error' => 'Backup not found']);
         }
-        
-        unlink($filepath);
-        
-        echo json_encode([
-            'success' => true,
-            'message' => 'Backup deleted'
-        ]);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode(['error' => $e->getMessage()]);
@@ -255,27 +330,22 @@ function handleDeleteBackup() {
  * Get backup status
  */
 function handleBackupStatus() {
-    $backup_dir = __DIR__ . '/../../../storage/backups';
-    
+    $objects = listSupabaseStorageObjects('backups', 'backup_');
+
     $total_size = 0;
     $file_count = 0;
-    
-    if (is_dir($backup_dir)) {
-        $files = scandir($backup_dir);
-        foreach ($files as $file) {
-            if ($file !== '.' && $file !== '..' && is_file($backup_dir . '/' . $file)) {
-                $total_size += filesize($backup_dir . '/' . $file);
-                $file_count++;
-            }
-        }
+
+    foreach ($objects as $obj) {
+        $total_size += $obj['size'] ?? 0;
+        $file_count++;
     }
-    
+
     echo json_encode([
         'success' => true,
         'status' => [
             'backup_count' => $file_count,
             'total_size_mb' => round($total_size / 1024 / 1024, 2),
-            'backup_dir_writable' => is_writable($backup_dir ?? ''),
+            'backup_dir_writable' => true,
             'last_backup' => null
         ]
     ]);

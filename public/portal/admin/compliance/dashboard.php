@@ -192,43 +192,56 @@ $summary = [
     <div class="container">
         <?php include __DIR__ . '/../../../../includes/sidebar.php'; ?>
         
-        <main class="main-content">
-            <div class="page-header">
-                <div>
-                    <h1>Compliance Dashboard</h1>
-                    <p class="text-gray">Monitor institution compliance, participation rates, and event hosting</p>
-                </div>
-                <div class="action-buttons">
-                    <button onclick="location.reload()" class="btn btn-secondary">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
-                    <button onclick="exportCSV()" class="btn btn-secondary">
-                        <i class="fas fa-download"></i> Export CSV
-                    </button>
+    <main class="main-content">
+        <div class="page-header">
+            <div>
+                <h1><i class="fas fa-clipboard-check"></i> Compliance Dashboard</h1>
+                <p class="text-muted">Monitor institution compliance, participation rates, and event hosting</p>
+            </div>
+            <div class="header-actions">
+                <button onclick="location.reload()" class="btn btn-secondary">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button onclick="exportCSV()" class="btn btn-secondary">
+                    <i class="fas fa-download"></i> Export CSV
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon icon-blue"><i class="fas fa-building"></i></div>
+                <div class="stat-details">
+                    <h3><?php echo $summary['total_institutions']; ?></h3>
+                    <p>Total Institutions</p>
                 </div>
             </div>
-
-            <div class="summary-cards">
-                <div class="summary-card">
-                    <div class="summary-value"><?php echo $summary['total_institutions']; ?></div>
-                    <div class="summary-label">Total Institutions</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-value"><?php echo $summary['active_institutions']; ?></div>
-                    <div class="summary-label">Active Institutions</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-value"><?php echo $summary['total_members']; ?></div>
-                    <div class="summary-label">Total Members</div>
-                </div>
-                <div class="summary-card">
-                    <div class="summary-value"><?php echo $summary['average_participation']; ?>%</div>
-                    <div class="summary-label">Avg Participation</div>
+            <div class="stat-card">
+                <div class="stat-icon icon-emerald"><i class="fas fa-check"></i></div>
+                <div class="stat-details">
+                    <h3><?php echo $summary['active_institutions']; ?></h3>
+                    <p>Active Institutions</p>
                 </div>
             </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-gold"><i class="fas fa-users"></i></div>
+                <div class="stat-details">
+                    <h3><?php echo $summary['total_members']; ?></h3>
+                    <p>Total Members</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-indigo"><i class="fas fa-chart-line"></i></div>
+                <div class="stat-details">
+                    <h3><?php echo $summary['average_participation']; ?>%</h3>
+                    <p>Avg Participation</p>
+                </div>
+            </div>
+        </div>
 
-            <div class="table-container">
-                <table class="data-table">
+        <div class="content-card">
+            <div class="table-responsive">
+                <table class="table">
                     <thead>
                         <tr>
                             <th>Institution</th>
@@ -243,22 +256,27 @@ $summary = [
                     <tbody>
                         <?php if (empty($complianceData)): ?>
                             <tr>
-                                <td colspan="7" style="text-align: center; padding: 2rem;">No compliance data available</td>
+                                <td colspan="7" class="text-center py-4">
+                                    <div class="empty-state">
+                                        <i class="fas fa-building"></i>
+                                        <p>No compliance data available</p>
+                                    </div>
+                                </td>
                             </tr>
                         <?php else: ?>
                             <?php foreach ($complianceData as $inst): ?>
                             <tr>
                                 <td><strong><?php echo htmlspecialchars($inst['name']); ?></strong></td>
                                 <td>
-                                    <span class="status-badge status-<?php echo str_replace(' ', '-', $inst['status_label']); ?>">
+                                    <span class="badge badge-<?php echo $inst['badge']; ?>">
                                         <?php echo htmlspecialchars($inst['status_label']); ?>
                                     </span>
                                 </td>
                                 <td><?php echo $inst['member_count']; ?> members</td>
                                 <td>
-                                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                        <div class="progress-bar">
-                                            <div class="progress-fill" style="width: <?php echo $inst['participation_rate']; ?>%; background: <?php echo $inst['participation_rate'] >= 75 ? 'var(--success)' : ($inst['participation_rate'] >= 50 ? 'var(--warning)' : 'var(--error)'); ?>;"></div>
+                                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <div class="progress" style="width: 100px;">
+                                            <div class="progress-bar" style="width: <?php echo $inst['participation_rate']; ?>%;"></div>
                                         </div>
                                         <small><?php echo $inst['participation_rate']; ?>%</small>
                                     </div>
@@ -266,8 +284,8 @@ $summary = [
                                 <td><?php echo $inst['hosted_events']; ?></td>
                                 <td><?php echo $inst['last_activity'] ? date('M j, Y', strtotime($inst['last_activity'])) : 'N/A'; ?></td>
                                 <td>
-                                    <div class="action-buttons">
-                                        <button onclick="viewDetails('<?php echo $inst['id']; ?>')" class="btn btn-sm btn-secondary" title="View">
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <button onclick="viewDetails('<?php echo $inst['id']; ?>')" class="btn btn-sm btn-outline" title="View">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                         <button onclick="sendReminder('<?php echo $inst['id']; ?>')" class="btn btn-sm btn-primary" title="Send Reminder">
@@ -281,7 +299,8 @@ $summary = [
                     </tbody>
                 </table>
             </div>
-        </main>
+        </div>
+    </main>
     </div>
 
     <!-- Supabase CDN + realtime engine -->

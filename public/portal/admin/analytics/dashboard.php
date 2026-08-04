@@ -17,125 +17,81 @@ if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['ad
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analytics Dashboard - IECEP-LSC MEMSYS</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/css/design-tokens.css">
+    <?php include __DIR__ . '/../../../../includes/head-meta.php'; ?>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <style>
-        :root {
-            --primary-color: #0B1D4A;
-            --secondary-color: #C49A00;
-        }
-        
-        body {
-            background-color: #f8fafc;
-        }
-        
-        .metric-card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .metric-value {
-            font-size: 2.5rem;
-            font-weight: bold;
-            color: var(--primary-color);
-        }
-        
-        .metric-label {
-            color: #64748b;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-        }
-        
-        .chart-container {
-            position: relative;
-            height: 350px;
-            margin: 1rem 0;
-        }
-        
-        .recommendation-card {
-            border-left: 4px solid var(--secondary-color);
-            padding: 1rem;
-            margin-bottom: 1rem;
-            background: #f8fafc;
-            border-radius: 8px;
-        }
-        
-        .priority-high { border-left-color: #ef4444; }
-        .priority-medium { border-left-color: #f59e0b; }
-        .priority-low { border-left-color: #10b981; }
-    </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../../../../includes/navbar.php'; ?>
-    
-    <div class="container mt-4">
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <h2 class="mb-3">Analytics Dashboard</h2>
-                <div class="d-flex gap-2 mb-3">
-                    <select class="form-select w-auto" id="analytics-year" onchange="loadAnalytics()">
-                        <option value="2024">2024</option>
-                        <option value="2025">2025</option>
-                        <option value="2026" selected>2026</option>
-                    </select>
-                    <button class="btn btn-primary" onclick="loadAnalytics()">
-                        <i class="fas fa-sync-alt me-2"></i>Refresh
-                    </button>
-                    <button class="btn btn-secondary" onclick="exportReport()">
-                        <i class="fas fa-download me-2"></i>Export Report
-                    </button>
+    <?php include __DIR__ . '/../../../../includes/sidebar.php'; ?>
+
+    <div class="main-content">
+        <div class="page-header">
+            <div>
+                <h1><i class="fas fa-chart-bar"></i> Analytics Dashboard</h1>
+                <p class="text-muted">Comprehensive insights and decision support</p>
+            </div>
+            <div class="header-actions">
+                <select class="form-select w-auto" id="analytics-year" onchange="loadAnalytics()">
+                    <option value="2024">2024</option>
+                    <option value="2025">2025</option>
+                    <option value="2026" selected>2026</option>
+                </select>
+                <button class="btn btn-primary" onclick="loadAnalytics()">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button class="btn btn-secondary" onclick="exportReport()">
+                    <i class="fas fa-download"></i> Export Report
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon icon-blue"><i class="fas fa-users"></i></div>
+                <div class="stat-details">
+                    <h3 id="total-members">0</h3>
+                    <p>Total Members</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-indigo"><i class="fas fa-university"></i></div>
+                <div class="stat-details">
+                    <h3 id="total-institutions">0</h3>
+                    <p>Institutions</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-gold"><i class="fas fa-calendar-check"></i></div>
+                <div class="stat-details">
+                    <h3 id="total-events">0</h3>
+                    <p>Events</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-emerald"><i class="fas fa-wallet"></i></div>
+                <div class="stat-details">
+                    <h3 id="total-revenue">₱0</h3>
+                    <p>Revenue</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-navy"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-details">
+                    <h3 id="compliant-institutions">0</h3>
+                    <p>Compliant</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-gold"><i class="fas fa-percentage"></i></div>
+                <div class="stat-details">
+                    <h3 id="compliance-rate">0%</h3>
+                    <p>Compliance Rate</p>
                 </div>
             </div>
         </div>
-        
-        <!-- Key Metrics -->
-        <div class="row mb-4">
-            <div class="col-md-2">
-                <div class="metric-card text-center">
-                    <div class="metric-value" id="total-members">0</div>
-                    <div class="metric-label">Total Members</div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="metric-card text-center">
-                    <div class="metric-value" id="total-institutions">0</div>
-                    <div class="metric-label">Institutions</div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="metric-card text-center">
-                    <div class="metric-value" id="total-events">0</div>
-                    <div class="metric-label">Events</div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="metric-card text-center">
-                    <div class="metric-value" id="total-revenue">₱0</div>
-                    <div class="metric-label">Revenue</div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="metric-card text-center">
-                    <div class="metric-value" id="compliant-institutions">0</div>
-                    <div class="metric-label">Compliant</div>
-                </div>
-            </div>
-            <div class="col-md-2">
-                <div class="metric-card text-center">
-                    <div class="metric-value" id="compliance-rate">0%</div>
-                    <div class="metric-label">Compliance Rate</div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Charts Row 1 -->
+
         <div class="row mb-4">
             <div class="col-md-8">
-                <div class="metric-card">
+                <div class="content-card">
                     <h5 class="mb-3">Membership Growth</h5>
                     <div class="chart-container">
                         <canvas id="membershipChart"></canvas>
@@ -143,7 +99,7 @@ if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['ad
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="metric-card">
+                <div class="content-card">
                     <h5 class="mb-3">Event Participation</h5>
                     <div class="chart-container">
                         <canvas id="participationChart"></canvas>
@@ -151,11 +107,10 @@ if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['ad
                 </div>
             </div>
         </div>
-        
-        <!-- Charts Row 2 -->
+
         <div class="row mb-4">
             <div class="col-md-8">
-                <div class="metric-card">
+                <div class="content-card">
                     <h5 class="mb-3">Revenue Trends</h5>
                     <div class="chart-container">
                         <canvas id="revenueChart"></canvas>
@@ -163,7 +118,7 @@ if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['ad
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="metric-card">
+                <div class="content-card">
                     <h5 class="mb-3">Compliance Overview</h5>
                     <div class="chart-container">
                         <canvas id="complianceChart"></canvas>
@@ -171,68 +126,88 @@ if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['ad
                 </div>
             </div>
         </div>
-        
-        <!-- Decision Support -->
+
         <div class="row">
             <div class="col-md-12">
-                <div class="metric-card">
+                <div class="content-card">
                     <h5 class="mb-3">Decision Support & Recommendations</h5>
                     <div id="recommendations">
-                        <!-- Recommendations will be loaded here -->
+                        <div class="empty-state">
+                            <i class="fas fa-lightbulb"></i>
+                            <p>Loading recommendations...</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+
     <script>
         let membershipChart, revenueChart, participationChart, complianceChart;
-        
+
         async function loadAnalytics() {
             const year = document.getElementById('analytics-year').value;
-            
+
             try {
                 const response = await fetch(`/api/admin/analytics.php?action=dashboard&year=${year}`);
                 const data = await response.json();
-                
+
                 if (data.success) {
                     updateMetrics(data.key_metrics);
                     updateMembershipChart(data.membership_growth);
                     updateRevenueChart(data.revenue_trends);
                     updateParticipationChart(data.event_participation);
                     updateComplianceChart(data.compliance_overview);
+                    updateRecommendations(data.decision_support);
                 }
             } catch (error) {
                 console.error('Error loading analytics:', error);
             }
-            
-            // Load decision support
-            loadDecisionSupport();
         }
-        
+
         function updateMetrics(metrics) {
-            document.getElementById('total-members').textContent = metrics.total_members;
-            document.getElementById('total-institutions').textContent = metrics.total_institutions;
-            document.getElementById('total-events').textContent = metrics.total_events;
-            document.getElementById('total-revenue').textContent = '₱' + metrics.total_revenue.toLocaleString();
-            document.getElementById('compliant-institutions').textContent = metrics.compliant_institutions;
-            document.getElementById('compliance-rate').textContent = metrics.compliance_rate + '%';
+            document.getElementById('total-members').textContent = metrics.total_members || 0;
+            document.getElementById('total-institutions').textContent = metrics.total_institutions || 0;
+            document.getElementById('total-events').textContent = metrics.total_events || 0;
+            document.getElementById('total-revenue').textContent = '₱' + (metrics.total_revenue || 0).toLocaleString();
+            document.getElementById('compliant-institutions').textContent = metrics.compliant_institutions || 0;
+            document.getElementById('compliance-rate').textContent = (metrics.compliance_rate || 0) + '%';
         }
-        
+
         function updateMembershipChart(data) {
             const ctx = document.getElementById('membershipChart').getContext('2d');
-            
             if (membershipChart) membershipChart.destroy();
-            
+
             membershipChart = new Chart(ctx, {
-                type: 'line',
+                type: 'bar',
                 data: {
                     labels: data.map(d => d.month_name),
                     datasets: [{
                         label: 'New Members',
                         data: data.map(d => d.new_members),
+                        backgroundColor: '#0B1D4A'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function updateRevenueChart(data) {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            if (revenueChart) revenueChart.destroy();
+
+            revenueChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.month_name),
+                    datasets: [{
+                        label: 'Revenue (₱)',
+                        data: data.map(d => d.revenue),
                         borderColor: '#0B1D4A',
                         backgroundColor: 'rgba(11, 29, 74, 0.1)',
                         fill: true,
@@ -242,74 +217,44 @@ if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['ad
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
+                    scales: { y: { beginAtZero: true } }
                 }
             });
         }
-        
-        function updateRevenueChart(data) {
-            const ctx = document.getElementById('revenueChart').getContext('2d');
-            
-            if (revenueChart) revenueChart.destroy();
-            
-            revenueChart = new Chart(ctx, {
+
+        function updateParticipationChart(data) {
+            const ctx = document.getElementById('participationChart').getContext('2d');
+            if (participationChart) participationChart.destroy();
+
+            const events = data.slice(0, 5);
+            participationChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: data.map(d => d.month_name),
+                    labels: events.map(e => e.event_name),
                     datasets: [{
-                        label: 'Revenue (₱)',
-                        data: data.map(d => d.revenue),
-                        backgroundColor: '#C49A00'
+                        label: 'Attendees',
+                        data: events.map(e => e.attendees),
+                        backgroundColor: '#D4AF37'
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
+                    indexAxis: 'y',
+                    plugins: { legend: { display: false } },
+                    scales: { x: { beginAtZero: true } }
                 }
             });
         }
-        
-        function updateParticipationChart(data) {
-            const ctx = document.getElementById('participationChart').getContext('2d');
-            
-            if (participationChart) participationChart.destroy();
-            
-            participationChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: data.slice(0, 5).map(d => d.event_name.substring(0, 15) + '...'),
-                    datasets: [{
-                        data: data.slice(0, 5).map(d => d.attendees),
-                        backgroundColor: ['#0B1D4A', '#C49A00', '#10b981', '#f59e0b', '#ef4444']
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
-            });
-        }
-        
+
         function updateComplianceChart(data) {
             const ctx = document.getElementById('complianceChart').getContext('2d');
-            
             if (complianceChart) complianceChart.destroy();
-            
-            const compliant = data.filter(d => d.compliance_status === 'compliant').length;
-            const atRisk = data.filter(d => d.compliance_status === 'at_risk').length;
-            const nonCompliant = data.filter(d => d.compliance_status === 'non_compliant').length;
-            
+
+            const compliant = data.filter(c => c.compliance_status === 'compliant').length;
+            const atRisk = data.filter(c => c.compliance_status === 'at_risk').length;
+            const nonCompliant = data.filter(c => c.compliance_status === 'non_compliant').length;
+
             complianceChart = new Chart(ctx, {
                 type: 'doughnut',
                 data: {
@@ -325,50 +270,39 @@ if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? '', ['ad
                 }
             });
         }
-        
-        async function loadDecisionSupport() {
-            try {
-                const response = await fetch('/api/admin/analytics.php?action=decision-support');
-                const data = await response.json();
-                
-                if (data.success) {
-                    displayRecommendations(data.decision_support.recommendations);
-                }
-            } catch (error) {
-                console.error('Error loading decision support:', error);
-            }
-        }
-        
-        function displayRecommendations(recommendations) {
+
+        function updateRecommendations(data) {
             const container = document.getElementById('recommendations');
-            container.innerHTML = '';
             
-            if (recommendations.length === 0) {
-                container.innerHTML = '<p class="text-muted">No immediate actions required.</p>';
-                return;
-            }
-            
-            recommendations.forEach(rec => {
-                const card = document.createElement('div');
-                card.className = `recommendation-card priority-${rec.priority}`;
-                card.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="mb-1">${rec.action}</h6>
-                            <p class="mb-0 text-muted">${rec.description}</p>
-                        </div>
-                        <span class="badge bg-${rec.priority === 'high' ? 'danger' : 'warning'}">${rec.priority}</span>
+            if (!data || !data.recommendations || data.recommendations.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <p>No immediate actions required. System is running smoothly.</p>
                     </div>
                 `;
-                container.appendChild(card);
-            });
+                return;
+            }
+
+            container.innerHTML = data.recommendations.map(rec => `
+                <div class="recommendation-card priority-${rec.priority}">
+                    <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                        <div style="width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; background: ${rec.priority === 'high' ? '#fee2e2' : rec.priority === 'medium' ? '#fef3c7' : '#d1fae5'}; color: ${rec.priority === 'high' ? '#ef4444' : rec.priority === 'medium' ? '#f59e0b' : '#10b981'};">
+                            <i class="fas fa-${rec.priority === 'high' ? 'exclamation-circle' : rec.priority === 'medium' ? 'info-circle' : 'check-circle'}"></i>
+                        </div>
+                        <div>
+                            <strong style="color: var(--portal-navy); display: block; margin-bottom: 0.25rem;">${rec.action}</strong>
+                            <p style="color: var(--portal-text-muted); margin: 0; font-size: 0.9rem;">${rec.description}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
         }
-        
+
         function exportReport() {
-            alert('PDF/CSV export would be implemented here using DOMPDF and CSV generation');
+            alert('PDF export would be implemented here using DOMPDF');
         }
-        
-        // Initialize
+
         document.addEventListener('DOMContentLoaded', () => {
             loadAnalytics();
         });

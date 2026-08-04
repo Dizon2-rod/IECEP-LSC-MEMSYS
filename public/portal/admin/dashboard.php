@@ -185,15 +185,15 @@ try {
         }
 
         .dashboard-scope .alert-banner {
-            background: #EFF6FF;
-            border-left: 4px solid #3B82F6;
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
             padding: 1rem 1.5rem;
-            border-radius: 8px;
+            border-radius: var(--radius-md);
             margin-bottom: 2rem;
             display: flex;
             align-items: center;
             gap: 1rem;
-            color: #1E40AF;
+            color: #1e40af;
         }
 
         .dashboard-scope .btn-primary {
@@ -244,7 +244,7 @@ try {
                 </div>
             </header>
 
-            <div class="alert-banner">
+            <div class="alert alert-info">
                 <i class="fas fa-info-circle"></i>
                 <div>
                     <strong>System Overview:</strong> Manage your membership base and school affiliations from this panel.
@@ -286,16 +286,16 @@ try {
             </div>
 
             <div class="content-card">
-                <h2><i class="fas fa-tasks"></i> Priority Actions</h2>
-                <div style="color: #64748B; line-height: 1.6;">
-                    <p>You have <strong><?php echo $pendingAffiliationsCount; ?></strong> institutional affiliation requests awaiting your approval.</p>
-                    
-                    <div style="margin-top: 2rem; padding: 1.5rem; background: #F8FAFC; border-radius: 12px; border: 1px dashed #CBD5E1; display: flex; justify-content: space-between; align-items: center;">
+                <h5><i class="fas fa-tasks"></i> Priority Actions</h5>
+                <p class="text-muted">You have <strong><?php echo $pendingAffiliationsCount; ?></strong> institutional affiliation requests awaiting your approval.</p>
+                
+                <div class="content-card" style="margin-top: 1.5rem; background: var(--portal-bg); border-style: dashed;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                         <div>
-                            <strong style="color: #0B1D4A; display: block;">Affiliation Management</strong>
-                            <span style="font-size: 0.85rem;">Review and approve school requests to enable student registration.</span>
+                            <strong class="text-navy" style="display: block; font-size: 1rem;">Affiliation Management</strong>
+                            <span class="text-muted" style="font-size: 0.85rem;">Review and approve school requests to enable student registration.</span>
                         </div>
-                        <a href="<?php echo PORTAL_URL; ?>/admin/institutions/list.php" class="btn-primary">
+                        <a href="<?php echo PORTAL_URL; ?>/admin/institutions/list.php" class="btn btn-primary">
                             Manage Requests <i class="fas fa-arrow-right"></i>
                         </a>
                     </div>

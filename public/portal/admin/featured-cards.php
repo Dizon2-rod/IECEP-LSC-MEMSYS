@@ -15,34 +15,7 @@ if (!empty($_SESSION['featured_cards_flash'])) {
     unset($_SESSION['featured_cards_flash']);
 }
 
-function storeFeaturedCardImage(array $uploadedFile): ?string {
-    if (!isset($uploadedFile['tmp_name']) || !is_uploaded_file($uploadedFile['tmp_name'])) {
-        return null;
-    }
-
-    $allowedMime = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!in_array($uploadedFile['type'] ?? '', $allowedMime, true)) {
-        return null;
-    }
-
-    $uploadsDir = dirname(__DIR__, 2) . '/assets/uploads/featured-cards';
-    if (!is_dir($uploadsDir)) {
-        mkdir($uploadsDir, 0777, true);
-    }
-
-    $extension = strtolower(pathinfo($uploadedFile['name'] ?? 'image.jpg', PATHINFO_EXTENSION));
-    $filename = uniqid('featured-card-', true) . '.' . $extension;
-    $targetPath = $uploadsDir . '/' . $filename;
-
-    if (!move_uploaded_file($uploadedFile['tmp_name'], $targetPath)) {
-        return null;
-    }
-
-    return BASE_URL . '/public/assets/uploads/featured-cards/' . $filename;
-}
-
 function uploadToSupabaseStorage(array $uploadedFile, array $supabaseConfig): ?string {
-    // Requires service_role_key to be present in $supabaseConfig
     if (empty($supabaseConfig['service_role_key']) || empty($uploadedFile['tmp_name']) || !is_uploaded_file($uploadedFile['tmp_name'])) {
         return null;
     }
@@ -64,7 +37,7 @@ function uploadToSupabaseStorage(array $uploadedFile, array $supabaseConfig): ?s
         'Authorization: Bearer ' . $supabaseConfig['service_role_key'],
         'apikey: ' . $supabaseConfig['service_role_key'],
         'Content-Type: application/octet-stream',
-        'x-upsert: false'
+        'x-upsert: true'
     ];
 
     $ch = curl_init($uploadUrl);
@@ -82,7 +55,6 @@ function uploadToSupabaseStorage(array $uploadedFile, array $supabaseConfig): ?s
         return null;
     }
 
-    // Public URL for objects in the public bucket
     return rtrim($supabaseConfig['url'], '/') . '/storage/v1/object/public/' . $bucket . '/' . $objectPath;
 }
 
@@ -147,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (!$supabaseClient) {
         $errorMessage = 'Supabase is not available right now.';
     } else {
-        // Handle image upload: validate size/type, then try Supabase storage (service role), fall back to local storage
+        // Handle image upload: validate size/type, then upload to Supabase Storage
         $uploadedImageUrl = null;
         $file = $_FILES['image_file'] ?? null;
         if ($file && !empty($file['tmp_name']) && is_uploaded_file($file['tmp_name'])) {
@@ -163,12 +135,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif ($fileSize > $maxSize) {
                 $errorMessage = 'Uploaded image must be 5MB or smaller.';
             } else {
-    $supabaseConfig = require dirname(__DIR__, 3) . '/includes/supabase.php';
+                $supabaseConfig = require dirname(__DIR__, 3) . '/includes/supabase.php';
                 if (!empty($supabaseConfig['service_role_key'])) {
                     $uploadedImageUrl = uploadToSupabaseStorage($file, $supabaseConfig);
-                }
-                if ($uploadedImageUrl === null) {
-                    $uploadedImageUrl = storeFeaturedCardImage($file);
                 }
             }
         }

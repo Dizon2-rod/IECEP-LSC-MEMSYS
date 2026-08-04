@@ -83,7 +83,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $pageTitle = 'Announcements & Push Notifications';
-include '../../includes/dashboard-layout.php';
 ?>
 
 <div class="dashboard-container">
@@ -155,5 +154,4 @@ include '../../includes/dashboard-layout.php';
     </main>
 </div>
 
-<?php include __DIR__ . '/../../../includes/footer.php'; ?>
 

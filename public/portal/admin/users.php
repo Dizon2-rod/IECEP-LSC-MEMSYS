@@ -14,7 +14,6 @@ if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], ['eb_admin', 'e
 }
 
 $pageTitle = 'User Management';
-include '../../includes/dashboard-layout.php';
 
 // Get users with pagination and filtering
 $page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
@@ -88,204 +87,153 @@ try {
     <?php include '../../../includes/sidebar.php'; ?>
 
     <main class="main-content">
-        <div class="container">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 class="h3 mb-0">User Management</h1>
-                    <p class="text-muted">Manage system users and their permissions</p>
-                </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-primary" onclick="exportUsers()">
-                        <i class="fas fa-download me-2"></i>Export Users
-                    </button>
-                    <button class="btn btn-primary" onclick="showAddUserModal()">
-                        <i class="fas fa-plus me-2"></i>Add User
-                    </button>
+        <div class="page-header">
+            <div>
+                <h1>User Management</h1>
+                <p class="text-muted">Manage system users and their permissions</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-outline" onclick="exportUsers()">
+                    <i class="fas fa-download"></i> Export Users
+                </button>
+                <button class="btn btn-primary" onclick="showAddUserModal()">
+                    <i class="fas fa-plus"></i> Add User
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon icon-blue"><i class="fas fa-users"></i></div>
+                <div class="stat-details">
+                    <h3><?= $userStats['total'] ?></h3>
+                    <p>Total Users</p>
                 </div>
             </div>
-
-            <!-- Statistics Cards -->
-            <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="card">
-                        <div class="card-body text-center">
-                            <h3 class="text-primary"><?= $userStats['total'] ?></h3>
-                            <p class="text-muted mb-0">Total Users</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card">
-                        <div class="card-body text-center">
-                            <h3 class="text-success"><?= $userStats['by_status']['verified'] ?? 0 ?></h3>
-                            <p class="text-muted mb-0">Verified Users</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card">
-                        <div class="card-body text-center">
-                            <h3 class="text-warning"><?= $userStats['by_status']['pending'] ?? 0 ?></h3>
-                            <p class="text-muted mb-0">Pending Verification</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card">
-                        <div class="card-body text-center">
-                            <h3 class="text-info"><?= $userStats['by_role']['member'] ?? 0 ?></h3>
-                            <p class="text-muted mb-0">Active Members</p>
-                        </div>
-                    </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-emerald"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-details">
+                    <h3><?= $userStats['by_status']['verified'] ?? 0 ?></h3>
+                    <p>Verified Users</p>
                 </div>
             </div>
-
-            <!-- Filters -->
-            <div class="card mb-4">
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-3">
-                            <label class="form-label">Role</label>
-                            <select class="form-select" id="roleFilter" onchange="applyFilters()">
-                                <option value="all">All Roles</option>
-                                <option value="eb_admin">Administrator</option>
-                                <option value="eb_president">President</option>
-                                <option value="eb_vp_internal">VP Internal</option>
-                                <option value="eb_treasurer">Treasurer</option>
-                                <option value="eb_secretary">Secretary</option>
-                                <option value="member">Member</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label class="form-label">Status</label>
-                            <select class="form-select" id="statusFilter" onchange="applyFilters()">
-                                <option value="all">All Status</option>
-                                <option value="verified">Verified</option>
-                                <option value="pending">Pending</option>
-                                <option value="revoked">Revoked</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Search</label>
-                            <input type="text" class="form-control" id="searchFilter" placeholder="Search by name or email..." onkeyup="applyFilters()">
-                        </div>
-                        <div class="col-md-2 d-flex align-items-end">
-                            <button class="btn btn-outline-secondary w-100" onclick="clearFilters()">
-                                <i class="fas fa-times me-1"></i>Clear
-                            </button>
-                        </div>
-                    </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-amber"><i class="fas fa-clock"></i></div>
+                <div class="stat-details">
+                    <h3><?= $userStats['by_status']['pending'] ?? 0 ?></h3>
+                    <p>Pending Verification</p>
                 </div>
             </div>
+            <div class="stat-card">
+                <div class="stat-icon icon-indigo"><i class="fas fa-user"></i></div>
+                <div class="stat-details">
+                    <h3><?= $userStats['by_role']['member'] ?? 0 ?></h3>
+                    <p>Active Members</p>
+                </div>
+            </div>
+        </div>
 
-            <!-- Users Table -->
-            <div class="card">
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
+        <div class="content-card">
+            <div class="d-flex gap-2 flex-wrap" style="margin-bottom: 1.5rem;">
+                <select class="form-select w-auto" id="roleFilter" onchange="applyFilters()">
+                    <option value="all">All Roles</option>
+                    <option value="eb_admin">Administrator</option>
+                    <option value="eb_president">President</option>
+                    <option value="eb_vp_internal">VP Internal</option>
+                    <option value="eb_treasurer">Treasurer</option>
+                    <option value="eb_secretary">Secretary</option>
+                    <option value="member">Member</option>
+                </select>
+                <select class="form-select w-auto" id="statusFilter" onchange="applyFilters()">
+                    <option value="all">All Status</option>
+                    <option value="verified">Verified</option>
+                    <option value="pending">Pending</option>
+                    <option value="revoked">Revoked</option>
+                </select>
+                <input type="text" class="form-control w-auto" id="searchFilter" placeholder="Search by name or email..." onkeyup="applyFilters()" style="min-width: 250px;">
+                <button class="btn btn-secondary" onclick="clearFilters()">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Institution</th>
+                            <th>Joined</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if (empty($users)): ?>
+                            <tr>
+                                <td colspan="6" class="text-center py-4">
+                                    <div class="empty-state">
+                                        <i class="fas fa-users"></i>
+                                        <p>No users found</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php else: ?>
+                            <?php foreach ($users as $user): ?>
                                 <tr>
-                                    <th>User</th>
-                                    <th>Role</th>
-                                    <th>Status</th>
-                                    <th>Institution</th>
-                                    <th>Joined</th>
-                                    <th>Actions</th>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                            <div style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #0B1D4A, #1E3A6E); color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.85rem; flex-shrink: 0;">
+                                                <?= strtoupper(substr($user['name'], 0, 1)) ?>
+                                            </div>
+                                            <div>
+                                                <div style="font-weight: 600; color: var(--portal-navy);"><?= htmlspecialchars($user['name']) ?></div>
+                                                <small class="text-muted"><?= htmlspecialchars($user['email'] ?? 'N/A') ?></small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td><span class="badge badge-<?= getRoleColor($user['role']) ?>"><?= ucfirst(str_replace('eb_', '', $user['role'])) ?></span></td>
+                                    <td><span class="badge badge-<?= getStatusColor($user['verification_status']) ?>"><?= ucfirst($user['verification_status'] ?? 'pending') ?></span></td>
+                                    <td><small><?= htmlspecialchars($user['institution'] ?? 'N/A') ?></small></td>
+                                    <td><small class="text-muted"><?= date('M d, Y', strtotime($user['created_at'])) ?></small></td>
+                                    <td>
+                                        <div style="display: flex; gap: 0.5rem;">
+                                            <button class="btn btn-sm btn-outline" onclick="viewUser('<?= $user['id'] ?>')" title="View Details"><i class="fas fa-eye"></i></button>
+                                            <button class="btn btn-sm btn-outline" onclick="editUser('<?= $user['id'] ?>')" title="Edit User"><i class="fas fa-edit"></i></button>
+                                            <?php if (($user['verification_status'] ?? 'pending') === 'verified'): ?>
+                                                <button class="btn btn-sm btn-outline" onclick="revokeUser('<?= $user['id'] ?>')" title="Revoke Access"><i class="fas fa-ban"></i></button>
+                                            <?php else: ?>
+                                                <button class="btn btn-sm btn-outline" onclick="verifyUser('<?= $user['id'] ?>')" title="Verify User"><i class="fas fa-check"></i></button>
+                                            <?php endif; ?>
+                                            <?php if ($user['role'] !== 'eb_admin'): ?>
+                                                <button class="btn btn-sm btn-outline" onclick="deleteUser('<?= $user['id'] ?>')" title="Delete User"><i class="fas fa-trash"></i></button>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($users)): ?>
-                                    <tr>
-                                        <td colspan="6" class="text-center py-4">
-                                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
-                                            <p class="text-muted">No users found</p>
-                                        </td>
-                                    </tr>
-                                <?php else: ?>
-                                    <?php foreach ($users as $user): ?>
-                                        <tr>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <div class="avatar-circle me-3">
-                                                        <?= strtoupper(substr($user['name'], 0, 1)) ?>
-                                                    </div>
-                                                    <div>
-                                                        <div class="fw-bold"><?= htmlspecialchars($user['name']) ?></div>
-                                                        <small class="text-muted"><?= htmlspecialchars($user['email'] ?? 'N/A') ?></small>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-<?= getRoleColor($user['role']) ?>">
-                                                    <?= ucfirst(str_replace('eb_', '', $user['role'])) ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span class="badge bg-<?= getStatusColor($user['verification_status']) ?>">
-                                                    <?= ucfirst($user['verification_status'] ?? 'pending') ?>
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <small><?= htmlspecialchars($user['institution'] ?? 'N/A') ?></small>
-                                            </td>
-                                            <td>
-                                                <small class="text-muted">
-                                                    <?= date('M d, Y', strtotime($user['created_at'])) ?>
-                                                </small>
-                                            </td>
-                                            <td>
-                                                <div class="btn-group" role="group">
-                                                    <button class="btn btn-sm btn-outline-primary" onclick="viewUser('<?= $user['id'] ?>')" title="View Details">
-                                                        <i class="fas fa-eye"></i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-outline-secondary" onclick="editUser('<?= $user['id'] ?>')" title="Edit User">
-                                                        <i class="fas fa-edit"></i>
-                                                    </button>
-                                                    <?php if (($user['verification_status'] ?? 'pending') === 'verified'): ?>
-                                                        <button class="btn btn-sm btn-outline-warning" onclick="revokeUser('<?= $user['id'] ?>')" title="Revoke Access">
-                                                            <i class="fas fa-ban"></i>
-                                                        </button>
-                                                    <?php else: ?>
-                                                        <button class="btn btn-sm btn-outline-success" onclick="verifyUser('<?= $user['id'] ?>')" title="Verify User">
-                                                            <i class="fas fa-check"></i>
-                                                        </button>
-                                                    <?php endif; ?>
-                                                    <?php if ($user['role'] !== 'eb_admin'): ?>
-                                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteUser('<?= $user['id'] ?>')" title="Delete User">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    <?php endif; ?>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Pagination -->
-                    <?php if ($totalPages > 1): ?>
-                        <nav aria-label="Users pagination" class="mt-4">
-                            <ul class="pagination justify-content-center">
-                                <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
-                                    <a class="page-link" href="?page=<?= $page - 1 ?>" <?= $page <= 1 ? 'tabindex="-1" aria-disabled="true"' : '' ?>>Previous</a>
-                                </li>
-
-                                <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
-                                    <li class="page-item <?= $i === $page ? 'active' : '' ?>">
-                                        <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
-                                    </li>
-                                <?php endfor; ?>
-
-                                <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
-                                    <a class="page-link" href="?page=<?= $page + 1 ?>" <?= $page >= $totalPages ? 'tabindex="-1" aria-disabled="true"' : '' ?>>Next</a>
-                                </li>
-                            </ul>
-                        </nav>
-                    <?php endif; ?>
-                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
+
+            <?php if ($totalPages > 1): ?>
+                <nav aria-label="Users pagination">
+                    <ul class="pagination justify-content-center">
+                        <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                            <a class="page-link" href="?page=<?= $page - 1 ?>" <?= $page <= 1 ? 'tabindex="-1" aria-disabled="true"' : '' ?>>Previous</a>
+                        </li>
+                        <?php for ($i = max(1, $page - 2); $i <= min($totalPages, $page + 2); $i++): ?>
+                            <li class="page-item <?= $i === $page ? 'active' : '' ?>">
+                                <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+                            </li>
+                        <?php endfor; ?>
+                        <li class="page-item <?= $page >= $totalPages ? 'disabled' : '' ?>">
+                            <a class="page-link" href="?page=<?= $page + 1 ?>" <?= $page >= $totalPages ? 'tabindex="-1" aria-disabled="true"' : '' ?>>Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            <?php endif; ?>
         </div>
     </main>
 </div>
@@ -567,8 +515,6 @@ function showToast(message, type) {
     }
 }
 </script>
-
-<?php include __DIR__ . '/../../../includes/footer.php'; ?>
 
 <?php
 function getRoleColor($role) {

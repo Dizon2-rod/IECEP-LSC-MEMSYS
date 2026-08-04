@@ -6,22 +6,33 @@ require_once __DIR__ . '/../../../includes/config.php';
 
 require_role(['admin', 'registration']);
 
-$db = getDbConnection();
+$supabase = getSupabaseClient();
 
 // Fetch all upload batches
-$stmt = $db->prepare("
-    SELECT 
-        b.id, b.file_name, b.uploaded_at, b.total_rows, b.validated_rows, b.status,
-        u.full_name as uploaded_by,
-        COUNT(CASE WHEN m.is_valid = true THEN 1 END) as valid_rows
-    FROM upload_batches b
-    LEFT JOIN user_profiles u ON b.uploaded_by_user_id = u.id
-    LEFT JOIN membership_directory_imports m ON b.id = m.batch_id
-    GROUP BY b.id, b.file_name, b.uploaded_at, b.total_rows, b.validated_rows, b.status, u.full_name
-    ORDER BY b.uploaded_at DESC
-");
-$stmt->execute();
-$batches = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$batchesResponse = $supabase->from('upload_batches')
+    ->select('*')
+    ->order('uploaded_at', ['descending' => true])
+    ->execute();
+
+$batches = $batchesResponse->data ?? [];
+
+// Enrich each batch with valid row count and uploader name
+foreach ($batches as &$batch) {
+    $validCountResponse = $supabase->from('membership_directory_imports')
+        ->select('id', ['count' => 'exact'])
+        ->eq('batch_id', $batch['id'])
+        ->eq('is_valid', true)
+        ->execute();
+    $batch['valid_rows'] = $validCountResponse->count ?? 0;
+
+    $userResponse = $supabase->from('user_profiles')
+        ->select('full_name')
+        ->eq('id', $batch['uploaded_by_user_id'])
+        ->limit(1)
+        ->execute();
+    $batch['uploaded_by'] = $userResponse->data[0]['full_name'] ?? 'Unknown';
+}
+unset($batch);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -116,7 +127,7 @@ $batches = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                         <?php foreach ($batches as $batch): ?>
                                             <?php
                                             $progress_percent = $batch['total_rows'] > 0 
-                                                ? round(($batch['validated_rows'] / $batch['total_rows']) * 100) 
+                                                ? round(($batch['valid_rows'] / $batch['total_rows']) * 100) 
                                                 : 0;
                                             ?>
                                             <tr>
@@ -137,7 +148,7 @@ $batches = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                                  aria-valuemin="0" aria-valuemax="100"></div>
                                                         </div>
                                                         <small class="text-muted">
-                                                            <?php echo $batch['validated_rows']; ?>/<?php echo $batch['total_rows']; ?>
+                                                            <?php echo $batch['valid_rows']; ?>/<?php echo $batch['total_rows']; ?>
                                                         </small>
                                                     </div>
                                                 </td>
@@ -151,7 +162,7 @@ $batches = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                                        class="btn btn-primary btn-sm">
                                                         <i class="fas fa-check-square"></i> Validate
                                                     </a>
-                                                    <?php if ($batch['validated_rows'] > 0): ?>
+                                                    <?php if ($batch['valid_rows'] > 0): ?>
                                                         <a href="../../api/admin/export-validated-directory.php?batch_id=<?php echo urlencode($batch['id']); ?>&csrf_token=<?php echo htmlspecialchars(generate_csrf_token()); ?>" 
                                                            class="btn btn-success btn-sm" target="_blank">
                                                             <i class="fas fa-download"></i> Export
@@ -173,18 +184,3 @@ $batches = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-
-<?php
-function getDbConnection() {
-    static $db = null;
-    if ($db === null) {
-        $db = new PDO(
-            'pgsql:host=' . env('DB_HOST') . ';port=' . env('DB_PORT', 5432) . ';dbname=' . env('DB_NAME'),
-            env('DB_USER'),
-            env('DB_PASSWORD')
-        );
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    }
-    return $db;
-}
-?>

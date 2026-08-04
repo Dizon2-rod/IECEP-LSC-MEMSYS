@@ -4,6 +4,36 @@ require_once __DIR__ . '/../../includes/auth_check.php';
 require_once __DIR__ . '/../../includes/csrf.php';
 require_once __DIR__ . '/../../autoload.php';
 
+/**
+ * Upload a file to Supabase Storage
+ */
+function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+    $config = require __DIR__ . '/../../includes/supabase.php';
+    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
+    $fileContent = file_get_contents($tmpFile);
+    if ($fileContent === false) return null;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $fileContent,
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+            'Content-Type: ' . $mimeType,
+            'x-upsert: true',
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+    }
+    error_log("Supabase Storage upload failed ($httpCode): $response");
+    return null;
+}
+
 header('Content-Type: application/json');
 
 require_role(['admin', 'super_admin', 'eb_treasurer']);
@@ -240,26 +270,23 @@ try {
                 ])
             ];
 
-            // Generate HTML receipt (can be converted to PDF)
-            $htmlReceipt = generateAffiliationReceiptHTML($affiliationReceiptData);
-
-            // Save receipt
-            $receiptPath = __DIR__ . '/../../storage/receipts/AFFILIATION-' . $receiptNumber . '.html';
-            if (!is_dir(dirname($receiptPath))) {
-                mkdir(dirname($receiptPath), 0755, true);
-            }
-            file_put_contents($receiptPath, $htmlReceipt);
+            // Save receipt to temp file and upload to Supabase Storage
+            $tmpReceiptFile = sys_get_temp_dir() . '/AFFILIATION-' . $receiptNumber . '.html';
+            file_put_contents($tmpReceiptFile, $htmlReceipt);
+            $receiptSupabaseUrl = uploadToSupabaseStorage('receipts', 'affiliation/' . 'AFFILIATION-' . $receiptNumber . '.html', $tmpReceiptFile, 'text/html');
+            @unlink($tmpReceiptFile);
+            $receiptPath = $receiptSupabaseUrl ?? ('storage/receipts/AFFILIATION-' . $receiptNumber . '.html');
 
             // Update transaction with receipt path
             $supabase->update('transactions', [
-                'receipt_url' => 'storage/receipts/AFFILIATION-' . $receiptNumber . '.html'
+                'receipt_url' => $receiptPath
             ], ['id' => $transactionId]);
 
             echo json_encode([
                 'success' => true,
                 'message' => 'Affiliation receipt generated',
                 'receipt_number' => $receiptNumber,
-                'receipt_url' => 'storage/receipts/AFFILIATION-' . $receiptNumber . '.html',
+                'receipt_url' => $receiptPath,
                 'receipt_type' => 'affiliation_fee'
             ]);
             exit;
@@ -318,16 +345,16 @@ try {
         ])
     ]);
 
-    // Save PDF
-    $receiptPath = __DIR__ . '/../../storage/receipts/' . $receiptNumber . '.pdf';
-    if (!is_dir(dirname($receiptPath))) {
-        mkdir(dirname($receiptPath), 0755, true);
-    }
-    file_put_contents($receiptPath, $pdfContent);
+    // Save PDF to temp file and upload to Supabase Storage
+    $tmpPdfFile = sys_get_temp_dir() . '/' . $receiptNumber . '.pdf';
+    file_put_contents($tmpPdfFile, $pdfContent);
+    $receiptSupabaseUrl = uploadToSupabaseStorage('receipts', $receiptNumber . '.pdf', $tmpPdfFile, 'application/pdf');
+    @unlink($tmpPdfFile);
+    $receiptPath = $receiptSupabaseUrl ?? ('storage/receipts/' . $receiptNumber . '.pdf');
 
     // Update transaction with receipt path
     $supabase->update('transactions', [
-        'receipt_path' => 'storage/receipts/' . $receiptNumber . '.pdf'
+        'receipt_path' => $receiptPath
     ], ['id' => $transactionId]);
 
     // Send email notification (if EmailService available)
@@ -344,7 +371,7 @@ try {
         'success' => true,
         'receipt_number' => $receiptNumber,
         'blockchain_hash' => $blockchainHash,
-        'receipt_path' => 'storage/receipts/' . $receiptNumber . '.pdf'
+        'receipt_path' => $receiptPath
     ]);
 } catch (Exception $e) {
     http_response_code(500);

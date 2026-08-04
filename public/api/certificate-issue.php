@@ -4,6 +4,36 @@ require_once __DIR__ . '/../../includes/auth_check.php';
 require_once __DIR__ . '/../../includes/csrf.php';
 require_once __DIR__ . '/../../autoload.php';
 
+/**
+ * Upload a file to Supabase Storage
+ */
+function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+    $config = require __DIR__ . '/../../includes/supabase.php';
+    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
+    $fileContent = file_get_contents($tmpFile);
+    if ($fileContent === false) return null;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $fileContent,
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+            'Content-Type: ' . $mimeType,
+            'x-upsert: true',
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+    }
+    error_log("Supabase Storage upload failed ($httpCode): $response");
+    return null;
+}
+
 header('Content-Type: application/json');
 
 require_role(['admin', 'super_admin', 'committee_registration']);
@@ -82,13 +112,13 @@ switch ($action) {
                     'blockchain_hash' => $blockchainHash
                 ]);
 
-                // Save PDF
-                $certDir = __DIR__ . '/../../storage/certificates/';
-                if (!is_dir($certDir)) {
-                    mkdir($certDir, 0755, true);
-                }
-                $certPath = 'storage/certificates/' . $certificateNumber . '.pdf';
-                file_put_contents(__DIR__ . '/../../' . $certPath, $pdfContent);
+                // Save PDF to temp file and upload to Supabase Storage
+                $tmpCertFile = sys_get_temp_dir() . '/' . $certificateNumber . '.pdf';
+                file_put_contents($tmpCertFile, $pdfContent);
+                $certMimeType = 'application/pdf';
+                $certSupabaseUrl = uploadToSupabaseStorage('certificates', $certificateNumber . '.pdf', $tmpCertFile, $certMimeType);
+                @unlink($tmpCertFile);
+                $certPath = $certSupabaseUrl ?? ('storage/certificates/' . $certificateNumber . '.pdf');
 
                 // Insert certificate record
                 $certificate = $supabase->insert('certificates', [

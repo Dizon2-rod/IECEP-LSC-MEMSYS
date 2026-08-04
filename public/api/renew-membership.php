@@ -4,6 +4,36 @@ require_once __DIR__ . '/../../includes/auth_check.php';
 require_once __DIR__ . '/../../includes/csrf.php';
 require_once __DIR__ . '/../../autoload.php';
 
+/**
+ * Upload a file to Supabase Storage
+ */
+function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+    $config = require __DIR__ . '/../../includes/supabase.php';
+    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
+    $fileContent = file_get_contents($tmpFile);
+    if ($fileContent === false) return null;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $fileContent,
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+            'Content-Type: ' . $mimeType,
+            'x-upsert: true',
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+    }
+    error_log("Supabase Storage upload failed ($httpCode): $response");
+    return null;
+}
+
 header('Content-Type: application/json');
 
 require_role(['member', 'admin', 'super_admin', 'school_officer']);
@@ -57,16 +87,9 @@ try {
             exit;
         }
 
-        $uploadDir = __DIR__ . '/../../storage/renewals/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-
         $extension = pathinfo($paymentProof['name'], PATHINFO_EXTENSION);
         $filename = bin2hex(random_bytes(16)) . '.' . $extension;
-        $paymentProofPath = 'storage/renewals/' . $filename;
-        
-        move_uploaded_file($paymentProof['tmp_name'], __DIR__ . '/../../' . $paymentProofPath);
+        $paymentProofPath = uploadToSupabaseStorage('payments', 'renewals/' . $filename, $paymentProof['tmp_name'], $mimeType);
     }
 
     // Create transaction record

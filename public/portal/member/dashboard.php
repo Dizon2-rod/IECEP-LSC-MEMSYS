@@ -1,33 +1,44 @@
 <?php
 require_once __DIR__ . '/../auth_check.php';
-require_role(['member']);
+require_once __DIR__ . '/../../../includes/config.php';
+require_once __DIR__ . '/../../../includes/middleware/auth.php';
 
-require_once __DIR__ . '/../../../includes/role-config.php';
-require_once __DIR__ . '/../../../bootstrap.php';
-
-$current_page = 'dashboard';
-
-$user = get_user_info();
-$member_id = $_SESSION['member_id'] ?? $user['member_id'] ?? null;
-
-if (!$member_id) {
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'member') {
     header('Location: ' . BASE_URL . '/login.php');
     exit;
 }
 
+$current_page = 'dashboard';
+$user = $_SESSION['user'];
+$displayName = $user['name'] ?? $user['email'] ?? 'Member';
+
 $supabase = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Fetch member details
+$member = [];
 try {
     $memberData = $supabase->select('members', [
-        'id' => 'eq.' . $member_id
+        'user_id' => 'eq.' . ($user['id'] ?? '')
     ]);
     $member = $memberData[0] ?? [];
 } catch (Exception $e) {
     $member = [];
 }
 
-// Fetch upcoming events
+if (empty($member)) {
+    try {
+        $allMembers = $supabase->select('members', [], 'id', 'DESC');
+        foreach ($allMembers as $m) {
+            if (($m['email'] ?? '') === $user['email']) {
+                $member = $m;
+                break;
+            }
+        }
+    } catch (Exception $e) {
+        $member = [];
+    }
+}
+
+$events = [];
 try {
     $events = $supabase->select('events', [
         'is_public' => 'eq.true',
@@ -39,7 +50,7 @@ try {
     $events = [];
 }
 
-// Fetch recent announcements
+$announcements = [];
 try {
     $announcements = $supabase->select('announcements', [
         'target_audience' => 'ilike.%member%',

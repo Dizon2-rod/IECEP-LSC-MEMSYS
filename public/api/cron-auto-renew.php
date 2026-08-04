@@ -5,9 +5,10 @@
  * Usage: php public/api/cron-auto-renew.php
  */
 
-require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/../includes/supabase.php';
 
-$db = Database::getInstance();
+$supabaseConfig = require __DIR__ . '/../includes/supabase.php';
+$sb = new \App\Lib\SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
 
 $logFile = __DIR__ . '/../../logs/auto-renew.log';
 $logDir = dirname($logFile);
@@ -24,51 +25,52 @@ function logMessage($message) {
 try {
     logMessage("Starting auto-renewal process");
     
-    // Get members whose membership expires within 7 days and have auto-renewal enabled
-    $expiringMembers = $db->fetchAll("SELECT m.*, i.name as institution_name 
-        FROM members m 
-        LEFT JOIN institutions i ON m.institution_id = i.id
-        WHERE m.membership_expiry IS NOT NULL 
-        AND m.membership_expiry BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)
-        AND m.auto_renewal = 1
-        AND m.membership_status = 'active'");
+    $today = date('Y-m-d');
+    $sevenDaysLater = date('Y-m-d', strtotime('+7 days'));
+    
+    $expiringMembers = $sb->from('members')
+        ->select('*,institutions(name)')
+        ->gte('membership_expiry', $today)
+        ->lte('membership_expiry', $sevenDaysLater)
+        ->eq('auto_renewal', true)
+        ->eq('membership_status', 'active')
+        ->get(true);
+    
+    $expiringMembers = $expiringMembers['data'] ?? [];
     
     $renewedCount = 0;
     $failedCount = 0;
     
     foreach ($expiringMembers as $member) {
         try {
-            $db->beginTransaction();
-            
-            // Calculate new expiry date (1 year from current expiry)
             $currentExpiry = new DateTime($member['membership_expiry']);
             $newExpiry = $currentExpiry->modify('+1 year')->format('Y-m-d');
             
-            // Update member
-            $db->update('members', [
-                'membership_expiry' => $newExpiry,
-                'last_renewal_date' => date('Y-m-d'),
-                'payment_status' => 1
-            ], 'id = ?', [$member['id']]);
+            $sb->from('members')
+                ->eq('id', $member['id'])
+                ->update([
+                    'membership_expiry' => $newExpiry,
+                    'last_renewal_date' => date('Y-m-d'),
+                    'payment_status' => true,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ], true);
             
-            // Create transaction record
             $transactionId = generateUUID();
-            $db->insert('transactions', [
+            $sb->from('transactions')->insert([
                 'id' => $transactionId,
                 'member_id' => $member['id'],
-                'institution_id' => $member['institution_id'],
+                'institution_id' => $member['institution_id'] ?? null,
                 'type' => 'membership_fee',
-                'amount' => getMembershipFee($db, $member['member_type']),
+                'amount' => getMembershipFee($member['member_type'] ?? 'new'),
                 'status' => 'completed',
                 'transaction_date' => date('Y-m-d'),
                 'reference_number' => 'AUTO-' . strtoupper(substr($transactionId, 0, 8))
-            ]);
+            ], true);
             
-            // Log to blockchain
             $blockchainId = generateUUID();
             $transactionHash = hash('sha256', $member['id'] . $newExpiry . time());
             
-            $db->insert('blockchain_records', [
+            $sb->from('blockchain_records')->insert([
                 'id' => $blockchainId,
                 'entity_type' => 'membership_renewal',
                 'entity_id' => $member['id'],
@@ -79,12 +81,11 @@ try {
                     'new_expiry' => $newExpiry
                 ])),
                 'confirmed' => true,
-                'institution_id' => $member['institution_id'],
+                'institution_id' => $member['institution_id'] ?? null,
                 'created_at' => date('Y-m-d H:i:s')
-            ]);
+            ], true);
             
-            // Log to audit trail
-            $db->insert('audit_logs', [
+            $sb->from('audit_logs')->insert([
                 'id' => generateUUID(),
                 'user_id' => 'system',
                 'action' => 'AUTO_RENEWAL',
@@ -96,32 +97,29 @@ try {
                 'affected_entity_type' => 'member',
                 'affected_entity_id' => $member['id'],
                 'created_at' => date('Y-m-d H:i:s')
-            ]);
-            
-            $db->commit();
+            ], true);
             
             $renewedCount++;
             logMessage("Renewed membership for member {$member['id']} ({$member['full_name']}) - New expiry: $newExpiry");
             
         } catch (Exception $e) {
-            $db->rollback();
             $failedCount++;
             logMessage("Failed to renew membership for member {$member['id']}: " . $e->getMessage());
         }
     }
     
-    // Send notifications for members with auto-renewal disabled
-    $notifyMembers = $db->fetchAll("SELECT m.*, i.name as institution_name 
-        FROM members m 
-        LEFT JOIN institutions i ON m.institution_id = i.id
-        WHERE m.membership_expiry IS NOT NULL 
-        AND m.membership_expiry BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 7 DAY)
-        AND (m.auto_renewal = 0 OR m.auto_renewal IS NULL)
-        AND m.membership_status = 'active'");
+    $notifyMembers = $sb->from('members')
+        ->select('*,institutions(name)')
+        ->gte('membership_expiry', $today)
+        ->lte('membership_expiry', $sevenDaysLater)
+        ->is('auto_renewal', false)
+        ->eq('membership_status', 'active')
+        ->get(true);
+    
+    $notifyMembers = $notifyMembers['data'] ?? [];
     
     foreach ($notifyMembers as $member) {
         logMessage("Notification needed for member {$member['id']} ({$member['full_name']}) - Auto-renewal disabled");
-        // Here you would implement email notification logic
     }
     
     logMessage("Auto-renewal process completed. Renewed: $renewedCount, Failed: $failedCount, Notifications: " . count($notifyMembers));
@@ -142,8 +140,7 @@ function generateUUID() {
     );
 }
 
-function getMembershipFee($db, $memberType) {
-    // Default fee structure - can be configured in settings
+function getMembershipFee($memberType) {
     $fees = [
         'new' => 500,
         'renewal' => 400,

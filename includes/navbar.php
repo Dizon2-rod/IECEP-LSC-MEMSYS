@@ -43,7 +43,7 @@ $userRole = $_SESSION['role'] ?? '';
         <nav class="nav" id="desktopNav">
             <ul class="nav-links">
                 <li><a href="<?php echo BASE_URL; ?>/index.php">Home</a></li>
-                <li><a href="<?php echo BASE_URL; ?>/index.php#merchandise" class="nav-link">Merchandise</a></li>
+                <li><a href="<?php echo BASE_URL; ?>/public/merchandise.php" class="nav-link">Merchandise</a></li>
                 <li class="nav-item">
                     <a href="#" class="nav-link">
                         Resources <i class="fas fa-chevron-down"></i>
@@ -65,6 +65,7 @@ $userRole = $_SESSION['role'] ?? '';
                         <li><a href="<?php echo BASE_URL; ?>/calendar-activity.php" class="dropdown-item">Calendar Activity</a></li>
                         <li><a href="<?php echo BASE_URL; ?>/affiliated-schools.php" class="dropdown-item">Affiliated Schools</a></li>
                         <li><a href="<?php echo BASE_URL; ?>/contact.php" class="dropdown-item">Contact Us</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/public/merchandise.php" class="dropdown-item">Merchandise</a></li>
                     </ul>
                 </li>
             </ul>

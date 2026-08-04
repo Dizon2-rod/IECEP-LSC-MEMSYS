@@ -1,7 +1,36 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/../../../includes/config.php';
-require_once __DIR__ . '/../../../includes/database.php';
+
+/**
+ * Upload a file to Supabase Storage
+ */
+function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+    $config = require __DIR__ . '/../../../includes/supabase.php';
+    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
+    $fileContent = file_get_contents($tmpFile);
+    if ($fileContent === false) return null;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $fileContent,
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+            'Content-Type: ' . $mimeType,
+            'x-upsert: true',
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+    }
+    error_log("Supabase Storage upload failed ($httpCode): $response");
+    return null;
+}
 
 header('Content-Type: application/json');
 
@@ -16,6 +45,9 @@ if (!$userId) {
     echo json_encode(['error' => 'Unauthorized']);
     exit;
 }
+
+$supabaseConfig = require __DIR__ . '/../../../includes/supabase.php';
+$supabase = new \App\Lib\SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
 
 switch ($action) {
     case 'upload_document':
@@ -34,22 +66,22 @@ switch ($action) {
             exit;
         }
         
-        $uploadDir = __DIR__ . '/../../../storage/compliance/';
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-        
+        $mimeType = mime_content_type($_FILES['document']['tmp_name']) ?: $_FILES['document']['type'];
         $fileName = uniqid() . '_' . basename($_FILES['document']['name']);
-        $targetPath = $uploadDir . $fileName;
+        $supabaseUrl = uploadToSupabaseStorage('compliance', 'documents/' . $fileName, $_FILES['document']['tmp_name'], $mimeType);
         
-        if (move_uploaded_file($_FILES['document']['tmp_name'], $targetPath)) {
-            $fileUrl = '/storage/compliance/' . $fileName;
+        if ($supabaseUrl) {
+            $fileUrl = $supabaseUrl;
             
-            $query = "INSERT INTO compliance_docs (school_id, doc_type, file_url) 
-                      VALUES ($1, $2, $3) RETURNING id";
-            $result = pg_query_params($conn, $query, [$schoolId, $docType, $fileUrl]);
+            $document = $supabase->insert('compliance_docs', [
+                'school_id' => $schoolId,
+                'doc_type' => $docType,
+                'file_url' => $fileUrl,
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
             
-            if ($result) {
-                $row = pg_fetch_assoc($result);
-                echo json_encode(['success' => true, 'doc_id' => $row['id']]);
+            if ($document) {
+                echo json_encode(['success' => true, 'doc_id' => $document[0]['id'] ?? null]);
             } else {
                 http_response_code(500);
                 echo json_encode(['error' => 'Failed to save document']);
@@ -69,15 +101,9 @@ switch ($action) {
             exit;
         }
         
-        $query = "SELECT * FROM compliance_docs WHERE school_id = $1 ORDER BY created_at DESC";
-        $result = pg_query_params($conn, $query, [$schoolId]);
+        $docs = $supabase->select('compliance_docs', ['school_id' => 'eq.' . $schoolId, 'order' => 'created_at.desc']);
         
-        $docs = [];
-        while ($row = pg_fetch_assoc($result)) {
-            $docs[] = $row;
-        }
-        
-        echo json_encode(['documents' => $docs]);
+        echo json_encode(['documents' => $docs ?? []]);
         break;
         
     case 'verify_document':
@@ -95,10 +121,11 @@ switch ($action) {
             exit;
         }
         
-        $query = "UPDATE compliance_docs 
-                  SET is_verified = true, verified_by = $1, verified_at = NOW() 
-                  WHERE id = $2";
-        $result = pg_query_params($conn, $query, [$userId, $docId]);
+        $result = $supabase->update('compliance_docs', [
+            'is_verified' => true,
+            'verified_by' => $userId,
+            'verified_at' => date('Y-m-d H:i:s')
+        ], ['id' => 'eq.' . $docId]);
         
         if ($result) {
             echo json_encode(['success' => true]);

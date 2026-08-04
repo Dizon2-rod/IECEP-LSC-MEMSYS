@@ -104,10 +104,40 @@ try {
     ob_start();
     require_once __DIR__ . '/../../autoload.php';
     require_once __DIR__ . '/../../includes/paths.php';
-    require_once __DIR__ . '/../../src/lib/SupabaseClient.php';
-    ob_end_clean();
-    
-    // Field Validation
+require_once __DIR__ . '/../../src/lib/SupabaseClient.php';
+ob_end_clean();
+
+/**
+ * Upload a file to Supabase Storage
+ */
+function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+    $config = require __DIR__ . '/../../includes/supabase.php';
+    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
+    $fileContent = file_get_contents($tmpFile);
+    if ($fileContent === false) return null;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $fileContent,
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+            'Content-Type: ' . $mimeType,
+            'x-upsert: true',
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+    }
+    error_log("Supabase Storage upload failed ($httpCode): $response");
+    return null;
+}
+
+// Field Validation
     $institution_name = trim($_POST['institution_name'] ?? '');
     $institution_address = trim($_POST['institution_address'] ?? '');
     $contact_person = trim($_POST['contact_person'] ?? '');
@@ -131,18 +161,19 @@ try {
     $config = require __DIR__ . '/../../includes/supabase.php';
     $sb = new SupabaseClient($config['url'], $config['anon_key']);
     
-    $uploadsDir = __DIR__ . '/../uploads/affiliations';
-    if (!is_dir($uploadsDir)) mkdir($uploadsDir, 0755, true);
-    
     $uploadedFiles = [];
     $documentHashes = [];
     foreach ($required_files as $file_key) {
         $file = $_FILES[$file_key];
         $fileName = uniqid() . '_' . basename($file['name']);
-        $filePath = $uploadsDir . '/' . $fileName;
-        if (!move_uploaded_file($file['tmp_name'], $filePath)) throw new Exception("Failed to upload file: $file_key");
-        $uploadedFiles[$file_key] = '/IECEP-LSC-MEMSYS/public/uploads/affiliations/' . $fileName;
-        $documentHashes[$file_key] = hash_file('sha256', $filePath);
+        $mimeType = mime_content_type($file['tmp_name']) ?: $file['type'];
+        $supabaseUrl = uploadToSupabaseStorage('affiliations', 'applications/' . $fileName, $file['tmp_name'], $mimeType);
+        if ($supabaseUrl) {
+            $uploadedFiles[$file_key] = $supabaseUrl;
+        } else {
+            throw new Exception("Failed to upload file: $file_key");
+        }
+        $documentHashes[$file_key] = hash_file('sha256', $file['tmp_name']);
     }
     
     $totalMembers = intval($_POST['total_members'] ?? 0);

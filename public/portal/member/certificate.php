@@ -1,10 +1,13 @@
 <?php
 if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
 require_once __DIR__ . '/../auth_check.php';
-require_role(['member']);
+require_once __DIR__ . '/../../../includes/config.php';
+require_once __DIR__ . '/../../../includes/middleware/auth.php';
 
-require_once __DIR__ . '/../../../includes/role-config.php';
-require_once __DIR__ . '/../../../bootstrap.php';
+if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'member') {
+    header('Location: ' . BASE_URL . '/login.php');
+    exit;
+}
 
 require_once __DIR__ . '/../../includes/lib/BlockchainService.php';
 require_once __DIR__ . '/../../includes/lib/PdfService.php';

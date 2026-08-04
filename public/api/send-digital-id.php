@@ -7,6 +7,36 @@ require_once __DIR__ . '/../../src/lib/EmailService.php';
 require_once __DIR__ . '/../../src/lib/BlockchainService.php';
 require_once __DIR__ . '/../../vendor/autoload.php';
 
+/**
+ * Upload a file to Supabase Storage
+ */
+function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+    $config = require __DIR__ . '/../../includes/supabase.php';
+    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
+    $fileContent = file_get_contents($tmpFile);
+    if ($fileContent === false) return null;
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $fileContent,
+        CURLOPT_HTTPHEADER => [
+            'apikey: ' . $config['service_role_key'],
+            'Authorization: Bearer ' . $config['service_role_key'],
+            'Content-Type: ' . $mimeType,
+            'x-upsert: true',
+        ],
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    if ($httpCode >= 200 && $httpCode < 300) {
+        return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+    }
+    error_log("Supabase Storage upload failed ($httpCode): $response");
+    return null;
+}
+
 header('Content-Type: application/json');
 
 try {
@@ -70,17 +100,12 @@ try {
                 $writer = new \Endroid\QrCode\Writer\PngWriter();
                 $result = $writer->write($qrCode);
                 
-                // Save QR code
-                $qrDir = __DIR__ . '/../uploads/digital-ids/';
-                if (!is_dir($qrDir)) {
-                    mkdir($qrDir, 0755, true);
-                }
-                
-                $qrFileName = 'digital-id-' . $member['membership_id'] . '.png';
-                $qrPath = $qrDir . $qrFileName;
-                $result->saveToFile($qrPath);
-                
-                $digitalIdUrl = PUBLIC_URL . '/uploads/digital-ids/' . $qrFileName;
+                // Save QR code to temp file and upload to Supabase Storage
+                $qrTmpFile = sys_get_temp_dir() . '/digital-id-' . $member['membership_id'] . '.png';
+                $result->saveToFile($qrTmpFile);
+                $qrSupabaseUrl = uploadToSupabaseStorage('public', 'digital-ids/digital-id-' . $member['membership_id'] . '.png', $qrTmpFile, 'image/png');
+                @unlink($qrTmpFile);
+                $digitalIdUrl = $qrSupabaseUrl ?? (PUBLIC_URL . '/uploads/digital-ids/digital-id-' . $member['membership_id'] . '.png');
                 
                 // Record blockchain entry
                 $blockchain->record('digital_id', $member['id'], [

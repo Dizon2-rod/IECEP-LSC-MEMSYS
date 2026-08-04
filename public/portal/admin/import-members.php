@@ -542,7 +542,3 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
         }
     </script>
 
-    <?php include __DIR__ . '/../../../includes/footer-new.php'; ?>
-</body>
-</html>
-

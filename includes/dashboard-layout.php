@@ -57,6 +57,7 @@ function renderDashboard(array $config): void {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
+            --sidebar-width: 260px;
             --navy: #0B1D4A;
             --navy-light: #1E3A6E;
             --gold: #D4AF37;
@@ -117,7 +118,7 @@ function renderDashboard(array $config): void {
 
         /* Responsive Sidebar */
         .sidebar {
-            width: 280px;
+            width: 260px;
             background: var(--navy);
             color: var(--white);
             height: 100vh;
@@ -138,7 +139,7 @@ function renderDashboard(array $config): void {
 
         .main-content {
             flex: 1;
-            margin-left: 280px;
+            margin-left: var(--sidebar-width, 260px);
             transition: margin-left 0.3s ease;
             padding: 2rem;
         }
@@ -338,7 +339,7 @@ function renderDashboard(array $config): void {
         /* Main Content */
         .main-content {
             flex: 1;
-            margin-left: 280px;
+            margin-left: var(--sidebar-width, 260px);
             padding: 30px;
             min-height: 100vh;
         }

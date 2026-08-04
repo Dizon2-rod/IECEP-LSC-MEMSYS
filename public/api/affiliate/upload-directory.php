@@ -63,7 +63,7 @@ try {
         throw new Exception('PhpSpreadsheet library not installed. Run: composer require phpoffice/phpspreadsheet');
     }
 
-    $db = getDbConnection();
+    $supabase = getSupabaseClient();
     
     // Get current user info from session
     $user_id = $_SESSION['user']['id'] ?? null;
@@ -86,15 +86,14 @@ try {
     $batch_id = uniqid('batch_', true); // Unique batch ID
     $file_name = basename($file['name']);
     
-    $stmt = $db->prepare("
-        INSERT INTO upload_batches (id, institution_id, uploaded_by_user_id, file_name, status)
-        VALUES (?, ?, ?, ?, 'pending')
-    ");
+    $supabase->from('upload_batches')->insert([[
+        'id' => $batch_id,
+        'institution_id' => $institution_id,
+        'uploaded_by_user_id' => $user_id,
+        'file_name' => $file_name,
+        'status' => 'pending',
+    ]])->execute();
     
-    if (!$stmt->execute([$batch_id, $institution_id, $user_id, $file_name])) {
-        throw new Exception('Failed to create upload batch');
-    }
-
     $total_rows = 0;
     $import_errors = [];
 
@@ -223,37 +222,31 @@ try {
             // Determine validity
             $is_valid = empty($errors);
 
-            // Insert into membership_directory_imports
-            $stmt = $db->prepare("
-                INSERT INTO membership_directory_imports 
-                (batch_id, sheet_name, row_index, name, birthday, address, phone, email, picture_url, signature_url, is_valid, validation_errors)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ");
-
-            if (!$stmt->execute([
-                $batch_id,
-                $sheet_name,
-                $total_rows + 1,
-                $member_data['name'],
-                $member_data['birthday'],
-                $member_data['address'],
-                $member_data['phone'],
-                $member_data['email'],
-                $member_data['picture'],
-                $member_data['signature'],
-                $is_valid ? 1 : 0,
-                implode('; ', $errors)
-            ])) {
-                throw new Exception('Failed to insert import row: ' . $stmt->errorInfo()[2]);
-            }
+            // Insert into membership_directory_imports via Supabase
+            $supabase->from('membership_directory_imports')->insert([[
+                'batch_id' => $batch_id,
+                'sheet_name' => $sheet_name,
+                'row_index' => $total_rows + 1,
+                'name' => $member_data['name'],
+                'birthday' => $member_data['birthday'],
+                'address' => $member_data['address'],
+                'phone' => $member_data['phone'],
+                'email' => $member_data['email'],
+                'picture_url' => $member_data['picture'],
+                'signature_url' => $member_data['signature'],
+                'is_valid' => $is_valid ? 1 : 0,
+                'validation_errors' => implode('; ', $errors),
+            ]])->execute();
 
             $total_rows++;
         }
     }
 
     // Update batch with total rows
-    $stmt = $db->prepare("UPDATE upload_batches SET total_rows = ? WHERE id = ?");
-    $stmt->execute([$total_rows, $batch_id]);
+    $supabase->from('upload_batches')
+        ->update(['total_rows' => $total_rows])
+        ->eq('id', $batch_id)
+        ->execute();
 
     // Log audit
     log_audit('member_directory_upload', 'upload_batches', $batch_id, null, [
@@ -354,19 +347,5 @@ function log_audit($action, $table_name, $record_id, $old_data = null, $new_data
     if (function_exists('log_audit')) {
         call_user_func('log_audit', $action, $table_name, $record_id, $old_data, $new_data);
     }
-}
-
-function getDbConnection() {
-    // Get connection from config
-    static $db = null;
-    if ($db === null) {
-        $db = new PDO(
-            'pgsql:host=' . env('DB_HOST') . ';port=' . env('DB_PORT', 5432) . ';dbname=' . env('DB_NAME'),
-            env('DB_USER'),
-            env('DB_PASSWORD')
-        );
-        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    }
-    return $db;
 }
 ?>

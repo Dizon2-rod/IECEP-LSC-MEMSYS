@@ -1,0 +1,1 @@
+web: php-fpm && nginx -g 'daemon off;'
