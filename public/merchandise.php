@@ -474,7 +474,7 @@ try {
     </div>
 
     <!-- Footer -->
-    <?php include __DIR__ . '/../includes/footer.php'; ?>
+    <?php include dirname(__DIR__) . '/includes/footer-new.php'; ?>
 
     <!-- Cart Sidebar -->
     <div class="shop-cart-overlay" id="cartOverlay" onclick="closeCart()"></div>
