@@ -1,5 +1,5 @@
 <?php
-require_once dirname(__DIR__) . '/../bootstrap.php';
+require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/../includes/csrf.php';
 
 $orderInfo = $_SESSION['merch_order_success'] ?? null;
