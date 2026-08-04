@@ -22,6 +22,10 @@ $ROLE_NAVIGATION = [
             ['icon' => 'fa-file-invoice-dollar', 'label' => 'Transactions', 'url' => 'portal/admin/financial/transactions.php'],
             ['icon' => 'fa-chart-bar', 'label' => 'Financial Reports', 'url' => 'portal/admin/financial/reports.php'],
             ['icon' => 'fa-balance-scale', 'label' => 'Transparency', 'url' => 'portal/admin/financial/transparency.php'],
+            ['icon' => 'fa-tshirt', 'label' => 'Merchandise', 'url' => 'portal/admin/merch/items.php', 'children' => [
+                ['icon' => 'fa-boxes', 'label' => 'Items', 'url' => 'portal/admin/merch/items.php'],
+                ['icon' => 'fa-receipt', 'label' => 'Orders', 'url' => 'portal/admin/merch/orders.php'],
+            ]],
             ['icon' => 'fa-file-alt', 'label' => 'Document Repository', 'url' => 'portal/admin/documents/repository.php'],
             ['icon' => 'fa-file-contract', 'label' => 'Memoranda', 'url' => 'portal/admin/documents/memoranda.php'],
             ['icon' => 'fa-bullhorn', 'label' => 'Announcements', 'url' => 'portal/admin/communication/announcements.php'],

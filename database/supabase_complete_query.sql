@@ -579,7 +579,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     institution_id UUID REFERENCES institutions(id) ON DELETE SET NULL,
     amount DECIMAL(10,2) NOT NULL,
     currency TEXT DEFAULT 'PHP',
-    type TEXT NOT NULL CHECK (type IN ('membership_fee', 'event_fee', 'donation', 'refund', 'penalty')),
+    type TEXT NOT NULL CHECK (type IN ('membership_fee', 'event_fee', 'donation', 'refund', 'penalty', 'merchandise')),
     transaction_type TEXT DEFAULT 'payment',
     status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'failed', 'refunded', 'cancelled')),
     payment_method TEXT CHECK (payment_method IN ('bank_transfer', 'credit_card', 'debit_card', 'online_payment', 'cash', 'check')),
@@ -1450,6 +1450,57 @@ USING (
 );
 
 -- =====================================================================
+-- MERCHANDISE MODULE TABLES
+-- =====================================================================
+
+CREATE TABLE IF NOT EXISTS merch_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    description TEXT,
+    price DECIMAL(10,2) NOT NULL,
+    image_url TEXT,
+    stock INTEGER DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_merch_items_active ON merch_items(is_active);
+CREATE INDEX IF NOT EXISTS idx_merch_items_stock ON merch_items(stock);
+
+CREATE TABLE IF NOT EXISTS merch_orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    member_id UUID REFERENCES members(id) ON DELETE SET NULL,
+    buyer_name TEXT NOT NULL,
+    buyer_email TEXT NOT NULL,
+    items JSONB NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending','paid','shipped','delivered','cancelled')),
+    transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_merch_orders_member ON merch_orders(member_id);
+CREATE INDEX IF NOT EXISTS idx_merch_orders_status ON merch_orders(status);
+CREATE INDEX IF NOT EXISTS idx_merch_orders_transaction ON merch_orders(transaction_id);
+CREATE INDEX IF NOT EXISTS idx_merch_orders_created ON merch_orders(created_at);
+
+-- Triggers for updated_at on merch tables
+DROP TRIGGER IF EXISTS update_merch_items_updated_at ON merch_items;
+CREATE TRIGGER update_merch_items_updated_at
+    BEFORE UPDATE ON merch_items
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_merch_orders_updated_at ON merch_orders;
+CREATE TRIGGER update_merch_orders_updated_at
+    BEFORE UPDATE ON merch_orders
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at_column();
+
+-- =====================================================================
 -- REALTIME SUBSCRIPTIONS
 -- =====================================================================
 
@@ -1467,7 +1518,9 @@ CREATE PUBLICATION supabase_realtime FOR TABLE
     pending_affiliations,
     members,
     user_profiles,
-    institutions;
+    institutions,
+    merch_items,
+    merch_orders;
 
 -- =====================================================================
 -- COMPLETION
