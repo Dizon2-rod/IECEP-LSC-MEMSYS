@@ -43,6 +43,7 @@ $userRole = $_SESSION['role'] ?? '';
         <nav class="nav" id="desktopNav">
             <ul class="nav-links">
                 <li><a href="<?php echo BASE_URL; ?>/index.php">Home</a></li>
+                <li><a href="<?php echo BASE_URL; ?>/index.php#merchandise" class="nav-link">Merchandise</a></li>
                 <li class="nav-item">
                     <a href="#" class="nav-link">
                         Resources <i class="fas fa-chevron-down"></i>
