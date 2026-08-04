@@ -36,38 +36,38 @@ $imageUrl = $item['image_url'] ?? '';
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order: <?= h($name) ?> - IECEP-LSC MEMSYS</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/font-awesome.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/styles.css">
+    <?php include dirname(__DIR__) . '/includes/head-meta.php'; ?>
+    <link rel="stylesheet" href="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/assets/css/styles.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; background: #f5f7fb; color: #1f2937; }
-        .order-container { max-width: 520px; margin: 3rem auto; padding: 0 1rem; }
-        .order-card { background: #fff; border-radius: 20px; box-shadow: 0 4px 20px rgba(11,29,74,0.08); border: 1px solid #eef2f7; padding: 2rem; }
+        body { background: #f5f7fb; }
+        .order-container { max-width: 520px; margin: 5rem auto; padding: 0 1rem; }
+        .order-card { background: var(--white); border-radius: 20px; box-shadow: 0 4px 20px rgba(11,29,74,0.08); border: 1px solid var(--neutral-200); padding: 2rem; }
         .order-header { text-align: center; margin-bottom: 1.5rem; }
-        .order-header h1 { color: #0B1D4A; font-size: 1.4rem; font-weight: 700; }
-        .order-header p { color: #6b7280; font-size: 0.95rem; margin-top: 0.5rem; }
-        .product-image { width: 100%; height: 180px; border-radius: 12px; margin-bottom: 1.25rem; object-fit: cover; border: 1px solid #e5e7eb; }
-        .product-image-placeholder { width: 100%; height: 180px; border-radius: 12px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(11,29,74,0.08), rgba(212,175,55,0.16)); color: #0B1D4A; font-size: 1.2rem; }
+        .order-header h1 { color: var(--primary); font-size: 1.4rem; font-weight: 700; }
+        .order-header p { color: var(--neutral-500); font-size: 0.95rem; margin-top: 0.5rem; }
+        .product-image { width: 100%; height: 180px; border-radius: 12px; margin-bottom: 1.25rem; object-fit: cover; border: 1px solid var(--neutral-300); }
+        .product-image-placeholder { width: 100%; height: 180px; border-radius: 12px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, rgba(11,29,74,0.08), rgba(212,175,55,0.16)); color: var(--primary); font-size: 1.2rem; }
         .form-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
-        .form-label { font-size: 0.85rem; font-weight: 600; color: #0B1D4A; }
-        .form-control { border-radius: 10px; border: 1px solid #dbe3ef; padding: 0.7rem; font-size: 0.95rem; }
-        .form-control:focus { outline: none; border-color: #D4AF37; box-shadow: 0 0 0 3px rgba(212,175,55,0.2); }
-        .price-display { font-size: 1.5rem; font-weight: 700; color: #D4AF37; text-align: center; margin: 1rem 0; }
-        .price-display .total-label { font-size: 0.85rem; color: #6b7280; }
-        .price-display .total-value { font-size: 1.5rem; color: #0B1D4A; }
-        .btn-order { width: 100%; background: linear-gradient(135deg, #D4AF37 0%, #C5A059 100%); color: #0B1D4A; border: none; border-radius: 999px; padding: 0.75rem; font-weight: 700; font-size: 1rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
-        .btn-order:hover { background: linear-gradient(135deg, #C5A059 0%, #D4AF37 100%); }
+        .form-label { font-size: 0.85rem; font-weight: 600; color: var(--primary); }
+        .form-control { border-radius: 10px; border: 1px solid var(--neutral-300); padding: 0.7rem; font-size: 0.95rem; }
+        .form-control:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(212,175,55,0.2); }
+        .price-display { font-size: 1.5rem; font-weight: 700; color: var(--accent); text-align: center; margin: 1rem 0; }
+        .price-display .total-label { font-size: 0.85rem; color: var(--neutral-500); }
+        .price-display .total-value { font-size: 1.5rem; color: var(--primary); }
+        .btn-order { width: 100%; background: linear-gradient(135deg, var(--accent) 0%, #C5A059 100%); color: var(--primary); border: none; border-radius: 999px; padding: 0.75rem; font-size: 1rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .btn-order:hover { background: linear-gradient(135deg, #C5A059 0%, var(--accent) 100%); }
         .btn-order:disabled { opacity: 0.6; cursor: not-allowed; }
-        .back-link { display: inline-flex; align-items: center; gap: 0.3rem; color: #0B1D4A; text-decoration: none; font-weight: 500; font-size: 0.9rem; }
+        .back-link { display: inline-flex; align-items: center; gap: 0.3rem; color: var(--primary); text-decoration: none; font-weight: 500; font-size: 0.9rem; }
         .error-msg { background: rgba(220,38,38,0.1); border: 1px solid rgba(220,38,38,0.3); color: #dc2626; padding: 0.7rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; }
         .stock-warning { color: #d97706; font-size: 0.85rem; font-weight: 600; }
     </style>
 </head>
 <body>
+    <div id="fb-root"></div>
+    <script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js#xfbml=1&version=v17.0"></script>
+
+    <?php include dirname(__DIR__) . '/includes/navbar.php'; ?>
     <div class="order-container">
         <a href="<?= BASE_URL ?>" class="back-link"><i class="fas fa-arrow-left"></i> Back to Home</a>
         <div class="order-card">
@@ -144,6 +144,8 @@ $imageUrl = $item['image_url'] ?? '';
             </form>
         </div>
     </div>
+
+    <?php include dirname(__DIR__) . '/includes/footer-new.php'; ?>
 
     <script>
         const pricePerItem = <?= json_encode($price) ?>;
