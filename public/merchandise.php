@@ -393,7 +393,7 @@ try {
     </style>
 </head>
 <body>
-    <?php include __DIR__ . '/includes/navbar.php'; ?>
+    <?php include INCLUDES_PATH . 'navbar.php'; ?>
 
     <!-- Shopee-style Header -->
     <div class="shop-header">
