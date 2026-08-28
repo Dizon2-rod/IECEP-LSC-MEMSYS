@@ -1,159 +1,176 @@
 <?php
 require_once __DIR__ . '/../auth_check.php';
+require_once __DIR__ . '/../../bootstrap.php';
 require_once __DIR__ . '/../../../includes/config.php';
-require_once __DIR__ . '/../../../includes/middleware/auth.php';
+require_once __DIR__ . '/../../../includes/role-config.php';
 
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'member') {
-    header('Location: ' . BASE_URL . '/login.php');
-    exit;
-}
+require_role(['member', 'admin', 'super_admin', 'school_officer']);
 
 $current_page = 'events';
+$pageTitle = 'Chapter Events & Attendance Hub';
 
-$user = get_user_info();
-$member_id = $_SESSION['member_id'] ?? $user['member_id'] ?? null;
+$user = $_SESSION['user'] ?? [];
+$userId = $user['id'] ?? null;
+$supabase = getSupabaseClient();
 
-if (!$member_id) {
-    header('Location: ' . BASE_URL . '/login.php');
-    exit;
-}
+$events = [];
+$myAttendanceMap = [];
 
-$supabase = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Fetch upcoming events
 try {
-    $events = $supabase->select('events', [
-        'is_public' => 'eq.true',
-        'start_date' => 'gte.' . date('c'),
-        'order' => 'start_date.asc'
+    // Fetch upcoming and ongoing events
+    $rawEv = $supabase->select('events', [
+        'select' => '*',
+        'order' => 'start_date.desc'
     ]);
-} catch (Exception $e) {
-    $events = [];
-}
+    if (is_array($rawEv)) $events = $rawEv;
 
-// Fetch member's registered events
-try {
-    $registrations = $supabase->select('event_registrations', [
-        'member_id' => 'eq.' . $member_id
-    ]);
-    $registeredEventIds = array_column($registrations, 'event_id');
+    // Fetch member's attendance
+    if ($userId) {
+        $rawAtt = $supabase->select('event_attendees', [
+            'member_id' => 'eq.' . $userId
+        ]);
+        if (is_array($rawAtt)) {
+            foreach ($rawAtt as $a) {
+                $myAttendanceMap[$a['event_id']] = $a;
+            }
+        }
+    }
 } catch (Exception $e) {
-    $registeredEventIds = [];
+    error_log("Member events query error: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <?php require_once __DIR__ . '/../../includes/head-meta.php'; ?>
-    <title>Events - Member Portal</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
+    <meta name="description" content="View upcoming IECEP-LSC chapter events and scan the live 15-second dynamic QR code to record attendance.">
+    <?php include INCLUDES_PATH . 'head-meta.php'; ?>
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <style>
+        .event-card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 1.25rem;
+        }
+        .event-item-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: var(--card-shadow);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+        .event-item-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(11,29,74,0.08);
+        }
+        .event-item-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #0B1D4A, #D4AF37);
+        }
+    </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <?php require_once __DIR__ . '/../../includes/sidebar.php'; ?>
-        
-        <main class="main-content">
-            <div class="container py-5">
-                <div class="mb-4">
-                    <h1 class="h2 mb-2">Events</h1>
-                    <p class="text-muted">Register for upcoming IECEP-LSC events</p>
-                </div>
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
-                <?php if (empty($events)): ?>
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>
-                        No upcoming events at this time. Check back later for new events.
-                    </div>
-                <?php else: ?>
-                    <div class="grid-responsive">
-                        <?php foreach ($events as $event): ?>
-                            <?php
-                                $isRegistered = in_array($event['id'] ?? '', $registeredEventIds);
-                                $startDate = $event['start_date'] ?? '';
-                                $endDate = $event['end_date'] ?? '';
-                            ?>
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-start mb-3">
-                                        <span class="badge bg-primary">
-                                            <?= htmlspecialchars($event['event_type'] ?? 'General') ?>
-                                        </span>
-                                        <?php if ($isRegistered): ?>
-                                            <span class="badge bg-success">
-                                                <i class="fas fa-check-circle me-1"></i>Registered
-                                            </span>
-                                        <?php endif; ?>
-                                    </div>
-                                    <h5 class="card-title mb-2"><?= htmlspecialchars($event['title'] ?? 'Event Title') ?></h5>
-                                    <p class="text-muted small mb-3">
-                                        <i class="fas fa-calendar me-1"></i>
-                                        <?= date('F d, Y', strtotime($startDate)) ?>
-                                        <?php if ($endDate && $endDate !== $startDate): ?>
-                                            - <?= date('F d, Y', strtotime($endDate)) ?>
-                                        <?php endif; ?>
-                                        <br>
-                                        <i class="fas fa-clock me-1"></i>
-                                        <?= date('g:i A', strtotime($startDate)) ?>
-                                        <?php if ($event['end_time'] ?? null): ?>
-                                            - <?= date('g:i A', strtotime($event['end_time'])) ?>
-                                        <?php endif; ?>
-                                    </p>
-                                    <?php if ($event['venue'] ?? null): ?>
-                                        <p class="text-muted small mb-3">
-                                            <i class="fas fa-map-marker-alt me-1"></i>
-                                            <?= htmlspecialchars($event['venue']) ?>
-                                        </p>
-                                    <?php endif; ?>
-                                    <p class="text-muted small mb-4">
-                                        <?= substr(htmlspecialchars($event['description'] ?? ''), 0, 100) ?>...
-                                    </p>
-                                    <?php if ($isRegistered): ?>
-                                        <button class="btn btn-outline w-100" disabled>
-                                            <i class="fas fa-check me-2"></i>Already Registered
-                                        </button>
+    <main class="main-content">
+        <div class="ap-scope">
+
+            <!-- Page Header -->
+            <div class="ap-page-header">
+                <div class="ap-title-block">
+                    <h1 class="ap-page-title"><i class="fas fa-calendar-star"></i> Chapter Events & Attendance Hub</h1>
+                    <p class="ap-page-subtitle">Register for regional summits, seminars, and scan the organizer's 15-second dynamic QR code to mark attendance.</p>
+                </div>
+                <div class="ap-header-actions">
+                    <a href="/IECEP-LSC-MEMSYS/public/portal/member/scan.php" class="ap-btn-primary">
+                        <i class="fas fa-camera"></i> Open Phone Camera Scanner
+                    </a>
+                </div>
+            </div>
+
+            <!-- Events Grid -->
+            <?php if (empty($events)): ?>
+                <div class="ap-card" style="text-align:center; padding:3rem 1rem;">
+                    <i class="fas fa-calendar-xmark fa-3x" style="color:var(--text-muted); opacity:0.5; margin-bottom:1rem;"></i>
+                    <h3 style="color:var(--text-heading); font-size:1.15rem; margin:0 0 0.5rem 0;">No Upcoming Events Scheduled</h3>
+                    <p style="color:var(--text-muted); font-size:0.85rem; margin:0;">Check back soon for upcoming IECEP-LSC summits and seminars.</p>
+                </div>
+            <?php else: ?>
+                <div class="event-card-grid">
+                    <?php foreach ($events as $ev): ?>
+                        <?php 
+                            $evId = $ev['id'];
+                            $isPresent = isset($myAttendanceMap[$evId]);
+                            $attInfo = $myAttendanceMap[$evId] ?? null;
+                        ?>
+                        <div class="event-item-card">
+                            <div>
+                                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+                                    <span class="ap-pill gold" style="font-weight:700; font-size:0.75rem;">
+                                        <?= htmlspecialchars($ev['event_type'] ?: 'Regional Event') ?>
+                                    </span>
+                                    <?php if ($isPresent): ?>
+                                        <span class="ap-pill active"><i class="fas fa-circle-check"></i> Present (Scanned)</span>
                                     <?php else: ?>
-                                        <button class="btn btn-primary w-100" onclick="registerEvent('<?= htmlspecialchars($event['id'] ?? '') ?>')">
-                                            <i class="fas fa-user-plus me-2"></i>Register
-                                        </button>
+                                        <span class="ap-pill navy">Open for Check-in</span>
                                     <?php endif; ?>
                                 </div>
+
+                                <h3 style="font-size:1.15rem; font-weight:800; color:var(--text-heading); margin:0 0 0.5rem 0;">
+                                    <?= htmlspecialchars($ev['title']) ?>
+                                </h3>
+
+                                <p style="font-size:0.83rem; color:var(--text-muted); line-height:1.5; margin:0 0 1rem 0;">
+                                    <?= htmlspecialchars($ev['description'] ?? 'Join your fellow electronics engineering peers in this chapter activity.') ?>
+                                </p>
+
+                                <div style="background:#F8FAFC; border:1px solid var(--border-light); border-radius:10px; padding:0.75rem; font-size:0.8rem; color:var(--text-heading); margin-bottom:1.25rem;">
+                                    <div style="margin-bottom:4px;">
+                                        <i class="fas fa-calendar" style="color:var(--iecep-gold); width:18px;"></i>
+                                        <?= isset($ev['start_date']) ? date('F d, Y &bull; h:i A', strtotime($ev['start_date'])) : 'TBD' ?>
+                                    </div>
+                                    <div>
+                                        <i class="fas fa-location-dot" style="color:var(--iecep-navy); width:18px;"></i>
+                                        <?= htmlspecialchars($ev['venue'] ?: 'Laguna Campus Auditorium') ?>
+                                    </div>
+                                </div>
                             </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php endif; ?>
+
+                            <div>
+                                <?php if ($isPresent): ?>
+                                    <div style="background:#ECFDF5; border:1px solid #10B981; border-radius:10px; padding:0.65rem; text-align:center; font-size:0.8rem; color:#065F46; font-weight:700;">
+                                        <i class="fas fa-badge-check"></i> Attendance Verified on Ledger &bull; <?= date('h:i A', strtotime($attInfo['attended_at'] ?? 'now')) ?>
+                                    </div>
+                                <?php else: ?>
+                                    <a href="/IECEP-LSC-MEMSYS/public/portal/member/scan.php?event_id=<?= urlencode($evId) ?>" class="ap-btn-primary" style="width:100%; justify-content:center;">
+                                        <i class="fas fa-camera"></i> Scan Live 15s QR Code
+                                    </a>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+
+            <!-- Sentinel -->
+            <div class="ap-sentinel-strip" style="margin-top:1.5rem;">
+                <div class="ap-sentinel-item"><i class="fas fa-qrcode"></i><span><strong>Check-in:</strong> Dynamic QR Camera Reader</span></div>
+                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Proof-of-Presence:</strong> Cryptographically Recorded</span></div>
             </div>
-        </main>
-    </div>
 
-    <script>
-        async function registerEvent(eventId) {
-            if (!confirm('Are you sure you want to register for this event?')) {
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/register-event.php', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        event_id: eventId
-                    })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    alert('You have been successfully registered for this event!');
-                    location.reload();
-                } else {
-                    alert('Registration failed: ' + (result.message || 'Unknown error'));
-                }
-            } catch (error) {
-                alert('An error occurred: ' + error.message);
-            }
-        }
-    </script>
+        </div>
+    </main>
 </body>
 </html>
-

@@ -16,6 +16,11 @@ require_once __DIR__ . '/../../includes/dashboard-layout.php';
 $user = get_user_info();
 $role = $user['role'] ?? 'member';
 
+if ($role === 'admin' || $role === 'super_admin') {
+    header('Location: ' . PORTAL_URL . '/admin/dashboard.php');
+    exit;
+}
+
 // Get role configuration
 $role_config = getRoleConfig($role);
 

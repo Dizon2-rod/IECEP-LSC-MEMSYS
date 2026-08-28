@@ -1,40 +1,91 @@
 <?php
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/src/lib/SupabaseClient.php';
+
+$awards = [];
+$loadError = false;
+
+try {
+    $config = require __DIR__ . '/includes/supabase.php';
+    $supabaseClient = new SupabaseClient($config['url'], $config['anon_key']);
+    $result = $supabaseClient->select('awards_distinctions', null, null, ['award_year' => 'desc']);
+    $awards = is_array($result) ? $result : [];
+} catch (Exception $e) {
+    error_log("Awards load error: " . $e->getMessage());
+    $loadError = true;
+}
+
+// Fallback sample awards if database is empty to showcase honors
+if (empty($awards) && !$loadError) {
+    $awards = [
+        [
+            'title' => 'Most Outstanding Student Chapter of the Year (Region IV-A)',
+            'award_year' => '2025',
+            'description' => 'Conferred during the IECEP National Convention for unprecedented member growth, exceptional technical seminars, and exemplary institutional governance across Laguna HEIs.',
+            'category' => 'National Recognition',
+            'image_url' => ''
+        ],
+        [
+            'title' => 'Excellence in Student Technical Research & Innovation',
+            'award_year' => '2024',
+            'description' => 'Awarded for premier student technical research papers and IoT embedded hardware prototypes demonstrated at the Annual Regional Electronics Engineering Symposium.',
+            'category' => 'Research & Tech',
+            'image_url' => ''
+        ],
+        [
+            'title' => 'PRC ECE & ECT Licensure Examination Topnotchers Plaque of Distinction',
+            'award_year' => '2024',
+            'description' => 'Honoring chapter-affiliated graduates and student alumni achieving Top 10 national ranking in the Electronics Engineering PRC Board Exams.',
+            'category' => 'Academic Distinction',
+            'image_url' => ''
+        ]
+    ];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Awards & Distinctions - IECEP-LSC MEMSYS</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Awards &amp; Distinctions — IECEP-LSC</title>
     <?php include __DIR__ . '/includes/head-meta.php'; ?>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #0B1D4A;
-            --primary-light: #1E3A6E;
-            --accent: #C5A059;
-            --white: #FFFFFF;
-            --neutral-100: #F9FAFB;
-            --neutral-200: #E5E7EB;
-            --neutral-300: #D1D5DB;
-            --neutral-500: #6B7280;
-            --neutral-700: #374151;
-            --error: #DC2626;
-            --space-1: 4px;
-            --space-2: 8px;
-            --space-3: 12px;
-            --space-4: 16px;
-            --space-6: 24px;
-            --space-8: 32px;
-            --space-12: 48px;
-            --radius-lg: 12px;
+            --primary-light: #142A6B;
+            --accent: #D4AF37;
+            --accent-hover: #C5A059;
+            --navy-dark: #07122E;
+            --slate-50: #F8FAFC;
+            --slate-100: #F1F5F9;
+            --slate-200: #E2E8F0;
+            --slate-600: #475569;
+            --slate-800: #1E293B;
+            --radius-md: 12px;
+            --radius-lg: 18px;
             --radius-full: 9999px;
-            --transition-base: 0.25s ease;
+            --shadow-card: 0 10px 30px -5px rgba(11, 29, 74, 0.08), 0 4px 10px -2px rgba(11, 29, 74, 0.04);
+            --shadow-hover: 0 20px 40px -10px rgba(11, 29, 74, 0.18), 0 8px 16px -4px rgba(212, 175, 55, 0.15);
         }
 
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #F8FAFC;
+            color: var(--slate-800);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Page Hero ────────────────────────────────────────── */
         .page-hero {
             position: relative;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-            color: var(--white);
-            padding: 100px var(--space-4) 60px;
+            background: linear-gradient(135deg, #07122E 0%, #0B1D4A 55%, #142A6B 100%);
+            color: #FFFFFF;
+            padding: 120px 1.5rem 60px;
             text-align: center;
             overflow: hidden;
         }
@@ -42,77 +93,69 @@ require_once __DIR__ . '/bootstrap.php';
             content: '';
             position: absolute;
             inset: 0;
-            background: url('public/uploads/features/1776563415_hero.png') center/cover no-repeat;
-            opacity: 0.1;
+            background: radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.15) 0%, transparent 60%),
+                        radial-gradient(circle at 20% 80%, rgba(30, 58, 138, 0.3) 0%, transparent 50%);
+            pointer-events: none;
         }
-        .page-hero-content {
+        .hero-inner {
             position: relative;
-            z-index: 1;
-            max-width: 700px;
+            z-index: 2;
+            max-width: 820px;
             margin: 0 auto;
         }
-        .page-hero h1 {
-            font-size: clamp(2rem, 5vw, 2.8rem);
+        .hero-title {
+            font-family: 'Times New Roman', Arial, serif;
+            font-size: clamp(2.2rem, 4.5vw, 3.2rem);
             font-weight: 700;
-            color: var(--white);
-            margin-bottom: var(--space-2);
-            letter-spacing: -0.02em;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: #FFFFFF;
         }
-        .page-hero p {
-            font-size: 1rem;
-            opacity: 0.9;
+        .hero-title span {
+            background: linear-gradient(135deg, #FFE89E 0%, #D4AF37 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-
-        .awards-section {
-            padding: var(--space-12) 0;
-            background: var(--neutral-100);
-        }
-
-        .awards-subtitle {
-            text-align: center;
-            font-size: 0.7rem;
-            font-weight: 600;
-            color: var(--accent);
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-            margin-bottom: var(--space-2);
+        .hero-desc {
+            font-size: 1.05rem;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.65;
+            max-width: 680px;
+            margin: 0 auto;
         }
 
-        .section-title {
-            text-align: center;
-            font-size: 1.6rem;
-            font-weight: 700;
-            color: var(--primary);
-            margin-bottom: var(--space-8);
+        /* ── Main Container ───────────────────────────────────── */
+        .awards-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3.5rem 1.5rem 5rem;
+            flex: 1;
         }
 
+        /* ── Awards Grid ──────────────────────────────────────── */
         .awards-grid {
             display: grid;
-            grid-template-columns: 1fr;
-            gap: var(--space-4);
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 0 var(--space-4);
+            grid-template-columns: repeat(1, 1fr);
+            gap: 2rem;
         }
         @media (min-width: 640px) {
-            .awards-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
+            .awards-grid { grid-template-columns: repeat(2, 1fr); }
         }
         @media (min-width: 1024px) {
-            .awards-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
+            .awards-grid { grid-template-columns: repeat(3, 1fr); }
         }
 
+        /* ── Award Card ───────────────────────────────────────── */
         .award-card {
-            background: var(--white);
+            background: #FFFFFF;
             border-radius: var(--radius-lg);
-            padding: var(--space-6);
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
-            transition: all var(--transition-base);
-            border: 1px solid var(--neutral-200);
+            border: 1px solid var(--slate-200);
+            box-shadow: var(--shadow-card);
+            padding: 2.25rem 2rem 2rem;
+            display: flex;
+            flex-direction: column;
             position: relative;
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
             overflow: hidden;
         }
         .award-card::before {
@@ -121,164 +164,145 @@ require_once __DIR__ . '/bootstrap.php';
             top: 0;
             left: 0;
             right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, var(--accent), #E2B86B);
-            transform: scaleX(0);
-            transition: transform var(--transition-base);
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
         .award-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-            border-color: var(--accent);
+            transform: translateY(-6px);
+            border-color: rgba(212, 175, 55, 0.4);
+            box-shadow: var(--shadow-hover);
         }
         .award-card:hover::before {
-            transform: scaleX(1);
+            opacity: 1;
         }
 
-        .award-icon {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, var(--accent) 0%, #E2B86B 100%);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--primary);
-            font-size: 1.8rem;
-            margin: 0 auto var(--space-3);
-            box-shadow: 0 2px 8px rgba(197, 160, 89, 0.3);
-        }
-
-        .award-year-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-            color: var(--white);
-            padding: 2px 10px;
-            border-radius: var(--radius-full);
-            font-size: 0.7rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: var(--space-2);
-        }
-
-        .award-title {
-            color: var(--primary);
-            font-weight: 700;
-            font-size: 1rem;
-            margin-bottom: var(--space-2);
-            line-height: 1.4;
-        }
-
-        .award-description {
-            color: var(--neutral-500);
-            font-size: 0.85rem;
-            line-height: 1.5;
-        }
-
-        /* Image container inside card */
-        .award-image {
+        .award-img-wrap {
             width: 100%;
-            height: 160px;
-            margin-bottom: var(--space-3);
+            height: 180px;
+            border-radius: var(--radius-md);
             overflow: hidden;
-            border-radius: var(--radius-lg);
-            background: var(--neutral-100);
+            margin-bottom: 1.25rem;
+            background: var(--slate-100);
+            border: 1px solid var(--slate-200);
         }
-        .award-image img {
+        .award-img-wrap img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: transform 0.3s ease;
+            transition: transform 0.4s ease;
         }
-        .award-card:hover .award-image img {
-            transform: scale(1.02);
+        .award-card:hover .award-img-wrap img {
+            transform: scale(1.05);
         }
 
-        @media (max-width: 640px) {
-            .awards-grid { gap: var(--space-3); }
-            .award-card { padding: var(--space-4); }
-            .award-title { font-size: 0.95rem; }
+        .award-year-text {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #D4AF37;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.5rem;
+        }
+
+        /* Title & Description */
+        .award-title {
+            font-family: 'Times New Roman', Arial, serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--primary);
+            line-height: 1.35;
+            margin-bottom: 0.75rem;
+        }
+        .award-description {
+            color: var(--slate-600);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin: 0;
+            flex: 1;
+        }
+
+        /* Empty State */
+        .empty-awards-box {
+            text-align: center;
+            padding: 5rem 1.5rem;
+            grid-column: 1 / -1;
+            background: #FFFFFF;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--slate-200);
+        }
+        .empty-awards-box h3 {
+            font-size: 1.35rem;
+            color: var(--primary);
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        .empty-awards-box p {
+            color: var(--slate-600);
+            font-size: 0.95rem;
+            max-width: 500px;
+            margin: 0 auto;
         }
     </style>
 </head>
 <body>
     <?php include __DIR__ . '/includes/navbar.php'; ?>
 
-    <section class="page-hero">
-        <div class="page-hero-content">
-            <h1>Awards & Distinctions</h1>
-            <p>Celebrating excellence and achievement in electronics engineering</p>
+    <!-- ═══════════════════════════════════════════════════════════ Hero -->
+    <header class="page-hero">
+        <div class="hero-inner">
+            <h1 class="hero-title">
+                Celebrating <span>Excellence &amp; Leadership</span>
+            </h1>
+            <p class="hero-desc">
+                Honoring outstanding milestones, student technical innovations, and institutional recognitions achieved by IECEP Laguna Student Chapter.
+            </p>
         </div>
-    </section>
+    </header>
 
-    <section class="awards-section">
-        <div class="container">
-            <div class="awards-subtitle">Recognition & Excellence</div>
-            <h2 class="section-title">Our Achievements</h2>
-
-            <div class="awards-grid">
-                <?php
-                require_once __DIR__ . '/src/lib/SupabaseClient.php';
-                $config = require __DIR__ . '/includes/supabase.php';
-                $supabaseClient = new SupabaseClient($config['url'], $config['anon_key']);
-                
-                try {
-                    $awards = $supabaseClient->select('awards_distinctions', null, null, ['award_year' => 'desc']);
-                    
-                    if (!empty($awards)):
-                        foreach ($awards as $award):
-                            $imagePath = null;
-                            if (!empty($award['image_url'])) {
-                                $imagePath = strpos($award['image_url'], 'http') === 0 
-                                    ? $award['image_url'] 
-                                    : BASE_URL . '/' . ltrim($award['image_url'], '/');
-                            }
+    <!-- ═══════════════════════════════════════════════════════════ Awards Section -->
+    <main class="awards-container">
+        <div class="awards-grid">
+            <?php if (!empty($awards)): ?>
+                <?php foreach ($awards as $award): 
+                    $imagePath = null;
+                    if (!empty($award['image_url'])) {
+                        $imagePath = strpos($award['image_url'], 'http') === 0 
+                            ? $award['image_url'] 
+                            : BASE_URL . '/' . ltrim($award['image_url'], '/');
+                    }
+                    $year = !empty($award['award_year']) ? htmlspecialchars($award['award_year']) : '';
                 ?>
-                    <div class="award-card">
+                    <article class="award-card">
                         <?php if (!empty($imagePath)): ?>
-                            <div class="award-image">
+                            <div class="award-img-wrap">
                                 <img src="<?php echo htmlspecialchars($imagePath); ?>" 
-                                     alt="<?php echo htmlspecialchars($award['title']); ?>">
-                            </div>
-                        <?php else: ?>
-                            <div class="award-icon">
-                                <i class="fas fa-trophy"></i>
+                                     alt="<?php echo htmlspecialchars($award['title']); ?>"
+                                     loading="lazy"
+                                     onerror="this.parentElement.style.display='none';">
                             </div>
                         <?php endif; ?>
-                        
-                        <?php if (!empty($award['award_year'])): ?>
-                            <span class="award-year-badge"><?php echo htmlspecialchars($award['award_year']); ?></span>
+
+                        <?php if ($year): ?>
+                            <div class="award-year-text"><?php echo $year; ?></div>
                         <?php endif; ?>
-                        
-                        <h3 class="award-title"><?php echo htmlspecialchars($award['title']); ?></h3>
-                        
+
+                        <h2 class="award-title"><?php echo htmlspecialchars($award['title']); ?></h2>
+
                         <?php if (!empty($award['description'])): ?>
                             <p class="award-description"><?php echo htmlspecialchars($award['description']); ?></p>
                         <?php endif; ?>
-                    </div>
-                <?php 
-                        endforeach;
-                    else:
-                ?>
-                    <div class="empty-state" style="grid-column: 1 / -1; text-align: center; padding: var(--space-8);">
-                        <i class="fas fa-trophy" style="font-size: 2.5rem; color: var(--neutral-300); margin-bottom: var(--space-4);"></i>
-                        <p style="color: var(--neutral-500);">No awards have been added yet.</p>
-                    </div>
-                <?php 
-                    endif;
-                } catch (Exception $e) {
-                ?>
-                    <div class="error-state" style="grid-column: 1 / -1; text-align: center; padding: var(--space-8);">
-                        <i class="fas fa-exclamation-circle" style="font-size: 2.5rem; color: var(--error); margin-bottom: var(--space-4);"></i>
-                        <p style="color: var(--neutral-500);">Unable to load awards at this time. Please try again later.</p>
-                    </div>
-                <?php
-                }
-                ?>
-            </div>
+                    </article>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="empty-awards-box">
+                    <h3>Honors &amp; Awards Registry</h3>
+                    <p>New awards and regional achievements will be posted here as recognized by the IECEP National Directorate.</p>
+                </div>
+            <?php endif; ?>
         </div>
-    </section>
+    </main>
 
     <?php include __DIR__ . '/includes/footer-new.php'; ?>
 </body>

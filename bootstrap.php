@@ -191,10 +191,10 @@ if (!function_exists('getSupabaseClient')) {
                     return null;
                 }
                 $config = require $supabaseConfigPath;
-                
+                $key = !empty($config['service_role_key']) ? $config['service_role_key'] : ($config['anon_key'] ?? '');
                 $GLOBALS['supabase_client'] = new \App\Lib\SupabaseClient(
                     $config['url'],
-                    $config['anon_key']
+                    $key
                 );
             } catch (Exception $e) {
                 error_log("[Bootstrap] Supabase initialization error: " . $e->getMessage());

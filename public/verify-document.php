@@ -1,8 +1,6 @@
 <?php
 require_once __DIR__ . '/includes/paths.php';
-require_once __DIR__ . '/includes/db.php';
-
-$db = Database::getInstance();
+use App\Lib\SupabaseClient;
 
 $verificationResult = null;
 $error = null;
@@ -12,49 +10,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $blockchainHash = $_POST['blockchain_hash'] ?? '';
     
     try {
+        $supabase = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         if (!empty($documentId)) {
-            // Verify by document ID
-            $document = $db->fetchOne("SELECT d.*, i.name as institution_name, up.full_name as uploaded_by_name
-                FROM documents d
-                LEFT JOIN institutions i ON d.institution_id = i.id
-                LEFT JOIN user_profiles up ON d.uploaded_by = up.user_id
-                WHERE d.id = ?", [$documentId]);
-            
-            if ($document) {
-                // Check blockchain verification
-                $blockchainRecord = $db->fetchOne("SELECT * FROM blockchain_records WHERE entity_type = 'document' AND entity_id = ?", [$documentId]);
+            $docs = $supabase->select('documents', ['id' => 'eq.' . $documentId]);
+            if (is_array($docs) && !empty($docs)) {
+                $document = $docs[0];
+                $bcs = $supabase->select('blockchain_records', ['entity_id' => 'eq.' . $documentId]);
+                $blockchainRecord = (is_array($bcs) && !empty($bcs)) ? $bcs[0] : null;
                 
                 $verificationResult = [
                     'document' => $document,
-                    'blockchain_verified' => $blockchainRecord && $blockchainRecord['confirmed'],
-                    'blockchain_hash' => $blockchainRecord ? $blockchainRecord['transaction_hash'] : null,
+                    'blockchain_verified' => !empty($blockchainRecord['confirmed']),
+                    'blockchain_hash' => $blockchainRecord['transaction_hash'] ?? null,
                     'verified' => true
                 ];
             } else {
                 $error = 'Document not found';
             }
         } elseif (!empty($blockchainHash)) {
-            // Verify by blockchain hash
-            $blockchainRecord = $db->fetchOne("SELECT * FROM blockchain_records WHERE transaction_hash = ?", [$blockchainHash]);
-            
-            if ($blockchainRecord) {
-                $document = $db->fetchOne("SELECT d.*, i.name as institution_name, up.full_name as uploaded_by_name
-                    FROM documents d
-                    LEFT JOIN institutions i ON d.institution_id = i.id
-                    LEFT JOIN user_profiles up ON d.uploaded_by = up.user_id
-                    WHERE d.id = ?", [$blockchainRecord['entity_id']]);
-                
+            $bcs = $supabase->select('blockchain_records', ['transaction_hash' => 'eq.' . $blockchainHash]);
+            if (is_array($bcs) && !empty($bcs)) {
+                $blockchainRecord = $bcs[0];
+                $document = null;
+                if (!empty($blockchainRecord['entity_id'])) {
+                    $docs = $supabase->select('documents', ['id' => 'eq.' . $blockchainRecord['entity_id']]);
+                    if (is_array($docs) && !empty($docs)) {
+                        $document = $docs[0];
+                    }
+                }
                 $verificationResult = [
                     'document' => $document,
-                    'blockchain_verified' => $blockchainRecord['confirmed'],
-                    'blockchain_hash' => $blockchainRecord['transaction_hash'],
+                    'blockchain_verified' => !empty($blockchainRecord['confirmed']),
+                    'blockchain_hash' => $blockchainRecord['transaction_hash'] ?? null,
                     'verified' => true
                 ];
             } else {
-                $error = 'Blockchain hash not found';
+                $error = 'Blockchain record not found';
             }
-        } else {
-            $error = 'Please provide a document ID or blockchain hash';
         }
     } catch (Exception $e) {
         $error = 'Verification failed: ' . $e->getMessage();

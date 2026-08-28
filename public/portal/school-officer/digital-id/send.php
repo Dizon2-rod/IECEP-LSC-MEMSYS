@@ -2,20 +2,45 @@
 require_once __DIR__ . '/../../auth_check.php';
 require_role(['school_officer']);
 
-require_once __DIR__ . '/../../includes/role-config.php';
+require_once __DIR__ . '/../../../../includes/role-config.php';
 require_once __DIR__ . '/../../bootstrap.php';
 
 $current_page = 'send-digital-id';
 
 $user = get_user_info();
-$institution_id = $_SESSION['institution_id'] ?? $user['institution_id'] ?? null;
+$institution_id = $_SESSION['institution_id'] ?? $user['institution_id'] ?? $_SESSION['user']['institution_id'] ?? null;
+$supabase = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 if (!$institution_id) {
-    header('Location: /portal/school-officer/dashboard.php');
-    exit;
+    $user_id = $_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? null;
+    if ($user_id) {
+        try {
+            $userProfile = $supabase->select('user_profiles', ['user_id' => 'eq.' . $user_id, 'limit' => 1]);
+            if (is_array($userProfile) && isset($userProfile[0]['institution_id'])) {
+                $institution_id = $userProfile[0]['institution_id'];
+            }
+            if (!$institution_id) {
+                $memberData = $supabase->select('members', ['user_id' => 'eq.' . $user_id, 'limit' => 1]);
+                if (is_array($memberData) && isset($memberData[0]['institution_id'])) {
+                    $institution_id = $memberData[0]['institution_id'];
+                }
+            }
+        } catch (Exception $e) {}
+    }
 }
 
-$supabase = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+if (!$institution_id) {
+    try {
+        $instList = $supabase->select('institutions', ['status' => 'eq.active', 'limit' => 1]);
+        if (is_array($instList) && isset($instList[0]['id'])) {
+            $institution_id = $instList[0]['id'];
+        }
+    } catch (Exception $e) {}
+}
+
+if ($institution_id) {
+    $_SESSION['institution_id'] = $institution_id;
+}
 
 // Fetch members for this institution
 try {
@@ -31,12 +56,12 @@ try {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <?php require_once __DIR__ . '/../../../includes/head-meta.php'; ?>
+    <?php require_once __DIR__ . '/../../../../includes/head-meta.php'; ?>
     <title>Send Digital IDs - School Officer Dashboard</title>
 </head>
 <body>
     <div class="dashboard-container">
-        <?php require_once __DIR__ . '/../../../includes/sidebar.php'; ?>
+        <?php require_once __DIR__ . '/../../../../includes/sidebar.php'; ?>
         
         <main class="main-content">
             <div class="container py-5">

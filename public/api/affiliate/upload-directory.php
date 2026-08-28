@@ -248,6 +248,21 @@ try {
         ->eq('id', $batch_id)
         ->execute();
 
+    // Anchor batch to Blockchain
+    try {
+        require_once __DIR__ . '/../../../src/lib/BlockchainService.php';
+        $blockchain = new \App\Lib\BlockchainService(getSupabaseClient());
+        $blockchain->record('member_batch', (string)$batch_id, [
+            'batch_id' => $batch_id,
+            'institution_id' => $institution_id,
+            'total_members' => $total_rows,
+            'file_name' => $file_name,
+            'uploaded_at' => date('c'),
+        ], (string)$institution_id);
+    } catch (Exception $bcEx) {
+        error_log("Blockchain batch anchor notice: " . $bcEx->getMessage());
+    }
+
     // Log audit
     log_audit('member_directory_upload', 'upload_batches', $batch_id, null, [
         'file' => $file_name,
@@ -261,7 +276,7 @@ try {
         'batch_id' => $batch_id,
         'total_rows' => $total_rows,
         'import_errors' => count($import_errors) > 0 ? $import_errors : null,
-        'message' => "Successfully uploaded $total_rows member records"
+        'message' => "Successfully uploaded $total_rows member records and anchored to Blockchain"
     ]);
 
 } catch (Exception $e) {

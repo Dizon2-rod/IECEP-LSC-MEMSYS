@@ -44,7 +44,7 @@ foreach ($transactions as $tx) {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <?php require_once __DIR__ . '/../../includes/head-meta.php'; ?>
+    <?php require_once __DIR__ . '/../../../includes/head-meta.php'; ?>
     <title>Payment History - Member Portal</title>
 </head>
 <body>

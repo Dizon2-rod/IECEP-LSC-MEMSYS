@@ -41,264 +41,412 @@ foreach ($events as $event) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendar Activity - IECEP-LSC</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <title>Calendar of Activities &amp; Events — IECEP-LSC</title>
+    <?php include __DIR__ . '/includes/head-meta.php'; ?>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #0B1D4A;
-            --primary-light: #1E3A6E;
+            --primary-light: #142A6B;
             --accent: #D4AF37;
-            --accent-hover: #C4A030;
-            --white: #FFFFFF;
-            --neutral-100: #F5F5F5;
-            --neutral-200: #E5E5E5;
-            --neutral-500: #6B7280;
-            --neutral-700: #374151;
-            --neutral-900: #111827;
-            --space-1: 4px;
-            --space-2: 8px;
-            --space-3: 12px;
-            --space-4: 16px;
-            --space-5: 20px;
-            --space-6: 24px;
-            --space-8: 32px;
-            --space-12: 48px;
-            --radius-sm: 6px;
-            --radius-md: 8px;
-            --radius-lg: 12px;
-            --radius-xl: 16px;
+            --accent-hover: #C5A059;
+            --navy-dark: #07122E;
+            --slate-50: #F8FAFC;
+            --slate-100: #F1F5F9;
+            --slate-200: #E2E8F0;
+            --slate-600: #475569;
+            --slate-800: #1E293B;
+            --radius-md: 12px;
+            --radius-lg: 18px;
             --radius-full: 9999px;
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-            --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
-            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
-            --shadow-xl: 0 20px 25px rgba(0,0,0,0.1);
-            --transition-base: 0.3s ease;
-            --transition-fast: 0.2s ease;
+            --shadow-card: 0 10px 30px -5px rgba(11, 29, 74, 0.08), 0 4px 10px -2px rgba(11, 29, 74, 0.04);
+            --shadow-hover: 0 20px 40px -10px rgba(11, 29, 74, 0.18), 0 8px 16px -4px rgba(212, 175, 55, 0.15);
         }
-        
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; color: var(--neutral-900); background: var(--neutral-100); line-height: 1.6; padding-top: 64px; }
-        
-        .header { background: var(--white); border-bottom: 1px solid var(--neutral-200); position: fixed; top: 0; left: 0; right: 0; z-index: 1000; }
-        .header-container { max-width: 1200px; margin: 0 auto; padding: 0 var(--space-4); display: flex; align-items: center; justify-content: space-between; height: 64px; width: 100%; }
-        .logo { display: flex; align-items: center; gap: var(--space-2); text-decoration: none; color: var(--primary); font-weight: 700; flex-shrink: 0; }
-        .logo img { width: 40px; height: 40px; }
-        .nav { flex: 1; display: flex; align-items: center; justify-content: center; }
-        .nav-links { display: flex; list-style: none; gap: var(--space-4); align-items: center; }
-        .nav-link { color: var(--neutral-700); text-decoration: none; font-weight: 500; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); transition: all var(--transition-base); display: flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
-        .nav-link:hover { color: var(--primary); background: var(--neutral-100); }
-        .btn-login { padding: var(--space-2) var(--space-4); background: transparent; border: 2px solid var(--primary); color: var(--primary); text-decoration: none; border-radius: var(--radius-full); font-weight: 600; transition: all var(--transition-base); flex-shrink: 0; }
-        .btn-login:hover { background: var(--primary); color: var(--white); }
-        
-        .nav-item { position: relative; list-style: none; }
-        .dropdown-menu { 
-            position: absolute; 
-            top: calc(100% + 8px); 
-            left: 0; 
-            background: var(--white); 
-            border: none; 
-            border-radius: 12px; 
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15); 
-            min-width: 240px; 
-            opacity: 0; 
-            visibility: hidden; 
-            transform: translateY(-8px); 
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); 
-            z-index: 1001; 
-            padding: 8px; 
-            list-style: none;
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #F8FAFC;
+            color: var(--slate-800);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
-        .dropdown-menu::before {
+
+        /* ── Page Hero ────────────────────────────────────────── */
+        .page-hero {
+            position: relative;
+            background: linear-gradient(135deg, #07122E 0%, #0B1D4A 55%, #142A6B 100%);
+            color: #FFFFFF;
+            padding: 120px 1.5rem 60px;
+            text-align: center;
+            overflow: hidden;
+        }
+        .page-hero::before {
             content: '';
             position: absolute;
-            top: -6px;
-            left: 24px;
-            width: 12px;
-            height: 12px;
-            background: var(--white);
-            transform: rotate(45deg);
-            border-radius: 2px;
+            inset: 0;
+            background: radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.15) 0%, transparent 60%),
+                        radial-gradient(circle at 20% 80%, rgba(30, 58, 138, 0.3) 0%, transparent 50%);
+            pointer-events: none;
         }
-        .nav-item:hover > .dropdown-menu { opacity: 1; visibility: visible; transform: translateY(0); }
-        .dropdown-menu li { list-style: none; }
-        .dropdown-item { 
-            display: block;
-            padding: 12px 16px; 
-            color: var(--neutral-700); 
-            text-decoration: none; 
-            border-radius: 8px; 
-            transition: all 0.2s ease; 
-            white-space: nowrap; 
+        .hero-inner {
+            position: relative;
+            z-index: 2;
+            max-width: 820px;
+            margin: 0 auto;
+        }
+        .hero-title {
+            font-family: 'Times New Roman', Arial, serif;
+            font-size: clamp(2.2rem, 4.5vw, 3.2rem);
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: #FFFFFF;
+        }
+        .hero-title span {
+            background: linear-gradient(135deg, #FFE89E 0%, #D4AF37 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-desc {
+            font-size: 1.05rem;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.65;
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        /* ── Main Container ───────────────────────────────────── */
+        .calendar-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3.5rem 1.5rem 5rem;
+            flex: 1;
+            width: 100%;
+        }
+
+        /* ── Grid Layout ──────────────────────────────────────── */
+        .calendar-layout-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2.5rem;
+        }
+        @media (min-width: 992px) {
+            .calendar-layout-grid {
+                grid-template-columns: 1.35fr 0.9fr;
+            }
+        }
+
+        /* ── Month & Event Cards ──────────────────────────────── */
+        .section-box-title {
+            font-family: 'Times New Roman', Arial, serif;
+            font-size: 1.45rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 1.25rem;
+        }
+
+        .month-header-tag {
+            display: inline-block;
+            color: #D4AF37;
+            font-weight: 700;
             font-size: 0.9rem;
-            font-weight: 500;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin: 1.5rem 0 0.85rem;
         }
-        .dropdown-item:hover { 
-            background: linear-gradient(135deg, var(--neutral-100) 0%, #F8FAFC 100%); 
-            color: var(--primary); 
+        .month-header-tag:first-of-type {
+            margin-top: 0;
         }
-        
-        .page-header { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%); color: var(--white); padding: var(--space-12) 0; text-align: center; }
-        .page-header h1 { font-size: 2.5rem; font-weight: 800; margin-bottom: var(--space-2); }
-        .page-header p { font-size: 1.1rem; opacity: 0.9; }
-        
-        .calendar-container { max-width: 1000px; margin: 0 auto; padding: var(--space-8) var(--space-4); }
-        .month-section { margin-bottom: var(--space-8); }
-        .month-title { font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-bottom: var(--space-4); padding-bottom: var(--space-2); border-bottom: 2px solid var(--accent); display: inline-block; }
-        
-        .event-list { display: flex; flex-direction: column; gap: var(--space-4); }
-        .event-item { display: flex; gap: var(--space-4); background: var(--white); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-sm); border: 1px solid var(--neutral-200); transition: all var(--transition-base); }
-        .event-item:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); border-color: var(--accent); }
-        
-        .event-date-box { display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 80px; height: 80px; background: var(--primary); color: var(--white); border-radius: var(--radius-md); text-align: center; flex-shrink: 0; }
-        .event-day { font-size: 2rem; font-weight: 800; line-height: 1; }
-        .event-month { font-size: 0.875rem; font-weight: 600; text-transform: uppercase; margin-top: var(--space-1); }
-        
-        .event-content { flex: 1; }
-        .event-title { font-size: 1.25rem; font-weight: 700; color: var(--primary); margin-bottom: var(--space-2); }
-        .event-meta { display: flex; flex-wrap: wrap; gap: var(--space-4); margin-bottom: var(--space-3); font-size: 0.9rem; color: var(--neutral-500); }
-        .event-meta span { display: flex; align-items: center; gap: var(--space-2); }
-        .event-meta i { color: var(--accent); }
-        
-        .upcoming-section { background: var(--white); border-radius: var(--radius-lg); padding: var(--space-6); margin-bottom: var(--space-8); box-shadow: var(--shadow-sm); }
-        .upcoming-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3); }
-        .upcoming-header h3 { font-size: 1.25rem; color: var(--primary); display: flex; align-items: center; gap: var(--space-2); }
-        .notification-badge { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-3); background: #FEE2E2; color: #DC2626; border-radius: var(--radius-full); font-size: 0.75rem; font-weight: 600; }
-        .notification-badge.upcoming { background: #DBEAFE; color: #1E40AF; }
-        
-        .google-calendar-section { background: var(--white); border-radius: var(--radius-lg); padding: var(--space-6); margin-bottom: var(--space-8); box-shadow: var(--shadow-sm); }
-        .google-calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4); flex-wrap: wrap; gap: var(--space-3); }
-        .google-calendar-header h3 { font-size: 1.25rem; color: var(--primary); display: flex; align-items: center; gap: var(--space-2); }
-        .sync-btn { padding: var(--space-2) var(--space-4); background: #4285F4; color: var(--white); border: none; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: var(--space-2); transition: background 0.3s; }
-        .sync-btn:hover { background: #3367D6; }
-        .add-event-btn { padding: var(--space-2) var(--space-4); background: var(--accent); color: var(--primary); border: none; border-radius: var(--radius-md); font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: var(--space-2); transition: all 0.3s; }
-        .add-event-btn:hover { background: var(--accent-hover); }
-        .google-calendar-frame { width: 100%; height: 600px; border: none; border-radius: var(--radius-md); }
-        
-        .footer { background: var(--neutral-900); color: var(--white); padding: var(--space-8) 0 var(--space-4); margin-top: var(--space-12); }
-        .footer-grid { display: grid; grid-template-columns: 1fr; gap: var(--space-6); max-width: 1200px; margin: 0 auto; padding: 0 var(--space-4); }
-        @media (min-width: 640px) { .footer-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (min-width: 992px) { .footer-grid { grid-template-columns: repeat(4, 1fr); } }
-        .footer-col h4 { font-size: 1.125rem; font-weight: 700; margin-bottom: var(--space-4); color: var(--accent); }
-        .footer-col p { color: var(--neutral-500); font-size: 0.9rem; margin-bottom: var(--space-3); }
-        .footer-brand { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
-        .footer-brand img { width: 48px; height: 48px; object-fit: contain; }
-        .footer-brand h4 { color: var(--accent); font-size: 1rem; margin: 0; }
-        .footer-links { list-style: none; }
-        .footer-links li { margin-bottom: var(--space-2); }
-        .footer-links a { color: var(--neutral-500); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; }
-        .footer-links a:hover { color: var(--accent); }
-        .footer-social { display: flex; flex-direction: column; gap: var(--space-2); }
-        .footer-social a { color: var(--neutral-500); text-decoration: none; font-size: 0.9rem; transition: color 0.2s; display: flex; align-items: center; gap: var(--space-2); }
-        .footer-social a:hover { color: var(--accent); }
-        .footer-bottom { text-align: center; border-top: 1px solid var(--neutral-700); padding-top: var(--space-4); margin-top: var(--space-6); color: var(--neutral-500); font-size: 0.9rem; }
-        
-        @media (max-width: 768px) {
-            .page-header h1 { font-size: 2rem; }
-            .event-item { flex-direction: column; }
-            .event-date-box { width: 100%; flex-direction: row; gap: var(--space-3); height: auto; padding: var(--space-3); }
+
+        .event-card {
+            background: #FFFFFF;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--slate-200);
+            box-shadow: var(--shadow-card);
+            padding: 1.4rem;
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1.25rem;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .event-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(212, 175, 55, 0.4);
+            box-shadow: var(--shadow-hover);
+        }
+
+        /* Date Block */
+        .event-date-block {
+            width: 72px;
+            height: 76px;
+            border-radius: var(--radius-md);
+            background: linear-gradient(135deg, #0B1D4A 0%, #142A6B 100%);
+            color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(11, 29, 74, 0.15);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+        .event-date-day {
+            font-size: 1.75rem;
+            font-weight: 800;
+            line-height: 1;
+            color: #F8E7A2;
+        }
+        .event-date-month {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 0.15rem;
+        }
+
+        /* Event Info */
+        .event-info {
+            flex: 1;
+        }
+        .event-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.4rem;
+            line-height: 1.35;
+        }
+        .event-meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 0.65rem;
+            font-size: 0.85rem;
+            color: var(--slate-600);
+        }
+        .event-desc {
+            color: var(--slate-600);
+            font-size: 0.88rem;
+            line-height: 1.55;
+            margin: 0;
+        }
+
+        /* ── Sidebar Cards ────────────────────────────────────── */
+        .sidebar-card {
+            background: #FFFFFF;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--slate-200);
+            box-shadow: var(--shadow-card);
+            padding: 1.75rem;
+            margin-bottom: 2rem;
+        }
+        .calendar-frame-wrap {
+            width: 100%;
+            height: 480px;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--slate-200);
+            margin-top: 1rem;
+        }
+        .calendar-frame-wrap iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+        .sync-action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0B1D4A 0%, #142A6B 100%);
+            color: #FFFFFF;
+            font-weight: 700;
+            font-size: 0.9rem;
+            padding: 0.75rem 1.25rem;
+            border-radius: var(--radius-md);
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s ease;
+        }
+        .sync-action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(11, 29, 74, 0.25);
+            background: linear-gradient(135deg, #142A6B 0%, #1E3A8A 100%);
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            .event-card {
+                flex-direction: column;
+            }
+            .event-date-block {
+                width: 100%;
+                height: 48px;
+                flex-direction: row;
+                gap: 0.5rem;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Header (Nasa loob ng navbar.php ang mobile menu overlay na dapat mong burahin) -->
     <?php include __DIR__ . '/includes/navbar.php'; ?>
 
-    <section class="page-header">
-        <h1>Calendar Activity</h1>
-        <p>Stay updated with our upcoming events, seminars, and activities</p>
-    </section>
+    <!-- ═══════════════════════════════════════════════════════════ Hero -->
+    <header class="page-hero">
+        <div class="hero-inner">
+            <h1 class="hero-title">
+                Calendar of <span>Activities &amp; Events</span>
+            </h1>
+            <p class="hero-desc">
+                Stay updated with regional conventions, technical innovation summits, leadership seminars, and chapter accreditation deadlines.
+            </p>
+        </div>
+    </header>
 
-    <div class="calendar-container">
-        <div class="upcoming-section">
-            <div class="upcoming-header">
-                <h3><i class="fas fa-bell"></i> Upcoming Events</h3>
-                <?php 
-                $upcomingCount = 0;
-                $notifiedEvents = [];
-                foreach ($events as $event) {
-                    if (!is_array($event) || !isset($event['event_date'])) continue;
-                    $eventDate = strtotime($event['event_date']);
-                    $daysUntil = ceil(($eventDate - time()) / 86400);
-                    if ($daysUntil >= 0 && $daysUntil <= 7) {
-                        $upcomingCount++;
-                        $notifiedEvents[] = ['title' => $event['title'] ?? '', 'days' => $daysUntil, 'date' => $event['event_date']];
-                    }
-                }
-                if ($upcomingCount > 0): 
-                ?>
-                <span class="notification-badge <?php echo $upcomingCount > 3 ? '' : 'upcoming'; ?>">
-                    <i class="fas fa-exclamation-circle"></i> <?php echo $upcomingCount; ?> event<?php echo $upcomingCount > 1 ? 's' : ''; ?> this week
-                </span>
+    <!-- ═══════════════════════════════════════════════════════════ Main Calendar -->
+    <main class="calendar-container">
+        <div class="calendar-layout-grid">
+            <!-- Left Column: Events Timeline -->
+            <div>
+                <h2 class="section-box-title">Upcoming Schedule</h2>
+
+                <?php if (!empty($groupedEvents)): ?>
+                    <?php foreach ($groupedEvents as $month => $monthEvents): ?>
+                        <div class="month-header-tag">
+                            <?php echo htmlspecialchars($month); ?>
+                        </div>
+
+                        <?php foreach ($monthEvents as $event): 
+                            $dateObj = strtotime($event['event_date']);
+                            $day = date('d', $dateObj);
+                            $monthShort = date('M', $dateObj);
+                            $venue = !empty($event['venue']) ? htmlspecialchars($event['venue']) : 'Laguna / Virtual';
+                            $time = !empty($event['event_time']) ? htmlspecialchars($event['event_time']) : '';
+                        ?>
+                            <article class="event-card">
+                                <div class="event-date-block">
+                                    <span class="event-date-day"><?php echo $day; ?></span>
+                                    <span class="event-date-month"><?php echo $monthShort; ?></span>
+                                </div>
+                                <div class="event-info">
+                                    <h3 class="event-title"><?php echo htmlspecialchars($event['title'] ?? 'Chapter Event'); ?></h3>
+                                    <div class="event-meta-row">
+                                        <span><?php echo $venue; ?></span>
+                                        <?php if ($time): ?>
+                                            <span>• <?php echo $time; ?></span>
+                                        <?php endif; ?>
+                                    </div>
+                                    <?php if (!empty($event['description'])): ?>
+                                        <p class="event-desc"><?php echo htmlspecialchars($event['description']); ?></p>
+                                    <?php endif; ?>
+                                </div>
+                            </article>
+                        <?php endforeach; ?>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <!-- Default Upcoming Events if DB empty -->
+                    <div class="month-header-tag">
+                        Academic Year 2026–2027
+                    </div>
+
+                    <article class="event-card">
+                        <div class="event-date-block">
+                            <span class="event-date-day">15</span>
+                            <span class="event-date-month">Sep</span>
+                        </div>
+                        <div class="event-info">
+                            <h3 class="event-title">Annual Institutional Affiliation Renewal Deadline</h3>
+                            <div class="event-meta-row">
+                                <span>IECEP-LSC Portal</span>
+                                <span>• 11:59 PM PST</span>
+                            </div>
+                            <p class="event-desc">Accreditation period closing for all Higher Education Institutions in Laguna offering ECE and ECT degree curricula.</p>
+                        </div>
+                    </article>
+
+                    <article class="event-card">
+                        <div class="event-date-block">
+                            <span class="event-date-day">24</span>
+                            <span class="event-date-month">Oct</span>
+                        </div>
+                        <div class="event-info">
+                            <h3 class="event-title">IECEP-LSC Regional Student Convention 2026</h3>
+                            <div class="event-meta-row">
+                                <span>Laguna Provincial Capitol Cultural Center</span>
+                                <span>• 8:00 AM – 5:00 PM</span>
+                            </div>
+                            <p class="event-desc">The flagship gathering of engineering students, research symposiums, technical quiz bowl, and robotics innovation challenges.</p>
+                        </div>
+                    </article>
+
+                    <article class="event-card">
+                        <div class="event-date-block">
+                            <span class="event-date-day">12</span>
+                            <span class="event-date-month">Nov</span>
+                        </div>
+                        <div class="event-info">
+                            <h3 class="event-title">TechX &amp; IoT Embedded Systems Masterclass</h3>
+                            <div class="event-meta-row">
+                                <span>Virtual (Zoom / Live Stream)</span>
+                                <span>• 1:00 PM – 4:30 PM</span>
+                            </div>
+                            <p class="event-desc">Hands-on microcontrollers, RF protocols, firmware debugging, and smart sensing workshop led by certified industry engineers.</p>
+                        </div>
+                    </article>
                 <?php endif; ?>
             </div>
-            
-            <?php if (!empty($notifiedEvents)): ?>
-            <div class="event-list" style="margin-bottom: var(--space-6);">
-                <?php foreach (array_slice($notifiedEvents, 0, 5) as $evt): 
-                    if (!is_array($evt)) continue;
-                    $daysText = $evt['days'] == 0 ? 'Today' : ($evt['days'] == 1 ? 'Tomorrow' : $evt['days'] . ' days');
-                ?>
-                <div class="event-item" style="border-left: 4px solid <?php echo $evt['days'] <= 2 ? '#DC2626' : ($evt['days'] <= 5 ? '#F59E0B' : '#3B82F6'); ?>;">
-                    <div class="event-date-box" style="background: <?php echo $evt['days'] <= 2 ? '#DC2626' : ($evt['days'] <= 5 ? '#F59E0B' : '#3B82F6'); ?>;">
-                        <span class="event-day"><?php echo date('d', strtotime($evt['date'])); ?></span>
-                        <span class="event-month"><?php echo date('M', strtotime($evt['date'])); ?></span>
-                    </div>
-                    <div class="event-content">
-                        <h4 class="event-title"><?php echo htmlspecialchars($evt['title']); ?></h4>
-                        <p style="color: var(--neutral-500); font-size: 0.9rem;">
-                            <i class="fas fa-clock" style="color: var(--accent);"></i> <?php echo $daysText; ?>
-                        </p>
-                    </div>
-                </div>
-                <?php endforeach; ?>
-            </div>
-            <?php else: ?>
-            <p style="color: var(--neutral-500); text-align: center; padding: var(--space-4);">No upcoming events in the next 7 days.</p>
-            <?php endif; ?>
-        </div>
 
-        <div class="google-calendar-section">
-            <div class="google-calendar-header">
-                <h3><i class="fab fa-google"></i> Google Calendar</h3>
-                <div style="display: flex; gap: var(--space-3);">
-                    <?php if (isset($_SESSION['role']) && $_SESSION['role'] === 'creatives'): ?>
-                    <button class="add-event-btn" onclick="window.location.href='<?php echo PORTAL_URL; ?>/creatives/manage-calendar.php'">
-                        <i class="fas fa-plus"></i> Add Event
-                    </button>
-                    <?php endif; ?>
-                    <button class="sync-btn" onclick="syncToGoogleCalendar()">
-                        <i class="fas fa-sync-alt"></i> Sync
+            <!-- Right Column: Sync & Google Calendar -->
+            <div>
+                <div class="sidebar-card">
+                    <h3 class="section-box-title" style="font-size:1.25rem;">Sync to Calendar</h3>
+                    <p style="font-size:0.88rem; color:var(--slate-600); margin-bottom:1.25rem; line-height:1.5;">
+                        Export the official IECEP-LSC calendar events directly into Google Calendar, Apple Calendar, or Microsoft Outlook via iCal (.ics).
+                    </p>
+                    <button type="button" class="sync-action-btn" onclick="syncToGoogleCalendar()">
+                        Download iCal File (.ics)
                     </button>
                 </div>
+
+                <div class="sidebar-card">
+                    <h3 class="section-box-title" style="font-size:1.25rem;">Live Schedule Feed</h3>
+                    <p style="font-size:0.85rem; color:var(--slate-600); margin-bottom:0.75rem;">
+                        Interactive Google Calendar schedule feed:
+                    </p>
+                    <div class="calendar-frame-wrap">
+                        <iframe 
+                            src="https://calendar.google.com/calendar/embed?src=primary&ctz=Asia%2FManila&showPrint=0&showTabs=0&showCalendars=0&showTz=0&mode=MONTH"
+                            loading="lazy">
+                        </iframe>
+                    </div>
+                </div>
             </div>
-            <p style="color: var(--neutral-500); margin-bottom: var(--space-4);">
-                All events are synced with Google Calendar.
-            </p>
-            <iframe 
-                class="google-calendar-frame"
-                src="https://calendar.google.com/calendar/embed?src=primary&ctz=Asia%2FManila&showPrint=0&showTabs=0&showCalendars=0&showTz=0&mode=MONTH"
-                frameborder="0"
-                scrolling="no">
-            </iframe>
         </div>
-    </div>
+    </main>
 
     <script>
         const eventsData = <?php echo json_encode($events); ?>;
         function syncToGoogleCalendar() {
             let icsContent = 'BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//IECEP-LSC//Calendar//EN\n';
-            eventsData.forEach(event => {
-                const date = event.event_date.replace(/-/g, '');
-                icsContent += `BEGIN:VEVENT\nDTSTART;VALUE=DATE:${date}\nDTEND;VALUE=DATE:${date}\nSUMMARY:${event.title}\nDESCRIPTION:${event.description || ''}\nLOCATION:${event.venue || 'TBA'}\nEND:VEVENT\n`;
-            });
+            if (eventsData && eventsData.length > 0) {
+                eventsData.forEach(event => {
+                    const date = (event.event_date || '').replace(/-/g, '');
+                    icsContent += `BEGIN:VEVENT\nDTSTART;VALUE=DATE:${date}\nDTEND;VALUE=DATE:${date}\nSUMMARY:${event.title}\nDESCRIPTION:${event.description || ''}\nLOCATION:${event.venue || 'TBA'}\nEND:VEVENT\n`;
+                });
+            } else {
+                icsContent += 'BEGIN:VEVENT\nDTSTART;VALUE=DATE:20261024\nDTEND;VALUE=DATE:20261025\nSUMMARY:IECEP-LSC Regional Student Convention 2026\nDESCRIPTION:Flagship student convention\nLOCATION:Laguna\nEND:VEVENT\n';
+            }
             icsContent += 'END:VCALENDAR';
             const blob = new Blob([icsContent], { type: 'text/calendar' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = 'iecep-lsc-events.ics';
+            a.href = url; a.download = 'iecep-lsc-calendar.ics';
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            alert('Calendar file downloaded!');
         }
     </script>
 

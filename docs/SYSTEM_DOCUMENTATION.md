@@ -613,11 +613,16 @@
 
 ## System Configuration
 
-### Fee Brackets
-- **Small**: 1-50 members - ₱5,000 affiliation fee, ₱100/member, ₱1,200 annual
-- **Medium**: 51-150 members - ₱7,500 affiliation fee, ₱90/member, ₱2,400 annual
-- **Large**: 151-500 members - ₱10,000 affiliation fee, ₱80/member, ₱4,200 annual
-- **Enterprise**: 501+ members - ₱6,800 annual fee
+### Fee Brackets (Board Resolution No. 021-2024)
+
+| Bracket | Student Members | National Affiliation Fee |
+|------------|----------------|--------------------------|
+| Small | 1–50 | ₱1,500.00 |
+| Medium | 51–100 | ₱2,000.00 |
+| Large | 101–150 | ₱2,500.00 |
+| Enterprise | 151 and above | ₱3,000.00 |
+
+Plus **₱800.00 operational and activity fee** per organization, collected upon each renewal of affiliation every new school year.
 
 ### Compliance Rules
 - **Minimum Participation**: 40% required
@@ -701,26 +706,71 @@
 
 ---
 
-## Version History
+---
 
-### Version 1.0 (Current)
-- Initial release
-- Core membership management
-- Financial reporting with blockchain integration
-- Event management
-- Compliance tracking
-- Public transparency portal
+## Enterprise Cryptographic Blockchain & Audit System
 
-### Future Enhancements
-- Mobile application
-- Advanced analytics dashboard
-- AI-powered duplicate detection
-- Enhanced blockchain features
-- Multi-language support
-- Advanced reporting capabilities
+### Architecture Overview
+The IECEP-LSC MEMSYS implements a high-performance **Enterprise Cryptographic Ledger (Private Hash-Chained Audit Trail)** using SHA-256 cryptographic chaining, asymmetric RSA-2048 digital signatures via OpenSSL, and Merkle tree batch hashing.
+
+```
+[ Affiliation / Member / Receipt Payload ]
+                 │
+                 ▼
+[ Deterministic JSON Key Sorting (jsonSort) ]
+                 │
+                 ▼
+[ SHA-256 Chaining: Hash(Entity + Payload + Previous Hash) ]
+                 │
+                 ▼
+[ Asymmetric Digital Signing (RSA-2048 via Chapter Private Key) ]
+                 │
+                 ▼
+[ Supabase/PostgreSQL Immutable Ledger: blockchain_records ]
+                 │
+                 ▼
+[ Interactive Blockchain Explorer & Public Verification Gateways ]
+```
+
+### Key Components
+
+1. **Core Service (`src/lib/BlockchainService.php`)**:
+   - `record()`: Universal hash-chaining recorder with automatic RSA-2048 digital signing.
+   - `recordAffiliation()`: Anchors institutional applications and all 6 required uploaded files with a combined Merkle root.
+   - `recordMemberBatch()`: Hashes member rosters in batches and anchors them with binary Merkle roots.
+   - `pullMemberHistory()`: Chronologically reconstructs and cryptographically validates the entire state history of any student member.
+   - `pushMemberUpdate()`: Appends verified member state updates.
+   - `recordReceipt()` & `recordFinancialTransaction()`: Cryptographically seals payments and financial audits.
+   - `verifyChain()`: Scans full block sequences for any tampered historical records.
+   - `exportBlockProof()`: Generates W3C-compatible `.json` verifiable proof receipts.
+
+2. **Binary Merkle Tree Engine (`src/lib/MerkleTree.php`)**:
+   - Computes logarithmic $O(\log N)$ cryptographic Merkle roots for batch verification of uploaded directories and multi-document affiliation kits.
+
+3. **Public Blockchain Explorer (`public/blockchain-explorer.php`)**:
+   - Real-time block height and 100% chain integrity monitor.
+   - Multi-chain filtering (*Affiliations, Required Documents, Members, Batches, Receipts, Financial Audits, Compliance*).
+   - Search by Block Hash, Transaction ID, Entity ID, or Student ID.
+   - Interactive Block Details Inspector with JSON payload viewer and one-click **"Download Verifiable Cryptographic Proof (.json)"**.
+
+4. **Cryptographic Key Management (`storage/keys/`)**:
+   - `iecep_blockchain_private.pem`: 2048-bit RSA Chapter Private Key (used strictly by server node to sign blocks).
+   - `iecep_blockchain_public.pem`: Public Key Certificate (used for public third-party verification).
 
 ---
 
-**Last Updated**: July 15, 2026
-**System Version**: 1.0.0
-**Documentation Version**: 1.0.0
+## Version History
+
+### Version 2.0 (August 2026)
+- **Enterprise Blockchain Engine**: Added RSA-2048 asymmetric digital signatures for non-repudiation.
+- **Affiliation Requirements Auto-Anchoring**: Automatic SHA-256 and Merkle root calculation for all 6 required affiliation documents.
+- **Member Push & Pull Engine**: Added deterministic state reconstruction and batch Merkle tree hashing.
+- **Dedicated Blockchain Explorer**: Built an interactive public explorer dashboard (`public/blockchain-explorer.php`).
+- **Verifiable Proof Certificates**: One-click W3C JSON-LD proof download.
+- **Database Schema Upgrades**: Enhanced `blockchain_records` with UUID compatibility and signature metadata.
+
+---
+
+**Last Updated**: August 28, 2026
+**System Version**: 2.0.0
+**Documentation Version**: 2.0.0

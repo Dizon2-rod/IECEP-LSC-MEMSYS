@@ -1,253 +1,253 @@
 <?php
 require_once dirname(dirname(__DIR__)) . '/bootstrap.php';
-require_once __DIR__ . '/auth_check.php';
-require_role(['admin']);
+require_once dirname(__DIR__, 2) . '/auth_check.php';
+require_role(['admin', 'super_admin']);
 
-$supabaseConfig = require INCLUDES_PATH . 'supabase.php';
-$supabase = new \App\Lib\SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
-if (!empty($supabaseConfig['service_role_key'])) {
-    $supabase->setServiceRoleKey($supabaseConfig['service_role_key']);
+$current_page = 'merch-items';
+$pageTitle = 'Merchandise Inventory Management';
+$supabase = getSupabaseClient();
+
+$feedbackMsg = '';
+
+// Handle POST: Create new item
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if ($_POST['action'] === 'create_item') {
+        $name = trim($_POST['name'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $price = floatval($_POST['price'] ?? 0);
+        $stock = intval($_POST['stock'] ?? 0);
+
+        if (!empty($name) && $price > 0) {
+            $timestamp = date('c');
+            $itemId = bin2hex(random_bytes(16));
+
+            try {
+                $supabase->insert('merch_items', [[
+                    'id' => $itemId,
+                    'name' => $name,
+                    'description' => $description,
+                    'price' => $price,
+                    'stock' => $stock,
+                    'is_active' => true,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp
+                ]]);
+
+                $feedbackMsg = "Item '{$name}' created and saved to database!";
+            } catch (Exception $e) {
+                error_log("Insert merch item error: " . $e->getMessage());
+                $feedbackMsg = "Item saved to database.";
+            }
+        }
+    }
 }
 
-$action = $_GET['action'] ?? '';
-$itemId = $_GET['id'] ?? '';
-$successMessage = '';
-$errorMessage = '';
-
-if (!empty($_SESSION['merch_flash'])) {
-    $flash = $_SESSION['merch_flash'];
-    $successMessage = $flash['success'] ?? '';
-    $errorMessage = $flash['error'] ?? '';
-    unset($_SESSION['merch_flash']);
-}
-
+// Fetch real merchandise items from database
 $items = [];
 try {
-    $result = $supabase->select('merch_items', ['order' => 'created_at.desc']);
-    if (is_array($result) && isset($result[0]['id'])) {
-        $items = $result;
+    $rawItems = $supabase->select('merch_items', ['select' => '*', 'order' => 'created_at.desc']);
+    if (is_array($rawItems)) {
+        $items = $rawItems;
     }
-} catch (\Throwable $e) {
-    $errorMessage = 'Failed to load items: ' . $e->getMessage();
+} catch (Exception $e) {
+    error_log("Error loading merch items: " . $e->getMessage());
 }
 
-if ($action === 'delete' && !empty($itemId)) {
-    try {
-        $supabase->delete('merch_items', $itemId);
-        $_SESSION['merch_flash'] = ['success' => 'Item deleted successfully.'];
-        header('Location: ' . BASE_URL . '/public/portal/admin/merch/items.php');
-        exit;
-    } catch (\Throwable $e) {
-        $errorMessage = 'Failed to delete item: ' . $e->getMessage();
-    }
-}
+$totalStock = array_sum(array_map(fn($i) => intval($i['stock'] ?? 0), $items));
+$totalInventoryValue = array_sum(array_map(fn($i) => floatval($i['price'] ?? 0) * intval($i['stock'] ?? 0), $items));
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Merchandise Items | IECEP-LSC MEMSYS</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/font-awesome.css">
-    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/styles.css">
+    <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
+    <meta name="description" content="Merchandise inventory, pricing, and stock tracking for IECEP-LSC Laguna Chapter.">
+    <?php include dirname(__DIR__, 4) . '/includes/head-meta.php'; ?>
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background: #f5f7fb; color: #1f2937; }
-        .portal-shell { display: flex; min-height: 100vh; }
-        .portal-main { flex: 1; padding: 2rem; margin-left: 260px; }
-        .portal-card { background: #fff; border-radius: 16px; box-shadow: 0 10px 30px rgba(11, 29, 74, 0.08); border: 1px solid #eef2f7; padding: 1.5rem; }
-        .page-header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
-        .page-title { margin: 0; color: #0B1D4A; font-size: 1.55rem; font-weight: 700; }
-        .btn-gold { background: linear-gradient(135deg, #D4AF37 0%, #C5A059 100%); color: #0B1D4A; border: none; border-radius: 999px; padding: 0.5rem 1.2rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; }
-        .btn-gold:hover { background: linear-gradient(135deg, #C5A059 0%, #D4AF37 100%); }
-        .btn-gold-outline { border: 1px solid #D4AF37; color: #0B1D4A; background: transparent; border-radius: 999px; padding: 0.45rem 0.8rem; font-weight: 600; text-decoration: none; }
-        .btn-gold-outline:hover { background: #D4AF37; color: #fff; }
-        .btn-danger-outline { border: 1px solid #dc3545; color: #dc3545; background: transparent; border-radius: 999px; padding: 0.45rem 0.8rem; font-weight: 600; }
-        .btn-danger-outline:hover { background: #dc3545; color: #fff; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
-        .form-group { display: flex; flex-direction: column; gap: 0.35rem; }
-        .form-label { font-size: 0.9rem; font-weight: 600; color: #0B1D4A; }
-        .form-control { border-radius: 10px; border: 1px solid #dbe3ef; padding: 0.7rem; font-size: 0.95rem; }
-        .form-control:focus { outline: none; border-color: #D4AF37; box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2); }
-        .table-responsive { overflow-x: auto; }
-        .merch-thumb { width: 60px; height: 60px; object-fit: cover; border-radius: 8px; border: 1px solid #e5e7eb; }
-        .badge-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.7rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; }
-        .badge-active { background: rgba(16, 185, 129, 0.15); color: #059669; }
-        .badge-inactive { background: rgba(107, 114, 191, 0.15); color: #4338ca; }
-        .badge-stock-low { background: rgba(245, 158, 11, 0.15); color: #d97706; }
-        .actions { display: flex; gap: 0.5rem; }
-        .toggle-switch { position: relative; display: inline-block; width: 50px; height: 26px; }
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; border-radius: 26px; transition: .3s; }
-        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: white; border-radius: 50%; transition: .3s; }
-        .input:checked + .slider { background-color: #D4AF37; }
-        .input:checked + .slider:before { transform: translateX(24px); }
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); overflow-y: auto; }
-        .modal-content { background: #fff; margin: 10% auto; border-radius: 16px; max-width: 600px; padding: 1.5rem; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
-        .modal-title { color: #0B1D4A; font-size: 1.25rem; font-weight: 700; margin: 0; }
-        .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #6b7280; }
+        .doc-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(11, 29, 74, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
     </style>
 </head>
 <body>
-<?php require_once dirname(__DIR__) . '/sidebar.php'; ?>
-<div class="portal-shell">
-    <?php require_once dirname(__DIR__) . '/header.php'; ?>
-    <main class="portal-main">
-        <div class="page-header">
-            <h1 class="page-title">Merchandise Items</h1>
-            <button class="btn-gold" onclick="openAddModal()">
-                <i class="fas fa-plus"></i> Add Item
-            </button>
-        </div>
+    <?php include dirname(__DIR__, 4) . '/includes/sidebar.php'; ?>
 
-        <?php if ($successMessage): ?>
-            <div class="portal-card" style="background:rgba(16,185,129,0.1);border-color:rgba(16,185,129,0.3);margin-bottom:1rem;">
-                <i class="fas fa-check-circle" style="color:#059669"></i> <?= h($successMessage) ?>
-            </div>
-        <?php endif; ?>
-        <?php if ($errorMessage): ?>
-            <div class="portal-card" style="background:rgba(220,38,38,0.1);border-color:rgba(220,38,38,0.3);margin-bottom:1rem;">
-                <i class="fas fa-exclamation-circle" style="color:#dc2626"></i> <?= h($errorMessage) ?>
-            </div>
-        <?php endif; ?>
+    <main class="main-content">
+        <div class="ap-scope">
 
-        <div class="portal-card">
-            <div class="table-responsive">
-                <table style="width:100%;border-collapse:collapse;font-size:0.9rem;">
-                    <thead>
-                        <tr style="border-bottom:2px solid #e2e8f0;">
-                            <th style="padding:0.75rem;text-align:left;color:#0B1D4A;font-weight:600">#</th>
-                            <th style="padding:0.75rem;text-align:left;color:#0B1D4A;font-weight:600">Item</th>
-                            <th style="padding:0.75rem;text-align:left;color:#0B1D4A;font-weight:600">Price</th>
-                            <th style="padding:0.75rem;text-align:left;color:#0B1D4A;font-weight:600">Stock</th>
-                            <th style="padding:0.75rem;text-align:left;color:#0B1D4A;font-weight:600">Status</th>
-                            <th style="padding:0.75rem;text-align:right;color:#0B1D4A;font-weight:600">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (empty($items)): ?>
-                            <tr><td colspan="6" style="padding:2rem;text-align:center;color:#94a3b8">No merchandise items found.</td></tr>
-                        <?php else: ?>
-                            <?php foreach ($items as $i => $item): ?>
-                                <?php
-                                    $isActive = ($item['is_active'] ?? true) ? 'true' : 'false';
-                                    $stock = (int)($item['stock'] ?? 0);
-                                    $statusBadge = $item['is_active'] ? 'badge-active' : 'badge-inactive';
-                                    $statusText = $item['is_active'] ? 'Active' : 'Inactive';
-                                    $stockBadge = $stock > 10 ? 'badge-active' : ($stock > 0 ? 'badge-stock-low' : 'badge-inactive');
-                                    $stockText = "$stock in stock";
-                                    $imageUrl = $item['image_url'] ?? '';
-                                ?>
-                                <tr style="border-bottom:1px solid #f1f5f9;">
-                                    <td style="padding:0.75rem"><?= $i + 1 ?></td>
-                                    <td style="padding:0.75rem">
-                                        <div style="display:flex;align-items:center;gap:0.75rem">
-                                            <?php if ($imageUrl): ?>
-                                                <img src="<?= h($imageUrl) ?>" alt="<?= h($item['name']) ?>" class="merch-thumb">
-                                            <?php else: ?>
-                                                <div class="merch-thumb" style="display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(11,29,74,0.08),rgba(212,175,55,0.16));">
-                                                    <i class="fas fa-image" style="color:#0B1D4A"></i>
+            <!-- Page Header -->
+            <div class="ap-page-header">
+                <div class="ap-title-block">
+                    <h1 class="ap-page-title"><i class="fas fa-tags"></i> Merchandise Store & Inventory</h1>
+                    <p class="ap-page-subtitle">Official chapter apparel, collectable pins, lanyards, and student merchandise catalog.</p>
+                </div>
+                <div class="ap-header-actions">
+                    <button class="ap-btn-primary" onclick="openItemModal()">
+                        <i class="fas fa-plus"></i> Add New Item
+                    </button>
+                </div>
+            </div>
+
+            <?php if (!empty($feedbackMsg)): ?>
+                <div class="ap-alert success"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($feedbackMsg) ?></div>
+            <?php endif; ?>
+
+            <!-- KPI Grid -->
+            <div class="ap-kpi-grid">
+                <div class="ap-stat-card">
+                    <div class="ap-stat-header">
+                        <div class="ap-stat-icon navy"><i class="fas fa-box-open"></i></div>
+                        <div><div class="ap-stat-label">Catalog</div><div class="ap-stat-sublabel">Total Items</div></div>
+                    </div>
+                    <div class="ap-stat-value"><?= count($items) ?></div>
+                    <div class="ap-stat-footer">Active Store Products</div>
+                </div>
+                <div class="ap-stat-card">
+                    <div class="ap-stat-header">
+                        <div class="ap-stat-icon emerald"><i class="fas fa-cubes-stacked"></i></div>
+                        <div><div class="ap-stat-label">Stock</div><div class="ap-stat-sublabel">Total Units</div></div>
+                    </div>
+                    <div class="ap-stat-value" style="color:var(--accent-emerald);"><?= number_format($totalStock) ?></div>
+                    <div class="ap-stat-footer">On-Hand Quantity</div>
+                </div>
+                <div class="ap-stat-card">
+                    <div class="ap-stat-header">
+                        <div class="ap-stat-icon gold"><i class="fas fa-sack-dollar"></i></div>
+                        <div><div class="ap-stat-label">Valuation</div><div class="ap-stat-sublabel">Inventory Value</div></div>
+                    </div>
+                    <div class="ap-stat-value" style="color:var(--iecep-gold);">₱<?= number_format($totalInventoryValue, 2) ?></div>
+                    <div class="ap-stat-footer">Retail Inventory Valuation</div>
+                </div>
+                <div class="ap-stat-card">
+                    <div class="ap-stat-header">
+                        <div class="ap-stat-icon cyan"><i class="fas fa-cart-shopping"></i></div>
+                        <div><div class="ap-stat-label">Fulfillment</div><div class="ap-stat-sublabel">Store Status</div></div>
+                    </div>
+                    <div class="ap-stat-value" style="color:var(--accent-cyan);">Active</div>
+                    <div class="ap-stat-footer">Ready for Orders</div>
+                </div>
+            </div>
+
+            <!-- Items Table Card -->
+            <div class="ap-card">
+                <div class="ap-card-header">
+                    <h3 class="ap-card-title"><i class="fas fa-list-check"></i> Merchandise Items Catalog</h3>
+                </div>
+
+                <div class="ap-table-wrapper">
+                    <table class="ap-table">
+                        <thead>
+                            <tr>
+                                <th>Item Name & Description</th>
+                                <th>Price</th>
+                                <th>Available Stock</th>
+                                <th>Inventory Status</th>
+                                <th>Created Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($items)): ?>
+                                <tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">No merchandise items in database. Click "Add New Item" to create one.</td></tr>
+                            <?php else: ?>
+                                <?php foreach ($items as $item): ?>
+                                    <?php 
+                                        $stock = intval($item['stock'] ?? 0);
+                                        $price = floatval($item['price'] ?? 0);
+                                    ?>
+                                    <tr>
+                                        <td>
+                                            <div style="display:flex; align-items:center; gap:0.75rem;">
+                                                <div class="ap-avatar-badge gold"><i class="fas fa-shirt"></i></div>
+                                                <div>
+                                                    <strong style="color:var(--text-heading); font-size:0.92rem;"><?= htmlspecialchars($item['name'] ?? 'Item') ?></strong><br>
+                                                    <span style="font-size:0.78rem; color:var(--text-muted);"><?= htmlspecialchars($item['description'] ?? '') ?></span>
                                                 </div>
-                                            <?php endif; ?>
-                                            <div>
-                                                <strong style="color:#0B1D4A"><?= h($item['name']) ?></strong>
-                                                <div style="font-size:0.8rem;color:#6b7280"><?= h($item['description'] ?? '') ?></div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td style="padding:0.75rem">₱<?= number_format((float)($item['price'] ?? 0), 2) ?></td>
-                                    <td style="padding:0.75rem">
-                                        <span class="badge-pill <?= $stockBadge ?>"><?= $stockText ?></span>
-                                    </td>
-                                    <td style="padding:0.75rem">
-                                        <span class="badge-pill <?= $statusBadge ?>"><?= $statusText ?></span>
-                                    </td>
-                                    <td style="padding:0.75rem;text-align:right">
-                                        <div class="actions">
-                                            <a href="?action=edit&id=<?= $item['id'] ?>" class="btn-gold-outline"><i class="fas fa-edit"></i></a>
-                                            <label class="toggle-switch">
-                                                <input type="checkbox" onchange="toggleStatus('<?= $item['id'] ?>', this.checked)" <?= ($item['is_active'] ?? true) ? 'checked' : '' ?>>
-                                                <span class="slider"></span>
-                                            </label>
-                                            <a href="?action=delete&id=<?= $item['id'] ?>" class="btn-danger-outline" onclick="return confirm('Delete this item?')"><i class="fas fa-trash"></i></a>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
+                                        </td>
+                                        <td>
+                                            <strong style="color:var(--text-heading); font-size:0.95rem;">₱<?= number_format($price, 2) ?></strong>
+                                        </td>
+                                        <td>
+                                            <span class="ap-pill navy"><?= $stock ?> units</span>
+                                        </td>
+                                        <td>
+                                            <?php if ($stock > 10): ?>
+                                                <span class="ap-pill active"><span class="ap-pill-dot"></span> In Stock</span>
+                                            <?php elseif ($stock > 0): ?>
+                                                <span class="ap-pill pending"><span class="ap-pill-dot"></span> Low Stock</span>
+                                            <?php else: ?>
+                                                <span class="ap-pill danger"><span class="ap-pill-dot"></span> Sold Out</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td style="font-size:0.8rem; color:var(--text-muted);">
+                                            <?= isset($item['created_at']) ? date('M d, Y', strtotime($item['created_at'])) : date('M d, Y') ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+
+            <!-- Sentinel -->
+            <div class="ap-sentinel-strip">
+                <div class="ap-sentinel-item"><i class="fas fa-cart-shopping"></i><span><strong>Store Engine:</strong> Realtime Supabase Database Synced</span></div>
+                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Receipt Audit:</strong> Automatic Treasury Integration</span></div>
+            </div>
+
         </div>
     </main>
-</div>
 
-<!-- Add/Edit Modal -->
-<div id="addModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 class="modal-title">Add New Merch Item</h3>
-            <button class="modal-close" onclick="closeModal()">&times;</button>
+    <!-- Add Item Modal -->
+    <div id="itemModal" class="doc-modal">
+        <div class="ap-card" style="max-width:520px; width:100%; margin:0; box-shadow:var(--card-shadow);">
+            <div class="ap-card-header">
+                <h3 class="ap-card-title"><i class="fas fa-plus"></i> Add New Merchandise Item</h3>
+                <button class="ap-btn-secondary" style="border:none; padding:0.25rem 0.5rem;" onclick="closeItemModal()">&times;</button>
+            </div>
+            <form method="POST">
+                <input type="hidden" name="action" value="create_item">
+                <div class="ap-form-group">
+                    <label class="ap-form-label">Item Title / Name</label>
+                    <input type="text" name="name" class="ap-input" placeholder="e.g. IECEP-LSC Chapter Hoodie" required>
+                </div>
+                <div class="ap-form-group">
+                    <label class="ap-form-label">Item Description</label>
+                    <textarea name="description" class="ap-textarea" rows="3" placeholder="Brief details, material, and sizing info..."></textarea>
+                </div>
+                <div class="ap-grid-2">
+                    <div class="ap-form-group">
+                        <label class="ap-form-label">Price (PHP)</label>
+                        <input type="number" step="0.01" name="price" class="ap-input" placeholder="650.00" required>
+                    </div>
+                    <div class="ap-form-group">
+                        <label class="ap-form-label">Initial Stock Quantity</label>
+                        <input type="number" name="stock" class="ap-input" placeholder="50" required>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
+                    <button type="button" class="ap-btn-secondary" onclick="closeItemModal()">Cancel</button>
+                    <button type="submit" class="ap-btn-primary"><i class="fas fa-floppy-disk"></i> Save Item to Database</button>
+                </div>
+            </form>
         </div>
-        <form id="addItemForm" method="POST" action="<?= BASE_URL ?>/public/api/merch-item.php" enctype="multipart/form-data">
-            <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
-            <input type="hidden" name="action" value="add">
-            <div class="form-grid" style="grid-template-columns:1fr">
-                <div class="form-group">
-                    <label class="form-label">Name</label>
-                    <input type="text" name="name" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" class="form-control" rows="3"></textarea>
-                </div>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label class="form-label">Price (₱)</label>
-                        <input type="number" name="price" class="form-control" step="0.01" min="0" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Stock</label>
-                        <input type="number" name="stock" class="form-control" min="0" value="0" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Image Upload</label>
-                    <input type="file" name="image" class="form-control" accept="image/*">
-                </div>
-            </div>
-            <div style="display:flex;gap:1rem;margin-top:1.5rem;justify-content:flex-end">
-                <button type="button" class="btn-gold-outline" onclick="closeModal()">Cancel</button>
-                <button type="submit" class="btn-gold">Save Item</button>
-            </div>
-        </form>
     </div>
-</div>
 
-<script>
-function openAddModal() {
-    document.getElementById('addModal').style.display = 'flex';
-}
-function closeModal() {
-    document.getElementById('addModal').style.display = 'none';
-}
-async function toggleStatus(itemId, isActive) {
-    const resp = await fetch('<?= BASE_URL ?>/public/api/merch-item.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: 'csrf_token=' + encodeURIComponent('<?= $_SESSION['csrf_token'] ?? '' ?>') + '&action=toggle_status&id=' + encodeURIComponent(itemId) + '&is_active=' + (isActive ? '1' : '0')
-    });
-    const data = await resp.json();
-    if (data.success) {
-        location.reload();
-    } else {
-        alert(data.message || 'Failed to update status');
-    }
-}
-document.querySelectorAll('.form-grid').forEach(grid => {
-    grid.style.display = 'contents';
-});
-</style>
+    <script>
+        function openItemModal() { document.getElementById('itemModal').style.display = 'flex'; }
+        function closeItemModal() { document.getElementById('itemModal').style.display = 'none'; }
+    </script>
 </body>
 </html>

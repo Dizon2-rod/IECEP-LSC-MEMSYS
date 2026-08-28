@@ -10,10 +10,10 @@ define('FOOTER_INCLUDED', true);
         <div class="footer-col">
             <div class="footer-brand">
                 <img src="<?php echo ASSETS_URL; ?>/icons/iecep-logo.png" alt="IECEP-LSC Logo">
-                <h4>IECEP-LSC MEMSYS</h4>
+                <h4 style="margin-bottom:0;">IECEP-LSC MEMSYS</h4>
             </div>
-            <p>𝐎𝐧𝐞 𝐈𝐄𝐂𝐄𝐏, 𝐎𝐧𝐞 𝐕𝐢𝐬𝐢𝐨𝐧<br><br>
-            The 𝗜𝗘𝗖𝗘𝗣-𝗟𝗦𝗖 brings together 8 affiliated higher education institutions, united in one frame through connection, collaboration, and shared purpose.</p>
+            <p><strong>One IECEP, One Vision</strong><br>
+            The IECEP-LSC brings together 8 affiliated higher education institutions, united through connection, collaboration, and shared purpose.</p>
         </div>
         <div class="footer-col">
             <h4>Quick Links</h4>
@@ -34,18 +34,18 @@ define('FOOTER_INCLUDED', true);
             <h4>Connect</h4>
             <div class="footer-social">
                 <a href="https://www.facebook.com/IECEPLSC" target="_blank" rel="noopener noreferrer">
-                    <i class="fab fa-facebook"></i> Facebook
+                    <i class="fa-brands fa-facebook"></i> Facebook
                 </a>
                 <a href="https://www.tiktok.com/@iecep.lagunasc?_r=1&_t=ZS-95en4lyrRas" target="_blank" rel="noopener noreferrer">
-                    <i class="fab fa-tiktok"></i> TikTok
+                    <i class="fa-brands fa-tiktok"></i> TikTok
                 </a>
             </div>
-            <a href="https://mail.google.com/mail/?view=cm&fs=1&to=ieceplsc24@gmail.com" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; gap: var(--space-2); color: var(--neutral-500); text-decoration: none; margin-top: var(--space-3);">
-                <i class="fas fa-envelope"></i> iecesplsc24@gmail.com
+            <a href="https://mail.google.com/mail/?view=cm&fs=1&to=ieceplsc24@gmail.com" target="_blank" rel="noopener noreferrer" style="display: flex; align-items: center; gap: 0.5rem; color: var(--neutral-400); text-decoration: none; font-size: 0.85rem; margin-top: 0.4rem;">
+                <i class="fa-solid fa-envelope"></i> ieceplsc24@gmail.com
             </a>
         </div>
     </div>
     <div class="footer-bottom">
-        &copy; 2025 IECEP-LSC MEMSYS – All rights reserved.
+        &copy; <?php echo date('Y'); ?> IECEP-LSC MEMSYS – All rights reserved.
     </div>
 </footer>

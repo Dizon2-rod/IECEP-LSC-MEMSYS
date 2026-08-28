@@ -1,23 +1,47 @@
 <?php
-require_once __DIR__ . '/../auth_check.php';
-
+if (!isset($current_page)) { $current_page = 'profile'; }
 require_once __DIR__ . '/../bootstrap.php';
-$current_page = 'profile';
-
+require_once __DIR__ . '/../auth_check.php';
 require_once __DIR__ . '/../../../includes/config.php';
-require_role(['school_officer']);
+require_once __DIR__ . '/../../../includes/role-config.php';
 
-$user = get_user_info();
+require_role(['school_officer', 'admin', 'super_admin']);
+
+$user = $_SESSION['user'] ?? [];
+$userId = $user['id'] ?? $_SESSION['user_id'] ?? null;
+$institutionId = $_SESSION['institution_id'] ?? $user['institution_id'] ?? null;
+
 $supabase = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
 $school = [];
-try {
-    $schoolData = $supabase->select('institutions', [
-        'email' => 'eq.' . ($user['email'] ?? '')
-    ]);
-    $school = $schoolData[0] ?? [];
-} catch (Exception $e) {
-    $school = [];
+
+if ($institutionId) {
+    try {
+        $schoolData = $supabase->select('institutions', [
+            'id' => 'eq.' . $institutionId,
+            'limit' => 1
+        ]);
+        $school = $schoolData[0] ?? [];
+    } catch (Exception $e) {}
+}
+
+if (empty($school) && !empty($user['email'])) {
+    try {
+        $schoolData = $supabase->select('institutions', [
+            'email' => 'eq.' . $user['email'],
+            'limit' => 1
+        ]);
+        $school = $schoolData[0] ?? [];
+    } catch (Exception $e) {}
+}
+
+if (empty($school)) {
+    try {
+        $schoolData = $supabase->select('institutions', [
+            'status' => 'eq.active',
+            'limit' => 1
+        ]);
+        $school = $schoolData[0] ?? [];
+    } catch (Exception $e) {}
 }
 ?>
 <!DOCTYPE html>
@@ -26,40 +50,71 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Profile - IECEP-LSC MEMSYS</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/portal.css">
+    <?php require_once __DIR__ . '/../../../includes/head-meta.php'; ?>
 </head>
 <body>
-    <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
-    
-    <div class="main-content">
-        <div class="page-header">
-            <h1><i class="fas fa-school"></i> School Profile</h1>
-            <p class="text-muted">Manage your school information</p>
-        </div>
+    <div class="dashboard-container">
+        <?php require_once __DIR__ . '/../../../includes/sidebar.php'; ?>
 
-        <div class="content-card">
-            <h2><i class="fas fa-info-circle me-2"></i>School Information</h2>
-            <?php if (!empty($school)): ?>
-                <table class="table">
-                    <tr><th>School Name</th><td><?php echo htmlspecialchars($school['name'] ?? 'N/A'); ?></td></tr>
-                    <tr><th>Acronym</th><td><?php echo htmlspecialchars($school['acronym'] ?? 'N/A'); ?></td></tr>
-                    <tr><th>Type</th><td><?php echo htmlspecialchars($school['type'] ?? 'N/A'); ?></td></tr>
-                    <tr><th>Address</th><td><?php echo htmlspecialchars($school['address'] ?? 'N/A'); ?></td></tr>
-                    <tr><th>City</th><td><?php echo htmlspecialchars($school['city'] ?? 'N/A'); ?></td></tr>
-                    <tr><th>Province</th><td><?php echo htmlspecialchars($school['province'] ?? 'N/A'); ?></td></tr>
-                    <tr><th>Contact Person</th><td><?php echo htmlspecialchars($school['contact_person'] ?? 'N/A'); ?></td></tr>
-                    <tr><th>Contact Email</th><td><?php echo htmlspecialchars($school['contact_email'] ?? 'N/A'); ?></td></tr>
-                    <tr><th>Contact Phone</th><td><?php echo htmlspecialchars($school['contact_phone'] ?? 'N/A'); ?></td></tr>
-                    <tr><th>Website</th><td><?php echo htmlspecialchars($school['website'] ?? 'N/A'); ?></td></tr>
-                    <tr><th>Status</th><td><?php echo htmlspecialchars($school['status'] ?? 'N/A'); ?></td></tr>
-                </table>
-            <?php else: ?>
-                <div class="alert alert-info">
-                    <p>No school profile found. Please contact the administrator to set up your school profile.</p>
+        <main class="main-content">
+            <div class="container py-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-2 border-bottom">
+                    <div>
+                        <div class="text-muted small mb-1">
+                            <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="text-muted text-decoration-none">School Portal</a>
+                            <span class="mx-1">/</span>
+                            <span class="text-dark fw-semibold">Profile</span>
+                        </div>
+                        <h2 class="fw-bold text-dark mb-0">
+                            <i class="fas fa-school text-primary me-2"></i>Institutional School Profile
+                        </h2>
+                    </div>
+                    <div>
+                        <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="btn btn-sm btn-outline">
+                            <i class="fas fa-arrow-left me-1"></i> Dashboard
+                        </a>
+                    </div>
                 </div>
-            <?php endif; ?>
-        </div>
+
+                <div class="card card-navy-top mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold text-dark mb-0">
+                            <i class="fas fa-info-circle me-2 text-muted"></i>School Accreditation Information
+                        </h5>
+                        <?php if (!empty($school['status'])): ?>
+                            <span class="badge badge-success">
+                                <i class="fas fa-check-circle me-1"></i> <?= htmlspecialchars(ucfirst($school['status'])) ?>
+                            </span>
+                        <?php endif; ?>
+                    </div>
+
+                    <?php if (!empty($school)): ?>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <tbody>
+                                    <tr><th style="width: 28%;" class="text-muted">School Name</th><td class="fw-bold text-dark"><?= htmlspecialchars($school['name'] ?? 'N/A') ?></td></tr>
+                                    <tr><th class="text-muted">Acronym</th><td><span class="badge bg-secondary"><?= htmlspecialchars($school['acronym'] ?? 'N/A') ?></span></td></tr>
+                                    <tr><th class="text-muted">Institution Type</th><td><?= htmlspecialchars(ucwords(str_replace('_', ' ', $school['type'] ?? 'State University'))) ?></td></tr>
+                                    <tr><th class="text-muted">Campus Address</th><td><?= htmlspecialchars($school['address'] ?? 'N/A') ?></td></tr>
+                                    <tr><th class="text-muted">Municipality / City</th><td><?= htmlspecialchars($school['city'] ?? 'N/A') ?></td></tr>
+                                    <tr><th class="text-muted">Province</th><td><?= htmlspecialchars($school['province'] ?? 'Laguna') ?></td></tr>
+                                    <tr><th class="text-muted">Official Contact Person</th><td class="fw-semibold text-dark"><?= htmlspecialchars($school['contact_person'] ?? 'School Officer') ?></td></tr>
+                                    <tr><th class="text-muted">Official Contact Email</th><td><code><?= htmlspecialchars($school['contact_email'] ?? $school['email'] ?? 'N/A') ?></code></td></tr>
+                                    <tr><th class="text-muted">Contact Phone</th><td><?= htmlspecialchars($school['contact_phone'] ?? $school['phone'] ?? '—') ?></td></tr>
+                                    <tr><th class="text-muted">Official Website</th><td><?= !empty($school['website']) ? '<a href="' . htmlspecialchars($school['website']) . '" target="_blank" class="text-decoration-none">' . htmlspecialchars($school['website']) . ' <i class="fas fa-external-link-alt small ms-1"></i></a>' : '—' ?></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-center py-5 text-muted">
+                            <i class="fas fa-university fa-3x mb-3 text-secondary opacity-50 d-block"></i>
+                            <h6 class="fw-bold text-dark mb-1">No Profile Record Found</h6>
+                            <p class="small text-muted">Please contact the IECEP-LSC Secretariat to register or link your chapter profile.</p>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </main>
     </div>
 </body>
 </html>

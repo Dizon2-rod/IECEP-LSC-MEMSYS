@@ -58,15 +58,15 @@ function renderProfessionalUI($title, $message, $type = 'success') {
         .subtitle { color: var(--gold); font-size: 11px; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 20px; }
         .message-box { background: ' . ($isSuccess ? 'linear-gradient(135deg,#F0FFF4,#E6FFED)' : 'linear-gradient(135deg,#FFF5F5,#FFE8E8)') . '; border: 1px solid ' . ($isSuccess ? 'rgba(72,187,120,0.30)' : 'rgba(245,101,101,0.30)') . '; border-radius: 12px; padding: 16px 20px; margin-bottom: 28px; }
         .message-box p { color: var(--text-body); font-size: 14.5px; line-height: 1.65; }
-        .btn-home { display: inline-flex; align-items: center; justify-content: center; gap: 9px; background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%); color: var(--white); font-weight: 600; font-size: 14px; padding: 14px 36px; border-radius: 50px; text-decoration: none; transition: all 0.3s ease; }
+        .btn-home { display: inline-flex; align-items: center; justify-content: center; gap: 9px; background: var(--navy); color: var(--white); font-weight: 600; font-size: 14px; padding: 14px 36px; border-radius: 50px; text-decoration: none; transition: all 0.3s ease; }
         .btn-home:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(11,29,74,0.45); }
-        .card-footer { border-top: 1px solid #EDF2F7; padding: 14px 44px; text-align: center; font-size: 12px; color: var(--text-muted); }
+        .card-footer { border-top: 1px solid #EDF2F7; padding: 14px 44px; text-align: center; font-size: 12px; color: #A0AEC0; }
         @keyframes cardIn { from { opacity: 0; transform: translateY(28px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
     </style>
 </head>
 <body>
 <div class="card">
-    <div class="card-header-bar"></div >
+    <div class="card-header-bar"></div>
     <div class="logo-strip">
         <div class="logo-wrap"><img src="' . $logoPath . '" alt="IECEP-LSC Logo"></div>
         <span class="org-label">Institute of Electronics Engineers of the Philippines <small>Laguna Student Chapter</small></span>
@@ -75,11 +75,11 @@ function renderProfessionalUI($title, $message, $type = 'success') {
         <div class="status-icon ' . ($isSuccess ? 'success' : 'error') . '"><i class="fas ' . $icon . '"></i></div>
         <p class="subtitle">' . ($isSuccess ? 'Application Status' : 'Submission Notice') . '</p>
         <h1>' . $statusTitle . '</h1>
-        <div class="gold-divider"></div >
+        <div class="gold-divider"></div>
         <div class="message-box"><p>' . htmlspecialchars($message) . '</p></div>
         <a href="' . $homeURL . '" class="btn-home"><i class="fas fa-house"></i> Return to Home</a>
     </div>
-    <div class="card-footer"><p>Need help? Contact <span>iecep.lsc@support.edu.ph</span></p></div>
+    <div class="card-footer"><p>Need help? Contact <span>ieceplsc24@gmail.com</span></p></div>
 </div>
 </body>
 </html>';
@@ -91,53 +91,54 @@ function renderProfessionalUI($title, $message, $type = 'success') {
 // ============================================================
 
 // 1. HANDLE VIEW PAGE (GET Request)
-// Kapag na-redirect ang user dito, ipakita ang success page.
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     renderProfessionalUI('Success', 'Application submitted successfully! The Registration Committee will review your application within 5-7 business days.', 'success');
     exit;
 }
 
-// 2. HANDLE SUBMISSION (POST Request)
+// 2. HANDLE SUBMISSION (POST Request) - Returns JSON for AJAX
+header('Content-Type: application/json');
+
 try {
     @session_start();
     
     ob_start();
     require_once __DIR__ . '/../../autoload.php';
     require_once __DIR__ . '/../../includes/paths.php';
-require_once __DIR__ . '/../../src/lib/SupabaseClient.php';
-ob_end_clean();
+    require_once __DIR__ . '/../../src/lib/SupabaseClient.php';
+    ob_end_clean();
 
-/**
- * Upload a file to Supabase Storage
- */
-function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
-    $config = require __DIR__ . '/../../includes/supabase.php';
-    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
-    $fileContent = file_get_contents($tmpFile);
-    if ($fileContent === false) return null;
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $fileContent,
-        CURLOPT_HTTPHEADER => [
-            'apikey: ' . $config['service_role_key'],
-            'Authorization: Bearer ' . $config['service_role_key'],
-            'Content-Type: ' . $mimeType,
-            'x-upsert: true',
-        ],
-    ]);
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($httpCode >= 200 && $httpCode < 300) {
-        return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+    /**
+     * Upload a file to Supabase Storage
+     */
+    function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+        $config = require __DIR__ . '/../../includes/supabase.php';
+        $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
+        $fileContent = file_get_contents($tmpFile);
+        if ($fileContent === false) return null;
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => $fileContent,
+            CURLOPT_HTTPHEADER => [
+                'apikey: ' . $config['service_role_key'],
+                'Authorization: Bearer ' . $config['service_role_key'],
+                'Content-Type: ' . $mimeType,
+                'x-upsert: true',
+            ],
+        ]);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($httpCode >= 200 && $httpCode < 300) {
+            return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+        }
+        error_log("Supabase Storage upload failed ($httpCode): $response");
+        return null;
     }
-    error_log("Supabase Storage upload failed ($httpCode): $response");
-    return null;
-}
 
-// Field Validation
+    // Field Validation
     $institution_name = trim($_POST['institution_name'] ?? '');
     $institution_address = trim($_POST['institution_address'] ?? '');
     $contact_person = trim($_POST['contact_person'] ?? '');
@@ -205,35 +206,37 @@ function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, 
     require_once __DIR__ . '/../../src/lib/BlockchainService.php';
     $blockchain = new \App\Lib\BlockchainService($sb);
     
-    // Record each document hash separately
-    foreach ($documentHashes as $fileKey => $hash) {
-        $blockchain->record('document_hash', $applicationId, [
-            'document_type' => $fileKey,
-            'file_name' => basename($uploadedFiles[$fileKey]),
-            'hash' => $hash,
-            'application_id' => $applicationId,
-            'submitted_at' => date('c')
+    // 1. Record affiliation and all 6 requirement document hashes
+    $blockchain->recordAffiliation($applicationId, $affiliationData, $documentHashes);
+
+    // 2. Record receipt in blockchain
+    if (!empty($receiptNumber)) {
+        $blockchain->recordReceipt($receiptNumber, [
+            'payer_name' => $contact_person,
+            'amount' => $totalFee,
+            'purpose' => "Affiliation Application - {$institution_name}",
+            'reference_no' => $receiptNumber,
+            'paid_at' => date('c'),
         ]);
     }
     
-    // Record the affiliation submission
-    $blockchain->record('affiliation', $applicationId, [
-        'institution_name' => $institution_name,
-        'total_fee' => $totalFee,
-        'document_hashes' => $documentHashes,
-        'submitted_at' => date('c')
-    ]);
-    
     if (isset($_SESSION['affiliation_payment'])) unset($_SESSION['affiliation_payment']);
     
-    // ✅ ANG PINAKA-IMPORTANTENG PAGBABAGO:
-    // Imbes na echo json_encode, i-redirect ang user sa sarili niyang page (GET request)
-    header('Location: submit-affiliation.php?status=success');
+    // Return JSON success response for AJAX
+    echo json_encode([
+        'success' => true,
+        'message' => 'Application submitted successfully! The Registration Committee will review your application within 5-7 business days.',
+        'application_id' => $applicationId,
+        'receipt_number' => $receiptNumber
+    ]);
     exit;
     
 } catch (Exception $e) {
     error_log('Submit affiliation error: ' . $e->getMessage());
-    // Kung may error, ibalik siya sa index na may error message sa URL
-    header('Location: /IECEP-LSC-MEMSYS/index.php?error=' . urlencode($e->getMessage()));
+    // Return JSON error response for AJAX
+    echo json_encode([
+        'success' => false,
+        'message' => $e->getMessage()
+    ]);
     exit;
 }

@@ -43,7 +43,7 @@ try {
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <?php require_once __DIR__ . '/../../includes/head-meta.php'; ?>
+    <?php require_once __DIR__ . '/../../../includes/head-meta.php'; ?>
     <title>My Profile - Member Portal</title>
 </head>
 <body>

@@ -13,25 +13,44 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'school_officer')
 $current_page = 'receipts';
 
 // Get user's institution
-$userId = $_SESSION['user']['id'];
-$db = $GLOBALS['supabaseClient'] ?? null;
-
-$institutionId = null;
+$userId = $_SESSION['user']['id'] ?? $_SESSION['user_id'] ?? null;
+$institutionId = $_SESSION['institution_id'] ?? $_SESSION['user']['institution_id'] ?? null;
 $institutionName = 'Unknown Institution';
 
+$db = $GLOBALS['supabaseClient'] ?? null;
 if ($db) {
     try {
-        $members = $db->select('members', ['user_id' => 'eq.' . $userId]);
-        if (!empty($members)) {
-            $institutionId = $members[0]['institution_id'];
+        if (!$institutionId && $userId) {
+            $profiles = $db->select('user_profiles', ['user_id' => 'eq.' . $userId]);
+            if (is_array($profiles) && isset($profiles[0]['institution_id'])) {
+                $institutionId = $profiles[0]['institution_id'];
+            }
+            if (!$institutionId) {
+                $members = $db->select('members', ['user_id' => 'eq.' . $userId]);
+                if (is_array($members) && isset($members[0]['institution_id'])) {
+                    $institutionId = $members[0]['institution_id'];
+                }
+            }
+        }
+        
+        if ($institutionId) {
             $institutions = $db->select('institutions', ['id' => 'eq.' . $institutionId]);
-            if (!empty($institutions)) {
+            if (is_array($institutions) && isset($institutions[0]['name'])) {
                 $institutionName = $institutions[0]['name'];
+            }
+        } else {
+            $institutions = $db->select('institutions', ['status' => 'eq.active', 'limit' => 1]);
+            if (is_array($institutions) && isset($institutions[0]['id'])) {
+                $institutionId = $institutions[0]['id'];
+                $institutionName = $institutions[0]['name'] ?? 'Affiliated Institution';
             }
         }
     } catch (Exception $e) {
         // Use defaults if query fails
     }
+}
+if ($institutionId) {
+    $_SESSION['institution_id'] = $institutionId;
 }
 ?>
 <!DOCTYPE html>
@@ -39,9 +58,8 @@ if ($db) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipts - IECEP-LSC MEMSYS</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/css/design-tokens.css">
+    <title>Official Receipts - IECEP-LSC MEMSYS</title>
+    <?php require_once __DIR__ . '/../../../../includes/head-meta.php'; ?>
     <style>
         :root {
             --primary-color: #0B1D4A;
@@ -58,19 +76,13 @@ if ($db) {
             padding: 1.5rem;
             margin-bottom: 1.5rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
         .receipt-card {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin-bottom: 1rem;
-            transition: all 0.2s ease;
+            border-left: 4px solid var(--memsys-navy);
+            transition: var(--transition);
         }
         
         .receipt-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow-md);
             transform: translateY(-2px);
         }
         
@@ -83,20 +95,38 @@ if ($db) {
         .receipt-amount {
             font-size: 1.5rem;
             font-weight: bold;
-            color: var(--primary-color);
+            color: var(--memsys-navy);
         }
     </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../../../includes/header.php'; ?>
-    <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
-    
-    <div class="main-content">
-        <div class="container">
-            <div class="row mb-4">
-                <div class="col-md-12">
-                    <h2 class="mb-3">Receipts</h2>
-                    <p class="text-muted mb-3">Institution: <?php echo htmlspecialchars($institutionName); ?></p>
+    <div class="dashboard-container">
+        <?php require_once __DIR__ . '/../../../../includes/sidebar.php'; ?>
+        
+        <main class="main-content">
+            <div class="container py-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-2 border-bottom">
+                    <div>
+                        <div class="text-muted small mb-1">
+                            <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="text-muted text-decoration-none">School Portal</a>
+                            <span class="mx-1">/</span>
+                            <span>Financial</span>
+                            <span class="mx-1">/</span>
+                            <span class="text-dark fw-semibold">Receipts</span>
+                        </div>
+                        <h2 class="fw-bold text-dark mb-0">
+                            <i class="fas fa-receipt text-primary me-2"></i>Official Receipts & Payments
+                        </h2>
+                        <div class="text-muted small mt-1">
+                            <i class="fas fa-university me-1"></i> Chapter: <?= htmlspecialchars($institutionName); ?>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="btn btn-sm btn-outline">
+                            <i class="fas fa-arrow-left me-1"></i> Dashboard
+                        </a>
+                    </div>
+                </div>
                     <div class="d-flex gap-2 mb-3">
                         <select class="form-select w-auto" id="filter-year" onchange="loadReceipts()">
                             <option value="2024">2024</option>
@@ -161,11 +191,9 @@ if ($db) {
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
     <script>
         const institutionId = <?php echo json_encode($institutionId); ?>;
         let currentPage = 1;
@@ -245,7 +273,7 @@ if ($db) {
             let html = '<ul class="pagination justify-content-center">';
             
             if (pagination.current_page > 1) {
-                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadReceipts(${pagination.current_page - 1})">Previous</a></li>`;
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadReceipts(${pagination.current_page - 1})" aria-label="Previous"><i class="fas fa-chevron-left" style="font-size:0.75rem;"></i></a></li>`;
             }
             
             for (let i = 1; i <= pagination.total_pages; i++) {
@@ -255,7 +283,7 @@ if ($db) {
             }
             
             if (pagination.current_page < pagination.total_pages) {
-                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadReceipts(${pagination.current_page + 1})">Next</a></li>`;
+                html += `<li class="page-item"><a class="page-link" href="#" onclick="loadReceipts(${pagination.current_page + 1})" aria-label="Next"><i class="fas fa-chevron-right" style="font-size:0.75rem;"></i></a></li>`;
             }
             
             html += '</ul>';

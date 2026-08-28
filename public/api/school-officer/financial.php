@@ -116,7 +116,7 @@ switch ($action) {
             'member_count' => $memberCount,
             'bracket' => $bracket['bracket'],
             'affiliation_fee' => $bracket['affiliation'],
-            'operational_fee' => 800,
+            'operational_fee' => 800.00,
             'total_fee' => $total
         ]);
         break;

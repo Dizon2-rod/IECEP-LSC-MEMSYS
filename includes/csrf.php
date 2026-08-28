@@ -21,6 +21,14 @@ function csrf_token() {
 }
 
 /**
+ * Alias for csrf_token
+ * @return string
+ */
+function generate_csrf_token() {
+    return csrf_token();
+}
+
+/**
  * Validate CSRF token
  * @param string $token
  * @return bool

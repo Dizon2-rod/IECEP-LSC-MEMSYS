@@ -25,14 +25,30 @@ class FeeCalculator
     }
 
     /**
-     * Calculate affiliation fee based on member count
+     * Calculate total affiliation fee (national fee + operational fee) based on member count
      * 
-     * Queries fee_brackets table for the applicable bracket.
+     * Returns the combined total for backward compatibility.
+     * Use calculateAffiliationFeeDetailed() for a breakdown.
      * 
      * @param int $memberCount Number of members
-     * @return float Affiliation fee amount
+     * @return float Total affiliation fee (national + operational)
      */
     public function calculateAffiliationFee(int $memberCount): float
+    {
+        $detailed = $this->calculateAffiliationFeeDetailed($memberCount);
+        return $detailed['total_fee'];
+    }
+
+    /**
+     * Calculate affiliation fee with detailed breakdown
+     * 
+     * Returns national_fee (from fee_brackets), operational_fee (from system_settings),
+     * and total_fee (sum of both) per Board Resolution No. 021-2024.
+     * 
+     * @param int $memberCount Number of members
+     * @return array ['national_fee' => float, 'operational_fee' => float, 'total_fee' => float]
+     */
+    public function calculateAffiliationFeeDetailed(int $memberCount): array
     {
         try {
             // Query fee_brackets for applicable bracket
@@ -48,7 +64,15 @@ class FeeCalculator
                 throw new \Exception('No applicable fee bracket found for member count: ' . $memberCount);
             }
 
-            return (float) $result['fee'];
+            $nationalFee = (float) $result['fee'];
+            $operationalFee = $this->getOperationalFee();
+            $totalFee = $nationalFee + $operationalFee;
+
+            return [
+                'national_fee'    => round($nationalFee, 2),
+                'operational_fee' => round($operationalFee, 2),
+                'total_fee'       => round($totalFee, 2),
+            ];
 
         } catch (\Exception $e) {
             error_log('Affiliation fee calculation error: ' . $e->getMessage());
@@ -135,19 +159,19 @@ class FeeCalculator
     public function calculate(int $memberCount, array $memberTypeCounts): array
     {
         try {
-            $affiliationFee = $this->calculateAffiliationFee($memberCount);
+            $affiliationDetailed = $this->calculateAffiliationFeeDetailed($memberCount);
             $membershipFeesTotal = $this->calculateMembershipFees($memberTypeCounts);
-            $operationalFee = $this->getOperationalFee();
 
-            $totalFee = $affiliationFee + $membershipFeesTotal + $operationalFee;
+            $totalFee = $affiliationDetailed['total_fee'] + $membershipFeesTotal;
 
             return [
                 'member_count' => $memberCount,
                 'new_members' => $memberTypeCounts['new'] ?? 0,
                 'returning_members' => $memberTypeCounts['returning'] ?? 0,
                 'honorary_members' => $memberTypeCounts['honorary'] ?? 0,
-                'affiliation_fee' => round($affiliationFee, 2),
-                'operational_fee' => round($operationalFee, 2),
+                'national_fee' => $affiliationDetailed['national_fee'],
+                'affiliation_fee' => $affiliationDetailed['national_fee'],
+                'operational_fee' => $affiliationDetailed['operational_fee'],
                 'membership_fees_total' => round($membershipFeesTotal, 2),
                 'total_fee' => round($totalFee, 2)
             ];

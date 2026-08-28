@@ -1,0 +1,862 @@
+/**
+ * IECEP-LSC MEMSYS Admin Portal Design System
+ * Shared stylesheet for all Admin Portal pages
+ * Consistent with Executive Command Desk Dashboard
+ */
+
+/* =========================================================
+   0. Google Fonts Import
+   ========================================================= */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* =========================================================
+   1. Design Tokens
+   ========================================================= */
+:root {
+    /* Backgrounds */
+    --bg-page: #F8FAFC;
+    --bg-surface: #FFFFFF;
+    --bg-subtle: #F1F5F9;
+    --bg-hover: #F8FAFC;
+
+    /* Borders */
+    --border-light: #E2E8F0;
+    --border-medium: #CBD5E1;
+    --border-gold: rgba(212, 175, 55, 0.45);
+
+    /* Text */
+    --text-heading: #0B1D4A;
+    --text-primary: #0F172A;
+    --text-secondary: #475569;
+    --text-muted: #64748B;
+    --text-dim: #94A3B8;
+
+    /* Brand */
+    --iecep-navy: #0B1D4A;
+    --iecep-navy-light: #1E3A8A;
+    --iecep-gold: #B8860B;
+    --iecep-gold-bright: #D4AF37;
+    --iecep-gold-bg: rgba(212, 175, 55, 0.12);
+
+    /* Accent Palette */
+    --accent-emerald: #059669;
+    --accent-emerald-bg: rgba(5, 150, 105, 0.1);
+    --accent-cyan: #0284C7;
+    --accent-cyan-bg: rgba(2, 132, 199, 0.1);
+    --accent-purple: #7C3AED;
+    --accent-purple-bg: rgba(124, 58, 237, 0.1);
+    --accent-amber: #D97706;
+    --accent-amber-bg: rgba(217, 119, 6, 0.1);
+    --accent-rose: #E11D48;
+    --accent-rose-bg: rgba(225, 29, 72, 0.1);
+
+    /* Shadows */
+    --card-shadow: 0 4px 20px -2px rgba(11, 29, 74, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+    --card-shadow-hover: 0 12px 30px -4px rgba(11, 29, 74, 0.1), 0 4px 12px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* =========================================================
+   2. Base Reset
+   ========================================================= */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-page) !important;
+    color: var(--text-primary);
+    font-family: 'DM Sans', 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+}
+
+/* =========================================================
+   3. Page Scope Wrapper
+   ========================================================= */
+.ap-scope {
+    padding: 1.75rem 2rem 3rem;
+    background: transparent;
+    min-height: 100vh;
+}
+
+/* =========================================================
+   4. Page Header
+   ========================================================= */
+.ap-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.75rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-light);
+    flex-wrap: wrap;
+    gap: 1.25rem;
+}
+
+.ap-title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.ap-page-title {
+    font-family: 'Times New Roman', Georgia, serif;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    margin: 0;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.ap-page-title i {
+    color: var(--iecep-gold);
+    font-size: 1.45rem;
+}
+
+.ap-page-subtitle {
+    font-size: 0.87rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.ap-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+/* =========================================================
+   5. Buttons
+   ========================================================= */
+.ap-btn-primary {
+    background: linear-gradient(135deg, #0B1D4A 0%, #1E3A8A 100%);
+    color: #FFFFFF !important;
+    border: 1px solid #0B1D4A;
+    padding: 0.55rem 1.3rem;
+    border-radius: 50px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    box-shadow: 0 4px 14px rgba(11, 29, 74, 0.2);
+    font-family: 'DM Sans', sans-serif;
+    white-space: nowrap;
+}
+
+.ap-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(11, 29, 74, 0.3);
+    color: #FFFFFF !important;
+}
+
+.ap-btn-secondary {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    color: var(--text-heading);
+    padding: 0.55rem 1.15rem;
+    border-radius: 50px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    font-family: 'DM Sans', sans-serif;
+    white-space: nowrap;
+}
+
+.ap-btn-secondary:hover {
+    background: var(--bg-subtle);
+    border-color: var(--iecep-navy);
+    color: var(--iecep-navy);
+}
+
+.ap-btn-danger {
+    background: var(--bg-surface);
+    border: 1px solid rgba(225, 29, 72, 0.3);
+    color: var(--accent-rose);
+    padding: 0.55rem 1.15rem;
+    border-radius: 50px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    font-family: 'DM Sans', sans-serif;
+}
+
+.ap-btn-danger:hover {
+    background: var(--accent-rose-bg);
+    border-color: var(--accent-rose);
+    color: var(--accent-rose);
+}
+
+.ap-btn-gold {
+    background: linear-gradient(135deg, #B8860B 0%, #D4AF37 100%);
+    color: #FFFFFF !important;
+    border: 1px solid #B8860B;
+    padding: 0.55rem 1.3rem;
+    border-radius: 50px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    box-shadow: 0 4px 14px rgba(184, 134, 11, 0.2);
+    font-family: 'DM Sans', sans-serif;
+}
+
+.ap-btn-gold:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(184, 134, 11, 0.35);
+    color: #FFFFFF !important;
+}
+
+/* =========================================================
+   6. KPI / Stat Cards Grid
+   ========================================================= */
+.ap-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1.15rem;
+    margin-bottom: 1.5rem;
+}
+
+.ap-kpi-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.15rem;
+    margin-bottom: 1.5rem;
+}
+
+.ap-stat-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 1.35rem 1.25rem 1.15rem;
+    position: relative;
+    transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: var(--card-shadow);
+    overflow: hidden;
+}
+
+.ap-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3.5px;
+    background: linear-gradient(90deg, #0B1D4A, #D4AF37);
+}
+
+.ap-stat-card:hover {
+    border-color: var(--border-gold);
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow-hover);
+}
+
+.ap-stat-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.ap-stat-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.15rem;
+    flex-shrink: 0;
+}
+
+.ap-stat-icon.navy { background: rgba(11, 29, 74, 0.08); color: #0B1D4A; }
+.ap-stat-icon.gold { background: var(--iecep-gold-bg); color: var(--iecep-gold); }
+.ap-stat-icon.emerald { background: var(--accent-emerald-bg); color: var(--accent-emerald); }
+.ap-stat-icon.cyan { background: var(--accent-cyan-bg); color: var(--accent-cyan); }
+.ap-stat-icon.purple { background: var(--accent-purple-bg); color: var(--accent-purple); }
+.ap-stat-icon.amber { background: var(--accent-amber-bg); color: var(--accent-amber); }
+.ap-stat-icon.rose { background: var(--accent-rose-bg); color: var(--accent-rose); }
+
+.ap-stat-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 700;
+}
+
+.ap-stat-sublabel {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.ap-stat-value {
+    font-size: 1.85rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-heading);
+    font-family: 'Times New Roman', Georgia, serif;
+}
+
+.ap-stat-footer {
+    font-size: 0.74rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+}
+
+/* =========================================================
+   7. Cards & Panels
+   ========================================================= */
+.ap-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 1.5rem;
+}
+
+.ap-card-sm {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 1.15rem 1.25rem;
+    box-shadow: var(--card-shadow);
+}
+
+.ap-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.ap-card-title {
+    font-family: 'Times New Roman', Georgia, serif;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ap-card-title i {
+    color: var(--iecep-gold);
+    font-size: 1rem;
+}
+
+/* =========================================================
+   8. Data Tables
+   ========================================================= */
+.ap-table-wrapper {
+    overflow-x: auto;
+    border-radius: 12px;
+    border: 1px solid var(--border-light);
+}
+
+.ap-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 0.85rem;
+}
+
+.ap-table th {
+    color: var(--text-secondary);
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border-light);
+    background: var(--bg-subtle);
+    white-space: nowrap;
+}
+
+.ap-table td {
+    padding: 1rem 1rem;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.ap-table tr:last-child td {
+    border-bottom: none;
+}
+
+.ap-table tr:hover td {
+    background: var(--bg-subtle);
+}
+
+/* Avatar badge in table rows */
+.ap-avatar-badge {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--iecep-gold-bg);
+    color: var(--iecep-gold);
+    border: 1px solid rgba(212, 175, 55, 0.25);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    font-weight: 800;
+    flex-shrink: 0;
+    font-family: 'DM Sans', sans-serif;
+}
+
+.ap-avatar-badge.navy { background: rgba(11,29,74,0.08); color: var(--iecep-navy); border-color: rgba(11,29,74,0.2); }
+.ap-avatar-badge.emerald { background: var(--accent-emerald-bg); color: var(--accent-emerald); border-color: rgba(5,150,105,0.25); }
+.ap-avatar-badge.purple { background: var(--accent-purple-bg); color: var(--accent-purple); border-color: rgba(124,58,237,0.25); }
+.ap-avatar-badge.cyan { background: var(--accent-cyan-bg); color: var(--accent-cyan); border-color: rgba(2,132,199,0.25); }
+.ap-avatar-badge.rose { background: var(--accent-rose-bg); color: var(--accent-rose); border-color: rgba(225,29,72,0.25); }
+
+/* =========================================================
+   9. Status Pills
+   ========================================================= */
+.ap-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+
+.ap-pill.active { background: var(--accent-emerald-bg); color: var(--accent-emerald); }
+.ap-pill.pending { background: var(--accent-amber-bg); color: var(--accent-amber); }
+.ap-pill.inactive { background: var(--bg-subtle); color: var(--text-muted); border: 1px solid var(--border-light); }
+.ap-pill.danger { background: var(--accent-rose-bg); color: var(--accent-rose); }
+.ap-pill.info { background: var(--accent-cyan-bg); color: var(--accent-cyan); }
+.ap-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--iecep-navy); }
+.ap-pill.gold { background: var(--iecep-gold-bg); color: var(--iecep-gold); }
+
+.ap-pill-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+}
+
+/* =========================================================
+   10. Search & Toolbar
+   ========================================================= */
+.ap-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.ap-search-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+    max-width: 420px;
+}
+
+.ap-search-wrapper i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    pointer-events: none;
+}
+
+.ap-search-input {
+    width: 100%;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-light);
+    border-radius: 50px;
+    padding: 0.6rem 1rem 0.6rem 2.5rem;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.2s ease, background 0.2s ease;
+    box-sizing: border-box;
+}
+
+.ap-search-input:focus {
+    border-color: var(--iecep-navy);
+    background: #FFFFFF;
+}
+
+.ap-search-input::placeholder { color: var(--text-dim); }
+
+.ap-select {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: 50px;
+    padding: 0.55rem 1rem;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+
+.ap-select:focus {
+    border-color: var(--iecep-navy);
+}
+
+/* =========================================================
+   11. Forms & Inputs
+   ========================================================= */
+.ap-form-group {
+    margin-bottom: 1.15rem;
+}
+
+.ap-form-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    margin-bottom: 0.4rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.ap-input,
+.ap-textarea,
+.ap-form-select {
+    width: 100%;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-light);
+    border-radius: 10px;
+    padding: 0.7rem 1rem;
+    color: var(--text-primary);
+    font-size: 0.88rem;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+}
+
+.ap-input:focus,
+.ap-textarea:focus,
+.ap-form-select:focus {
+    border-color: var(--iecep-navy);
+    background: #FFFFFF;
+    box-shadow: 0 0 0 3px rgba(11, 29, 74, 0.08);
+}
+
+.ap-textarea {
+    resize: vertical;
+    min-height: 110px;
+}
+
+.ap-input-help {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+}
+
+/* =========================================================
+   12. Upload Zone
+   ========================================================= */
+.ap-upload-zone {
+    border: 2px dashed var(--border-medium);
+    border-radius: 14px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: var(--bg-subtle);
+}
+
+.ap-upload-zone:hover,
+.ap-upload-zone.dragover {
+    border-color: var(--iecep-gold-bright);
+    background: rgba(212, 175, 55, 0.04);
+}
+
+.ap-upload-icon {
+    width: 56px;
+    height: 56px;
+    background: var(--iecep-gold-bg);
+    color: var(--iecep-gold);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin: 0 auto 1rem;
+}
+
+.ap-upload-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    margin-bottom: 0.3rem;
+}
+
+.ap-upload-hint {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+/* =========================================================
+   13. Mono / Hash Cells
+   ========================================================= */
+.ap-mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--text-heading);
+    font-weight: 600;
+}
+
+/* =========================================================
+   14. Grid Layouts
+   ========================================================= */
+.ap-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.ap-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.ap-grid-3-1 {
+    display: grid;
+    grid-template-columns: 3fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+/* =========================================================
+   15. Progress Bars
+   ========================================================= */
+.ap-progress-bar {
+    height: 6px;
+    background: var(--border-light);
+    border-radius: 99px;
+    overflow: hidden;
+}
+
+.ap-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #0B1D4A, #D4AF37);
+    border-radius: 99px;
+    transition: width 0.4s ease;
+}
+
+.ap-progress-fill.emerald {
+    background: linear-gradient(90deg, #059669, #10B981);
+}
+
+/* =========================================================
+   16. Empty State
+   ========================================================= */
+.ap-empty-state {
+    text-align: center;
+    padding: 3.5rem 1.5rem;
+    color: var(--text-muted);
+}
+
+.ap-empty-icon {
+    width: 64px;
+    height: 64px;
+    background: var(--bg-subtle);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    color: var(--text-dim);
+    margin: 0 auto 1rem;
+}
+
+.ap-empty-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    margin-bottom: 0.35rem;
+}
+
+.ap-empty-desc {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+/* =========================================================
+   17. Alert Banners
+   ========================================================= */
+.ap-alert {
+    padding: 0.9rem 1.15rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    margin-bottom: 1.15rem;
+}
+
+.ap-alert i { margin-top: 2px; flex-shrink: 0; }
+.ap-alert.success { background: var(--accent-emerald-bg); color: var(--accent-emerald); border: 1px solid rgba(5,150,105,0.25); }
+.ap-alert.warning { background: var(--accent-amber-bg); color: var(--accent-amber); border: 1px solid rgba(217,119,6,0.25); }
+.ap-alert.danger { background: var(--accent-rose-bg); color: var(--accent-rose); border: 1px solid rgba(225,29,72,0.25); }
+.ap-alert.info { background: var(--accent-cyan-bg); color: var(--accent-cyan); border: 1px solid rgba(2,132,199,0.25); }
+
+/* =========================================================
+   18. Tabs
+   ========================================================= */
+.ap-tabs {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-light);
+    border-radius: 50px;
+    padding: 4px;
+    width: fit-content;
+    margin-bottom: 1.5rem;
+}
+
+.ap-tab {
+    padding: 0.5rem 1.15rem;
+    border-radius: 50px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    transition: all 0.2s ease;
+    font-family: 'DM Sans', sans-serif;
+}
+
+.ap-tab.active,
+.ap-tab:hover {
+    background: #FFFFFF;
+    color: var(--iecep-navy);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.ap-tab.active {
+    font-weight: 700;
+}
+
+/* =========================================================
+   19. Divider
+   ========================================================= */
+.ap-divider {
+    height: 1px;
+    background: var(--border-light);
+    margin: 1.5rem 0;
+}
+
+/* =========================================================
+   20. Info Items (label + value pairs)
+   ========================================================= */
+.ap-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.ap-info-row:last-child { border-bottom: none; }
+
+.ap-info-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.ap-info-value {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text-heading);
+    text-align: right;
+}
+
+/* =========================================================
+   21. Security / Footer Sentinel Strip
+   ========================================================= */
+.ap-sentinel-strip {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: 12px;
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    box-shadow: var(--card-shadow);
+    margin-top: 1.5rem;
+}
+
+.ap-sentinel-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.ap-sentinel-item i { color: var(--accent-emerald); }
+
+/* =========================================================
+   22. Responsive
+   ========================================================= */
+@media (max-width: 1024px) {
+    .ap-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .ap-kpi-grid-3 { grid-template-columns: repeat(2, 1fr); }
+    .ap-grid-2 { grid-template-columns: 1fr; }
+    .ap-grid-3 { grid-template-columns: repeat(2, 1fr); }
+    .ap-grid-3-1 { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+    .ap-kpi-grid { grid-template-columns: 1fr; }
+    .ap-kpi-grid-3 { grid-template-columns: 1fr; }
+    .ap-grid-3 { grid-template-columns: 1fr; }
+    .ap-scope { padding: 1rem; }
+    .ap-page-title { font-size: 1.4rem; }
+}

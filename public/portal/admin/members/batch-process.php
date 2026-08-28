@@ -1,385 +1,279 @@
 <?php
 require_once __DIR__ . '/../../bootstrap.php';
-/**
- * public/portal/admin/members/batch-process.php
- * 
- * Bulk user import interface for Admin role
- * Allows CSV upload of new users with role assignment
- */
-
 require_once __DIR__ . '/../../auth_check.php';
+require_once __DIR__ . '/../../../../includes/config.php';
+require_once __DIR__ . '/../../../../includes/role-config.php';
 
-// Enforce admin role
-if (!require_role(['admin'], false)) {
-    header('HTTP/1.0 403 Forbidden');
-    echo "Access denied";
-    exit;
-}
-
-// Get page title
-$page_title = "Bulk User Import";
 $current_page = 'batch-process';
+$page_title = 'Bulk Member CSV Import & Database Commit';
+
+require_role(['admin', 'super_admin', 'registration', 'committee_registration']);
+
+$supabase = getSupabaseClient();
+$importResult = null;
+
+// Handle real CSV upload and database commit
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
+    $file = $_FILES['csv_file'];
+    if ($file['error'] === UPLOAD_ERR_OK && is_uploaded_file($file['tmp_name'])) {
+        $content = file_get_contents($file['tmp_name']);
+        $lines = preg_split('/\r\n|\r|\n/', trim($content));
+        
+        if (count($lines) > 1) {
+            $headers = array_map('trim', explode(',', strtolower(array_shift($lines))));
+            $emailIdx = array_search('email', $headers);
+            $nameIdx = array_search('full_name', $headers);
+            $roleIdx = array_search('role', $headers);
+
+            if ($nameIdx === false) $nameIdx = array_search('name', $headers);
+            if ($emailIdx !== false && $nameIdx !== false) {
+                $imported = 0;
+                $failed = 0;
+                $timestamp = date('c');
+                $batchId = bin2hex(random_bytes(16));
+
+                // Fetch existing count to assign sequential membership IDs
+                $existingMembers = $supabase->select('members', ['select' => 'id']);
+                $baseCount = is_array($existingMembers) ? count($existingMembers) : 1;
+
+                foreach ($lines as $line) {
+                    if (empty(trim($line))) continue;
+                    $cols = str_getcsv($line);
+                    $email = trim($cols[$emailIdx] ?? '');
+                    $name = trim($cols[$nameIdx] ?? '');
+                    $role = ($roleIdx !== false && !empty($cols[$roleIdx])) ? trim($cols[$roleIdx]) : 'member';
+
+                    if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL) && !empty($name)) {
+                        $baseCount++;
+                        $memId = bin2hex(random_bytes(16));
+                        $membershipId = 'IECEP-2026-' . str_pad($baseCount, 4, '0', STR_PAD_LEFT);
+                        $hash = hash('sha256', $memId . $name . $email . $timestamp);
+
+                        try {
+                            // 1. Insert Member
+                            $supabase->insert('members', [[
+                                'id' => $memId,
+                                'full_name' => $name,
+                                'email' => $email,
+                                'membership_id' => $membershipId,
+                                'member_type' => 'regular',
+                                'year_level' => '3rd Year',
+                                'digital_id_hash' => $hash,
+                                'digital_id_url' => 'DID-2026-LSC-' . strtoupper(substr($memId, 0, 4)),
+                                'created_at' => $timestamp,
+                                'updated_at' => $timestamp
+                            ]]);
+
+                            // 2. Insert User Profile
+                            $supabase->insert('user_profiles', [[
+                                'id' => $memId,
+                                'user_id' => $memId,
+                                'full_name' => $name,
+                                'role' => $role,
+                                'membership_status' => 'active',
+                                'membership_type' => 'regular',
+                                'created_at' => $timestamp
+                            ]]);
+
+                            $imported++;
+                        } catch (Exception $e) {
+                            error_log("Row import error for $email: " . $e->getMessage());
+                            $failed++;
+                        }
+                    } else {
+                        $failed++;
+                    }
+                }
+
+                $importResult = [
+                    'success' => true,
+                    'imported' => $imported,
+                    'failed' => $failed,
+                    'batch_id' => $batchId
+                ];
+            } else {
+                $importResult = ['success' => false, 'message' => 'CSV must include "email" and "full_name" columns.'];
+            }
+        } else {
+            $importResult = ['success' => false, 'message' => 'CSV file contains no data rows.'];
+        }
+    } else {
+        $importResult = ['success' => false, 'message' => 'Failed to read uploaded file.'];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($page_title) ?> - IECEP-LSC</title>
-    <?php include __DIR__ . '/../../../../includes/head-meta.php'; ?>
+    <title><?= htmlspecialchars($page_title) ?> — IECEP-LSC MEMSYS</title>
+    <meta name="description" content="Bulk import student members via CSV upload for IECEP-LSC Laguna Student Chapter.">
+    <?php include INCLUDES_PATH . 'head-meta.php'; ?>
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .upload-zone {
-            border: 2px dashed #0B1D4A;
-            border-radius: 8px;
-            padding: 3rem;
+        .upload-dropzone {
+            border: 2px dashed var(--iecep-gold);
+            background: #F8FAFC;
+            border-radius: 16px;
+            padding: 3rem 2rem;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s ease;
-            margin: 1.5rem 0;
+            transition: all 0.2s ease;
         }
-        .upload-zone:hover {
-            background: #f0f4f8;
-            border-color: #D4AF37;
-        }
-        .upload-zone.dragover {
-            background: #f0f4f8;
-            border-color: #D4AF37;
-        }
-        .file-input {
-            display: none;
-        }
-        .upload-icon {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-            color: #0B1D4A;
-        }
-        .upload-text {
-            margin: 0;
-            font-weight: 500;
-        }
-        .error-row {
-            background: #fee2e2;
-        }
-        .badge-ready {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        .badge-error {
-            background: #fecaca;
-            color: #991b1b;
-        }
-        .chart-container {
-            position: relative;
-            height: 350px;
-            margin: 1rem 0;
+        .upload-dropzone:hover, .upload-dropzone.dragover {
+            background: #FFFFFF;
+            border-color: var(--iecep-navy);
+            box-shadow: var(--card-shadow);
         }
     </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../../../../includes/sidebar.php'; ?>
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
-    <div class="main-content">
-        <div class="page-header">
-            <h1><i class="fas fa-file-import"></i> <?= htmlspecialchars($page_title) ?></h1>
-            <p class="text-muted">Upload a CSV file to import multiple users at once</p>
-        </div>
+    <main class="main-content">
+        <div class="ap-scope">
 
-        <div class="content-card">
-            <div class="alert alert-info" role="alert">
-                <i class="fas fa-info-circle"></i>
-                <div>
-                    <strong>Info:</strong> Only CSV files are accepted. Maximum 5MB. Each row must have valid email, name, and role.
+            <!-- Page Header -->
+            <div class="ap-page-header">
+                <div class="ap-title-block">
+                    <h1 class="ap-page-title"><i class="fas fa-file-import"></i> Bulk Member CSV Import & Database Commit</h1>
+                    <p class="ap-page-subtitle">Upload chapter student member rosters to create user accounts, assign verified IDs, and save directly to Supabase.</p>
+                </div>
+                <div class="ap-header-actions">
+                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php" class="ap-btn-secondary">
+                        <i class="fas fa-arrow-left"></i> View Roster
+                    </a>
+                    <button type="button" id="downloadTemplate" class="ap-btn-primary">
+                        <i class="fas fa-download"></i> Download CSV Template
+                    </button>
                 </div>
             </div>
 
-            <div class="mb-4">
-                <a href="#" id="downloadTemplate" class="btn btn-primary">
-                    <i class="fas fa-download"></i> Download CSV Template
-                </a>
-            </div>
-
-            <div class="upload-zone" id="uploadZone">
-                <div class="upload-icon">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                </div>
-                <p class="upload-text">Drag CSV file here or click to select</p>
-                <input type="file" id="fileInput" class="file-input" accept=".csv" required>
-            </div>
-
-            <div id="fileInfo" class="alert alert-info" style="display: none; margin-top: 1rem;">
-                <strong>Selected file:</strong> <span id="fileName"></span>
-            </div>
-
-            <div id="previewSection" style="display: none; margin-top: 2rem;">
-                <h3>Preview</h3>
-                <div id="previewStats" class="stats-grid" style="margin: 1rem 0;">
-                    <div class="stat-card">
-                        <div class="stat-label">Total Records</div>
-                        <div class="stat-value" id="totalRecords">0</div>
+            <?php if ($importResult): ?>
+                <?php if ($importResult['success']): ?>
+                    <div class="ap-alert success">
+                        <i class="fas fa-circle-check"></i>
+                        <div>
+                            <strong>Batch Import Complete!</strong><br>
+                            Successfully created and saved <strong><?= $importResult['imported'] ?></strong> real member accounts into the database.
+                            <?php if ($importResult['failed'] > 0): ?> (<?= $importResult['failed'] ?> rows skipped/invalid)<?php endif; ?>
+                            <div style="margin-top:0.5rem;">
+                                <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php" class="ap-btn-primary" style="padding:0.3rem 0.8rem; font-size:0.78rem;">
+                                    <i class="fas fa-users"></i> View Updated Roster
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                    <div class="stat-card success">
-                        <div class="stat-label">Ready to Import</div>
-                        <div class="stat-value" id="readyRecords">0</div>
+                <?php else: ?>
+                    <div class="ap-alert danger">
+                        <i class="fas fa-triangle-exclamation"></i>
+                        <span><?= htmlspecialchars($importResult['message'] ?? 'Import failed.') ?></span>
                     </div>
-                    <div class="stat-card danger">
-                        <div class="stat-label">Errors</div>
-                        <div class="stat-value" id="errorRecords">0</div>
-                    </div>
+                <?php endif; ?>
+            <?php endif; ?>
+
+            <!-- Upload Card -->
+            <div class="ap-card">
+                <div class="ap-card-header">
+                    <h3 class="ap-card-title"><i class="fas fa-cloud-arrow-up"></i> Upload CSV Member Directory</h3>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="table table-hover">
+                <form method="POST" enctype="multipart/form-data" id="importForm">
+                    <input type="file" id="csvFileInput" name="csv_file" accept=".csv" style="display:none;" onchange="handleFileSelected(this)">
+                    
+                    <div class="upload-dropzone" id="dropzone" onclick="document.getElementById('csvFileInput').click()">
+                        <i class="fas fa-file-csv" style="font-size:3.5rem; color:var(--iecep-gold); margin-bottom:1rem;"></i>
+                        <h3 style="margin:0 0 0.5rem 0; color:var(--text-heading); font-size:1.15rem;">Click to browse or drag & drop CSV file</h3>
+                        <p style="margin:0; font-size:0.85rem; color:var(--text-muted);">Required CSV columns: <code>email, full_name, role</code></p>
+                        <div id="selectedFileInfo" style="display:none; margin-top:1rem; font-weight:700; color:var(--iecep-navy);"></div>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
+                        <button type="submit" class="ap-btn-primary" id="submitBtn" disabled>
+                            <i class="fas fa-database"></i> Process & Save to Database
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Preview Card -->
+            <div class="ap-card" id="previewCard" style="display:none;">
+                <div class="ap-card-header">
+                    <h3 class="ap-card-title"><i class="fas fa-table-list"></i> CSV Row Preview (<span id="rowCount">0</span> rows)</h3>
+                </div>
+                <div class="ap-table-wrapper">
+                    <table class="ap-table">
                         <thead>
                             <tr>
-                                <th>Email</th>
-                                <th>Name</th>
+                                <th>Full Name</th>
+                                <th>Institutional Email</th>
                                 <th>Role</th>
                                 <th>Status</th>
-                                <th>Message</th>
                             </tr>
                         </thead>
-                        <tbody id="previewBody">
-                        </tbody>
+                        <tbody id="previewTableBody"></tbody>
                     </table>
                 </div>
             </div>
 
-            <div id="progressSection" style="display: none; margin-top: 2rem;">
-                <h3>Import Progress</h3>
-                <div class="progress" style="height: 24px; margin: 1rem 0;">
-                    <div class="progress-bar" id="progressFill" role="progressbar" style="width: 0%">0%</div>
-                </div>
-                <p id="progressText" class="text-muted">Waiting to start...</p>
+            <!-- Sentinel -->
+            <div class="ap-sentinel-strip">
+                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Data Ingestion:</strong> Direct Supabase REST Protocol</span></div>
+                <div class="ap-sentinel-item"><i class="fas fa-link"></i><span><strong>Ledger Anchor:</strong> SHA-256 Hashes Generated Sequentially</span></div>
             </div>
 
-            <div id="resultsSection" style="display: none; margin-top: 2rem; padding: 1.5rem; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #10b981;">
-                <h3><i class="fas fa-check-circle"></i> Import Completed</h3>
-                <div class="stats-grid" style="margin: 1rem 0;">
-                    <div class="stat-card success">
-                        <div class="stat-label">Successfully Imported</div>
-                        <div class="stat-value" id="successCount">0</div>
-                    </div>
-                    <div class="stat-card danger">
-                        <div class="stat-label">Failed</div>
-                        <div class="stat-value" id="failureCount">0</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="d-flex gap-2" style="margin-top: 2rem;">
-                <button type="button" id="importBtn" class="btn btn-primary" disabled>
-                    <i class="fas fa-upload"></i> Import Users
-                </button>
-                <button type="button" id="resetBtn" class="btn btn-secondary">
-                    <i class="fas fa-redo"></i> Reset
-                </button>
-            </div>
         </div>
-    </div>
+    </main>
 
     <script>
-        document.getElementById('downloadTemplate').addEventListener('click', function(e) {
-            e.preventDefault();
-            const csv = 'email,full_name,role\njohn@example.com,John Doe,member\njane@example.com,Jane Smith,school_officer';
+        document.getElementById('downloadTemplate').addEventListener('click', function() {
+            const csv = 'email,full_name,role\nexample.student1@lspu.edu.ph,Juan Dela Cruz,member\nexample.student2@lspu.edu.ph,Maria Santos,member';
             const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'users_template.csv';
+            a.download = 'iecep_members_template.csv';
             a.click();
-            window.URL.revokeObjectURL(url);
+            URL.revokeObjectURL(url);
         });
 
-        const uploadZone = document.getElementById('uploadZone');
-        const fileInput = document.getElementById('fileInput');
+        function handleFileSelected(input) {
+            if (!input.files || !input.files[0]) return;
+            const file = input.files[0];
+            document.getElementById('selectedFileInfo').textContent = `Selected: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+            document.getElementById('selectedFileInfo').style.display = 'block';
+            document.getElementById('submitBtn').disabled = false;
 
-        uploadZone.addEventListener('click', () => fileInput.click());
-
-        uploadZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadZone.classList.add('dragover');
-        });
-
-        uploadZone.addEventListener('dragleave', () => {
-            uploadZone.classList.remove('dragover');
-        });
-
-        uploadZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadZone.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                fileInput.files = files;
-                handleFileSelect();
-            }
-        });
-
-        fileInput.addEventListener('change', handleFileSelect);
-
-        async function handleFileSelect() {
-            const file = fileInput.files[0];
-            if (!file) return;
-
-            document.getElementById('fileName').textContent = file.name;
-            document.getElementById('fileInfo').style.display = 'block';
-
-            if (file.size > 5242880) {
-                alert('File size exceeds 5MB limit');
-                resetForm();
-                return;
-            }
-
+            // Preview
             const reader = new FileReader();
-            reader.onload = async (e) => {
-                const content = e.target.result;
-                await previewCSV(content);
+            reader.onload = function(e) {
+                const lines = e.target.result.trim().split('\n').filter(l => l.trim());
+                if (lines.length > 1) {
+                    const tbody = document.getElementById('previewTableBody');
+                    tbody.innerHTML = '';
+                    let count = 0;
+                    for (let i = 1; i < lines.length; i++) {
+                        const cols = lines[i].split(',').map(c => c.trim());
+                        if (cols.length >= 2) {
+                            count++;
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td><strong>${cols[1] || cols[0]}</strong></td>
+                                <td class="ap-mono">${cols[0]}</td>
+                                <td><span class="ap-pill navy">${cols[2] || 'member'}</span></td>
+                                <td><span class="ap-pill active"><span class="ap-pill-dot"></span> Ready</span></td>
+                            `;
+                            tbody.appendChild(tr);
+                        }
+                    }
+                    document.getElementById('rowCount').textContent = count;
+                    document.getElementById('previewCard').style.display = 'block';
+                }
             };
             reader.readAsText(file);
         }
-
-        async function previewCSV(content) {
-            try {
-                const lines = content.trim().split('\n');
-                const headers = lines[0].split(',').map(h => h.trim());
-
-                const required = ['email', 'full_name', 'role'];
-                for (let req of required) {
-                    if (!headers.includes(req)) {
-                        alert(`Missing required column: ${req}`);
-                        resetForm();
-                        return;
-                    }
-                }
-
-                const data = [];
-                let readyCount = 0;
-                let errorCount = 0;
-
-                for (let i = 1; i < lines.length; i++) {
-                    const values = lines[i].split(',').map(v => v.trim());
-                    const row = {};
-
-                    headers.forEach((header, idx) => {
-                        row[header] = values[idx] || '';
-                    });
-
-                    const validation = validateImportRow(row);
-                    row.validation = validation;
-
-                    if (validation.valid) {
-                        readyCount++;
-                    } else {
-                        errorCount++;
-                    }
-
-                    data.push(row);
-                }
-
-                displayPreview(data, readyCount, errorCount);
-                document.getElementById('importBtn').disabled = errorCount === data.length;
-
-            } catch (error) {
-                alert('Error parsing CSV: ' + error.message);
-                resetForm();
-            }
-        }
-
-        function validateImportRow(row) {
-            const errors = [];
-
-            if (!row.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) {
-                errors.push('Invalid email');
-            }
-
-            if (!row.full_name || row.full_name.length < 2) {
-                errors.push('Name too short');
-            }
-
-            if (!row.role) {
-                errors.push('Role required');
-            }
-
-            return {
-                valid: errors.length === 0,
-                errors: errors.join(', ')
-            };
-        }
-
-        function displayPreview(data, readyCount, errorCount) {
-            document.getElementById('totalRecords').textContent = data.length;
-            document.getElementById('readyRecords').textContent = readyCount;
-            document.getElementById('errorRecords').textContent = errorCount;
-
-            const tbody = document.getElementById('previewBody');
-            tbody.innerHTML = data.map((row, idx) => {
-                const valid = row.validation.valid;
-                return `<tr class="${valid ? '' : 'error-row'}">
-                    <td>${escapeHtml(row.email)}</td>
-                    <td>${escapeHtml(row.full_name)}</td>
-                    <td>${escapeHtml(row.role)}</td>
-                    <td><span class="status-badge ${valid ? 'badge-ready' : 'badge-error'}">${valid ? 'Ready' : 'Error'}</span></td>
-                    <td>${valid ? '' : escapeHtml(row.validation.errors)}</td>
-                </tr>`;
-            }).join('');
-
-            document.getElementById('previewSection').style.display = 'block';
-            document.getElementById('importBtn').disabled = errorCount === data.length;
-        }
-
-        document.getElementById('importBtn').addEventListener('click', importUsers);
-        document.getElementById('resetBtn').addEventListener('click', resetForm);
-
-        async function importUsers() {
-            if (!fileInput.files[0]) return;
-
-            document.getElementById('progressSection').style.display = 'block';
-            document.getElementById('importBtn').disabled = true;
-
-            const formData = new FormData();
-            formData.append('file', fileInput.files[0]);
-
-            try {
-                const response = await fetch('/api/admin/bulk-import.php', {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'same-origin',
-                    headers: {
-                        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content || ''
-                    }
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    document.getElementById('successCount').textContent = result.data?.imported || 0;
-                    document.getElementById('failureCount').textContent = result.data?.failed || 0;
-                    document.getElementById('resultsSection').style.display = 'block';
-                    setTimeout(() => {
-                        location.reload();
-                    }, 3000);
-                } else {
-                    alert('Import failed: ' + (result.message || 'Unknown error'));
-                }
-            } catch (error) {
-                alert('Import error: ' + error.message);
-            } finally {
-                document.getElementById('progressSection').style.display = 'none';
-                document.getElementById('importBtn').disabled = false;
-            }
-        }
-
-        function resetForm() {
-            fileInput.value = '';
-            document.getElementById('fileInfo').style.display = 'none';
-            document.getElementById('previewSection').style.display = 'none';
-            document.getElementById('progressSection').style.display = 'none';
-            document.getElementById('resultsSection').style.display = 'none';
-            document.getElementById('importBtn').disabled = true;
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
     </script>
+</body>
+</html>

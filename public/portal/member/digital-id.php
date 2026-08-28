@@ -37,7 +37,7 @@ $hasDigitalId = !empty($digitalIdUrl);
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <?php require_once __DIR__ . '/../../includes/head-meta.php'; ?>
+    <?php require_once __DIR__ . '/../../../includes/head-meta.php'; ?>
     <title>My Digital ID - Member Portal</title>
     <style>
         .digital-id-card {

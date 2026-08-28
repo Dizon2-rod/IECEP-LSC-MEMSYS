@@ -1,9 +1,8 @@
 <?php
 require_once __DIR__ . '/../bootstrap.php';
-// Dynamic Sidebar - Adapts to user role
-// This file should be included after auth_check.php
+// Dynamic Sidebar - Unified White/Light Theme
+// ONLY the currently active page is colored; the rest are clean white.
 
-// Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -11,280 +10,412 @@ if (session_status() === PHP_SESSION_NONE) {
 // Load role configuration
 require_once __DIR__ . '/../includes/role-config.php';
 
-// Base URL variables for maintainability
-$base_public_url = '/IECEP-LSC-MEMSYS/public';
-$base_root_url = '/IECEP-LSC-MEMSYS';
+$base_public_url = defined('PUBLIC_URL') ? PUBLIC_URL : (defined('BASE_URL') ? BASE_URL . '/public' : '/IECEP-LSC-MEMSYS/public');
+$base_root_url = defined('BASE_URL') ? BASE_URL : '/IECEP-LSC-MEMSYS';
 
-function buildSidebarLink(string $url, string $publicBase): string {
-    if (strpos($url, '/') === 0) {
-        return htmlspecialchars($url, ENT_QUOTES);
+if (!function_exists('buildSidebarLink')) {
+    function buildSidebarLink(string $url, string $publicBase): string {
+        if (strpos($url, 'http://') === 0 || strpos($url, 'https://') === 0) {
+            return htmlspecialchars($url, ENT_QUOTES);
+        }
+        if (strpos($url, '/') === 0) {
+            return htmlspecialchars((defined('BASE_URL') ? BASE_URL : '') . $url, ENT_QUOTES);
+        }
+        return htmlspecialchars(rtrim($publicBase, '/') . '/' . ltrim($url, '/'), ENT_QUOTES);
     }
-    return htmlspecialchars(rtrim($publicBase, '/') . '/' . ltrim($url, '/'), ENT_QUOTES);
 }
 
-// Get user info with fallbacks
+// Get user info
 $user = isset($_SESSION['user']) ? $_SESSION['user'] : [];
-
-// Enhanced role detection with multiple fallbacks
 $role = $_SESSION['role'] ?? 
          $user['role'] ?? 
          $user['user_metadata']['role'] ?? 
          'school_officer';
 
-$user_name = $user['user_metadata']['full_name'] ?? $_SESSION['user_name'] ?? $user['email'] ?? 'User';
+$user_name = $user['user_metadata']['full_name'] ?? $_SESSION['user_name'] ?? $user['name'] ?? $user['email'] ?? 'User';
 $user_email = $user['email'] ?? $_SESSION['user_email'] ?? '';
 $avatar_url = $user['user_metadata']['avatar_url'] ?? '';
 
-// Get current page for active state
-// This should be set by each portal page: $current_page = basename(__FILE__, '.php');
-if (!isset($current_page)) {
-    $current_page = basename($_SERVER['PHP_SELF'], '.php');
-}
-
-// Get role configuration from role-config.php
+// Get role configuration
 $roleConfig = getRoleConfig($role);
-
-// Fallback to school_officer if role not found
 if (!$roleConfig) {
     $role = 'school_officer';
     $roleConfig = getRoleConfig($role);
 }
 
 $menu_config = [
-    'title' => $roleConfig['title'] ?? 'Dashboard',
-    'badge' => $roleConfig['role_display'] ?? 'User',
+    'title' => $roleConfig['title'] ?? 'Admin Portal',
+    'badge' => $roleConfig['role_display'] ?? 'Admin Portal',
     'items' => $roleConfig['nav_items'] ?? []
 ];
 
-// Dynamic Portal Title Mapping
+// Unified Portal Title Mapping
 $portal_names = [
+    'super_admin' => 'Admin Portal',
     'admin' => 'Admin Portal',
-    'school_officer' => 'School Officer Portal'
+    'school_officer' => 'School Officer Portal',
+    'member' => 'Member Portal'
 ];
 
-$portal_title = $portal_names[$role] ?? 'Dashboard';
+$portal_title = $portal_names[$role] ?? ($roleConfig['title'] ?? 'Admin Portal');
 
-// Function to check if menu item is active
-function isMenuItemActive($item_url, $current_page) {
-    $item_page = basename(parse_url($item_url, PHP_URL_PATH), '.php');
-    if ($current_page !== $item_page) {
-        return false;
+if (!function_exists('isMenuItemActive')) {
+    function isMenuItemActive($item_url) {
+        $script = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? $_SERVER['PHP_SELF'] ?? '');
+        
+        // Strip prefixes to get exact relative path from public root
+        $clean_script = preg_replace('#^.*?/public/#', '', $script);
+        $clean_script = preg_replace('#^.*?/IECEP-LSC-MEMSYS/#', '', $clean_script);
+        $clean_script = trim(parse_url($clean_script, PHP_URL_PATH) ?? '', '/');
+        
+        $clean_url = preg_replace('#^.*?/public/#', '', $item_url);
+        $clean_url = preg_replace('#^.*?/IECEP-LSC-MEMSYS/#', '', $clean_url);
+        $clean_url = trim(parse_url($clean_url, PHP_URL_PATH) ?? '', '/');
+        
+        if (empty($clean_url) || empty($clean_script)) {
+            return false;
+        }
+        
+        return ($clean_script === $clean_url);
     }
-
-    $normalized_item_url = $item_url;
-    if (strpos($item_url, '/') !== 0) {
-        global $base_public_url;
-        $normalized_item_url = rtrim($base_public_url, '/') . '/' . ltrim($item_url, '/');
-    }
-
-    $item_path = ltrim(parse_url($normalized_item_url, PHP_URL_PATH) ?? '', '/');
-    $script_path = ltrim(parse_url($_SERVER['SCRIPT_NAME'] ?? '', PHP_URL_PATH) ?? '', '/');
-
-    return $item_path !== '' && $script_path !== '' && $script_path === $item_path;
 }
 ?>
 
 <style>
-/* Dynamic Sidebar Styles */
+/* ==========================================================================
+   CONSISTENT WHITE SIDEBAR (Single Active Highlight Theme)
+   ========================================================================== */
 :root {
-    --sidebar-width: 260px;
-    --sidebar-primary: #0B1D4A;
-    --sidebar-primary-light: #1E3A6E;
-    --sidebar-accent: #D4AF37;
-    --sidebar-accent-hover: #B8960C;
-    --sidebar-white: #FFFFFF;
-    --sidebar-gray-100: #F8FAFC;
-    --sidebar-gray-200: #E2E8F0;
-    --sidebar-gray-600: #475569;
-    --sidebar-gray-700: #334155;
-    --sidebar-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    --sidebar-shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-    --sidebar-transition: all 0.3s ease;
+    --sb-width: 260px;
+    --sb-bg: #FFFFFF;
+    --sb-navy: #0B1D4A;
+    --sb-navy-hover: #1E3A8A;
+    --sb-gold: #D4AF37;
+    --sb-gold-text: #B8860B;
+    --sb-text: #334155;
+    --sb-text-muted: #64748B;
+    --sb-border: #E2E8F0;
+    --sb-hover: #F8FAFC;
+    --sb-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 #sidebar {
-    width: 260px;
-    background: var(--sidebar-primary);
-    color: var(--sidebar-white);
+    width: var(--sb-width);
+    background: var(--sb-bg);
+    color: var(--sb-text);
     height: 100vh;
     position: fixed;
     left: 0;
     top: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
     z-index: 1000;
     display: flex;
     flex-direction: column;
     transform: translateX(0);
-    transition: var(--sidebar-transition);
-    box-shadow: var(--sidebar-shadow-lg);
+    transition: var(--sb-transition);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.04);
+    border-right: 1px solid var(--sb-border);
+    font-family: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
 }
 
-#sidebar.mobile-hidden {
-    transform: translateX(-100%);
+#sidebar::-webkit-scrollbar {
+    width: 4px;
 }
 
-#sidebar .sidebar-header {
-    padding: 28px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-    text-align: center;
-    background: linear-gradient(135deg, rgba(11, 29, 74, 0.95) 0%, rgba(30, 58, 110, 0.95) 100%);
+#sidebar::-webkit-scrollbar-track {
+    background: transparent;
 }
 
-#sidebar .sidebar-brand {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    margin-bottom: 12px;
+#sidebar::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 4px;
 }
 
-#sidebar .sidebar-brand img {
-    width: 36px;
-    height: auto;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+/* Header & Brand (Locked to Pure White) */
+#sidebar .sidebar-header,
+.sidebar-header {
+    padding: 1.25rem 1.15rem 1rem !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    background: #FFFFFF !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 10 !important;
 }
 
-#sidebar .sidebar-brand h3 {
-    font-size: 1.4rem;
-    font-weight: 800;
-    margin: 0;
-    color: var(--sidebar-white);
-    font-family: 'Inter', sans-serif;
-    letter-spacing: -0.02em;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+.sidebar-header-top {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    background: transparent !important;
 }
 
-#sidebar .sidebar-header p {
-    font-size: 1.1rem;
-    font-weight: 600;
-    opacity: 0.95;
-    margin: 6px 0 16px;
-    font-family: 'Inter', sans-serif;
-    color: var(--sidebar-white);
-    letter-spacing: 0.01em;
+.sidebar-brand-lockup {
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    flex: 1 !important;
+    background: transparent !important;
 }
 
-#sidebar .user-role-badge {
-    background: rgba(196, 154, 0, 0.25);
-    color: #C49A00;
-    padding: 8px 16px;
-    border-radius: 25px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-family: 'Inter', sans-serif;
-    border: 1px solid rgba(196, 154, 0, 0.3);
-    box-shadow: 0 2px 4px rgba(196, 154, 0, 0.1);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+.sidebar-logo-frame {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 10px !important;
+    background: #FAF9F6 !important;
+    border: 1px solid rgba(212, 175, 55, 0.35) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+    padding: 4px !important;
 }
 
-#sidebar .sidebar-actions {
-    display: flex;
-    justify-content: center;
-    margin-top: 16px;
+.sidebar-logo-frame img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain !important;
 }
 
+.sidebar-brand-meta {
+    display: flex !important;
+    flex-direction: column !important;
+    background: transparent !important;
+}
+
+.sidebar-brand-title {
+    font-family: 'Times New Roman', serif !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: #0B1D4A !important;
+    letter-spacing: 0.02em !important;
+    line-height: 1.15 !important;
+    margin: 0 !important;
+}
+
+.sidebar-portal-badge {
+    font-size: 0.65rem !important;
+    font-weight: 700 !important;
+    color: #B8860B !important;
+    background: #FEF9C3 !important;
+    border: 1px solid rgba(212, 175, 55, 0.3) !important;
+    padding: 2px 7px !important;
+    border-radius: 4px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    margin-top: 3px !important;
+    display: inline-block !important;
+    width: fit-content !important;
+}
+
+.sidebar-status-strip {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    margin-top: 0.85rem !important;
+    padding: 6px 10px !important;
+    background: #F8FAFC !important;
+    border-radius: 6px !important;
+    border: 1px solid #E2E8F0 !important;
+}
+
+.sidebar-status-dot {
+    width: 7px !important;
+    height: 7px !important;
+    border-radius: 50% !important;
+    background: #10B981 !important;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25) !important;
+    flex-shrink: 0 !important;
+}
+
+.sidebar-status-text {
+    font-size: 0.64rem !important;
+    font-weight: 600 !important;
+    color: #64748B !important;
+    letter-spacing: 0.02em !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Nav Menu */
 #sidebar .sidebar-nav {
     flex: 1;
-    padding: 20px 0;
+    padding: 12px 10px;
 }
 
 #sidebar .nav-menu {
     list-style: none;
     margin: 0;
     padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
 }
 
 #sidebar .nav-menu li {
-    margin-bottom: 2px;
+    margin: 0;
 }
 
 #sidebar .nav-menu a {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 20px;
-    color: rgba(255, 255, 255, 0.8);
+    padding: 10px 14px;
+    color: var(--sb-text);
     text-decoration: none;
-    transition: var(--sidebar-transition);
-    font-size: 0.95rem;
+    border-radius: 10px;
+    transition: var(--sb-transition);
+    font-size: 0.88rem;
     font-weight: 500;
-    font-family: 'Inter', sans-serif;
-    position: relative;
+    background: transparent;
+    user-select: none;
 }
 
 #sidebar .nav-menu a:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--sidebar-white);
+    background: var(--sb-hover);
+    color: var(--sb-navy);
 }
 
-#sidebar .nav-menu a.active {
-    background: rgba(196, 154, 0, 0.15);
-    color: var(--sidebar-accent);
-    border-left: 4px solid #C49A00;
-    font-weight: 600;
-    position: relative;
+#sidebar .nav-menu a:hover i:first-child {
+    color: var(--sb-navy);
 }
 
-#sidebar .nav-menu a.active::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: linear-gradient(180deg, #C49A00 0%, #D4AF37 100%);
-    box-shadow: 0 0 8px rgba(196, 154, 0, 0.4);
-}
-
-#sidebar .nav-menu i {
+#sidebar .nav-menu i:first-child {
     width: 20px;
     text-align: center;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
+    color: var(--sb-text-muted);
+    transition: var(--sb-transition);
+    flex-shrink: 0;
 }
 
+/* ONLY the selected single file gets the dark blue active color */
+#sidebar .nav-menu > li:not(.nav-item-dropdown) > a.active,
+#sidebar .nav-submenu a.active {
+    background: linear-gradient(135deg, #0B1D4A 0%, #1E3A8A 100%) !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 14px rgba(11, 29, 74, 0.22) !important;
+}
+
+#sidebar .nav-submenu a.active {
+    border-left: 3.5px solid #FDE047 !important;
+}
+
+#sidebar .nav-menu > li:not(.nav-item-dropdown) > a.active i:first-child,
+#sidebar .nav-submenu a.active i:first-child {
+    color: #FDE047 !important;
+}
+
+/* Dropdown Parent Header - ALWAYS clean white/transparent, NEVER dark blue */
+.nav-item-dropdown > a {
+    cursor: pointer;
+    background: transparent !important;
+    color: var(--sb-text) !important;
+    box-shadow: none !important;
+}
+
+.nav-item-dropdown > a:hover {
+    background: var(--sb-hover) !important;
+    color: var(--sb-navy) !important;
+}
+
+.nav-item-dropdown.open > a {
+    color: var(--sb-navy) !important;
+    font-weight: 600;
+}
+
+.submenu-arrow {
+    font-size: 0.72rem !important;
+    color: #94A3B8;
+    margin-left: auto;
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-item-dropdown.open .submenu-arrow {
+    transform: rotate(90deg);
+    color: var(--sb-navy);
+}
+
+/* Submenu */
+.nav-submenu {
+    list-style: none;
+    margin: 2px 0 4px 20px;
+    padding: 2px 0 2px 10px;
+    border-left: 1.5px solid var(--sb-border);
+    display: none;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.nav-submenu.show {
+    display: flex;
+}
+
+.nav-submenu a {
+    padding: 7px 12px !important;
+    font-size: 0.82rem !important;
+    color: var(--sb-text-muted) !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    gap: 10px !important;
+    background: transparent;
+}
+
+.nav-submenu a i:first-child {
+    font-size: 0.8rem !important;
+    width: 16px !important;
+    color: #94A3B8 !important;
+}
+
+.nav-submenu a:hover {
+    color: var(--sb-navy) !important;
+    background: var(--sb-hover) !important;
+}
+
+.nav-submenu a:hover i:first-child {
+    color: var(--sb-navy) !important;
+}
+
+/* Footer & Profile */
 #sidebar .sidebar-footer {
-    padding: 20px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 12px 14px 14px;
+    border-top: 1px solid var(--sb-border);
+    background: var(--sb-bg);
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 #sidebar .user-info {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
+    gap: 10px;
+    padding: 6px 8px;
+    background: #F8FAFC;
+    border-radius: 9px;
+    border: 1px solid var(--sb-border);
 }
 
 #sidebar .user-avatar {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #C49A00 0%, #D4AF37 100%);
-    color: var(--sidebar-primary);
+    background: linear-gradient(135deg, #0B1D4A 0%, #1E3A8A 100%);
+    color: #FDE047;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    font-size: 1.1rem;
-    font-family: 'Inter', sans-serif;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    position: relative;
-    overflow: hidden;
-}
-
-#sidebar .user-avatar::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%);
-    border-radius: 50%;
+    font-weight: 800;
+    font-size: 0.9rem;
+    border: 2px solid rgba(212, 175, 55, 0.4);
+    flex-shrink: 0;
 }
 
 #sidebar .user-avatar img {
@@ -292,119 +423,210 @@ function isMenuItemActive($item_url, $current_page) {
     height: 100%;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 #sidebar .user-details {
     flex: 1;
+    overflow: hidden;
 }
 
 #sidebar .user-name {
-    font-weight: 600;
-    font-size: 0.9rem;
-    color: var(--sidebar-white);
-    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 0.84rem;
+    color: #0F172A;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #sidebar .user-email {
-    font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.6);
-    margin-top: 2px;
-    font-family: 'Inter', sans-serif;
+    font-size: 0.72rem;
+    color: var(--sb-gold-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
 }
 
-#sidebar .sidebar-pwa-actions {
-    margin-bottom: 12px;
+.hidden {
+    display: none !important;
 }
 
 #sidebar .logout-btn {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 10px 16px;
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
+    padding: 8px 12px;
+    background: #FEF2F2;
+    color: #DC2626;
+    border: 1px solid #FEE2E2;
     text-decoration: none;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: var(--sidebar-transition);
-    font-family: 'Inter', sans-serif;
+    border-radius: 9px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    transition: var(--sb-transition);
 }
 
 #sidebar .logout-btn:hover {
-    background: rgba(239, 68, 68, 0.3);
-    color: #f87171;
+    background: #FEE2E2;
+    color: #B91C1C;
+    border-color: #FCA5A5;
 }
 
-/* Mobile Toggle Button */
+/* Mobile Toggle */
 .sidebar-toggle {
-    display: none;
     position: fixed;
-    top: 1rem;
-    left: 1rem;
+    top: 14px;
+    left: 14px;
     z-index: 1001;
-    background: var(--sidebar-primary);
-    color: var(--sidebar-white);
+    background: var(--sb-navy);
+    color: #FFFFFF;
     border: none;
-    border-radius: 8px;
-    padding: 0.75rem;
+    border-radius: 9px;
+    width: 40px;
+    height: 40px;
+    font-size: 1.05rem;
     cursor: pointer;
-    box-shadow: var(--sidebar-shadow);
-    transition: var(--sidebar-transition);
-}
-
-.sidebar-toggle:hover {
-    background: var(--sidebar-primary-light);
-}
-
-/* Mobile Overlay */
-.sidebar-overlay {
+    box-shadow: 0 2px 10px rgba(11, 29, 74, 0.25);
+    transition: var(--sb-transition);
     display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-overlay {
     position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.45);
+    backdrop-filter: blur(4px);
     z-index: 999;
+    display: none;
     opacity: 0;
-    visibility: hidden;
-    transition: var(--sidebar-transition);
+    transition: opacity 0.25s ease;
 }
 
 .sidebar-overlay.active {
     display: block;
     opacity: 1;
-    visibility: visible;
 }
 
-/* Main content wrapper – desktop */
 .main-content {
-    margin-left: var(--sidebar-width);
-    transition: margin-left var(--sidebar-transition);
+    margin-left: var(--sb-width);
+    transition: margin-left var(--sb-transition);
     padding: 2rem;
     min-height: 100vh;
 }
 
-/* Mobile: hide sidebar off-canvas */
 @media (max-width: 767.98px) {
+    .sidebar-toggle {
+        display: flex;
+    }
     #sidebar {
         transform: translateX(-100%);
     }
     #sidebar.open {
         transform: translateX(0);
+        box-shadow: 8px 0 30px rgba(0, 0, 0, 0.15);
     }
     .main-content {
         margin-left: 0;
+        padding-top: 4.5rem;
     }
 }
 
 @media (min-width: 768px) {
     .sidebar-toggle {
-        display: none;
+        display: none !important;
     }
-    
     .sidebar-overlay {
         display: none !important;
     }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Universal SaaS Squircle Pagination Design (< 1 [ 2 ] 3 >)
+   ───────────────────────────────────────────────────────────── */
+.pagination,
+.pagination-pages,
+.roster-pagination-bar .pagination-pages,
+.pagination-controls {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.pagination .page-item {
+    margin: 0 !important;
+    list-style: none !important;
+}
+
+.pagination .page-link,
+.page-btn,
+.pagination-pages button,
+.pagination-pages a,
+.pagination-controls button,
+.pagination-controls a {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    padding: 4px 8px !important;
+    border-radius: 8px !important;
+    font-size: 0.86rem !important;
+    font-weight: 600 !important;
+    color: #475569 !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    text-decoration: none !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    user-select: none !important;
+    box-shadow: none !important;
+}
+
+.pagination .page-link:hover,
+.page-btn:hover,
+.pagination-pages button:hover,
+.pagination-pages a:hover,
+.pagination-controls button:hover,
+.pagination-controls a:hover {
+    background: #F1F5F9 !important;
+    color: #0F172A !important;
+    border-color: #E2E8F0 !important;
+}
+
+.pagination .page-item.active .page-link,
+.pagination .page-link.active,
+.page-btn.active,
+.pagination-pages button.active,
+.pagination-pages a.active,
+.pagination-controls button.active,
+.pagination-controls a.active {
+    background: #1E293B !important;
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    border-radius: 9px !important;
+    border-color: #1E293B !important;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18) !important;
+}
+
+.pagination .page-item.disabled .page-link,
+.page-btn:disabled,
+.pagination-pages button:disabled,
+.pagination-controls button:disabled {
+    color: #CBD5E1 !important;
+    background: transparent !important;
+    border-color: transparent !important;
+    cursor: not-allowed !important;
+    opacity: 0.45 !important;
 }
 </style>
 
@@ -419,23 +641,64 @@ function isMenuItemActive($item_url, $current_page) {
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-        <div class="sidebar-brand">
-            <img src="<?php echo $base_public_url; ?>/assets/icons/iecep-logo.png" alt="IECEP-LSC Logo" style="width: 36px; height: auto; flex-shrink: 0;">
-            <h3>IECEP-LSC</h3>
+        <div class="sidebar-header-top">
+            <div class="sidebar-brand-lockup">
+                <div class="sidebar-logo-frame">
+                    <img src="<?php echo $base_public_url; ?>/assets/icons/iecep-logo.png" alt="IECEP-LSC Seal" onerror="this.style.display='none';">
+                </div>
+                <div class="sidebar-brand-meta">
+                    <span class="sidebar-brand-title">IECEP-LSC</span>
+                    <span class="sidebar-portal-badge"><?php echo htmlspecialchars($portal_title); ?></span>
+                </div>
+            </div>
         </div>
-        <p><?php echo htmlspecialchars($portal_title); ?></p>
+        
+        <div class="sidebar-status-strip">
+            <span class="sidebar-status-dot"></span>
+            <span class="sidebar-status-text">MEMSYS – Laguna Student Chapter</span>
+        </div>
     </div>
     
     <nav class="sidebar-nav">
         <ul class="nav-menu">
             <?php foreach ($menu_config['items'] as $item): ?>
-                <li>
-                    <a href="<?php echo buildSidebarLink($item['url'], $base_public_url); ?>" 
-                       class="<?php echo isMenuItemActive($item['url'], $current_page) ? 'active' : ''; ?>">
-                        <i class="fas <?php echo htmlspecialchars($item['icon']); ?>"></i>
-                        <span><?php echo htmlspecialchars($item['label']); ?></span>
-                    </a>
-                </li>
+                <?php if (!empty($item['children'])): ?>
+                    <?php 
+                        $hasActiveChild = false;
+                        foreach ($item['children'] as $child) {
+                            if (isMenuItemActive($child['url'])) {
+                                $hasActiveChild = true;
+                                break;
+                            }
+                        }
+                    ?>
+                    <li class="nav-item-dropdown <?php echo $hasActiveChild ? 'open' : ''; ?>">
+                        <a href="javascript:void(0);" class="dropdown-toggle">
+                            <i class="fas <?php echo htmlspecialchars($item['icon']); ?>"></i>
+                            <span><?php echo htmlspecialchars($item['label']); ?></span>
+                            <i class="fas fa-chevron-right submenu-arrow"></i>
+                        </a>
+                        <ul class="nav-submenu <?php echo $hasActiveChild ? 'show' : ''; ?>">
+                            <?php foreach ($item['children'] as $child): ?>
+                                <li>
+                                    <a href="<?php echo buildSidebarLink($child['url'], $base_public_url); ?>"
+                                       class="<?php echo isMenuItemActive($child['url']) ? 'active' : ''; ?>">
+                                        <i class="fas <?php echo htmlspecialchars($child['icon']); ?>"></i>
+                                        <span><?php echo htmlspecialchars($child['label']); ?></span>
+                                    </a>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </li>
+                <?php else: ?>
+                    <li>
+                        <a href="<?php echo buildSidebarLink($item['url'], $base_public_url); ?>" 
+                           class="<?php echo isMenuItemActive($item['url']) ? 'active' : ''; ?>">
+                            <i class="fas <?php echo htmlspecialchars($item['icon']); ?>"></i>
+                            <span><?php echo htmlspecialchars($item['label']); ?></span>
+                        </a>
+                    </li>
+                <?php endif; ?>
             <?php endforeach; ?>
         </ul>
     </nav>
@@ -466,7 +729,6 @@ function isMenuItemActive($item_url, $current_page) {
 </aside>
 
 <script>
-// Prevent script duplication
 if (typeof window.sidebarInitialized === 'undefined') {
     window.sidebarInitialized = true;
     
@@ -475,30 +737,26 @@ if (typeof window.sidebarInitialized === 'undefined') {
         const sidebarToggle = document.getElementById('sidebarToggle');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
         
-        // ============================================
-        // SIDEBAR STATE MANAGEMENT
-        // ============================================
         function openSidebar() {
-            sidebar.classList.add('open');
-            sidebarOverlay.classList.add('active');
+            if (sidebar) sidebar.classList.add('open');
+            if (sidebarOverlay) sidebarOverlay.classList.add('active');
             document.body.style.overflow = 'hidden';
         }
         
         function closeSidebar() {
-            sidebar.classList.remove('open');
-            sidebarOverlay.classList.remove('active');
+            if (sidebar) sidebar.classList.remove('open');
+            if (sidebarOverlay) sidebarOverlay.classList.remove('active');
             document.body.style.overflow = '';
         }
         
         function toggleSidebar() {
-            if (sidebar.classList.contains('open')) {
+            if (sidebar && sidebar.classList.contains('open')) {
                 closeSidebar();
             } else {
                 openSidebar();
             }
         }
         
-        // Toggle sidebar
         if (sidebarToggle) {
             sidebarToggle.addEventListener('click', function(e) {
                 e.preventDefault();
@@ -507,41 +765,64 @@ if (typeof window.sidebarInitialized === 'undefined') {
             });
         }
         
-        // Close sidebar when clicking overlay
         if (sidebarOverlay) {
             sidebarOverlay.addEventListener('click', closeSidebar);
         }
         
-        // Close sidebar on escape key
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && sidebar.classList.contains('open')) {
+            if (e.key === 'Escape' && sidebar && sidebar.classList.contains('open')) {
                 closeSidebar();
             }
         });
         
-        // ============================================
-        // SIDEBAR NAVIGATION - STABLE STATE
-        // ============================================
-        // Ensure clicking nav links doesn't break sidebar state
-        const navLinks = sidebar.querySelectorAll('.nav-menu a');
-        navLinks.forEach(function(link) {
-            link.addEventListener('click', function() {
-                // On mobile, close sidebar after clicking a link
-                if (window.innerWidth <= 767) {
-                    // Small delay to allow navigation to start
-                    setTimeout(closeSidebar, 100);
-                }
+        // Dropdown accordion toggles
+        if (sidebar) {
+            const dropdownToggles = sidebar.querySelectorAll('.nav-item-dropdown > a');
+            dropdownToggles.forEach(function(toggle) {
+                toggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const parent = toggle.closest('.nav-item-dropdown');
+                    if (parent) {
+                        const submenu = parent.querySelector('.nav-submenu');
+                        if (submenu) {
+                            const isOpen = parent.classList.contains('open');
+                            
+                            // Close other open dropdowns for a clean accordion effect
+                            sidebar.querySelectorAll('.nav-item-dropdown.open').forEach(function(other) {
+                                if (other !== parent) {
+                                    other.classList.remove('open');
+                                    const otherSub = other.querySelector('.nav-submenu');
+                                    if (otherSub) otherSub.classList.remove('show');
+                                }
+                            });
+
+                            if (isOpen) {
+                                parent.classList.remove('open');
+                                submenu.classList.remove('show');
+                            } else {
+                                parent.classList.add('open');
+                                submenu.classList.add('show');
+                            }
+                        }
+                    }
+                });
             });
-        });
+
+            const navLinks = sidebar.querySelectorAll('.nav-menu a:not(.dropdown-toggle)');
+            navLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 767) {
+                        setTimeout(closeSidebar, 150);
+                    }
+                });
+            });
+        }
         
-        // ============================================
-        // PREVENT SIDEBAR STATE CORRUPTION
-        // ============================================
-        // Ensure sidebar is visible on desktop regardless of mobile state
         window.addEventListener('resize', function() {
             if (window.innerWidth > 767) {
-                sidebar.classList.remove('open');
-                sidebarOverlay.classList.remove('active');
+                if (sidebar) sidebar.classList.remove('open');
+                if (sidebarOverlay) sidebarOverlay.classList.remove('active');
                 document.body.style.overflow = '';
             }
         });

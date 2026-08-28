@@ -4,105 +4,300 @@ require_once __DIR__ . '/bootstrap.php';
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>Mission and Vision - IECEP-LSC MEMSYS</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mission, Vision &amp; Core Values — IECEP-LSC</title>
     <?php include __DIR__ . '/includes/head-meta.php'; ?>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #0B1D4A;
-            --primary-light: #1E3A6E;
-            --accent: #C5A059;
-            --white: #FFFFFF;
-            --neutral-200: #E5E7EB;
-            --neutral-700: #374151;
-            --space-2: 8px;
-            --space-3: 12px;
-            --space-4: 16px;
-            --space-5: 20px;
-            --space-6: 24px;
-            --space-8: 32px;
-            --shadow-md: 0 4px 10px rgba(0,0,0,0.08);
+            --primary-light: #142A6B;
+            --accent: #D4AF37;
+            --accent-hover: #C5A059;
+            --navy-dark: #07122E;
+            --slate-50: #F8FAFC;
+            --slate-100: #F1F5F9;
+            --slate-200: #E2E8F0;
+            --slate-600: #475569;
+            --slate-800: #1E293B;
+            --radius-md: 12px;
+            --radius-lg: 20px;
+            --radius-full: 9999px;
+            --shadow-card: 0 10px 30px -5px rgba(11, 29, 74, 0.08), 0 4px 10px -2px rgba(11, 29, 74, 0.04);
+            --shadow-hover: 0 20px 40px -10px rgba(11, 29, 74, 0.18), 0 8px 16px -4px rgba(212, 175, 55, 0.15);
         }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #F8FAFC;
+            color: var(--slate-800);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Page Hero ────────────────────────────────────────── */
         .page-hero {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
-            color: var(--white);
-            padding: 80px 1rem 50px;
+            position: relative;
+            background: linear-gradient(135deg, #07122E 0%, #0B1D4A 55%, #142A6B 100%);
+            color: #FFFFFF;
+            padding: 120px 1.5rem 60px;
             text-align: center;
+            overflow: hidden;
         }
-        .page-hero h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: var(--space-2); color: var(--white); }
-        .page-hero p { font-size: 0.9rem; opacity: 0.9; }
-        .content-section { max-width: 850px; margin: 0 auto; padding: var(--space-8) var(--space-4); }
-        .content-section h2 {
-            color: var(--primary);
-            font-size: 1.4rem;
-            margin-bottom: var(--space-3);
+        .page-hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 80% 20%, rgba(212, 175, 55, 0.15) 0%, transparent 60%),
+                        radial-gradient(circle at 20% 80%, rgba(30, 58, 138, 0.3) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        .hero-inner {
+            position: relative;
+            z-index: 2;
+            max-width: 820px;
+            margin: 0 auto;
+        }
+        .hero-title {
+            font-family: 'Times New Roman', Arial, serif;
+            font-size: clamp(2.2rem, 4.5vw, 3.2rem);
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+            color: #FFFFFF;
+        }
+        .hero-title span {
+            background: linear-gradient(135deg, #FFE89E 0%, #D4AF37 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .hero-desc {
+            font-size: 1.05rem;
+            color: rgba(255, 255, 255, 0.85);
+            line-height: 1.65;
+            max-width: 680px;
+            margin: 0 auto;
+        }
+
+        /* ── Main Container ───────────────────────────────────── */
+        .content-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3.5rem 1.5rem 5rem;
+            flex: 1;
+            width: 100%;
+        }
+
+        /* ── Mission & Vision Grid ────────────────────────────── */
+        .mv-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-bottom: 4rem;
+        }
+        @media (min-width: 992px) {
+            .mv-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .mv-card {
+            background: #FFFFFF;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--slate-200);
+            box-shadow: var(--shadow-card);
+            padding: 2.75rem 2.25rem;
             display: flex;
-            align-items: center;
-            gap: var(--space-2);
+            flex-direction: column;
+            position: relative;
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            overflow: hidden;
         }
-        .content-section p { font-size: 0.95rem; line-height: 1.6; color: var(--neutral-700); margin-bottom: var(--space-3); }
-        .mission-box, .vision-box {
-            background: var(--white);
-            padding: var(--space-5);
-            border-radius: 12px;
-            box-shadow: var(--shadow-md);
-            margin-bottom: var(--space-5);
-            border-left: 3px solid var(--accent);
+        .mv-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
         }
-        .icon-wrapper {
-            width: 40px;
-            height: 40px;
-            background: var(--accent);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .mv-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(212, 175, 55, 0.4);
+            box-shadow: var(--shadow-hover);
+        }
+        .mv-card:hover::before {
+            opacity: 1;
+        }
+
+        .mv-card-label {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #D4AF37;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 0.5rem;
+        }
+        .mv-card-title {
+            font-family: 'Times New Roman', Arial, serif;
+            font-size: 1.85rem;
+            font-weight: 700;
             color: var(--primary);
+            margin-bottom: 1.25rem;
+            line-height: 1.3;
         }
-        .icon-wrapper i { font-size: 1.2rem; }
-        .values-section h2 { margin-top: var(--space-4); }
-        .values-section ul {
+        .mv-card-text {
+            font-size: 1.02rem;
+            color: var(--slate-600);
+            line-height: 1.8;
+            margin: 0;
+            flex: 1;
+        }
+
+        /* ── Core Values Section ──────────────────────────────── */
+        .values-heading-wrap {
+            text-align: center;
+            max-width: 680px;
+            margin: 0 auto 2.5rem;
+        }
+        .values-title {
+            font-family: 'Times New Roman', Arial, serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        .values-subtitle {
+            color: var(--slate-600);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .values-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 1.5rem;
+        }
+        @media (min-width: 640px) {
+            .values-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (min-width: 1024px) {
+            .values-grid { grid-template-columns: repeat(3, 1fr); }
+        }
+
+        .value-card {
+            background: #FFFFFF;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--slate-200);
+            box-shadow: var(--shadow-card);
+            padding: 2rem 1.75rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .value-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(212, 175, 55, 0.4);
+            box-shadow: var(--shadow-hover);
+        }
+        .value-name {
+            font-family: 'Times New Roman', Arial, serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+        .value-desc {
             font-size: 0.9rem;
-            line-height: 1.7;
-            color: var(--neutral-700);
-            margin-left: var(--space-4);
-        }
-        @media (max-width: 640px) {
-            .page-hero h1 { font-size: 1.5rem; }
-            .content-section h2 { font-size: 1.2rem; }
+            color: var(--slate-600);
+            line-height: 1.6;
+            margin: 0;
         }
     </style>
 </head>
 <body>
     <?php include __DIR__ . '/includes/navbar.php'; ?>
 
-    <section class="page-hero">
-        <div class="page-hero-content">
-            <h1>Mission and Vision</h1>
-            <p>The guiding principles of IECEP-Laguna Student Chapter</p>
+    <!-- ═══════════════════════════════════════════════════════════ Hero -->
+    <header class="page-hero">
+        <div class="hero-inner">
+            <h1 class="hero-title">
+                Mission, Vision &amp; <span>Core Values</span>
+            </h1>
+            <p class="hero-desc">
+                The foundational charter that inspires our executive programs, student empowerment initiatives, and professional electronics engineering stewardship.
+            </p>
         </div>
-    </section>
+    </header>
 
-    <main class="content-section">
-        <div class="mission-box">
-            <h2><div class="icon-wrapper"><i class="fas fa-bullseye"></i></div> Our Mission</h2>
-            <p>To foster excellence in electronics engineering education and practice among students in Laguna, promoting professional development, ethical standards, and technological innovation. We aim to create a collaborative environment that bridges academic learning with industry practices, preparing the next generation of electronics engineers to become leaders and innovators in their field.</p>
-        </div>
+    <!-- ═══════════════════════════════════════════════════════════ Mission & Vision -->
+    <main class="content-container">
+        <section class="mv-grid">
+            <!-- Mission Card -->
+            <article class="mv-card">
+                <span class="mv-card-label">Institutional Purpose</span>
+                <h2 class="mv-card-title">Our Mission</h2>
+                <p class="mv-card-text">
+                    To foster excellence in electronics engineering education and professional practice across Laguna higher education institutions. We promote holistic technical competence, strict ethical standards, and innovation by creating an active synergy between academic theory and real-world industrial applications — preparing the next generation of engineers to become visionary leaders.
+                </p>
+            </article>
 
-        <div class="vision-box">
-            <h2><div class="icon-wrapper"><i class="fas fa-eye"></i></div> Our Vision</h2>
-            <p>To be the premier student organization for electronics engineering in the Philippines, recognized for producing highly competent, socially responsible, and globally competitive professionals who contribute significantly to the advancement of technology and the betterment of society.</p>
-        </div>
+            <!-- Vision Card -->
+            <article class="mv-card">
+                <span class="mv-card-label">Future Outlook</span>
+                <h2 class="mv-card-title">Our Vision</h2>
+                <p class="mv-card-text">
+                    To be the premier, globally recognized student organization for electronics engineering in the Philippines — renowned for producing competent, socially responsible, and technologically innovative professionals who contribute significantly to national technological sovereignty and global engineering progress.
+                </p>
+            </article>
+        </section>
 
-        <div class="values-section">
-            <h2><div class="icon-wrapper"><i class="fas fa-heart"></i></div> Core Values</h2>
-            <ul>
-                <li><strong>Excellence:</strong> Striving for the highest standards in education and practice</li>
-                <li><strong>Integrity:</strong> Upholding ethical principles and professional conduct</li>
-                <li><strong>Innovation:</strong> Embracing new ideas and technologies</li>
-                <li><strong>Collaboration:</strong> Working together for collective success</li>
-                <li><strong>Service:</strong> Contributing to community and nation-building</li>
-            </ul>
-        </div>
+        <!-- Core Values -->
+        <section>
+            <div class="values-heading-wrap">
+                <h2 class="values-title">Core Values</h2>
+                <p class="values-subtitle">The fundamental standards and ethical code that govern every initiative of the IECEP Laguna Student Chapter.</p>
+            </div>
+
+            <div class="values-grid">
+                <div class="value-card">
+                    <h3 class="value-name">Excellence</h3>
+                    <p class="value-desc">Relentlessly striving for the highest standards in academics, technical research, and organizational execution.</p>
+                </div>
+
+                <div class="value-card">
+                    <h3 class="value-name">Integrity</h3>
+                    <p class="value-desc">Upholding honesty, ethical conduct, transparency, and professional accountability in all chapter affairs.</p>
+                </div>
+
+                <div class="value-card">
+                    <h3 class="value-name">Innovation</h3>
+                    <p class="value-desc">Embracing cutting-edge electronics, AI/IoT integration, and creative problem-solving for modern engineering.</p>
+                </div>
+
+                <div class="value-card">
+                    <h3 class="value-name">Collaboration</h3>
+                    <p class="value-desc">Fostering deep camaraderie, teamwork, and institutional unity among all affiliated HEI student chapters.</p>
+                </div>
+
+                <div class="value-card">
+                    <h3 class="value-name">Service</h3>
+                    <p class="value-desc">Dedicated to community outreach, technology transfer, and contributing meaningfully to nation-building.</p>
+                </div>
+
+                <div class="value-card">
+                    <h3 class="value-name">Global Competence</h3>
+                    <p class="value-desc">Preparing Filipino student engineers to excel and compete confidently in the international technological sphere.</p>
+                </div>
+            </div>
+        </section>
     </main>
 
     <?php include __DIR__ . '/includes/footer-new.php'; ?>

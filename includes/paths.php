@@ -54,6 +54,7 @@ function get_portal_url($role, $page = 'dashboard.php') {
  */
 function get_role_path($role) {
     $rolePaths = [
+        'super_admin' => 'admin',
         'admin' => 'admin',
         'school_officer' => 'school-officer',
         'member' => 'member',

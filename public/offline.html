@@ -4,59 +4,89 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Offline - IECEP-LSC Membership System</title>
-    <link rel="stylesheet" href="/assets/css/professional.css">
-    <link rel="stylesheet" href="/public/assets/css/bootstrap.min.css">
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="/IECEP-LSC-MEMSYS/public/manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="/IECEP-LSC-MEMSYS/public/assets/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="/IECEP-LSC-MEMSYS/public/assets/icons/favicon.png">
+    <link rel="shortcut icon" href="/IECEP-LSC-MEMSYS/public/favicon.ico">
+    <meta name="theme-color" content="#0B1D4A">
+    <meta name="application-name" content="IECEP - LSC MEMSYS">
+    <meta name="apple-mobile-web-app-title" content="IECEP - LSC MEMSYS">
+    <meta name="mobile-web-app-capable" content="yes">
     <style>
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
         .offline-container {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #0B1D4A 0%, #1a365d 100%);
+            background: linear-gradient(135deg, #07122E 0%, #0B1D4A 60%, #142A6B 100%);
+            padding: 1.5rem;
         }
 
         .offline-card {
-            background: rgba(255, 255, 255, 0.95);
+            background: #FFFFFF;
             border-radius: 20px;
-            padding: 3rem;
+            padding: 3.5rem 2.5rem;
             text-align: center;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-            max-width: 500px;
-            width: 90%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+            max-width: 520px;
+            width: 100%;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .offline-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #0B1D4A 0%, #D4AF37 50%, #0B1D4A 100%);
         }
 
         .offline-icon {
-            font-size: 4rem;
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: rgba(212, 175, 55, 0.12);
             color: #D4AF37;
-            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 1.5rem;
+            border: 1px solid rgba(212, 175, 55, 0.4);
         }
 
         .offline-title {
+            font-family: 'Times New Roman', Arial, serif;
             color: #0B1D4A;
-            font-size: 2rem;
+            font-size: 2.2rem;
             font-weight: 700;
-            margin-bottom: 1rem;
+            margin-bottom: 0.75rem;
         }
 
         .offline-message {
-            color: #64748b;
-            font-size: 1.1rem;
-            line-height: 1.6;
+            color: #475569;
+            font-size: 1rem;
+            line-height: 1.65;
             margin-bottom: 2rem;
         }
 
         .retry-btn {
-            background: linear-gradient(135deg, #0B1D4A 0%, #1a365d 100%);
-            color: white;
+            background: #0B1D4A;
+            color: #FFFFFF;
             border: none;
-            padding: 12px 30px;
-            border-radius: 10px;
-            font-size: 1rem;
+            padding: 12px 28px;
+            border-radius: 50px;
+            font-size: 0.92rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            margin: 0.5rem;
+            margin: 0.4rem;
         }
 
         .retry-btn:hover {

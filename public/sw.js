@@ -1,7 +1,7 @@
 // Service Worker for IECEP-LSC Membership System PWA
-const CACHE_NAME = 'iecep-lsc-v1.0.0';
-const STATIC_CACHE = 'iecep-lsc-static-v1.0.0';
-const DYNAMIC_CACHE = 'iecep-lsc-dynamic-v1.0.0';
+const CACHE_NAME = 'iecep-lsc-v1.2.0';
+const STATIC_CACHE = 'iecep-lsc-static-v1.2.0';
+const DYNAMIC_CACHE = 'iecep-lsc-dynamic-v1.2.0';
 
 const BASE_PATH = self.location.pathname.replace(/\/sw\.js$/, '');
 const buildUrl = (path) => {    if (path === '/' || path === '') {
@@ -25,8 +25,12 @@ const STATIC_ASSETS = [
     buildUrl('assets/js/app.js'),
     buildUrl('assets/js/toast.js'),
     buildUrl('assets/js/offline.js'),
-    buildUrl('assets/icons/iecep-logo.png'),
-    buildUrl('assets/icons/iecep-logo.png'),
+    buildUrl('assets/icons/icon-192x192.png'),
+    buildUrl('assets/icons/icon-512x512.png'),
+    buildUrl('assets/icons/icon-192x192-maskable.png'),
+    buildUrl('assets/icons/icon-512x512-maskable.png'),
+    buildUrl('assets/icons/favicon.png'),
+    buildUrl('assets/icons/apple-touch-icon.png'),
     buildUrl('assets/css/bootstrap.min.css'),
     buildUrl('assets/js/bootstrap.bundle.min.js'),
     buildUrl('assets/js/chart.js')
@@ -85,6 +89,11 @@ self.addEventListener('fetch', event => {
         return;
     }
 
+    // Direct pass-through for all mutation requests (POST, PUT, DELETE) so all form submissions and APIs work identically to browser
+    if (request.method !== 'GET') {
+        return;
+    }
+
     // Handle API requests
     if (url.pathname.startsWith(`${BASE_PATH}/api/`)) {
         event.respondWith(handleApiRequest(request));
@@ -125,12 +134,14 @@ self.addEventListener('fetch', event => {
     event.respondWith(
         fetch(request)
             .then(response => {
-                // Cache successful GET requests
+                // Cache successful GET requests (excluding private portals and sensitive APIs)
                 if (request.method === 'GET' && response.status === 200) {
-                    const responseClone = response.clone();
-                    caches.open(DYNAMIC_CACHE).then(cache => {
-                        cache.put(request, responseClone);
-                    });
+                    if (!url.pathname.includes('/portal/') && !url.pathname.includes('/api/')) {
+                        const responseClone = response.clone();
+                        caches.open(DYNAMIC_CACHE).then(cache => {
+                            cache.put(request, responseClone);
+                        });
+                    }
                 }
                 return response;
             })

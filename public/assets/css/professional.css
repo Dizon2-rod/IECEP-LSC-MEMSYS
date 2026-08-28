@@ -910,52 +910,7 @@ a:hover {
     top: 0;
 }
 
-.sidebar-header {
-    margin-bottom: var(--spacing-6);
-}
-
-.sidebar-brand {
-    font-size: var(--font-size-lg);
-    font-weight: var(--font-weight-bold);
-    color: var(--primary-navy);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-2);
-}
-
-.sidebar-nav {
-    list-style: none;
-}
-
-.sidebar-link {
-    display: flex;
-    align-items: center;
-    padding: var(--spacing-3) var(--spacing-4);
-    color: var(--gray-600);
-    border-radius: var(--radius-lg);
-    transition: all var(--transition-fast);
-    margin-bottom: var(--spacing-1);
-    text-decoration: none;
-    font-weight: var(--font-weight-medium);
-}
-
-.sidebar-link:hover {
-    background: var(--gray-100);
-    color: var(--primary-navy);
-}
-
-.sidebar-link.active {
-    background: var(--primary-navy);
-    color: white;
-    box-shadow: var(--shadow-md);
-}
-
-.sidebar-link i {
-    margin-right: var(--spacing-3);
-    width: 20px;
-    text-align: center;
-    font-size: var(--font-size-lg);
-}
+/* Legacy sidebar styles removed to prevent conflicts with unified dynamic sidebar */
 
 /* Dashboard Layout */
 .dashboard-layout {

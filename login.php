@@ -164,17 +164,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 error_log("Role: " . ($profile['role'] ?? 'N/A'));
                 error_log("Must change password: " . ($mustChangePassword ? 'YES' : 'NO'));
                 
-                $_SESSION['user_id']   = $userId;
-                $_SESSION['email']     = $userEmail;
-                $_SESSION['full_name'] = $fullName;
-                $_SESSION['role']      = $profile['role'] ?? 'member';
-                $_SESSION['logged_in'] = true;
+                $_SESSION['user_id']        = $userId;
+                $_SESSION['email']          = $userEmail;
+                $_SESSION['full_name']      = $fullName;
+                $_SESSION['role']           = $profile['role'] ?? 'member';
+                $_SESSION['institution_id'] = $profile['institution_id'] ?? null;
+                $_SESSION['logged_in']      = true;
 
                 $_SESSION['user'] = [
-                    'id'    => $userId,
-                    'email' => $userEmail,
-                    'name'  => $fullName,
-                    'role'  => $profile['role'] ?? 'member',
+                    'id'             => $userId,
+                    'email'          => $userEmail,
+                    'name'           => $fullName,
+                    'role'           => $profile['role'] ?? 'member',
+                    'institution_id' => $profile['institution_id'] ?? null,
                     'must_change_password' => !empty($mustChangePassword)
                 ];
                 
@@ -201,27 +203,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!$error) {
                 $localFallbackAccounts = [
                     'lspuscc.adminece@gmail.com' => ['password' => 'Admin123!', 'role' => 'admin', 'full_name' => 'IECEP-LSC Administrator'],
-                    'ieceptest86@gmail.com' => ['password' => 'School123!', 'role' => 'school_officer', 'full_name' => 'LSPU - SCC School Officer'],
+                    'ieceptest86@gmail.com' => ['password' => 'School123!', 'role' => 'school_officer', 'full_name' => 'LSPU - SCC School Officer', 'institution_id' => 'lspu-scc'],
                     'rasheddizon7@gmail.com' => ['password' => 'Member123!', 'role' => 'member', 'full_name' => 'Rashed Dizon'],
                 ];
                 if (isset($localFallbackAccounts[$email]) && $localFallbackAccounts[$email]['password'] === $password) {
-                    $_SESSION['logged_in'] = true;
-                    $_SESSION['email'] = $email;
-                    $_SESSION['role'] = $localFallbackAccounts[$email]['role'];
-                    $_SESSION['full_name'] = $localFallbackAccounts[$email]['full_name'];
-                    $_SESSION['user_id'] = 'local-' . md5($email);
+                    $_SESSION['logged_in']      = true;
+                    $_SESSION['email']          = $email;
+                    $_SESSION['role']           = $localFallbackAccounts[$email]['role'];
+                    $_SESSION['full_name']      = $localFallbackAccounts[$email]['full_name'];
+                    $_SESSION['institution_id'] = $localFallbackAccounts[$email]['institution_id'] ?? null;
+                    $_SESSION['user_id']        = 'local-' . md5($email);
                     $_SESSION['user'] = [
-                        'id' => 'local-' . md5($email),
-                        'email' => $email,
-                        'name' => $localFallbackAccounts[$email]['full_name'],
-                        'role' => $localFallbackAccounts[$email]['role'],
+                        'id'             => 'local-' . md5($email),
+                        'email'          => $email,
+                        'name'           => $localFallbackAccounts[$email]['full_name'],
+                        'role'           => $localFallbackAccounts[$email]['role'],
+                        'institution_id' => $localFallbackAccounts[$email]['institution_id'] ?? null,
                         'must_change_password' => false
                     ];
 
                     $redirectMap = [
-                        'admin' => PORTAL_URL . '/admin/dashboard.php',
+                        'admin'          => PORTAL_URL . '/admin/dashboard.php',
                         'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
-                        'member' => PORTAL_URL . '/member/dashboard.php',
+                        'member'         => PORTAL_URL . '/member/dashboard.php',
                     ];
                     $role = $localFallbackAccounts[$email]['role'];
                     $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php';
@@ -284,116 +288,217 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - IECEP-LSC MEMSYS</title>
+    <link rel="manifest" href="/IECEP-LSC-MEMSYS/public/manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="/IECEP-LSC-MEMSYS/public/assets/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="48x48" href="/IECEP-LSC-MEMSYS/public/assets/icons/favicon.png">
+    <link rel="shortcut icon" href="/IECEP-LSC-MEMSYS/public/favicon.ico">
+    <meta name="theme-color" content="#0B1D4A">
+    <meta name="application-name" content="IECEP - LSC MEMSYS">
+    <meta name="apple-mobile-web-app-title" content="IECEP - LSC MEMSYS">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Times+New+Roman:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Inter', sans-serif;
             display: flex;
             min-height: 100vh;
-            background: url('public/assets/icons/hero.png') center/cover no-repeat;
+            background: url('public/assets/icons/hero.png') center/cover no-repeat fixed;
             position: relative;
-            overflow: hidden;
+            overflow-x: hidden;
+            align-items: center;
+            justify-content: center;
         }
-        .login-container { display: flex; width: 100%; min-height: 100vh; }
+        .login-container { 
+            display: flex; 
+            width: 100%; 
+            max-width: 1400px;
+            min-height: 100vh; 
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            padding: 30px 20px;
+            gap: 2rem;
+        }
         .login-left {
-            flex: 1; display: flex; flex-direction: column; justify-content: space-between;
-            align-items: center; padding: 60px 40px; color: white; text-align: center;
-            position: relative; z-index: 1;
+            flex: 1.1; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center;
+            align-items: center; 
+            padding: 20px 30px; 
+            color: white; 
+            text-align: center;
+            position: relative; 
+            z-index: 1;
+            gap: 1.5rem;
+            max-width: 720px;
         }
-        .logo-container { margin-bottom: 40px; }
+        .logo-container { margin-bottom: 5px; }
         .logo-container img {
-            width: 200px; height: 200px; object-fit: contain;
-            margin-left:20px; margin-right: -100px; margin-top: 50px; margin-bottom: 30px;
+            width: 140px; 
+            height: 140px; 
+            object-fit: contain;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35));
         }
         .organization-title {
             font-family: 'Times New Roman', Arial, serif;
-            font-size: 2.2rem; font-weight: 800; margin-bottom: 20px;
-            margin-left:20px; margin-right: -100px; line-height: 1.3; letter-spacing: 1px; word-spacing: 2px;
+            font-size: 2.1rem; 
+            font-weight: 800; 
+            margin-bottom: 8px;
+            line-height: 1.25; 
+            letter-spacing: 0.5px; 
+            word-spacing: 2px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
         .organization-subtitle {
             font-family: 'Times New Roman', Times, serif;
-            font-size: 1.7rem; font-weight: 700; margin-left:20px; margin-right: -100px; margin-bottom: 100px;
+            font-size: 1.5rem; 
+            font-weight: 700; 
+            margin-bottom: 0;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
         .tagline {
-            font-size: 2rem; font-family: 'Times New Roman MT', Times, serif;
-            margin-top: -250px; margin-bottom: 20px; margin-left: 20px; margin-right: -100px; line-height: 1.5;
+            font-size: 1.65rem; 
+            font-family: 'Times New Roman', Times, serif;
+            font-style: italic;
+            margin-bottom: 0.5rem; 
+            line-height: 1.3;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
         .schools-row {
-            display: flex; justify-content: center; align-items: center; gap: 15px;
-            margin-top: 10px; margin-left:20px; margin-right: -100px; padding: 30px 0 0 0; flex-wrap: wrap;
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            gap: 12px;
+            padding: 5px 0; 
+            flex-wrap: wrap;
+            max-width: 580px;
+            margin: 0 auto;
         }
         .schools-row img {
-            max-width: 80px; height: auto; transition: transform 0.3s ease;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); flex-shrink: 0;
+            width: 54px; 
+            height: 54px; 
+            object-fit: contain;
+            transition: transform 0.3s ease;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); 
+            flex-shrink: 0;
         }
-        .schools-row img:hover { transform: scale(1.1); }
-        .login-right { flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px; }
+        .schools-row img:hover { transform: scale(1.12); }
+        .login-right { 
+            flex: 0.9; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px; 
+            max-width: 520px;
+        }
         .login-card {
-            background: white; border-radius: 80px; padding: 50px 40px;
-            width: 100%; max-width: 550px; box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+            background: white; 
+            border-radius: 36px; 
+            padding: 42px 36px;
+            width: 100%; 
+            max-width: 480px; 
+            box-shadow: 0 25px 50px rgba(0,0,0,0.28);
         }
         .login-title {
-            font-size: 2.5rem; font-weight: 700; font-style: italic; color: #000;
-            margin-bottom: 40px; text-align: center;
+            font-size: 2.35rem; 
+            font-weight: 700; 
+            font-style: italic; 
+            color: #000;
+            margin-bottom: 30px; 
+            text-align: center;
         }
-        .form-group { margin-bottom: 25px; position: relative; }
-        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; font-size: 0.9rem; }
+        .form-group { margin-bottom: 20px; position: relative; }
+        .form-group label { display: block; margin-bottom: 7px; font-weight: 500; color: #333; font-size: 0.88rem; }
         .input-wrapper { position: relative; }
-        .input-wrapper i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #999; font-size: 1rem; }
+        .input-wrapper i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #999; font-size: 0.95rem; }
         .form-group input {
-            width: 100%; padding: 16px 48px 16px 50px;
+            width: 100%; padding: 14px 44px 14px 44px;
             border: 2px solid #e2e8f0; border-radius: 12px;
-            font-size: 1rem; transition: all 0.3s; background: #f8fafc;
+            font-size: 0.95rem; transition: all 0.3s; background: #f8fafc;
         }
         .form-group input:focus { outline: none; border-color: #0A2F6C; background: white; box-shadow: 0 0 0 3px rgba(10,47,108,0.1); }
         #togglePassword { user-select: none; transition: color 0.2s ease; left: auto; }
         #togglePassword:hover { color: #0A2F6C !important; }
-        .form-options { display: flex; justify-content: space-between; align-items: center; margin: 25px 0; font-size: 0.9rem; }
+        .form-options { display: flex; justify-content: space-between; align-items: center; margin: 18px 0 22px; font-size: 0.88rem; }
         .form-options label { display: flex; align-items: center; gap: 8px; color: #666; cursor: pointer; }
         .form-options input[type="checkbox"] { width: auto; margin: 0; }
         .form-options a { color: #0A2F6C; text-decoration: none; font-weight: 500; }
         .form-options a:hover { color: #F5A623; }
         .btn-login {
             width: 100%; background: #0A2F6C; color: white; border: none;
-            padding: 16px; border-radius: 12px; font-size: 1rem; font-weight: 600;
-            cursor: pointer; transition: all 0.3s; margin-bottom: 20px;
+            padding: 15px; border-radius: 12px; font-size: 0.98rem; font-weight: 600;
+            cursor: pointer; transition: all 0.3s; margin-bottom: 18px;
         }
         .btn-login:hover { background: #333; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
-        .divider { display: flex; align-items: center; margin: 25px 0; color: #999; font-size: 0.9rem; }
-        .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #e2e8f0; }
-        .divider span { padding: 0 15px; }
-        .btn-google {
-            width: 100%; background: white; color: #333; border: 2px solid #e2e8f0;
-            padding: 14px; border-radius: 12px; font-size: 1rem; font-weight: 500;
-            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 12px; transition: 0.3s;
-        }
-        .btn-google:hover { border-color: #0A2F6C; background: #f8fafc; }
-        .btn-google img { width: 20px; height: 20px; }
         .error-message {
             background: #fee2e2; color: #dc2626; padding: 12px 16px; border-radius: 8px;
-            margin-bottom: 20px; font-size: 0.9rem; text-align: center; border-left: 4px solid #dc2626;
+            margin-bottom: 18px; font-size: 0.88rem; text-align: center; border-left: 4px solid #dc2626;
         }
-        .test-accounts { background: #f8fafc; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 0.75rem; }
-        .test-accounts h4 { color: #0A2F6C; margin-bottom: 10px; font-size: 0.85rem; }
-        .test-accounts div { margin-bottom: 3px; color: #666; }
         .btn-back-home {
             display: inline-flex; align-items: center; gap: 8px; background: #f8fafc; color: #0A2F6C;
-            text-decoration: none; padding: 12px 24px; border-radius: 8px; font-size: 0.9rem; font-weight: 500;
+            text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 0.88rem; font-weight: 500;
             border: 2px solid #e2e8f0; transition: all 0.3s ease;
         }
         .btn-back-home:hover { background: #0A2F6C; color: white; border-color: #0A2F6C; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10,47,108,0.2); }
-        @media (max-width: 768px) {
-            .login-container { flex-direction: column; }
-            .login-left { padding: 30px 20px; min-height: 40vh; }
-            .organization-title { font-size: 1.5rem; }
+
+        /* ── Large 2K / QHD Monitors (>=1600px) ── */
+        @media (min-width: 1600px) {
+            .login-container { max-width: 1500px; gap: 3.5rem; }
+            .login-left { gap: 2rem; }
+            .logo-container img { width: 160px; height: 160px; }
+            .organization-title { font-size: 2.35rem; }
+            .organization-subtitle { font-size: 1.65rem; }
+            .tagline { font-size: 1.85rem; }
+            .schools-row { gap: 16px; max-width: 640px; }
+            .schools-row img { width: 62px; height: 62px; }
+            .login-card { padding: 48px 42px; max-width: 500px; }
+        }
+
+        /* ── Tablet & Small Laptops (992px - 1199px) ── */
+        @media (max-width: 1199px) and (min-width: 992px) {
+            .login-container { padding: 25px 15px; gap: 1rem; }
+            .login-left { padding: 15px; gap: 1.25rem; }
+            .logo-container img { width: 120px; height: 120px; }
+            .organization-title { font-size: 1.75rem; }
             .organization-subtitle { font-size: 1.3rem; }
-            .schools-row { gap: 8px; }
-            .schools-row img { max-width: 80px; }
-            .login-right { padding: 20px; min-height: 60vh; }
-            .login-card { padding: 30px 25px; }
-            .login-title { font-size: 2rem; }
+            .tagline { font-size: 1.45rem; }
+            .schools-row { gap: 10px; max-width: 480px; }
+            .schools-row img { width: 48px; height: 48px; }
+            .login-card { padding: 36px 28px; }
+        }
+
+        /* ── Tablet & Mobile (<=991px) ── */
+        @media (max-width: 991px) {
+            .login-container { flex-direction: column; min-height: 100vh; padding: 30px 15px; gap: 1.5rem; }
+            .login-left { padding: 10px; gap: 1.25rem; max-width: 100%; }
+            .logo-container img { width: 110px; height: 110px; }
+            .organization-title { font-size: 1.55rem; margin-bottom: 6px; }
+            .organization-subtitle { font-size: 1.2rem; }
+            .tagline { font-size: 1.35rem; }
+            .schools-row { gap: 10px; max-width: 460px; }
+            .schools-row img { width: 46px; height: 46px; }
+            .login-right { padding: 10px; width: 100%; max-width: 480px; }
+            .login-card { padding: 35px 25px; border-radius: 25px; }
+            .login-title { font-size: 2rem; margin-bottom: 25px; }
+        }
+
+        /* ── Small Mobile Phones (<=480px) ── */
+        @media (max-width: 480px) {
+            .login-container { padding: 20px 10px; gap: 1rem; }
+            .login-left { padding: 5px; gap: 0.85rem; }
+            .logo-container img { width: 85px; height: 85px; }
+            .organization-title { font-size: 1.15rem; line-height: 1.3; }
+            .organization-subtitle { font-size: 0.95rem; }
+            .tagline { font-size: 1.1rem; }
+            .schools-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: 300px; justify-items: center; }
+            .schools-row img { width: 38px; height: 38px; }
+            .login-card { padding: 25px 16px; border-radius: 20px; }
+            .login-title { font-size: 1.65rem; margin-bottom: 20px; }
+            .form-options { flex-direction: column; align-items: flex-start; gap: 8px; }
         }
     </style>
 </head>
@@ -440,7 +545,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="input-wrapper" style="position: relative;">
                             <i class="fas fa-lock"></i>
                             <input type="password" id="password" name="password" required placeholder="Enter your password">
-                            <i class="fas fa-eye-slash" id="togglePassword" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999; font-size: 1rem; pointer-events: auto;"></i>
+                            <i class="fas fa-eye-slash" id="togglePassword" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999; font-size: 1rem; pointer-events: auto;"></i>
                         </div>
                     </div>
 
@@ -466,7 +571,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <a href="<?php echo BASE_URL; ?>/public/forgot-password.php">Forgot Password?</a>
                     </div>
                     <button type="submit" class="btn-login">Log in</button>
-                    <div style="text-align: center; margin-bottom: 30px;">
+                    <div style="text-align: center; margin-bottom: 10px;">
                         <a href="index.php" class="btn-back-home"><i class="fas fa-arrow-left"></i> Back to Homepage</a>
                     </div>
                 </form>

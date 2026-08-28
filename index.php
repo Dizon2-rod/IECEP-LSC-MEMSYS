@@ -518,11 +518,36 @@ try {
             .stat-number { font-size: 2.5rem; }
         }
 
-        /* Featured Cards Grid */
+        /* ── Section Header Pill ── */
+        .section-badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(11, 29, 74, 0.06);
+            color: #0B1D4A;
+            padding: 0.35rem 1rem;
+            border-radius: 999px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.5rem;
+            border: 1px solid rgba(11, 29, 74, 0.12);
+        }
+        .section-badge-pill i {
+            color: #D4AF37;
+        }
+
+        /* ── What's New Card Enhancements ── */
+        .whats-new {
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+            padding: 2.75rem 0 2.25rem;
+            position: relative;
+        }
         .featured-cards-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 2rem;
+            gap: 1.25rem;
             max-width: 1200px;
             margin: 0 auto;
             padding: 0 1rem;
@@ -535,62 +560,34 @@ try {
         }
         .featured-card {
             background: #fff;
-            border-radius: 20px;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 4px 16px rgba(11,29,74,0.06), 0 12px 40px rgba(11,29,74,0.04);
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(11,29,74,0.05), 0 1px 3px rgba(0,0,0,0.03);
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            transition: transform 0.4s cubic-bezier(0.25,0.46,0.45,0.94), box-shadow 0.4s cubic-bezier(0.25,0.46,0.45,0.94), border-color 0.3s ease;
-            border: 1px solid rgba(226,232,240,0.8);
+            transition: all 0.35s cubic-bezier(0.25,0.46,0.45,0.94);
+            border: 1px solid rgba(226,232,240,0.9);
             position: relative;
-            transform: translateY(0);
-        }
-        .featured-card::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 20px;
-            padding: 1px;
-            background: linear-gradient(135deg, rgba(212,175,55,0) 0%, rgba(212,175,55,0.3) 100%);
-            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: xor;
-            mask-composite: exclude;
-            opacity: 0;
-            transition: opacity 0.4s ease;
-            pointer-events: none;
+            cursor: pointer;
         }
         .featured-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 8px 32px rgba(11,29,74,0.12), 0 16px 64px rgba(11,29,74,0.08), 0 4px 12px rgba(212,175,55,0.12);
-            border-color: rgba(212,175,55,0.4);
-        }
-        .featured-card:hover::before {
-            opacity: 1;
+            transform: translateY(-6px);
+            box-shadow: 0 16px 32px rgba(11,29,74,0.1), 0 0 0 2px rgba(212,175,55,0.4);
+            border-color: rgba(212,175,55,0.5);
         }
         .featured-card-image {
             position: relative;
             width: 100%;
-            height: 220px;
+            height: 190px;
             overflow: hidden;
-            border-radius: 20px 20px 0 0;
-        }
-        .featured-card-image::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(to bottom, rgba(11,29,74,0) 50%, rgba(11,29,74,0.45) 100%);
-            pointer-events: none;
-            transition: opacity 0.4s ease;
-        }
-        .featured-card:hover .featured-card-image::after {
-            opacity: 0.7;
+            background: #0B1D4A;
         }
         .featured-card-image img {
             width: 100%;
             height: 100%;
             object-fit: cover;
             display: block;
-            transition: transform 0.6s cubic-bezier(0.25,0.46,0.45,0.94);
+            transition: transform 0.5s cubic-bezier(0.25,0.46,0.45,0.94);
         }
         .featured-card:hover .featured-card-image img {
             transform: scale(1.08);
@@ -601,121 +598,708 @@ try {
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #0B1D4A 0%, #1E3A6E 50%, #132a5e 100%);
-            color: rgba(255,255,255,0.6);
-            font-size: 3rem;
+            background: linear-gradient(135deg, #0B1D4A 0%, #1E3A6E 50%, #0B1D4A 100%);
+            color: rgba(255,255,255,0.7);
+            font-size: 2.75rem;
             position: relative;
         }
-        .featured-card-image-placeholder::before {
-            content: '';
+        .featured-card-badge {
             position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 30% 30%, rgba(212,175,55,0.15) 0%, transparent 60%);
-        }
-        .featured-card-body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 2rem 2rem 2.25rem;
-            text-align: center;
-            flex: 1;
-            position: relative;
-            background: linear-gradient(180deg, #ffffff 0%, #fafbfc 100%);
-        }
-        .featured-card-body::before {
-            content: '';
-            width: 48px;
-            height: 3px;
+            top: 12px;
+            left: 12px;
+            background: rgba(11, 29, 74, 0.85);
+            backdrop-filter: blur(8px);
+            color: #D4AF37;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.3rem 0.7rem;
             border-radius: 999px;
-            background: linear-gradient(90deg, #D4AF37 0%, #F5D76E 100%);
-            margin-bottom: 0.5rem;
-            box-shadow: 0 1px 4px rgba(212,175,55,0.3);
-        }
-        .featured-card-title {
-            font-weight: 700;
-            font-size: 1.35rem;
-            color: #0B1D4A;
-            margin: 0;
-            line-height: 1.3;
-            letter-spacing: 0.01em;
-        }
-        .featured-card-description {
-            font-weight: 300;
-            font-size: 1rem;
-            color: #64748b;
-            margin: 0;
-            line-height: 1.7;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-        }
-        .featured-card-btn {
-            display: inline-flex;
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            z-index: 2;
+            display: flex;
             align-items: center;
-            gap: 0.6rem;
-            padding: 0.75rem 1.5rem;
-            border-radius: 12px;
-            color: #fff;
-            font-weight: 700;
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            box-shadow: 0 4px 12px rgba(11,29,74,0.18), 0 1px 3px rgba(0,0,0,0.08);
-            text-decoration: none;
-            transition: all 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
-            border: none;
-            cursor: pointer;
-            margin-top: 0.75rem;
-            position: relative;
-            overflow: hidden;
+            gap: 0.35rem;
+            letter-spacing: 0.04em;
         }
-        .featured-card-btn::before {
-            content: '';
+        .featured-card-quick-view {
             position: absolute;
             inset: 0;
-            background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 60%);
+            background: rgba(11, 29, 74, 0.55);
+            backdrop-filter: blur(2px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             opacity: 0;
             transition: opacity 0.3s ease;
+            z-index: 3;
         }
-        .featured-card-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 24px rgba(11,29,74,0.25), 0 2px 8px rgba(212,175,55,0.2);
-            color: #fff;
-        }
-        .featured-card-btn:hover::before {
+        .featured-card:hover .featured-card-quick-view {
             opacity: 1;
         }
-        .featured-card-btn i {
-            transition: transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
+        .btn-quick-preview {
+            background: #fff;
+            color: #0B1D4A;
+            font-weight: 700;
+            font-size: 0.82rem;
+            padding: 0.5rem 1.1rem;
+            border-radius: 999px;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+            transform: translateY(8px);
+            transition: transform 0.3s ease, background 0.2s ease;
         }
-        .featured-card-btn:hover i {
-            transform: translateX(4px);
+        .featured-card:hover .btn-quick-preview {
+            transform: translateY(0);
         }
-        .featured-card-placeholder {
-            background: linear-gradient(180deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%);
-            border: 2px dashed #d1d5db;
-            min-height: 420px;
+        .btn-quick-preview:hover {
+            background: #D4AF37;
+            color: #0B1D4A;
+        }
+        .featured-card-body {
+            padding: 1.15rem 1.15rem 1.25rem;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            text-align: left;
+            background: #fff;
+        }
+        .featured-card-meta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            font-size: 0.78rem;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+        .featured-card-meta span {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .featured-card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0B1D4A;
+            margin: 0 0 0.45rem;
+            line-height: 1.35;
+            transition: color 0.2s ease;
+        }
+        .featured-card:hover .featured-card-title {
+            color: #1E3A6E;
+        }
+        .featured-card-description {
+            font-size: 0.88rem;
+            color: #475569;
+            line-height: 1.55;
+            margin: 0 0 0.75rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            flex: 1;
+        }
+        .featured-card-footer {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            margin-top: auto;
+            padding-top: 0.75rem;
+            border-top: 1px solid #f1f5f9;
+        }
+        .btn-view-card {
+            flex: 1;
+            display: inline-flex;
+            align-items: center;
             justify-content: center;
+            gap: 0.45rem;
+            background: #f8fafc;
+            color: #0B1D4A;
+            font-weight: 700;
+            font-size: 0.82rem;
+            padding: 0.55rem 0.85rem;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            cursor: pointer;
         }
-        .featured-card-placeholder .featured-card-image {
-            display: none;
+        .btn-view-card:hover {
+            background: #0B1D4A;
+            color: #fff;
+            border-color: #0B1D4A;
         }
-        .featured-card-placeholder .featured-card-body::before {
-            background: linear-gradient(90deg, #D4AF37 0%, #F5D76E 100%);
-            opacity: 0.5;
+        .btn-link-card {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: rgba(212, 175, 55, 0.15);
+            color: #B8960C;
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            transition: all 0.2s ease;
+            text-decoration: none;
+            flex-shrink: 0;
+            font-size: 0.85rem;
         }
-        .featured-card-placeholder .featured-card-title {
-            color: #94a3b8;
+        .btn-link-card:hover {
+            background: #D4AF37;
+            color: #0B1D4A;
+            transform: scale(1.05);
         }
 
-        @media (max-width: 768px) {
-            .featured-card { max-width: 100%; }
-            .featured-card-image { height: 200px; }
-            .featured-card-body { padding: 1.5rem; }
-            .featured-card-title { font-size: 1.2rem; }
-            .featured-card-description { font-size: 0.95rem; }
+        /* ── How to Affiliate Section Enhancements ── */
+        .how-to-affiliate {
+            background: #ffffff;
+            padding: 2.75rem 0 3rem;
+            position: relative;
+        }
+        .affiliate-steps-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+            max-width: 1200px;
+            margin: 0 auto 2rem;
+        }
+        @media (min-width: 640px) {
+            .affiliate-steps-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (min-width: 1024px) {
+            .affiliate-steps-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+        .affiliate-step-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 1.35rem 1.25rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            transition: all 0.35s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+        .affiliate-step-card:hover {
+            transform: translateY(-5px);
+            border-color: #D4AF37;
+            box-shadow: 0 12px 24px rgba(11, 29, 74, 0.07), 0 0 0 1px #D4AF37;
+        }
+        .affiliate-step-header {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 0.75rem;
+        }
+        .step-badge-number {
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #0B1D4A;
+            background: rgba(11, 29, 74, 0.07);
+            padding: 0.3rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid rgba(11, 29, 74, 0.12);
+            transition: all 0.25s ease;
+        }
+        .affiliate-step-card:hover .step-badge-number {
+            background: #D4AF37;
+            color: #0B1D4A;
+            border-color: #D4AF37;
+        }
+        .affiliate-step-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #0B1D4A;
+            margin: 0 0 0.35rem;
+            line-height: 1.3;
+        }
+        .affiliate-step-desc {
+            font-size: 0.85rem;
+            color: #64748b;
+            line-height: 1.5;
+            margin: 0 0 0.85rem;
+            flex: 1;
+        }
+        .step-pill-feature {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #15803d;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 0.2rem 0.55rem;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+        }
+
+        /* ── Affiliation Toolkit & Fee Hub ── */
+        .affiliate-toolkit-card {
+            background: linear-gradient(135deg, #0B1D4A 0%, #142a6b 100%);
+            border-radius: 20px;
+            padding: 2rem 1.75rem;
+            color: #fff;
+            box-shadow: 0 16px 40px rgba(11, 29, 74, 0.22);
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+        .affiliate-toolkit-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .affiliate-toolkit-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.75rem;
+            position: relative;
+            z-index: 2;
+        }
+        @media (min-width: 992px) {
+            .affiliate-toolkit-grid { grid-template-columns: 1.2fr 0.8fr; }
+        }
+        .toolkit-checklist-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.35rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .toolkit-checklist-subtitle {
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 0.85rem;
+            margin-bottom: 1.15rem;
+            line-height: 1.45;
+        }
+        .checklist-items-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 0.65rem;
+        }
+        @media (min-width: 640px) {
+            .checklist-items-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        .checklist-item {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.65rem;
+            font-size: 0.82rem;
+            color: #f8fafc;
+            backdrop-filter: blur(4px);
+            transition: background 0.2s ease;
+        }
+        .checklist-item:hover {
+            background: rgba(255, 255, 255, 0.14);
+        }
+        .checklist-item i {
+            color: #D4AF37;
+            font-size: 0.95rem;
+            margin-top: 0.15rem;
+            flex-shrink: 0;
+        }
+        .toolkit-action-box {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem 1.35rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            backdrop-filter: blur(10px);
+        }
+        .fee-rate-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 0.85rem;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 0.55rem;
+        }
+        .fee-rate-label {
+            font-size: 0.82rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .fee-rate-val {
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #D4AF37;
+        }
+        .hei-brackets-container {
+            margin-top: 1.25rem;
+            padding-top: 1.15rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .hei-brackets-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.55rem;
+            margin-bottom: 0.75rem;
+        }
+        @media (min-width: 640px) {
+            .hei-brackets-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+        .hei-bracket-box {
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 0.55rem 0.45rem;
+            text-align: center;
+            backdrop-filter: blur(4px);
+            transition: background 0.2s ease, border-color 0.2s ease;
+        }
+        .hei-bracket-box:hover {
+            background: rgba(255, 255, 255, 0.14);
+            border-color: rgba(212, 175, 55, 0.4);
+        }
+        .hei-bracket-range {
+            font-size: 0.72rem;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 0.15rem;
+        }
+        .hei-bracket-fee {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #D4AF37;
+        }
+        .operational-fee-note {
+            background: rgba(212, 175, 55, 0.12);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 8px;
+            padding: 0.55rem 0.75rem;
+            font-size: 0.78rem;
+            color: #fef08a;
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            line-height: 1.4;
+        }
+
+        /* ── Contact Section Enhancements ── */
+        .contact {
+            background: linear-gradient(135deg, #0B1D4A 0%, #142a6b 100%);
+            color: #fff;
+            padding: 2.5rem 0 2.75rem;
+            position: relative;
+            overflow: hidden;
+        }
+        .contact-container {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.75rem;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 1rem;
+            position: relative;
+            z-index: 2;
+            align-items: center;
+        }
+        @media (min-width: 768px) {
+            .contact-container {
+                grid-template-columns: 1.1fr 0.9fr;
+                gap: 2.5rem;
+            }
+        }
+        .contact-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .contact-content h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #fff;
+            margin-bottom: 0.4rem;
+            line-height: 1.25;
+        }
+        .contact-content p {
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 0.92rem;
+            line-height: 1.5;
+            margin-bottom: 1.15rem;
+            max-width: 480px;
+        }
+        .contact-info-pills {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+            width: 100%;
+        }
+        .contact-info-pill {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 0.55rem 0.85rem;
+            font-size: 0.82rem;
+            color: #f8fafc;
+            text-decoration: none;
+            backdrop-filter: blur(4px);
+            transition: all 0.2s ease;
+        }
+        .contact-info-pill:hover {
+            background: rgba(255, 255, 255, 0.16);
+            border-color: rgba(212, 175, 55, 0.45);
+            color: #fff;
+            transform: translateX(4px);
+        }
+        .contact-info-pill i {
+            color: #D4AF37;
+            font-size: 0.95rem;
+            width: 18px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        .contact-form {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 1.5rem 1.5rem;
+            color: #0B1D4A;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
+        }
+        .contact-form h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0B1D4A;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+        .contact-form .form-group {
+            margin-bottom: 0.7rem;
+        }
+        .contact-form .form-label {
+            display: block;
+            margin-bottom: 0.2rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #334155;
+        }
+        .contact-form .form-input,
+        .contact-form .form-textarea {
+            width: 100%;
+            padding: 0.55rem 0.75rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.88rem;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+        }
+        .contact-form .form-input:focus,
+        .contact-form .form-textarea:focus {
+            outline: none;
+            border-color: #0B1D4A;
+            background: #ffffff;
+            box-shadow: 0 0 0 3px rgba(11, 29, 74, 0.1);
+        }
+        .contact-form .form-textarea {
+            min-height: 80px;
+            height: 80px;
+            resize: vertical;
+        }
+        .contact-form .form-submit {
+            width: 100%;
+            padding: 0.65rem 1rem;
+            background: #D4AF37;
+            color: #0B1D4A;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.45rem;
+            margin-top: 0.25rem;
+        }
+        .contact-form .form-submit:hover {
+            background: #e5be3e;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(212, 175, 55, 0.35);
+        }
+
+        /* ── What's New View Modal ── */
+        #whatsNewViewModal {
+            position: fixed;
+            inset: 0;
+            background: rgba(11, 29, 74, 0.45);
+            backdrop-filter: blur(3px);
+            -webkit-backdrop-filter: blur(3px);
+            z-index: 100000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        #whatsNewViewModal.active {
+            display: flex;
+            opacity: 1;
+        }
+        .whats-new-modal-dialog {
+            background: #ffffff;
+            border-radius: 24px;
+            max-width: 680px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.05);
+            position: relative;
+            transform: scale(0.95) translateY(15px);
+            transition: transform 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            display: flex;
+            flex-direction: column;
+        }
+        #whatsNewViewModal.active .whats-new-modal-dialog {
+            transform: scale(1) translateY(0);
+        }
+        .wnm-banner {
+            position: relative;
+            width: 100%;
+            height: 260px;
+            background: #0B1D4A;
+            overflow: hidden;
+            border-radius: 24px 24px 0 0;
+        }
+        .wnm-banner img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        .wnm-banner-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #0B1D4A 0%, #1E3A6E 100%);
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 4rem;
+        }
+        .wnm-close-btn {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            color: #0B1D4A;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+            z-index: 20;
+        }
+        .wnm-close-btn i {
+            pointer-events: none;
+            display: block;
+            line-height: 1;
+        }
+        .wnm-close-btn:hover {
+            background: #0B1D4A;
+            color: #ffffff;
+            transform: scale(1.08);
+        }
+        .wnm-content {
+            padding: 2rem 2.25rem 2.25rem;
+        }
+        .wnm-badge-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .wnm-category-pill {
+            background: rgba(11, 29, 74, 0.08);
+            color: #0B1D4A;
+            font-weight: 700;
+            font-size: 0.8rem;
+            padding: 0.35rem 0.85rem;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .wnm-date-pill {
+            color: #64748b;
+            font-size: 0.82rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .wnm-title {
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: #0B1D4A;
+            margin: 0 0 1.25rem;
+            line-height: 1.3;
+        }
+        .wnm-body-text {
+            font-size: 1rem;
+            color: #334155;
+            line-height: 1.75;
+            margin-bottom: 2rem;
+            word-break: break-word;
+        }
+        .wnm-body-text h1, .wnm-body-text h2, .wnm-body-text h3, .wnm-body-text h4 {
+            color: #0B1D4A;
+            margin: 1.25rem 0 0.5rem;
+            font-weight: 700;
+            line-height: 1.3;
+        }
+        .wnm-body-text h2 { font-size: 1.25rem; }
+        .wnm-body-text h3 { font-size: 1.1rem; }
+        .wnm-body-text p { margin: 0 0 0.85rem; }
+        .wnm-body-text p:last-child { margin-bottom: 0; }
+        .wnm-body-text ul, .wnm-body-text ol {
+            padding-left: 1.5rem;
+            margin: 0 0 0.85rem;
+        }
+        .wnm-body-text strong {
+            font-weight: 700;
+            color: #0B1D4A;
+        }
+        .wnm-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+            padding-top: 1.5rem;
+            border-top: 1px solid #e2e8f0;
         }
     </style>
 </head>
@@ -759,55 +1343,148 @@ try {
 <!-- ═══════════════════════════════════════════════════════════ What's New -->
 <section id="features" class="section whats-new">
     <div class="container">
-        <div class="section-heading text-center">
-            <h2 class="section-title">What's New?</h2>
-            <p class="section-subtitle">Stay tuned to the latest chapter announcements, upcoming events, and community updates.</p>
+        <div class="section-heading text-center" style="margin-bottom: 2rem;">
+            <h2 class="section-title" style="font-size: 2.35rem; font-weight: 800; color: #0B1D4A; margin-bottom: 0.75rem; font-family: 'Times New Roman', Arial, serif;">
+                What's New in IECEP-LSC?
+            </h2>
+            <p class="section-subtitle" style="max-width: 680px; margin: 0 auto; color: #64748b; font-size: 1.05rem; line-height: 1.6;">
+                Stay updated on executive announcements, student conventions, technical research seminars, and institutional accreditation notices.
+            </p>
         </div>
 
         <div id="featured-cards-container" class="featured-cards-grid">
-            <?php if (!empty($featuredCards)): ?>
-                <?php foreach ($featuredCards as $card): ?>
-                    <?php
-                        $imageUrl = trim((string)($card['image_url'] ?? ''));
-                        $buttonText = trim((string)($card['button_text'] ?? 'Learn More'));
-                        $buttonUrl = trim((string)($card['button_url'] ?? '#'));
-                        $buttonColor = trim((string)($card['button_color'] ?? '#0B1D4A'));
-                        $cardTitle = trim((string)($card['title'] ?? ''));
-                        $cardDescription = trim((string)($card['description'] ?? ''));
-                        $badgeText = trim((string)($card['badge_text'] ?? 'Featured'));
-                    ?>
-                    <article class="featured-card">
-                        <div class="featured-card-image">
-                            <?php if ($imageUrl !== ''): ?>
-                                <img src="<?= h($imageUrl) ?>" alt="<?= h($cardTitle) ?>" loading="lazy">
-                            <?php else: ?>
-                                <div class="featured-card-image-placeholder">
-                                    <i class="fas fa-image"></i>
-                                </div>
+            <?php
+            // If Supabase has featured cards, use them; otherwise, provide default highlights
+            $displayCards = !empty($featuredCards) ? $featuredCards : [
+                [
+                    'id' => 'card-conv-2026',
+                    'title' => 'IECEP-LSC Regional Student Convention 2026',
+                    'description' => "Join hundreds of aspiring Electronics Engineering students across Laguna for the premier annual convention. Featuring groundbreaking research symposiums, robotics innovation challenges, technical quiz bowls, and keynote speeches from PRC board topnotchers and industry experts.\n\nDate: October 2026\nVenue: Laguna Provincial Capitol Cultural Center\nRegistration: Open to all affiliated chapter student members.",
+                    'image_url' => ASSETS_URL . '/icons/hero.png',
+                    'badge_text' => 'Flagship Event',
+                    'category' => 'Regional Convention',
+                    'date' => 'Oct 2026',
+                    'read_time' => '3 min read',
+                    'button_text' => 'View Details',
+                    'button_url' => '#how-to-affiliate',
+                    'button_color' => '#0B1D4A'
+                ],
+                [
+                    'id' => 'card-affil-2026',
+                    'title' => 'Annual Institutional Affiliation Drive (AY 2026–2027)',
+                    'description' => "Official accreditation is now open for all tertiary and vocational institutions in Laguna offering ECE, ECT, and allied engineering curricula.\n\nAffiliated chapters receive:\n• Automated Digital Member IDs with QR/Blockchain hash verification\n• School Officer Dashboard access with real-time roster sync\n• Official Chapter Certificate of Good Standing\n• Priority slots for student seminars and regional competitions.",
+                    'image_url' => ASSETS_URL . '/icons/IECEP.png',
+                    'badge_text' => 'Accreditation',
+                    'category' => 'Affiliation Drive',
+                    'date' => 'AY 2026–2027',
+                    'read_time' => '2 min read',
+                    'button_text' => 'Affiliate Now',
+                    'button_url' => '#how-to-affiliate',
+                    'button_color' => '#0B1D4A'
+                ],
+                [
+                    'id' => 'card-techx-series',
+                    'title' => 'TechX & IoT Embedded Systems Masterclass Series',
+                    'description' => "Level up your technical competence with our hands-on engineering workshop series. Master microcontrollers, ESP32 RF protocols, firmware debugging, and smart sensing applications led by certified professional engineers.\n\nFree certificate of attendance and continuing development training for verified student members.",
+                    'image_url' => '',
+                    'badge_text' => 'Technical Workshop',
+                    'category' => 'Skills & Training',
+                    'date' => 'Sept 2026',
+                    'read_time' => '4 min read',
+                    'button_text' => 'Learn More',
+                    'button_url' => '#how-to-affiliate',
+                    'button_color' => '#0B1D4A'
+                ]
+            ];
+            ?>
+
+            <?php
+            if (!function_exists('getCardBadgeIcon')) {
+                function getCardBadgeIcon($badgeText, $category = '') {
+                    $text = strtolower($badgeText . ' ' . $category);
+                    if (strpos($text, 'flagship') !== false || strpos($text, 'convention') !== false || strpos($text, 'event') !== false) {
+                        return 'fa-solid fa-trophy';
+                    }
+                    if (strpos($text, 'accredit') !== false || strpos($text, 'affil') !== false) {
+                        return 'fa-solid fa-award';
+                    }
+                    if (strpos($text, 'tech') !== false || strpos($text, 'workshop') !== false || strpos($text, 'seminar') !== false) {
+                        return 'fa-solid fa-laptop-code';
+                    }
+                    if (strpos($text, 'memorandum') !== false || strpos($text, 'memo') !== false || strpos($text, 'policy') !== false) {
+                        return 'fa-solid fa-scroll';
+                    }
+                    if (strpos($text, 'important') !== false || strpos($text, 'urgent') !== false) {
+                        return 'fa-solid fa-circle-exclamation';
+                    }
+                    return 'fa-solid fa-bolt';
+                }
+            }
+            ?>
+
+            <?php foreach ($displayCards as $idx => $card): ?>
+                <?php
+                    $imageUrl = trim((string)($card['image_url'] ?? ''));
+                    $buttonText = trim((string)($card['button_text'] ?? 'View Details'));
+                    $buttonUrl = trim((string)($card['button_url'] ?? ''));
+                    $buttonColor = trim((string)($card['button_color'] ?? '#0B1D4A'));
+                    $cardTitle = trim((string)($card['title'] ?? ''));
+                    $cardDescription = trim((string)($card['description'] ?? ''));
+                    $badgeText = trim((string)($card['badge_text'] ?? ''));
+                    $category = trim((string)($card['category'] ?? $badgeText));
+                    $cardDate = trim((string)($card['date'] ?? (!empty($card['created_at']) ? date('M d, Y', strtotime($card['created_at'])) : date('M Y'))));
+                    $readTime = trim((string)($card['read_time'] ?? '2 min read'));
+
+                    // JSON payload for modal preview
+                    $cardJson = htmlspecialchars(json_encode([
+                        'title' => $cardTitle,
+                        'description' => $cardDescription,
+                        'image_url' => $imageUrl,
+                        'badge_text' => $badgeText,
+                        'category' => $category,
+                        'date' => $cardDate,
+                        'read_time' => $readTime,
+                        'button_text' => $buttonText,
+                        'button_url' => $buttonUrl
+                    ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP), ENT_QUOTES, 'UTF-8');
+                ?>
+                <article class="featured-card" onclick="openWhatsNewModal(<?= $cardJson ?>)" tabindex="0" role="button" aria-label="View details for <?= h($cardTitle) ?>">
+                    <div class="featured-card-image">
+                        <?php if ($imageUrl !== ''): ?>
+                            <img src="<?= h($imageUrl) ?>" alt="<?= h($cardTitle) ?>" loading="lazy">
+                        <?php else: ?>
+                            <div class="featured-card-image-placeholder">
+                                <i class="fa-solid fa-newspaper"></i>
+                            </div>
+                        <?php endif; ?>
+                        <div class="featured-card-quick-view">
+                            <span class="btn-quick-preview">
+                                <i class="fa-solid fa-magnifying-glass-plus"></i> Quick View
+                            </span>
+                        </div>
+                    </div>
+                    <div class="featured-card-body">
+                        <div class="featured-card-meta">
+                            <?php if ($category !== '' && strtolower($category) !== 'update'): ?>
+                                <span class="text-primary fw-semibold"><i class="fa-solid fa-tag text-gold"></i> <?= h($category) ?></span>
+                            <?php endif; ?>
+                            <span><i class="fa-solid fa-calendar-days"></i> <?= h($cardDate) ?></span>
+                        </div>
+                        <h3 class="featured-card-title"><?= h($cardTitle) ?></h3>
+                        <p class="featured-card-description"><?= html_entity_decode(strip_tags($cardDescription)) ?></p>
+                        <div class="featured-card-footer" onclick="event.stopPropagation()">
+                            <button type="button" class="btn-view-card" onclick="openWhatsNewModal(<?= $cardJson ?>)">
+                                <i class="fa-solid fa-arrow-right-to-bracket"></i> View Details
+                            </button>
+                            <?php if ($buttonUrl !== '' && $buttonUrl !== '#'): ?>
+                                <a href="<?= h($buttonUrl) ?>" class="btn-link-card" title="Open Link" target="_blank" rel="noopener">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                </a>
                             <?php endif; ?>
                         </div>
-                        <div class="featured-card-body">
-                            <h3 class="featured-card-title"><?= h($cardTitle) ?></h3>
-                            <p class="featured-card-description"><?= html_entity_decode(strip_tags($cardDescription)) ?></p>
-                            <a href="<?= h($buttonUrl !== '' ? $buttonUrl : '#') ?>" class="featured-card-btn" style="background: <?= h($buttonColor) ?>;">
-                                <?= h($buttonText) ?>
-                                <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                            </a>
-                        </div>
-                    </article>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <article class="featured-card featured-card-placeholder">
-                    <div class="featured-card-body">
-                        <h3 class="featured-card-title">Coming Soon</h3>
-                        <p class="featured-card-description">No featured content at this time – check back soon!</p>
-                        <a href="#features" class="featured-card-btn" style="background: #0B1D4A;">
-                            Explore
-                            <i class="fas fa-arrow-right" aria-hidden="true"></i>
-                        </a>
                     </div>
                 </article>
-            <?php endif; ?>
+            <?php endforeach; ?>
         </div>
     </div>
 </section>
@@ -815,22 +1492,50 @@ try {
 <!-- ═══════════════════════════════════════════════════════════ How to Affiliate -->
 <section id="how-to-affiliate" class="section how-to-affiliate">
     <div class="container">
-        <h2 class="section-title">How to get Affiliated?</h2>
-        <p class="section-subtitle">Simple Step Process to Bring Your Institution into IECEP-LSC</p>
-        <div class="steps-grid">
-            <?php foreach ([
-                ['1', 'Email Verification',  'Enter your institution email address and receive a secure 6-digit verification code.'],
-                ['2', 'Submit Requirements', 'Upload the 6 required documents including Letter of Intent, Endorsement Letter, and Member Directory.'],
-                ['3', 'Committee Approval',  'The Registration Committee reviews your application and documents for approval.'],
-                ['4', 'Access Portal',       'Approved school officers receive login credentials to manage members and track compliance.'],
-            ] as [$num, $heading, $desc]): ?>
-            <div class="step-card">
-                <div class="step-number"><?php echo $num; ?></div>
-                <h3><?php echo $heading; ?></h3>
-                <p><?php echo $desc; ?></p>
-            </div>
-            <?php endforeach; ?>
+        <div class="section-heading text-center" style="margin-bottom: 2rem;">
+            <h2 class="section-title" style="font-size: 2.35rem; font-weight: 800; color: #0B1D4A; margin-bottom: 0.75rem; font-family: 'Times New Roman', Arial, serif;">
+                How to get Affiliated?
+            </h2>
+            <p class="section-subtitle" style="max-width: 680px; margin: 0 auto; color: #64748b; font-size: 1.05rem; line-height: 1.6;">
+                A transparent, 4-stage digital onboarding workflow engineered for Laguna school chapters and student engineering leadership.
+            </p>
         </div>
+
+        <!-- 4-Step Grid -->
+        <div class="affiliate-steps-grid">
+            <div class="affiliate-step-card">
+                <div class="affiliate-step-header">
+                    <span class="step-badge-number">Step 01</span>
+                </div>
+                <h3 class="affiliate-step-title">Email Verification</h3>
+                <p class="affiliate-step-desc">Enter your institutional officer email address to receive an instantaneous, secure 6-digit cryptographic verification code.</p>
+            </div>
+
+            <div class="affiliate-step-card">
+                <div class="affiliate-step-header">
+                    <span class="step-badge-number">Step 02</span>
+                </div>
+                <h3 class="affiliate-step-title">Upload Affiliation Kit</h3>
+                <p class="affiliate-step-desc">Upload the 6 mandatory accreditation documents including Letter of Intent, Dean's Endorsement, CBL, and Member Directory Excel roster.</p>
+            </div>
+
+            <div class="affiliate-step-card">
+                <div class="affiliate-step-header">
+                    <span class="step-badge-number">Step 03</span>
+                </div>
+                <h3 class="affiliate-step-title">Committee Evaluation</h3>
+                <p class="affiliate-step-desc">The IECEP-LSC Secretariat verifies student counts, validates constitution compliance, and approves accreditation standing within 2–3 working days.</p>
+            </div>
+
+            <div class="affiliate-step-card">
+                <div class="affiliate-step-header">
+                    <span class="step-badge-number">Step 04</span>
+                </div>
+                <h3 class="affiliate-step-title">Portal Access &amp; IDs</h3>
+                <p class="affiliate-step-desc">Approved school officers gain portal credentials to manage student directories, download Certificates of Good Standing, and issue digital member IDs.</p>
+            </div>
+        </div>
+
     </div>
 </section>
 
@@ -838,37 +1543,53 @@ try {
 <section class="contact">
     <div class="contact-container">
         <div class="contact-content">
-            <h2>Get In Touch</h2>
-            <p>Have questions about affiliation or need assistance? Reach out to our team and we'll get back to you as soon as possible.</p>
-            <button type="button" class="btn btn-primary" id="ctaAffiliateBtn">
-                <i class="fas fa-arrow-right"></i> Start Affiliation Now
+            <h2 style="font-family: 'Times New Roman', Arial, serif;">Get In Touch</h2>
+            <p>Have questions about chapter accreditation or need assistance with your affiliation kit? Reach out to the IECEP-LSC Secretariat.</p>
+            
+            <div class="contact-info-pills">
+                <a href="https://mail.google.com/mail/?view=cm&fs=1&to=ieceplsc24@gmail.com" target="_blank" rel="noopener noreferrer" class="contact-info-pill" title="Send Email via Gmail">
+                    <i class="fa-solid fa-envelope"></i>
+                    <span>ieceplsc24@gmail.com</span>
+                </a>
+                <a href="https://www.facebook.com/IECEPLSC" target="_blank" rel="noopener noreferrer" class="contact-info-pill" title="Connect on Facebook Messenger">
+                    <i class="fa-brands fa-facebook-messenger"></i>
+                    <span>facebook.com/IECEPLSC (Messenger)</span>
+                </a>
+                <div class="contact-info-pill">
+                    <i class="fa-solid fa-clock"></i>
+                    <span>Mon – Fri | 8:00 AM – 5:00 PM</span>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-primary" id="ctaAffiliateBtn" style="padding:0.7rem 1.35rem; font-size:0.9rem; font-weight:700;">
+                <i class="fa-solid fa-arrow-right me-2"></i> Start Affiliation Now
             </button>
         </div>
         <div class="contact-form">
-            <h3 style="margin-bottom: var(--space-4); color: var(--primary);">
-                <i class="fas fa-envelope"></i> Contact Us
+            <h3>
+                <i class="fa-solid fa-paper-plane text-gold"></i> Send us a Message
             </h3>
             <?php if ($contactSuccess): ?>
-                <div class="alert alert-success"><i class="fas fa-circle-check"></i> Message sent successfully!</div>
+                <div class="alert alert-success" style="padding:0.5rem 0.75rem; font-size:0.85rem; margin-bottom:0.65rem;"><i class="fa-solid fa-circle-check me-1"></i> Message sent successfully!</div>
             <?php endif; ?>
             <?php if ($contactError): ?>
-                <div class="alert alert-error"><i class="fas fa-circle-exclamation"></i> Failed to send message. Please try again.</div>
+                <div class="alert alert-error" style="padding:0.5rem 0.75rem; font-size:0.85rem; margin-bottom:0.65rem;"><i class="fa-solid fa-circle-exclamation me-1"></i> Failed to send message. Please try again.</div>
             <?php endif; ?>
             <form method="POST" action="/contact-submit.php">
                 <div class="form-group">
                     <label for="contact-name" class="form-label">Your Name</label>
-                    <input type="text" id="contact-name" name="name" class="form-input" placeholder="Enter your name" required>
+                    <input type="text" id="contact-name" name="name" class="form-input" placeholder="Enter your full name" required>
                 </div>
                 <div class="form-group">
                     <label for="contact-email" class="form-label">Your Email</label>
-                    <input type="email" id="contact-email" name="email" class="form-input" placeholder="Enter your email" required>
+                    <input type="email" id="contact-email" name="email" class="form-input" placeholder="Enter institutional or personal email" required>
                 </div>
                 <div class="form-group">
                     <label for="contact-message" class="form-label">Your Message</label>
-                    <textarea id="contact-message" name="message" class="form-textarea" placeholder="Enter your message" required></textarea>
+                    <textarea id="contact-message" name="message" class="form-textarea" placeholder="How can the Secretariat assist your chapter?" required></textarea>
                 </div>
                 <button type="submit" class="form-submit">
-                    <i class="fas fa-paper-plane"></i> Send Message
+                    <i class="fa-solid fa-paper-plane me-1"></i> Send Message
                 </button>
             </form>
         </div>
@@ -882,8 +1603,9 @@ try {
 #affiliateModal {
     position: fixed !important;
     inset: 0 !important;
-    background: rgba(11, 29, 74, 0.8);
-    backdrop-filter: blur(8px);
+    background: rgba(11, 29, 74, 0.45);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
     display: flex !important;
     align-items: flex-start;
     justify-content: center !important;
@@ -1100,6 +1822,130 @@ try {
                 <div class="step-indicator-item" id="modal-step3">
                     <div class="step-indicator-number">3</div>
                     <span>Payment Summary</span>
+                </div>
+            </div>
+
+            <!-- Toolkit Info Panel (moved from index section) -->
+            <div id="modal-toolkit-panel" class="affiliate-toolkit-card" style="margin:0 0 1.5rem; border-radius:16px;">
+                <div class="affiliate-toolkit-grid">
+                    <!-- Left: Checklist -->
+                    <div>
+                        <h3 class="toolkit-checklist-title">
+                            <i class="fa-solid fa-list-check text-gold"></i> Required Affiliation Documents
+                        </h3>
+                        <p class="toolkit-checklist-subtitle">
+                            Per Article IV Section 3 of the IECEP National Constitution &amp; By-Laws, please prepare the following for upload:
+                        </p>
+                        <div class="checklist-items-grid">
+                            <div class="checklist-item">
+                                <i class="fa-solid fa-file-signature text-gold"></i>
+                                <div>
+                                    <strong>Letter of Intent (LOI)</strong>
+                                    <div style="font-size:0.78rem; opacity:0.8;">Signed by Chapter President</div>
+                                </div>
+                            </div>
+                            <div class="checklist-item">
+                                <i class="fa-solid fa-building-columns text-gold"></i>
+                                <div>
+                                    <strong>Endorsement Letter</strong>
+                                    <div style="font-size:0.78rem; opacity:0.8;">Signed by Dean / Dept. Chair</div>
+                                </div>
+                            </div>
+                            <div class="checklist-item">
+                                <i class="fa-solid fa-scale-balanced text-gold"></i>
+                                <div>
+                                    <strong>Constitution &amp; By-Laws</strong>
+                                    <div style="font-size:0.78rem; opacity:0.8;">Ratified local chapter copy</div>
+                                </div>
+                            </div>
+                            <div class="checklist-item">
+                                <i class="fa-solid fa-users-gear text-gold"></i>
+                                <div>
+                                    <strong>Officers List with CVs</strong>
+                                    <div style="font-size:0.78rem; opacity:0.8;">Complete executive board roster</div>
+                                </div>
+                            </div>
+                            <div class="checklist-item">
+                                <i class="fa-solid fa-sitemap text-gold"></i>
+                                <div>
+                                    <strong>Organizational Chart</strong>
+                                    <div style="font-size:0.78rem; opacity:0.8;">Departmental hierarchy structure</div>
+                                </div>
+                            </div>
+                            <div class="checklist-item">
+                                <i class="fa-solid fa-file-excel text-gold"></i>
+                                <div>
+                                    <strong>Member Directory (Excel)</strong>
+                                    <div style="font-size:0.78rem; opacity:0.8;">4 sheets (1st to 4th Year levels)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section 1. HEI Affiliation Fee Brackets (BR No. 021-2024) -->
+                        <div class="hei-brackets-container">
+                            <div style="font-size:0.8rem; font-weight:700; color:#D4AF37; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.35rem;">
+                                <i class="fa-solid fa-building-columns text-gold me-1"></i> Section 1. HEI Institutional Affiliation Fee
+                            </div>
+                            <p style="font-size:0.82rem; color:rgba(255,255,255,0.78); margin-bottom:0.75rem; line-height:1.45;">
+                                In accordance with Board Resolution No. 021-2024 (Amendment of Institutional Membership Fees for HEIs), affiliation fees follow student membership count:
+                            </p>
+                            <div class="hei-brackets-grid">
+                                <div class="hei-bracket-box">
+                                    <div class="hei-bracket-range">1–50 Members</div>
+                                    <div class="hei-bracket-fee">₱1,500</div>
+                                </div>
+                                <div class="hei-bracket-box">
+                                    <div class="hei-bracket-range">51–100 Members</div>
+                                    <div class="hei-bracket-fee">₱2,000</div>
+                                </div>
+                                <div class="hei-bracket-box">
+                                    <div class="hei-bracket-range">101–150 Members</div>
+                                    <div class="hei-bracket-fee">₱2,500</div>
+                                </div>
+                                <div class="hei-bracket-box">
+                                    <div class="hei-bracket-range">151+ Members</div>
+                                    <div class="hei-bracket-fee">₱3,000</div>
+                                </div>
+                            </div>
+                            <div class="operational-fee-note">
+                                <i class="fa-solid fa-circle-info text-gold" style="font-size:1.1rem; flex-shrink:0;"></i>
+                                <span>Plus <strong>₱800.00</strong> operational and activity fee collected upon renewal to support local student chapter programs and initiatives.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Section 2. Individual Membership Fees -->
+                    <div class="toolkit-action-box">
+                        <div>
+                            <div style="font-size:0.8rem; font-weight:700; color:#D4AF37; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.4rem;">
+                                <i class="fa-solid fa-users text-gold me-1"></i> Section 2. Individual Membership Fee
+                            </div>
+                            <h4 style="font-size:1.35rem; font-weight:700; color:#fff; margin-bottom:0.4rem;">
+                                Student Member Dues
+                            </h4>
+                            <p style="font-size:0.82rem; color:rgba(255,255,255,0.78); margin-bottom:1rem; line-height:1.45;">
+                                The renewal of individual student memberships shall occur simultaneously with the organizational affiliation:
+                            </p>
+                            <div class="fee-rate-box">
+                                <span class="fee-rate-label">Returning (Old) Members</span>
+                                <span class="fee-rate-val">₱200.00</span>
+                            </div>
+                            <div class="fee-rate-box">
+                                <span class="fee-rate-label">New Student Members</span>
+                                <span class="fee-rate-val">₱250.00</span>
+                            </div>
+                            <div class="fee-rate-box">
+                                <span class="fee-rate-label">Honorary Members</span>
+                                <span class="fee-rate-val">₱300.00</span>
+                            </div>
+                            <div style="font-size:0.8rem; color:rgba(255,255,255,0.75); margin-bottom:1.5rem; line-height:1.45;">
+                                <i class="fa-solid fa-id-card text-gold me-1"></i> Each member shall receive an official ID and access to all IECEP-LSC-sanctioned activities upon payment.
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-affiliate-trigger" style="width:100%; padding:0.95rem; font-size:1rem; font-weight:700;">
+                            <i class="fa-solid fa-paper-plane me-2"></i> Start Affiliation Application
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1400,6 +2246,51 @@ try {
     </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════════ What's New Detail Modal -->
+<div id="whatsNewViewModal" role="dialog" aria-modal="true" aria-labelledby="wnm-title-el" onclick="handleWhatsNewBackdropClick(event)">
+    <div class="whats-new-modal-dialog" onclick="event.stopPropagation()">
+        <button type="button" class="wnm-close-btn" onclick="closeWhatsNewModal()" aria-label="Close dialog">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <div class="wnm-banner" id="wnm-banner-container">
+            <img id="wnm-image" src="" alt="Announcement Banner" style="display:none;">
+            <div id="wnm-placeholder" class="wnm-banner-placeholder">
+                <i class="fa-solid fa-newspaper"></i>
+            </div>
+        </div>
+
+        <div class="wnm-content">
+            <div class="wnm-badge-row">
+                <span class="wnm-date-pill" id="wnm-date">
+                    <i class="fa-solid fa-calendar-days"></i> <span id="wnm-date-text"></span>
+                </span>
+                <span class="wnm-date-pill" id="wnm-readtime">
+                    <i class="fa-solid fa-clock"></i> <span id="wnm-readtime-text"></span>
+                </span>
+            </div>
+
+            <h2 class="wnm-title" id="wnm-title-el">Title</h2>
+
+            <div class="wnm-body-text" id="wnm-body-text">
+                Full description goes here...
+            </div>
+
+            <div class="wnm-actions">
+                <a href="#" id="wnm-action-btn" class="btn btn-primary" style="flex:1; min-width:180px; padding:0.8rem 1.5rem; text-decoration:none;">
+                    <i class="fa-solid fa-arrow-up-right-from-square me-2"></i> <span id="wnm-btn-text">Learn More</span>
+                </a>
+                <button type="button" class="btn btn-outline" style="color:#0B1D4A; border-color:#cbd5e1; background:#f8fafc; min-width:130px;" onclick="copyWhatsNewLink()">
+                    <i class="fa-solid fa-share-nodes me-2"></i> <span id="wnm-share-text">Share</span>
+                </button>
+                <button type="button" class="btn btn-outline" style="color:#64748b; border-color:#e2e8f0; min-width:100px;" onclick="closeWhatsNewModal()">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Success Notification Modal -->
 <div id="successNotificationModal" class="modal" style="display:none;">
     <div class="modal-content" style="max-width:500px;padding:0;overflow:hidden;">
@@ -1561,7 +2452,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function openModal() {
         overlayInner.appendChild(modalContent);
-        modalContent.style.cssText = 'width:100%;max-width:640px;background:white;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);position:relative;flex-shrink:0;';
+        modalContent.style.cssText = 'width:100%;max-width:820px;background:white;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);position:relative;flex-shrink:0;';
         overlay.style.display = 'block';
         document.body.style.overflow = 'hidden';
         resetModal();
@@ -1577,6 +2468,9 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('modal-step1')?.classList.remove('completed');
         document.getElementById('modal-step2')?.classList.remove('active', 'completed');
         document.getElementById('modal-step3')?.classList.remove('active', 'completed');
+
+        const toolkitPanel = document.getElementById('modal-toolkit-panel');
+        if (toolkitPanel) toolkitPanel.style.display = 'block';
 
         const emailStep = document.getElementById('modal-email-verification-step');
         const formStep  = document.getElementById('modal-application-form-step');
@@ -1595,7 +2489,18 @@ document.addEventListener('DOMContentLoaded', function () {
         verifiedEmail = '';
     }
 
-    document.querySelectorAll('#affiliateNowBtn, #ctaAffiliateBtn').forEach(btn => btn?.addEventListener('click', openModal));
+    document.querySelectorAll('#affiliateNowBtn, #ctaAffiliateBtn, #howToAffiliateCtaBtn, .btn-affiliate-trigger').forEach(btn => btn?.addEventListener('click', function(e) {
+        if (overlay.style.display === 'block') {
+            // Already inside modal, scroll to email input
+            const emailInput = document.getElementById('modal-verification-email');
+            if (emailInput) {
+                emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                emailInput.focus();
+            }
+            return;
+        }
+        openModal();
+    }));
     document.getElementById('closeModalBtn')?.addEventListener('click', closeModal);
     overlay.addEventListener('click', e => { if (e.target === overlay || e.target === overlayInner) closeModal(); });
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && overlay.style.display !== 'none') closeModal(); });
@@ -1723,6 +2628,8 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('modal-step1').classList.replace('active', 'completed') || document.getElementById('modal-step1').classList.add('completed');
         document.getElementById('modal-step2').classList.add('active');
         document.getElementById('modal-email-verification-step').style.display = 'none';
+        const toolkitPanel = document.getElementById('modal-toolkit-panel');
+        if (toolkitPanel) toolkitPanel.style.display = 'none';
         const formStep = document.getElementById('modal-application-form-step');
         formStep.style.display = 'block';
         formStep.classList.add('active');
@@ -2101,8 +3008,8 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Form submission - direkta mag-submit sa submit-affiliation.php
-    document.getElementById('affiliationForm')?.addEventListener('submit', function(e) {
+    // Form submission - AJAX fetch to submit-affiliation.php
+    document.getElementById('affiliationForm')?.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         const submitBtn = document.getElementById('modal-submit-application-btn');
@@ -2113,11 +3020,41 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.set('contact_email', verifiedEmail);
         formData.delete('action');
         
-        // Direktang mag-submit sa submit-affiliation.php
-        this.action = '/IECEP-LSC-MEMSYS/public/api/submit-affiliation.php';
-        this.method = 'POST';
-        this.enctype = 'multipart/form-data';
-        this.submit();
+        try {
+            const response = await fetch('/IECEP-LSC-MEMSYS/public/api/submit-affiliation.php', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // Close affiliate modal
+                const affiliateModal = document.getElementById('affiliateModal');
+                if (affiliateModal) {
+                    affiliateModal.classList.remove('active');
+                    affiliateModal.style.display = 'none';
+                }
+                document.body.style.overflow = '';
+                const overlay = document.getElementById('affiliateOverlay');
+                if (overlay) overlay.remove();
+                
+                // Show success notification modal
+                const successModal = document.getElementById('successNotificationModal');
+                if (successModal) {
+                    successModal.style.display = 'flex';
+                }
+            } else {
+                showNotification('error', result.message || 'Failed to submit application. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:0.5rem;"></i>Submit Application';
+            }
+        } catch (error) {
+            console.error('Submit error:', error);
+            showNotification('error', 'Network error. Please check your connection and try again.');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-paper-plane" style="margin-right:0.5rem;"></i>Submit Application';
+        }
     });
 
     // ── Notification helpers ───────────────────────────────────────────────────
@@ -2163,6 +3100,129 @@ function closeSuccessNotification() {
     // Reload page to reset everything
     window.location.reload();
 }
+
+// ── What's New Detail Modal Handlers ───────────────────────────────────────
+window.openWhatsNewModal = function(cardData) {
+    if (!cardData) return;
+    const modal = document.getElementById('whatsNewViewModal');
+    if (!modal) return;
+
+    // Fill Title
+    const titleEl = document.getElementById('wnm-title-el');
+    if (titleEl) titleEl.textContent = cardData.title || 'Chapter Announcement';
+    
+    // Fill Dates
+    const dateEl = document.getElementById('wnm-date-text');
+    if (dateEl) dateEl.textContent = cardData.date || 'Recent';
+    
+    const readEl = document.getElementById('wnm-readtime-text');
+    if (readEl) readEl.textContent = cardData.read_time || '2 min read';
+
+    // Fill Body Text
+    const bodyEl = document.getElementById('wnm-body-text');
+    if (bodyEl) {
+        let desc = cardData.description || 'No additional details provided.';
+        // Clean up quill cursor artifacts
+        desc = desc.replace(/<span class="ql-cursor"[^>]*>.*?<\/span>/gi, '');
+        // If it contains HTML tags, render as HTML; otherwise render text with linebreaks
+        if (/<[a-z][\s\S]*>/i.test(desc)) {
+            bodyEl.innerHTML = desc;
+        } else {
+            bodyEl.innerHTML = desc.split('\n').filter(line => line.trim() !== '').map(line => `<p>${line}</p>`).join('');
+        }
+    }
+
+    // Fill Image
+    const imgEl = document.getElementById('wnm-image');
+    const placeholderEl = document.getElementById('wnm-placeholder');
+    if (imgEl && placeholderEl) {
+        if (cardData.image_url && cardData.image_url.trim() !== '') {
+            imgEl.src = cardData.image_url;
+            imgEl.style.display = 'block';
+            placeholderEl.style.display = 'none';
+        } else {
+            imgEl.style.display = 'none';
+            placeholderEl.style.display = 'flex';
+        }
+    }
+
+    // Fill Action Button
+    const actionBtn = document.getElementById('wnm-action-btn');
+    const btnText = document.getElementById('wnm-btn-text');
+    if (actionBtn && btnText) {
+        if (cardData.button_url && cardData.button_url !== '#' && cardData.button_url.trim() !== '') {
+            actionBtn.href = cardData.button_url;
+            actionBtn.style.display = 'inline-flex';
+            btnText.textContent = cardData.button_text || 'Learn More';
+            if (cardData.button_url.startsWith('http')) {
+                actionBtn.target = '_blank';
+                actionBtn.rel = 'noopener';
+            } else {
+                actionBtn.target = '_self';
+                if (cardData.button_url === '#how-to-affiliate') {
+                    actionBtn.onclick = function(e) {
+                        closeWhatsNewModal();
+                    };
+                }
+            }
+        } else {
+            actionBtn.style.display = 'none';
+        }
+    }
+
+    modal.style.display = 'flex';
+    setTimeout(() => { modal.classList.add('active'); }, 10);
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeWhatsNewModal = function() {
+    const modal = document.getElementById('whatsNewViewModal');
+    if (!modal) return;
+    modal.classList.remove('active');
+    setTimeout(() => {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+    }, 250);
+};
+
+window.handleWhatsNewBackdropClick = function(event) {
+    if (event.target === document.getElementById('whatsNewViewModal')) {
+        closeWhatsNewModal();
+    }
+};
+
+window.copyWhatsNewLink = function() {
+    const shareText = document.getElementById('wnm-share-text');
+    const currentUrl = window.location.origin + window.location.pathname + '#features';
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(currentUrl).then(() => {
+            if (shareText) {
+                const orig = shareText.textContent;
+                shareText.textContent = 'Copied!';
+                setTimeout(() => { shareText.textContent = orig; }, 2000);
+            }
+        }).catch(() => {
+            if (shareText) {
+                shareText.textContent = 'Copied!';
+                setTimeout(() => { shareText.textContent = 'Share'; }, 2000);
+            }
+        });
+    } else {
+        if (shareText) {
+            shareText.textContent = 'Copied!';
+            setTimeout(() => { shareText.textContent = 'Share'; }, 2000);
+        }
+    }
+};
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const wnm = document.getElementById('whatsNewViewModal');
+        if (wnm && wnm.style.display !== 'none' && wnm.classList.contains('active')) {
+            closeWhatsNewModal();
+        }
+    }
+});
 </script>
 </body>
 </html>

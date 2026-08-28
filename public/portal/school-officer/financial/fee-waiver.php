@@ -34,12 +34,12 @@ $totalFee = calculateTotalFee($memberCount);
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Portal - IECEP LSC</title>
-    <link rel="stylesheet" href="/public/css/portal.css">
+    <title>Fee Waiver & Assessment - IECEP-LSC MEMSYS</title>
+    <?php require_once __DIR__ . '/../../../../includes/head-meta.php'; ?>
 </head>
 <body>
     <div class="dashboard-container">
-        <?php include_once __DIR__ . '/../../../includes/sidebar.php'; ?>
+        <?php require_once __DIR__ . '/../../../../includes/sidebar.php'; ?>
         
         <main class="main-content">
             <div class="page-header">
@@ -52,7 +52,7 @@ $totalFee = calculateTotalFee($memberCount);
                     <p><strong>Member Count:</strong> <?php echo $memberCount; ?></p>
                     <p><strong>Bracket:</strong> <?php echo $feeBracket['bracket']; ?></p>
                     <p><strong>Affiliation Fee:</strong> ₱<?php echo number_format($feeBracket['affiliation'], 2); ?></p>
-                    <p><strong>Operational Fee:</strong> ₱800.00</p>
+                    <p><strong>Operational Fee:</strong> ₱<?php echo number_format($totalFee - $feeBracket['affiliation'], 2); ?></p>
                     <hr>
                     <p><strong>Total Fee:</strong> ₱<?php echo number_format($totalFee, 2); ?></p>
                 </div>

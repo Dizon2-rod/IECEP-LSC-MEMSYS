@@ -498,11 +498,38 @@ This comprehensive testing checklist covers all features, roles, and edge cases 
 - [ ] Verify screenshot accuracy
 - [ ] Test FAQ answers
 
-### 24.2 Technical Documentation
-- [ ] Verify API documentation
-- [ ] Test database schema documentation
-- [ ] Verify installation instructions
-- [ ] Test configuration guide
+---
+
+## 25. Enterprise Blockchain & Explorer Testing
+
+### 25.1 Cryptographic Key Management & RSA-2048 Signatures
+- [ ] Verify automatic RSA-2048 keypair generation in `storage/keys/`
+- [ ] Test digital signing on block recording (`openssl_sign`)
+- [ ] Test signature verification with chapter public key (`openssl_verify`)
+- [ ] Test signature rejection when payload or hash is tampered
+
+### 25.2 Affiliation Requirements & Document Anchoring
+- [ ] Test SHA-256 calculation for all 6 required affiliation files
+- [ ] Verify Merkle Tree Root calculation across multi-document submissions
+- [ ] Test master affiliation block recording
+- [ ] Verify receipt number anchoring on submission
+
+### 25.3 Member State Push & Pull Engine
+- [ ] Test member batch roster push & batch Merkle root generation
+- [ ] Test `pullMemberHistory()` chronological state reconstruction
+- [ ] Verify status progression tracking across blocks
+- [ ] Test deterministic UUID conversion for non-standard student numbers
+
+### 25.4 Blockchain Explorer Dashboard (`public/blockchain-explorer.php`)
+- [ ] Verify page loads with live Block Height and 100% Chain Integrity badge
+- [ ] Test multi-chain filter tabs (*Affiliations, Required Documents, Members, Batches, Receipts, Financial Audits, Compliance*)
+- [ ] Test search bar filtering by Block Hash, Entity ID, or Type
+- [ ] Test "Inspect Block" modal with formatted JSON payload viewer
+- [ ] Test "Download Verifiable Cryptographic Proof (.json)" button
+- [ ] Verify responsiveness and navigation link in Resources dropdown
+
+### 25.5 Automated Test Suite Execution
+- [ ] Run `php tools/test_blockchain_suite.php` and verify all tests pass
 
 ---
 

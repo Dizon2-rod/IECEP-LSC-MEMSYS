@@ -18,19 +18,26 @@ require_once dirname(dirname(__DIR__)) . '/includes/paths.php';
  */
 function require_role($allowed_roles, $redirect = true) {
     // Check if user is logged in
-    if (!isset($_SESSION['user']) || !isset($_SESSION['user']['role'])) {
+    $user = $_SESSION['user'] ?? [];
+    $user_role = $_SESSION['role'] ?? $user['role'] ?? $user['user_metadata']['role'] ?? null;
+
+    if (!$user_role) {
         if ($redirect) {
-            header('Location: ' . BASE_URL . '/login.php');
+            header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/login.php');
             exit;
         }
         return false;
     }
 
-    $user_role = $_SESSION['user']['role'];
-
+    // Normalize allowed roles to array if a single string or other type is provided
+    if (is_string($allowed_roles)) {
+        $allowed_roles = [$allowed_roles];
+    } elseif (!is_array($allowed_roles)) {
+        $allowed_roles = (array)$allowed_roles;
+    }
 
     // Check if user role is in allowed roles
-    if (!in_array($user_role, $allowed_roles)) {
+    if (!in_array($user_role, $allowed_roles, true)) {
         if ($redirect) {
             // Redirect to user's appropriate dashboard or show access denied
             $user_dashboard = get_role_dashboard($user_role);

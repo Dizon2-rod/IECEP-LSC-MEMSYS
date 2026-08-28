@@ -1,90 +1,63 @@
 <?php
-require_once __DIR__ . '/../../auth_check.php';
-
-if (!isset($current_page)) { $current_page = basename(__FILE__, '.php'); }
+if (!isset($current_page)) { $current_page = 'documents'; }
 require_once __DIR__ . '/../../bootstrap.php';
-/**
- * School Officer Affiliation Form
- * Upload all 6 required documents including member directory
- */
-
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/../../auth_check.php';
 require_once __DIR__ . '/../../../../includes/config.php';
+require_once __DIR__ . '/../../../../includes/role-config.php';
 require_once __DIR__ . '/../../../../includes/csrf.php';
 
-// Check if user is logged in as school officer
-if (!isset($_SESSION['logged_in']) || $_SESSION['user']['role'] !== 'school_officer') {
-    header('Location: /IECEP-LSC-MEMSYS/public/login.php');
-    exit;
-}
+require_role(['school_officer', 'admin', 'super_admin']);
 
-$user = $_SESSION['user'];
+$user = $_SESSION['user'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submit Affiliation Application - IECEP-LSC</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/css/dashboard.css">
+    <title>Affiliation Documents - IECEP-LSC MEMSYS</title>
+    <?php require_once __DIR__ . '/../../../../includes/head-meta.php'; ?>
     <style>
-        :root {
-            --navy: #0A2F6C;
-            --gold: #F5A623;
-            --success: #10b981;
-            --error: #ef4444;
-        }
-        .form-container { max-width: 900px; margin: 40px auto; padding: 0 24px; }
-        .form-card { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        .form-header { text-align: center; margin-bottom: 40px; }
-        .form-header h2 { font-size: 2rem; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
-        .form-header p { color: #64748b; }
-        .form-group { margin-bottom: 24px; }
-        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #1e293b; }
-        .form-group label .required { color: var(--error); }
-        .form-control { width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 1rem; transition: all 0.2s; }
-        .form-control:focus { outline: none; border-color: var(--navy); box-shadow: 0 0 0 3px rgba(10, 47, 108, 0.1); }
-        .file-upload-area { border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; transition: all 0.2s; cursor: pointer; }
-        .file-upload-area:hover { border-color: var(--navy); background: #f8fafc; }
+        .form-container { max-width: 900px; margin: 0 auto; }
+        .file-upload-area { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 20px; text-align: center; transition: var(--transition); cursor: pointer; background: #fafcff; }
+        .file-upload-area:hover { border-color: var(--memsys-navy); background: #f0f4ff; }
         .file-upload-area input[type="file"] { display: none; }
-        .file-upload-label { cursor: pointer; color: #64748b; }
-        .file-upload-label i { font-size: 2rem; color: var(--navy); margin-bottom: 8px; display: block; }
-        .file-name { margin-top: 8px; font-size: 0.875rem; color: var(--success); font-weight: 600; }
+        .file-upload-label { cursor: pointer; color: var(--memsys-text-muted); }
+        .file-upload-label i { font-size: 2rem; color: var(--memsys-navy); margin-bottom: 8px; display: block; }
+        .file-name { margin-top: 8px; font-size: 0.875rem; color: var(--memsys-success); font-weight: 600; }
         .documents-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 32px; }
-        .btn { padding: 14px 32px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; font-size: 1rem; }
-        .btn-primary { background: var(--navy); color: white; width: 100%; }
-        .btn-primary:hover { background: #1e4a8a; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(10, 47, 108, 0.3); }
-        .btn-primary:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
-        .alert { padding: 16px; border-radius: 8px; margin-bottom: 24px; }
-        .alert-info { background: #dbeafe; border: 1px solid #3b82f6; color: #1e40af; }
-        .alert-success { background: #d1fae5; border: 1px solid #10b981; color: #065f46; }
-        .alert-error { background: #fee2e2; border: 1px solid #ef4444; color: #991b1b; }
-        .section-title { font-size: 1.25rem; font-weight: 700; color: var(--navy); margin: 32px 0 16px; }
     </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../../includes/sidebar.php'; ?>
-    
-    <main class="main-content">
-        <header class="dashboard-header">
-            <div class="header-content">
-                <div>
-                    <h1>Affiliation Application</h1>
-                    <p class="welcome-message">Submit your school's affiliation application</p>
+    <div class="dashboard-container">
+        <?php require_once __DIR__ . '/../../../../includes/sidebar.php'; ?>
+        
+        <main class="main-content">
+            <div class="container py-4">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-2 border-bottom">
+                    <div>
+                        <div class="text-muted small mb-1">
+                            <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="text-muted text-decoration-none">School Portal</a>
+                            <span class="mx-1">/</span>
+                            <span class="text-dark fw-semibold">Documents</span>
+                        </div>
+                        <h2 class="fw-bold text-dark mb-0">
+                            <i class="fas fa-folder-open text-primary me-2"></i>Affiliation Document Submission
+                        </h2>
+                    </div>
+                    <div>
+                        <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="btn btn-sm btn-outline">
+                            <i class="fas fa-arrow-left me-1"></i> Dashboard
+                        </a>
+                    </div>
                 </div>
-            </div>
-        </header>
 
-        <div class="form-container">
-            <div class="form-card">
-                <div class="form-header">
-                    <h2>IECEP-LSC Affiliation Application</h2>
-                    <p>Please complete all fields and upload all required documents</p>
-                </div>
+                <div class="form-container">
+                    <div class="card card-navy-top">
+                        <div class="mb-4 text-center">
+                            <h4 class="fw-bold text-dark mb-1">Chapter Affiliation Document Kit</h4>
+                            <p class="text-muted small">Please complete all fields and upload all required documents for academic year endorsement.</p>
+                        </div>
 
                 <div class="alert alert-info">
                     <strong><i class="fas fa-info-circle"></i> Required Documents (IECEP Constitution Article IV Section 3):</strong>
@@ -212,9 +185,11 @@ $user = $_SESSION['user'];
                         <i class="fas fa-paper-plane"></i> Submit Application
                     </button>
                 </form>
+                    </div>
+                </div>
             </div>
-        </div>
-    </main>
+        </main>
+    </div>
 
     <script>
     function showFileName(input) {
