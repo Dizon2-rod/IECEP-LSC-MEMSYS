@@ -25,11 +25,11 @@ RUN sed -i 's/80/${PORT}/g' /etc/apache2/sites-available/000-default.conf /etc/a
 # Set working directory
 WORKDIR /var/www/html
 
-# Copy composer.json first for optimal caching
+# Copy composer files
 COPY composer.json ./
 
 # Run composer install with audit blocking disabled
-RUN COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs || true
+RUN COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs --no-audit || true
 
 # Copy application files
 COPY . /var/www/html/
