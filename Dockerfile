@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y \
     git \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) gd pdo pdo_mysql mbstring zip \
-    && a2dismod mpm_event mpm_worker || true \
+    && rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf /etc/apache2/mods-available/mpm_event.* /etc/apache2/mods-available/mpm_worker.* \
     && a2enmod mpm_prefork rewrite headers \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
@@ -36,8 +36,8 @@ COPY . /var/www/html/
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
-# Create startup script to bind Apache to Railway dynamic $PORT
-RUN printf '#!/bin/sh\nexport PORT="${PORT:-80}"\nsed -i "s/Listen .*/Listen ${PORT}/" /etc/apache2/ports.conf\nsed -i "s/<VirtualHost \\*:.*/<VirtualHost \\*:${PORT}>/" /etc/apache2/sites-available/000-default.conf\nexec apache2-foreground\n' > /usr/local/bin/start-server.sh \
+# Create startup script to bind Apache to Railway dynamic $PORT and enforce single MPM
+RUN printf '#!/bin/sh\nset -e\nexport PORT="${PORT:-80}"\nrm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* 2>/dev/null || true\nln -sf /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load 2>/dev/null || true\nsed -i "s/Listen .*/Listen ${PORT}/" /etc/apache2/ports.conf\nsed -i "s/<VirtualHost \\*:.*/<VirtualHost \\*:${PORT}>/" /etc/apache2/sites-available/000-default.conf\nexec apache2-foreground\n' > /usr/local/bin/start-server.sh \
     && chmod +x /usr/local/bin/start-server.sh
 
 ENV PORT=80

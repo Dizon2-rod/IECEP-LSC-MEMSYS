@@ -1,1 +1,1 @@
-web: php-fpm && nginx -g 'daemon off;'
+web: /usr/local/bin/start-server.sh
