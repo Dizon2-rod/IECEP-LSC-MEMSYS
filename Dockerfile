@@ -13,14 +13,12 @@ RUN apt-get update && apt-get install -y \
     git \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) gd pdo pdo_mysql mbstring zip \
-    && a2enmod rewrite headers \
+    && a2dismod mpm_event mpm_worker || true \
+    && a2enmod mpm_prefork rewrite headers \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Composer v2
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Configure Apache port binding for Railway dynamic $PORT
-RUN sed -i 's/80/${PORT}/g' /etc/apache2/sites-available/000-default.conf /etc/apache2/ports.conf
 
 # Set working directory
 WORKDIR /var/www/html
@@ -28,7 +26,7 @@ WORKDIR /var/www/html
 # Copy composer files
 COPY composer.json ./
 
-# Run composer install with audit blocking disabled
+# Install PHP dependencies without blocking
 RUN COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs --no-audit || true
 
 # Copy application files
@@ -38,9 +36,12 @@ COPY . /var/www/html/
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
-# Default port fallback
+# Create startup script to bind Apache to Railway dynamic $PORT
+RUN printf '#!/bin/sh\nexport PORT="${PORT:-80}"\nsed -i "s/Listen .*/Listen ${PORT}/" /etc/apache2/ports.conf\nsed -i "s/<VirtualHost \\*:.*/<VirtualHost \\*:${PORT}>/" /etc/apache2/sites-available/000-default.conf\nexec apache2-foreground\n' > /usr/local/bin/start-server.sh \
+    && chmod +x /usr/local/bin/start-server.sh
+
 ENV PORT=80
 
 EXPOSE ${PORT}
 
-CMD ["apache2-foreground"]
+CMD ["/usr/local/bin/start-server.sh"]
