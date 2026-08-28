@@ -7,13 +7,15 @@ nixPkgs = [
     "php82Extensions.mbstring",
     "php82Extensions.zip",
     "php82Extensions.curl",
-    "php82Extensions.openssl"
+    "php82Extensions.openssl",
+    "php82Extensions.fileinfo"
 ]
 
 [phases.install]
 cmds = [
+    "COMPOSER_ALLOW_SUPERUSER=1 composer config --global audit.block false || true",
     "COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --ignore-platform-reqs --no-audit || true"
 ]
 
 [start]
-cmd = "php -S 0.0.0.0:$PORT -t /app"
+cmd = "php -S 0.0.0.0:$PORT"
