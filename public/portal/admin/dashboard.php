@@ -154,7 +154,7 @@ $chartSchoolData = array_values($schoolMemberDistribution);
     <title>Executive Command Desk — IECEP-LSC MEMSYS</title>
     <meta name="description" content="Central administrative dashboard for IECEP-LSC institutional chapters, student memberships, financial auditing, and cryptographic ledger verification.">
     
-    <?php include dirname(__DIR__, 4) . '/includes/head-meta.php'; ?>
+    <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
@@ -536,7 +536,7 @@ $chartSchoolData = array_values($schoolMemberDistribution);
 <body>
 
     <!-- Unified Dynamic Sidebar -->
-    <?php include dirname(__DIR__, 4) . '/includes/sidebar.php'; ?>
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
     <main class="main-content">
         <div class="dashboard-main-wrap">
