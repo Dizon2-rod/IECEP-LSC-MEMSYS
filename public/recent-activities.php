@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/bootstrap.php';
+require_once dirname(__DIR__) . '/bootstrap.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">

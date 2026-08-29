@@ -1,17 +1,9 @@
 <?php
-require_once __DIR__ . '/bootstrap.php';
+require_once dirname(__DIR__) . '/bootstrap.php';
 // Prevent session blocking issues
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-
-// Ensure paths.php exists before requiring to prevent timeout
-$pathsFile = __DIR__ . '/../includes/paths.php';
-if (!file_exists($pathsFile)) {
-    die('Configuration error: paths.php not found');
-}
-require_once $pathsFile;
-require_once __DIR__ . '/../includes/config.php'; // defines BASE_URL, PORTAL_URL, etc.
 
 // Prevent caching
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');

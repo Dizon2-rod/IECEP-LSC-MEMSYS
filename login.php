@@ -56,7 +56,26 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
 }
 
 $error = '';
-$email = '';
+$email = $_POST['email'] ?? ($_COOKIE['remember_email'] ?? '');
+$rememberChecked = isset($_POST['remember']) ? !empty($_POST['remember']) : !empty($_COOKIE['remember_email']);
+
+if (!function_exists('persistRememberMe')) {
+    function persistRememberMe($userEmail, $remember) {
+        $isSecure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
+        if ($remember) {
+            $expire = time() + (30 * 86400); // 30 days
+            setcookie('remember_email', $userEmail, $expire, '/', '', $isSecure, true);
+            if (session_id()) {
+                $params = session_get_cookie_params();
+                setcookie(session_name(), session_id(), $expire, $params['path'], $params['domain'], $isSecure, $params['httponly']);
+            }
+        } else {
+            if (isset($_COOKIE['remember_email'])) {
+                setcookie('remember_email', '', time() - 86400, '/');
+            }
+        }
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = strtolower(trim($_POST['email'] ?? ''));
@@ -183,6 +202,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Audit log successful login
                 log_audit('login', 'users', $userId, null, ['email' => $userEmail, 'role' => $profile['role'] ?? 'member']);
 
+                // Persist remember me preference
+                persistRememberMe($userEmail, !empty($_POST['remember']));
+
                 if (!empty($mustChangePassword)) {
                     $_SESSION['require_password_change'] = true;
                     header('Location: ' . BASE_URL . '/change-password.php?first=1');
@@ -221,6 +243,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'institution_id' => $localFallbackAccounts[$email]['institution_id'] ?? null,
                         'must_change_password' => false
                     ];
+
+                    // Persist remember me preference
+                    persistRememberMe($email, !empty($_POST['remember']));
 
                     $redirectMap = [
                         'admin'          => PORTAL_URL . '/admin/dashboard.php',
@@ -265,6 +290,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'must_change_password' => false
                     ];
                     
+                    // Persist remember me preference
+                    persistRememberMe($email, !empty($_POST['remember']));
+
                     // Redirect to role-based dashboard
                     $redirectMap = [
                         'admin'                  => PORTAL_URL . '/admin/dashboard.php',
@@ -567,7 +595,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </script>
 
                     <div class="form-options">
-                        <label><input type="checkbox" name="remember"> Remember Me</label>
+                        <label><input type="checkbox" name="remember" value="1" <?php echo $rememberChecked ? 'checked' : ''; ?>> Remember Me</label>
                         <a href="<?php echo BASE_URL; ?>/public/forgot-password.php">Forgot Password?</a>
                     </div>
                     <button type="submit" class="btn-login">Log in</button>
