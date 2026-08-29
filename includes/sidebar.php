@@ -921,9 +921,6 @@ if (!function_exists('isMenuItemActive')) {
 
 <!-- Mobile Top Sticky Navigation Bar -->
 <div class="mobile-top-bar" id="mobileTopBar">
-    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle navigation menu">
-        <i class="fas fa-bars"></i>
-    </button>
     <div class="mobile-bar-brand">
         <div class="mobile-logo-frame">
             <img src="<?php echo $base_public_url; ?>/assets/icons/iecep-logo.png" alt="IECEP-LSC Seal" onerror="this.style.display='none';">
@@ -931,6 +928,9 @@ if (!function_exists('isMenuItemActive')) {
         <span class="mobile-brand-title">IECEP-LSC</span>
         <span class="mobile-portal-badge"><?php echo htmlspecialchars($portal_title); ?></span>
     </div>
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle navigation menu">
+        <i class="fas fa-bars"></i>
+    </button>
 </div>
 
 <!-- Mobile Overlay Backdrop -->
