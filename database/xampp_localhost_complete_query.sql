@@ -308,21 +308,26 @@ CREATE TABLE IF NOT EXISTS `fee_brackets` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================================
--- SEED DATA: OFFICIAL LAGUNA HEI CHAPTERS (All 8 Campuses)
+-- SEED DATA: OFFICIAL LAGUNA HEI CHAPTERS (All 8 Official Campuses)
 -- =====================================================================
-INSERT INTO `institutions` (`id`, `email`, `name`, `acronym`, `type`, `province`, `status`, `compliance_status`, `membership_count`)
+INSERT INTO `institutions` (`id`, `email`, `name`, `acronym`, `type`, `address`, `city`, `province`, `contact_email`, `facebook_url`, `status`, `compliance_status`, `membership_count`)
 VALUES
-    ('1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'lspu.scc@iecep-lsc.org', 'Laguna State Polytechnic University - Santa Cruz Campus', 'LSPU - SCC', 'university', 'Laguna', 'active', 'compliant', 150),
-    ('3c6f8a12-9844-48f6-b11c-99d9b626e5a1', 'lspu.spcc@iecep-lsc.org', 'Laguna State Polytechnic University - San Pablo City Campus', 'LSPU - SPCC', 'university', 'Laguna', 'active', 'compliant', 120),
-    ('7d8e9f01-1234-4567-89ab-cdef01234567', 'mmcl@iecep-lsc.org', 'Mapúa Malayan Colleges Laguna', 'MMCL', 'college', 'Laguna', 'active', 'compliant', 110),
-    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'dlsu.laguna@iecep-lsc.org', 'De La Salle University - Laguna Campus', 'DLSU - Laguna', 'university', 'Laguna', 'active', 'compliant', 85),
-    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'letran.calamba@iecep-lsc.org', 'Colegio de San Juan de Letran - Calamba', 'Letran - Calamba', 'college', 'Laguna', 'active', 'compliant', 95),
-    ('c3d4e5f6-a7b8-9012-cdef-123456789012', 'pup.starosa@iecep-lsc.org', 'Polytechnic University of the Philippines - Santa Rosa Campus', 'PUP - Santa Rosa', 'university', 'Laguna', 'active', 'compliant', 130),
-    ('d4e5f6a7-b8c9-0123-def1-234567890123', 'uphsd.calamba@iecep-lsc.org', 'University of Perpetual Help System DALTA - Calamba', 'UPHSD - Calamba', 'university', 'Laguna', 'active', 'compliant', 75),
-    ('e5f6a7b8-c9d0-1234-ef12-345678901234', 'uphsl.binan@iecep-lsc.org', 'University of Perpetual Help System Laguna - Biñan', 'UPHSL - Biñan', 'university', 'Laguna', 'active', 'compliant', 90)
+    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'ecelss@letran-calamba.edu.ph', 'Colegio de San Juan de Letran - Calamba', 'Letran - Calamba', 'college', 'Colegio de San Juan de Letran, Calamba, Philippines, 4027', 'Calamba', 'Laguna', 'ecelss@letran-calamba.edu.ph', 'https://www.facebook.com/ECELSSrocks', 'active', 'compliant', 95),
+    ('3c6f8a12-9844-48f6-b11c-99d9b626e5a1', 'afece_spc@lspu.edu.ph', 'Laguna State Polytechnic University - San Pablo City Campus', 'LSPU - SPCC', 'university', 'San Pablo City, Philippines, 4000', 'San Pablo City', 'Laguna', 'afece_spc@lspu.edu.ph', 'https://www.facebook.com/LSPUAFECE', 'active', 'compliant', 120),
+    ('7d8e9f01-1234-4567-89ab-cdef01234567', 'iecepmmcl@gmail.com', 'Mapúa Malayan Colleges Laguna', 'MMCL', 'college', 'Pulo, Cabuyao, Philippines, 4025', 'Cabuyao', 'Laguna', 'iecepmmcl@gmail.com', 'https://www.facebook.com/iecepmmcl', 'active', 'compliant', 110),
+    ('4d5e6f7a-8b9c-0123-def4-567890123456', 'jieceppnc@gmail.com', 'University of Cabuyao (Pamantasan ng Cabuyao)', 'PnC', 'university', 'Cabuyao, Philippines, 4025', 'Cabuyao', 'Laguna', 'jieceppnc@gmail.com', 'https://www.facebook.com/jiecep.pnc.official', 'active', 'compliant', 85),
+    ('c3d4e5f6-a7b8-9012-cdef-123456789012', 'officialaeces.pupsrc@gmail.com', 'Polytechnic University of the Philippines - Santa Rosa Campus', 'PUP - Santa Rosa', 'university', 'Room 3-4, PUP-Sta. Rosa, Barangay Tagapo, Santa Rosa, Philippines, 4026', 'Santa Rosa', 'Laguna', 'officialaeces.pupsrc@gmail.com', 'https://www.facebook.com/OfficialAECES', 'active', 'compliant', 130),
+    ('e5f6a7b8-c9d0-1234-ef12-345678901234', 'uphsl.pieces@gmail.com', 'University of Perpetual Help System Laguna – Biñan Campus', 'UPHSL - Biñan', 'university', 'National Hi-way, Brgy. Sto. Niño, Biñan, Philippines, 4024', 'Biñan', 'Laguna', 'uphsl.pieces@gmail.com', 'https://www.facebook.com/uphslpieces', 'active', 'compliant', 90),
+    ('d4e5f6a7-b8c9-0123-def1-234567890123', 'pieces.uphsd@gmail.com', 'University of Perpetual Help System DALTA - Calamba Campus', 'UPHSD - Calamba', 'university', 'Calamba, Philippines, 4027', 'Calamba', 'Laguna', 'pieces.uphsd@gmail.com', 'https://www.facebook.com/eceperpslp.org', 'active', 'compliant', 75),
+    ('1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'official.lspusccecess@gmail.com', 'Laguna State Polytechnic University - Santa Cruz Campus', 'LSPU - SCC', 'university', 'Santa Cruz National High-way, Brgy. Bubukal, Santa Cruz, Laguna', 'Santa Cruz', 'Laguna', 'official.lspusccecess@gmail.com', 'https://www.facebook.com/LSPUSCCECESS', 'active', 'compliant', 150)
 ON DUPLICATE KEY UPDATE
+    `email` = VALUES(`email`),
     `name` = VALUES(`name`),
     `acronym` = VALUES(`acronym`),
+    `address` = VALUES(`address`),
+    `city` = VALUES(`city`),
+    `facebook_url` = VALUES(`facebook_url`),
+    `contact_email` = VALUES(`contact_email`),
     `compliance_status` = VALUES(`compliance_status`),
     `membership_count` = VALUES(`membership_count`);
 
@@ -347,20 +352,53 @@ ON DUPLICATE KEY UPDATE
     `role` = VALUES(`role`),
     `institution_id` = VALUES(`institution_id`);
 
-INSERT INTO `members` (`id`, `membership_id`, `full_name`, `email`, `institution_id`, `year_level`, `status`, `digital_id_hash`)
+INSERT INTO `members` (
+    `id`, `membership_id`, `full_name`, `first_name`, `last_name`, `email`,
+    `phone`, `institution_id`, `course`, `year_level`, `student_number`,
+    `membership_type`, `status`, `payment_status`, `digital_id_hash`
+)
 VALUES
-    ('00000000-0000-0000-0000-000000000011', 'IECEP-2026-0001', 'Juan Dela Cruz', 'juan.delacruz@student.lspu.edu.ph', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '4th Year', 'active', 'a1b2c3d4e5f60001'),
-    ('00000000-0000-0000-0000-000000000012', 'IECEP-2026-0002', 'Carlo Mendoza', 'carlo.mendoza@lspu.edu.ph', '3c6f8a12-9844-48f6-b11c-99d9b626e5a1', '3rd Year', 'active', 'a1b2c3d4e5f60002'),
-    ('00000000-0000-0000-0000-000000000013', 'IECEP-2026-0003', 'Kyla Ramos', 'kyla.ramos@mmcl.edu.ph', '7d8e9f01-1234-4567-89ab-cdef01234567', '4th Year', 'active', 'a1b2c3d4e5f60003'),
-    ('00000000-0000-0000-0000-000000000014', 'IECEP-2026-0004', 'Mark Santos', 'mark.santos@dlsu.edu.ph', 'a1b2c3d4-e5f6-7890-abcd-ef1234567890', '2nd Year', 'active', 'a1b2c3d4e5f60004'),
-    ('00000000-0000-0000-0000-000000000015', 'IECEP-2026-0005', 'Alyssa Reyes', 'alyssa.reyes@letran.edu.ph', 'b2c3d4e5-f6a7-8901-bcde-f12345678901', '4th Year', 'active', 'a1b2c3d4e5f60005')
+    -- 1. Colegio de San Juan de Letran - Calamba (ECELSS)
+    ('50000000-0000-0000-0000-000000000001', 'IECEP-2026-0501', 'Alyssa Reyes', 'Alyssa', 'Reyes', 'alyssa.reyes@letran-calamba.edu.ph', '09215550001', 'b2c3d4e5-f6a7-8901-bcde-f12345678901', 'BS Electronics Engineering', '4th Year', '2022-05001', 'student', 'active', 'paid', 'a1b2c3d4e5f60501'),
+    ('50000000-0000-0000-0000-000000000002', 'IECEP-2026-0502', 'Gabriel Santos', 'Gabriel', 'Santos', 'gabriel.santos@letran-calamba.edu.ph', '09215550002', 'b2c3d4e5-f6a7-8901-bcde-f12345678901', 'BS Electronics Engineering', '2nd Year', '2024-05002', 'student', 'active', 'paid', 'a1b2c3d4e5f60502'),
+
+    -- 2. LSPU - San Pablo City Campus (AFECE)
+    ('20000000-0000-0000-0000-000000000001', 'IECEP-2026-0201', 'Patricia Reyes', 'Patricia', 'Reyes', 'patricia.spcc@lspu.edu.ph', '09182220001', '3c6f8a12-9844-48f6-b11c-99d9b626e5a1', 'BS Electronics Engineering', '1st Year', '2025-02001', 'student', 'active', 'paid', 'a1b2c3d4e5f60201'),
+    ('20000000-0000-0000-0000-000000000002', 'IECEP-2026-0202', 'Angelo Bautista', 'Angelo', 'Bautista', 'angelo.spcc@lspu.edu.ph', '09182220002', '3c6f8a12-9844-48f6-b11c-99d9b626e5a1', 'BS Electronics Engineering', '3rd Year', '2023-02002', 'student', 'active', 'paid', 'a1b2c3d4e5f60202'),
+
+    -- 3. Mapúa Malayan Colleges Laguna (IECEP - MMCL)
+    ('30000000-0000-0000-0000-000000000001', 'IECEP-2026-0301', 'Kyla Ramos', 'Kyla', 'Ramos', 'kyla.ramos@mmcl.edu.ph', '09193330001', '7d8e9f01-1234-4567-89ab-cdef01234567', 'BS Electronics Engineering', '2nd Year', '2024-03001', 'student', 'active', 'paid', 'a1b2c3d4e5f60301'),
+    ('30000000-0000-0000-0000-000000000002', 'IECEP-2026-0302', 'Justin Tan', 'Justin', 'Tan', 'justin.tan@mmcl.edu.ph', '09193330002', '7d8e9f01-1234-4567-89ab-cdef01234567', 'BS Electronics Engineering', '4th Year', '2022-03002', 'student', 'active', 'paid', 'a1b2c3d4e5f60302'),
+
+    -- 4. University of Cabuyao / Pamantasan ng Cabuyao (OECES / PnC)
+    ('40000000-0000-0000-0000-000000000001', 'IECEP-2026-0401', 'Christian Flores', 'Christian', 'Flores', 'christian.pnc@gmail.com', '09204440001', '4d5e6f7a-8b9c-0123-def4-567890123456', 'BS Electronics Engineering', '1st Year', '2025-04001', 'student', 'active', 'paid', 'a1b2c3d4e5f60401'),
+    ('40000000-0000-0000-0000-000000000002', 'IECEP-2026-0402', 'Erika Mae Ramos', 'Erika Mae', 'Ramos', 'erika.pnc@gmail.com', '09204440002', '4d5e6f7a-8b9c-0123-def4-567890123456', 'BS Electronics Engineering', '3rd Year', '2023-04002', 'student', 'active', 'paid', 'a1b2c3d4e5f60402'),
+
+    -- 5. PUP - Santa Rosa Campus (AECES)
+    ('60000000-0000-0000-0000-000000000001', 'IECEP-2026-0601', 'John Paul Castro', 'John Paul', 'Castro', 'jp.castro@pup.edu.ph', '09226660001', 'c3d4e5f6-a7b8-9012-cdef-123456789012', 'BS Electronics Engineering', '2nd Year', '2024-06001', 'student', 'active', 'paid', 'a1b2c3d4e5f60601'),
+    ('60000000-0000-0000-0000-000000000002', 'IECEP-2026-0602', 'Nicole Mendoza', 'Nicole', 'Mendoza', 'nicole.castro@pup.edu.ph', '09226660002', 'c3d4e5f6-a7b8-9012-cdef-123456789012', 'BS Electronics Engineering', '4th Year', '2022-06002', 'student', 'active', 'paid', 'a1b2c3d4e5f60602'),
+
+    -- 6. UPHSL – Biñan Campus (PIECES)
+    ('70000000-0000-0000-0000-000000000001', 'IECEP-2026-0701', 'Joshua Garcia', 'Joshua', 'Garcia', 'joshua.uphsl@gmail.com', '09237770001', 'e5f6a7b8-c9d0-1234-ef12-345678901234', 'BS Electronics Engineering', '3rd Year', '2023-07001', 'student', 'active', 'paid', 'a1b2c3d4e5f60701'),
+
+    -- 7. UPHSD - Calamba Campus (ECESS - UPHSD)
+    ('80000000-0000-0000-0000-000000000001', 'IECEP-2026-0801', 'Marielle Cruz', 'Marielle', 'Cruz', 'marielle.uphsd@gmail.com', '09248880001', 'd4e5f6a7-b8c9-0123-def1-234567890123', 'BS Electronics Engineering', '1st Year', '2025-08001', 'student', 'active', 'paid', 'a1b2c3d4e5f60801'),
+
+    -- 8. LSPU - Santa Cruz Campus (ECESS - LSPU SCC)
+    ('10000000-0000-0000-0000-000000000001', 'IECEP-2026-0101', 'Juan Dela Cruz', 'Juan', 'Dela Cruz', 'juan.scc1@lspu.edu.ph', '09171110001', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'BS Electronics Engineering', '1st Year', '2025-01001', 'student', 'active', 'paid', 'a1b2c3d4e5f60101'),
+    ('10000000-0000-0000-0000-000000000002', 'IECEP-2026-0102', 'Maria Santos', 'Maria', 'Santos', 'maria.scc2@lspu.edu.ph', '09171110002', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'BS Electronics Engineering', '2nd Year', '2024-01002', 'student', 'active', 'paid', 'a1b2c3d4e5f60102'),
+    ('10000000-0000-0000-0000-000000000003', 'IECEP-2026-0103', 'Rashed Dizon', 'Rashed', 'Dizon', 'rasheddizon7@gmail.com', '09191234567', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'BS Electronics Engineering', '3rd Year', '2022-00123', 'student', 'active', 'paid', 'a1b2c3d4e5f60103'),
+    ('10000000-0000-0000-0000-000000000004', 'IECEP-2026-0104', 'Carlo Mendoza', 'Carlo', 'Mendoza', 'carlo.scc4@lspu.edu.ph', '09171110004', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'BS Electronics Engineering', '4th Year', '2022-01004', 'student', 'active', 'paid', 'a1b2c3d4e5f60104')
 ON DUPLICATE KEY UPDATE
     `full_name` = VALUES(`full_name`),
     `membership_id` = VALUES(`membership_id`),
-    `institution_id` = VALUES(`institution_id`);
+    `institution_id` = VALUES(`institution_id`),
+    `year_level` = VALUES(`year_level`),
+    `course` = VALUES(`course`),
+    `student_number` = VALUES(`student_number`);
 
 INSERT INTO `member_id_counter` (`year`, `last_number`)
-VALUES (2026, 5)
+VALUES (2026, 14)
 ON DUPLICATE KEY UPDATE `last_number` = GREATEST(`last_number`, VALUES(`last_number`));
 
 -- SEED DATA: INITIAL ATTENDANCE & BLOCKCHAIN LOG
