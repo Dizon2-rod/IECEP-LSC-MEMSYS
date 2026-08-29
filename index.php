@@ -1373,7 +1373,7 @@ try {
                     'id' => 'card-affil-2026',
                     'title' => 'Annual Institutional Affiliation Drive (AY 2026–2027)',
                     'description' => "Official accreditation is now open for all tertiary and vocational institutions in Laguna offering ECE, ECT, and allied engineering curricula.\n\nAffiliated chapters receive:\n• Automated Digital Member IDs with QR/Blockchain hash verification\n• School Officer Dashboard access with real-time roster sync\n• Official Chapter Certificate of Good Standing\n• Priority slots for student seminars and regional competitions.",
-                    'image_url' => ASSETS_URL . '/icons/IECEP.png',
+                    'image_url' => ASSETS_URL . '/icons/iecep-logo.png',
                     'badge_text' => 'Accreditation',
                     'category' => 'Affiliation Drive',
                     'date' => 'AY 2026–2027',
@@ -1425,6 +1425,13 @@ try {
             <?php foreach ($displayCards as $idx => $card): ?>
                 <?php
                     $imageUrl = trim((string)($card['image_url'] ?? ''));
+                    if (strpos($imageUrl, 'http://localhost/IECEP-LSC-MEMSYS') === 0) {
+                        $imageUrl = APP_URL . substr($imageUrl, strlen('http://localhost/IECEP-LSC-MEMSYS'));
+                    } elseif (strpos($imageUrl, 'http://localhost') === 0) {
+                        $imageUrl = APP_URL . substr($imageUrl, strlen('http://localhost'));
+                    } elseif ($imageUrl !== '' && !str_starts_with($imageUrl, 'http://') && !str_starts_with($imageUrl, 'https://') && !str_starts_with($imageUrl, '//')) {
+                        $imageUrl = PUBLIC_URL . '/' . ltrim($imageUrl, '/');
+                    }
                     $buttonText = trim((string)($card['button_text'] ?? 'View Details'));
                     $buttonUrl = trim((string)($card['button_url'] ?? ''));
                     $buttonColor = trim((string)($card['button_color'] ?? '#0B1D4A'));

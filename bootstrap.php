@@ -127,10 +127,33 @@ if (!defined('STORAGE_PATH')) {
 }
 
 // ============================================================================
+// ============================================================================
 // 8. CONSTANT DEFINITIONS (Web URLs)
 // ============================================================================
 if (!defined('APP_URL')) {
-    define('APP_URL', $_ENV['APP_URL'] ?? 'http://localhost/IECEP-LSC-MEMSYS');
+    $envAppUrl = getenv('APP_URL') ?: ($_ENV['APP_URL'] ?? '');
+    
+    $isCli = (php_sapi_name() === 'cli' || defined('STDIN'));
+    $httpHost = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? '';
+    
+    // Auto-detect production / live host if env contains localhost but user is visiting live domain
+    if (!$isCli && !empty($httpHost) && (empty($envAppUrl) || (str_contains($envAppUrl, 'localhost') && !str_contains($httpHost, 'localhost') && !str_contains($httpHost, '127.0.0.1')))) {
+        $isHttps = (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) === 'on') ||
+                   (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ||
+                   (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);
+        $scheme = $isHttps ? 'https' : 'http';
+        
+        $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+        $basePath = '';
+        if (str_contains($scriptName, '/IECEP-LSC-MEMSYS')) {
+            $basePath = '/IECEP-LSC-MEMSYS';
+        }
+        $detectedAppUrl = $scheme . '://' . $httpHost . $basePath;
+    } else {
+        $detectedAppUrl = !empty($envAppUrl) ? rtrim($envAppUrl, '/') : 'http://localhost/IECEP-LSC-MEMSYS';
+    }
+    
+    define('APP_URL', rtrim($detectedAppUrl, '/'));
 }
 if (!defined('BASE_URL')) {
     define('BASE_URL', APP_URL);
