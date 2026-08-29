@@ -122,9 +122,9 @@ $userRole = $_SESSION['role'] ?? '';
 <div class="mobile-menu-overlay" id="mobileMenuOverlay" aria-hidden="true">
     <div class="mobile-menu-content">
         <div class="mobile-menu-header">
-            <a href="<?php echo BASE_URL; ?>/" class="logo" style="color:#ffffff;">
+            <a href="<?php echo BASE_URL; ?>/" class="logo" style="color:#0B1D4A; text-decoration:none; display:flex; align-items:center; gap:0.55rem;">
                 <img src="<?php echo ASSETS_URL; ?>/icons/iecep-logo.png" alt="IECEP-LSC Logo" style="height: 36px; width: auto;">
-                <span style="font-size:1rem;color:#ffffff;">IECEP-LSC</span>
+                <span style="font-size:1.05rem; font-weight:700; color:#0B1D4A; font-family:'Times New Roman', serif; letter-spacing:0.02em;">IECEP-LSC</span>
             </a>
             <button type="button" class="mobile-menu-close" id="mobileMenuClose" aria-label="Close mobile menu">
                 <i class="fas fa-times"></i>
@@ -144,14 +144,14 @@ $userRole = $_SESSION['role'] ?? '';
                 <li>
                     <a href="#" class="mobile-dropdown-toggle">
                         <span><i class="fas fa-folder-open" style="width:20px;color:#D4AF37;"></i> Resources</span>
-                        <i class="fas fa-chevron-down toggle-icon" style="font-size:0.8rem;"></i>
+                        <i class="fas fa-chevron-down toggle-icon" style="font-size:0.8rem;color:#94A3B8;"></i>
                     </a>
                     <ul class="mobile-submenu">
-                        <li><a href="<?php echo BASE_URL; ?>/iecep-officers.php"><i class="fas fa-users-gear" style="margin-right:6px;"></i> IECEP Officers</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>/former-presidents.php"><i class="fas fa-crown" style="margin-right:6px;"></i> Former Presidents</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>/iecep-hymn.php"><i class="fas fa-music" style="margin-right:6px;"></i> IECEP Hymn</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>/awards-distinctions.php"><i class="fas fa-trophy" style="margin-right:6px;"></i> Awards &amp; Distinctions</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>/public/blockchain-explorer.php"><i class="fas fa-link" style="margin-right:6px;"></i> Blockchain Explorer</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/iecep-officers.php"><i class="fas fa-users-gear" style="margin-right:6px;color:#D4AF37;"></i> IECEP Officers</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/former-presidents.php"><i class="fas fa-crown" style="margin-right:6px;color:#D4AF37;"></i> Former Presidents</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/iecep-hymn.php"><i class="fas fa-music" style="margin-right:6px;color:#D4AF37;"></i> IECEP Hymn</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/awards-distinctions.php"><i class="fas fa-trophy" style="margin-right:6px;color:#D4AF37;"></i> Awards &amp; Distinctions</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/public/blockchain-explorer.php"><i class="fas fa-link" style="margin-right:6px;color:#D4AF37;"></i> Blockchain Explorer</a></li>
                     </ul>
                 </li>
 
@@ -159,21 +159,21 @@ $userRole = $_SESSION['role'] ?? '';
                 <li>
                     <a href="#" class="mobile-dropdown-toggle">
                         <span><i class="fas fa-circle-info" style="width:20px;color:#D4AF37;"></i> About IECEP-LSC</span>
-                        <i class="fas fa-chevron-down toggle-icon" style="font-size:0.8rem;"></i>
+                        <i class="fas fa-chevron-down toggle-icon" style="font-size:0.8rem;color:#94A3B8;"></i>
                     </a>
                     <ul class="mobile-submenu">
-                        <li><a href="<?php echo BASE_URL; ?>/mission-vision.php"><i class="fas fa-compass" style="margin-right:6px;"></i> Mission &amp; Vision</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>/objective.php"><i class="fas fa-bullseye" style="margin-right:6px;"></i> Institutional Objectives</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>/calendar-activity.php"><i class="fas fa-calendar-days" style="margin-right:6px;"></i> Calendar Activity</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>/affiliated-schools.php"><i class="fas fa-building-columns" style="margin-right:6px;"></i> Affiliated Schools</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>/contact.php"><i class="fas fa-envelope" style="margin-right:6px;"></i> Contact Secretariat</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>/public/merchandise.php"><i class="fas fa-shirt" style="margin-right:6px;"></i> Merchandise</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/mission-vision.php"><i class="fas fa-compass" style="margin-right:6px;color:#D4AF37;"></i> Mission &amp; Vision</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/objective.php"><i class="fas fa-bullseye" style="margin-right:6px;color:#D4AF37;"></i> Institutional Objectives</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/calendar-activity.php"><i class="fas fa-calendar-days" style="margin-right:6px;color:#D4AF37;"></i> Calendar Activity</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/affiliated-schools.php"><i class="fas fa-building-columns" style="margin-right:6px;color:#D4AF37;"></i> Affiliated Schools</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/contact.php"><i class="fas fa-envelope" style="margin-right:6px;color:#D4AF37;"></i> Contact Secretariat</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/public/merchandise.php"><i class="fas fa-shirt" style="margin-right:6px;color:#D4AF37;"></i> Merchandise</a></li>
                     </ul>
                 </li>
             </ul>
 
-            <div style="margin-top: 1.5rem; padding: 0 0.5rem; display:flex; flex-direction:column; gap:0.6rem;">
-                <button class="pwa-install-btn mobile-cta-btn" id="pwaMobileInstallBtn" style="display:none; background:linear-gradient(135deg,#D4AF37 0%,#C5A059 100%); color:#0B1D4A; border:none; width:100%; cursor:pointer;">
+            <div style="margin-top: 1.5rem; padding: 0 0.25rem; display:flex; flex-direction:column; gap:0.6rem;">
+                <button class="pwa-install-btn mobile-cta-btn" id="pwaMobileInstallBtn" style="display:none; background:linear-gradient(135deg,#D4AF37 0%,#C5A059 100%); color:#0B1D4A !important; border:none; width:100%; cursor:pointer;">
                     <i class="fas fa-download" style="margin-right: 0.5rem;"></i> Install IECEP App
                 </button>
                 <a href="<?php echo BASE_URL; ?>/login.php" class="mobile-cta-btn">
@@ -187,7 +187,7 @@ $userRole = $_SESSION['role'] ?? '';
                 <li><a href="<?php echo BASE_URL; ?>/calendar-activity.php"><i class="fas fa-calendar-days" style="width:20px;color:#D4AF37;"></i> Calendar</a></li>
                 <li><a href="<?php echo PORTAL_URL; ?>/profile.php"><i class="fas fa-user" style="width:20px;color:#D4AF37;"></i> My Profile</a></li>
                 <li><a href="<?php echo PORTAL_URL; ?>/settings.php"><i class="fas fa-gear" style="width:20px;color:#D4AF37;"></i> Settings</a></li>
-                <li><a href="<?php echo BASE_URL; ?>/logout.php" style="color:#EF4444;"><i class="fas fa-power-off" style="width:20px;"></i> Logout</a></li>
+                <li><a href="<?php echo BASE_URL; ?>/logout.php" style="color:#DC2626;"><i class="fas fa-power-off" style="width:20px;"></i> Logout</a></li>
             </ul>
             <?php endif; ?>
         </nav>
@@ -195,21 +195,19 @@ $userRole = $_SESSION['role'] ?? '';
 </div>
 
 <style>
-/* Enhanced Mobile Drawer Styles */
+/* Enhanced Mobile Drawer Styles (Clean White SaaS Theme) */
 .mobile-menu-overlay {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(7, 18, 46, 0.96);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    background: #FFFFFF;
     z-index: 99999;
     display: none;
     overflow-y: auto;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    transition: opacity 0.25s ease;
 }
 .mobile-menu-overlay.active {
     display: block !important;
@@ -218,36 +216,38 @@ $userRole = $_SESSION['role'] ?? '';
 .mobile-menu-content {
     max-width: 480px;
     margin: 0 auto;
-    padding: 1.5rem 1.25rem 3rem;
+    padding: 1.25rem 1.25rem 3rem;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    background: #FFFFFF;
 }
 .mobile-menu-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 1.25rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #E2E8F0;
+    margin-bottom: 1.25rem;
 }
 .mobile-menu-close {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #FFFFFF;
-    width: 42px;
-    height: 42px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    color: #64748B;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     cursor: pointer;
     transition: all 0.2s ease;
 }
 .mobile-menu-close:hover {
-    background: #D4AF37;
-    color: #07122E;
+    background: #FEF2F2;
+    color: #DC2626;
+    border-color: #FECACA;
     transform: rotate(90deg);
 }
 .mobile-menu-nav ul {
@@ -256,71 +256,78 @@ $userRole = $_SESSION['role'] ?? '';
     margin: 0;
 }
 .mobile-menu-nav > ul > li {
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.45rem;
 }
 .mobile-menu-nav > ul > li > a {
-    color: #FFFFFF;
+    color: #1E293B;
     text-decoration: none;
-    font-size: 1.05rem;
+    font-size: 0.95rem;
     font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.85rem 1rem;
+    padding: 0.8rem 1rem;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
     transition: all 0.2s ease;
 }
 .mobile-menu-nav > ul > li > a:hover,
 .mobile-menu-nav > ul > li > a:focus {
-    background: rgba(212, 175, 55, 0.15);
-    border-color: rgba(212, 175, 55, 0.35);
-    color: #F8E7A2;
+    background: #EFF6FF;
+    border-color: #BFDBFE;
+    color: #0B1D4A;
 }
 .mobile-submenu {
     display: none;
     list-style: none;
-    padding: 0.5rem 0 0.5rem 1.25rem;
-    margin: 0.25rem 0 0.5rem;
-    border-left: 2px solid rgba(212, 175, 55, 0.4);
+    padding: 0.4rem 0.5rem 0.4rem 0.75rem;
+    margin: 0.35rem 0 0.5rem 0.5rem;
+    border-left: 2.5px solid #D4AF37;
+    background: #FAFAFA;
+    border-radius: 0 10px 10px 0;
 }
 .mobile-submenu.open {
     display: block !important;
 }
+.mobile-submenu li {
+    margin-bottom: 2px;
+}
 .mobile-submenu li a {
-    color: rgba(255, 255, 255, 0.85);
+    color: #475569;
     text-decoration: none;
-    font-size: 0.95rem;
-    padding: 0.55rem 0.75rem;
+    font-size: 0.88rem;
+    font-weight: 500;
+    padding: 0.5rem 0.75rem;
     display: block;
     border-radius: 8px;
     transition: all 0.2s ease;
 }
 .mobile-submenu li a:hover {
-    color: #F8E7A2;
-    background: rgba(255, 255, 255, 0.08);
-    padding-left: 1rem;
+    color: #0B1D4A;
+    background: #EDF2F7;
+    font-weight: 600;
+    padding-left: 0.95rem;
 }
 .mobile-cta-btn {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 100%;
-    padding: 0.9rem 1.5rem;
-    background: linear-gradient(135deg, #FFE89E 0%, #D4AF37 100%);
-    color: #07122E;
+    padding: 0.85rem 1.5rem;
+    background: linear-gradient(135deg, #0B1D4A 0%, #1E3A8A 100%);
+    color: #FFFFFF !important;
     text-decoration: none;
     font-weight: 700;
-    font-size: 1rem;
+    font-size: 0.95rem;
     border-radius: 9999px;
-    box-shadow: 0 4px 15px rgba(212, 175, 55, 0.35);
+    box-shadow: 0 4px 15px rgba(11, 29, 74, 0.22);
     transition: all 0.2s ease;
 }
 .mobile-cta-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.5);
-    filter: brightness(1.05);
+    box-shadow: 0 6px 20px rgba(11, 29, 74, 0.35);
+    color: #FFFFFF !important;
 }
 
 /* Hamburger button animation - Compact & Sleek */

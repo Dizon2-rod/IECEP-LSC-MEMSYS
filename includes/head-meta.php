@@ -204,60 +204,16 @@ define('HEAD_META_INCLUDED', true);
         left: 0;
         right: 0;
         bottom: 0;
-        background: rgba(0, 0, 0, 0.95);
-        z-index: 9999;
-        display: none !important;
+        background: #FFFFFF;
+        z-index: 99999;
+        display: none;
         overflow-y: auto;
-        visibility: hidden;
         opacity: 0;
-        transition: opacity 0.3s ease, visibility 0.3s ease;
+        transition: opacity 0.25s ease;
     }
     .mobile-menu-overlay.active {
-        display: flex !important;
-        visibility: visible;
+        display: block !important;
         opacity: 1;
-    }
-    .mobile-menu-content {
-        padding: 2rem;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-    }
-    .mobile-menu-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 2rem;
-    }
-    .mobile-menu-close {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 2rem;
-        cursor: pointer;
-        padding: 0.5rem;
-    }
-    .mobile-menu-nav {
-        flex: 1;
-    }
-    .mobile-menu-nav ul {
-        list-style: none;
-    }
-    .mobile-menu-nav li {
-        margin-bottom: 1rem;
-    }
-    .mobile-menu-nav a {
-        color: white;
-        text-decoration: none;
-        font-size: 1.1rem;
-        font-weight: 500;
-        display: block;
-        padding: 1rem;
-        border-radius: 8px;
-        transition: background-color 0.2s;
-    }
-    .mobile-menu-nav a:hover {
-        background: rgba(255, 255, 255, 0.1);
     }
     
     /* Responsive Sidebar */
