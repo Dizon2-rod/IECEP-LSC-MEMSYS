@@ -65,6 +65,7 @@ $yearLevel = !empty($member['year_level']) ? $member['year_level'] : 'Undergradu
 $studentNumber = !empty($member['student_number']) ? $member['student_number'] : ($member['student_id'] ?? 'N/A');
 $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($userEmail ?: 'iecep'));
 $memberFullName = $member['full_name'] ?? $displayName;
+$avatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -322,7 +323,11 @@ $memberFullName = $member['full_name'] ?? $displayName;
 
                     <div style="text-align:center;">
                         <div class="id-photo-wrapper">
-                            <i class="fas fa-user-graduate"></i>
+                            <?php if (!empty($avatarUrl)): ?>
+                                <img src="<?= htmlspecialchars($avatarUrl) ?>" alt="Member Photo" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">
+                            <?php else: ?>
+                                <i class="fas fa-user-graduate"></i>
+                            <?php endif; ?>
                         </div>
                         <div style="font-size:1.2rem; font-weight:800; color:#0B1D4A; margin-bottom:0.15rem;">
                             <?= htmlspecialchars($memberFullName) ?>

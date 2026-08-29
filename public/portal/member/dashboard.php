@@ -93,6 +93,7 @@ $courseName = !empty($member['course']) ? $member['course'] : (!empty($member['p
 $yearLevel = !empty($member['year_level']) ? $member['year_level'] : 'Undergraduate';
 $isPaid = strtolower($member['payment_status'] ?? 'paid') === 'paid';
 $memberFullName = $member['full_name'] ?? $displayName;
+$avatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -484,8 +485,12 @@ $memberFullName = $member['full_name'] ?? $displayName;
                 <!-- Digital ID Preview Widget (Clean White / Light Surface) -->
                 <div class="dash-card" style="margin-bottom:1.25rem; border-top:3px solid var(--color-gold);">
                     <div style="padding:1.5rem; text-align:center;">
-                        <div style="width:60px; height:60px; border-radius:50%; background:#F8FAFC; border:2px solid #D4AF37; display:inline-flex; align-items:center; justify-content:center; font-size:1.6rem; color:#0B1D4A; margin-bottom:0.75rem;">
-                            <i class="fas fa-user-graduate"></i>
+                        <div style="width:60px; height:60px; border-radius:50%; background:#F8FAFC; border:2px solid #D4AF37; display:inline-flex; align-items:center; justify-content:center; font-size:1.6rem; color:#0B1D4A; margin-bottom:0.75rem; overflow:hidden;">
+                            <?php if (!empty($avatarUrl)): ?>
+                                <img src="<?= htmlspecialchars($avatarUrl) ?>" alt="Avatar" style="width:100%; height:100%; object-fit:cover;">
+                            <?php else: ?>
+                                <i class="fas fa-user-graduate"></i>
+                            <?php endif; ?>
                         </div>
                         <h3 style="margin:0 0 0.2rem 0; font-size:1.1rem; font-weight:800; color:#0B1D4A;">
                             <?= htmlspecialchars($memberFullName) ?>

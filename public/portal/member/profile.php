@@ -19,7 +19,7 @@ $supabase = getSupabaseClient();
 $feedbackMsg = '';
 $feedbackType = 'success';
 
-// Handle POST: Update Profile
+// Handle POST: Update Profile & Avatar
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'update_profile') {
         $fullName = trim($_POST['full_name'] ?? '');
@@ -29,6 +29,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $yearLevel = trim($_POST['year_level'] ?? '3rd Year');
         $course = trim($_POST['course'] ?? 'BS Electronics Engineering');
         $birthday = trim($_POST['birthday'] ?? '');
+        $avatarUrl = null;
+
+        // Handle Profile Picture File Upload
+        if (isset($_FILES['avatar_file']) && $_FILES['avatar_file']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['avatar_file'];
+            $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+            $fileInfo = pathinfo($file['name']);
+            $ext = strtolower($fileInfo['extension'] ?? '');
+
+            if (in_array($ext, $allowedExts)) {
+                $uploadDir = __DIR__ . '/../../../public/uploads/avatars/';
+                if (!is_dir($uploadDir)) {
+                    @mkdir($uploadDir, 0777, true);
+                }
+                $cleanUid = !empty($userId) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $userId) : 'mem_' . time();
+                $fileName = 'avatar_' . $cleanUid . '_' . time() . '.' . $ext;
+                $targetPath = $uploadDir . $fileName;
+
+                if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+                    $avatarUrl = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $fileName;
+                    $_SESSION['avatar_url'] = $avatarUrl;
+                }
+            } else {
+                $feedbackMsg = "Invalid image format. Allowed formats: JPG, PNG, WEBP, GIF.";
+                $feedbackType = "danger";
+            }
+        }
 
         if (!empty($fullName) && $supabase) {
             try {
@@ -45,6 +72,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (!empty($birthday)) {
                     $updateData['birthday'] = $birthday;
                 }
+                if (!empty($avatarUrl)) {
+                    $updateData['avatar_url'] = $avatarUrl;
+                }
 
                 // Check if member exists by email
                 $existing = $supabase->select('members', ['email' => 'eq.' . $userEmail]);
@@ -54,8 +84,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                 // Also update user_profiles & users table
                 if (!empty($userId)) {
+                    $profData = ['full_name' => $fullName, 'phone' => $phone];
+                    if (!empty($avatarUrl)) {
+                        $profData['avatar_url'] = $avatarUrl;
+                        $profData['profile_photo'] = $avatarUrl;
+                    }
                     try {
-                        $supabase->update('user_profiles', ['full_name' => $fullName, 'phone' => $phone], $userId, 'user_id');
+                        $supabase->update('user_profiles', $profData, $userId, 'user_id');
                     } catch (\Throwable $t) {}
                     try {
                         $supabase->update('users', ['full_name' => $fullName], $userId);
@@ -66,9 +101,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
                     $_SESSION['user']['name'] = $fullName;
                     $_SESSION['user']['full_name'] = $fullName;
+                    if (!empty($avatarUrl)) {
+                        $_SESSION['user']['avatar_url'] = $avatarUrl;
+                    }
                 }
 
-                $feedbackMsg = "🎉 Profile details updated and saved successfully to database!";
+                $feedbackMsg = "🎉 Profile & Avatar updated successfully in database!";
                 $feedbackType = "success";
             } catch (Exception $e) {
                 error_log("Profile update error: " . $e->getMessage());
@@ -77,7 +115,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
     } elseif ($_POST['action'] === 'update_password') {
-        $currPass = $_POST['current_password'] ?? '';
         $newPass = $_POST['new_password'] ?? '';
         $confirmPass = $_POST['confirm_password'] ?? '';
 
@@ -142,6 +179,7 @@ $phone = $member['phone'] ?? '09191234567';
 $address = $member['address'] ?? 'Santa Cruz, Laguna';
 $rawBirthday = $member['birthday'] ?? '2004-05-15';
 $memberFullName = $member['full_name'] ?? $displayName;
+$currentAvatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -186,7 +224,7 @@ $memberFullName = $member['full_name'] ?? $displayName;
             .main-content { margin-left: 0; padding: 1rem; }
         }
 
-        /* Top User Profile Header Banner */
+        /* Top Profile Hero Bar */
         .profile-hero-bar {
             display: flex;
             align-items: center;
@@ -197,18 +235,25 @@ $memberFullName = $member['full_name'] ?? $displayName;
         }
 
         .profile-avatar-circle {
-            width: 64px;
-            height: 64px;
+            width: 72px;
+            height: 72px;
             border-radius: 50%;
             background: #FFFFFF;
-            border: 2px solid #D4AF37;
+            border: 3px solid #D4AF37;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.8rem;
-            color: var(--color-navy);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             flex-shrink: 0;
+            overflow: hidden;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .profile-avatar-circle img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         .profile-hero-info h1 {
@@ -230,7 +275,7 @@ $memberFullName = $member['full_name'] ?? $displayName;
             flex-wrap: wrap;
         }
 
-        /* Settings Split Container (Left Tabs, Right Panel) */
+        /* Split Layout */
         .settings-split-layout {
             display: grid;
             grid-template-columns: 240px 1fr;
@@ -285,7 +330,7 @@ $memberFullName = $member['full_name'] ?? $displayName;
             text-align: center;
         }
 
-        /* Right Panel Cards */
+        /* Right Group Card */
         .settings-group-card {
             background: #FFFFFF;
             border: 1px solid var(--border-color);
@@ -349,7 +394,6 @@ $memberFullName = $member['full_name'] ?? $displayName;
             align-items: flex-end;
         }
 
-        /* Form Inputs */
         .form-control-custom {
             width: 100%;
             padding: 0.55rem 0.85rem;
@@ -369,7 +413,6 @@ $memberFullName = $member['full_name'] ?? $displayName;
             box-shadow: 0 0 0 3px rgba(11, 29, 74, 0.08);
         }
 
-        /* Pills & Tags */
         .tag-pill {
             display: inline-flex;
             align-items: center;
@@ -432,7 +475,7 @@ $memberFullName = $member['full_name'] ?? $displayName;
     <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
     <main class="main-content">
-        <!-- Toast Feedback -->
+        <!-- Feedback Alert -->
         <?php if (!empty($feedbackMsg)): ?>
             <div style="background:<?= $feedbackType === 'success' ? '#ECFDF5' : '#FEE2E2' ?>; border:1px solid <?= $feedbackType === 'success' ? '#10B981' : '#EF4444' ?>; color:<?= $feedbackType === 'success' ? '#065F46' : '#991B1B' ?>; padding:0.85rem 1.25rem; border-radius:10px; margin-bottom:1.25rem; font-size:0.86rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
                 <i class="fas <?= $feedbackType === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation' ?>"></i>
@@ -440,10 +483,14 @@ $memberFullName = $member['full_name'] ?? $displayName;
             </div>
         <?php endif; ?>
 
-        <!-- Top Profile Hero Banner (as seen in mockup) -->
+        <!-- Top Profile Hero Banner -->
         <div class="profile-hero-bar">
-            <div class="profile-avatar-circle">
-                <i class="fas fa-user-graduate"></i>
+            <div class="profile-avatar-circle" onclick="document.getElementById('avatarFileInput').click()" title="Click to change profile picture">
+                <?php if (!empty($currentAvatarUrl)): ?>
+                    <img src="<?= htmlspecialchars($currentAvatarUrl) ?>" alt="Member Avatar" id="heroAvatarPreview">
+                <?php else: ?>
+                    <i class="fas fa-user-graduate" id="heroAvatarIcon" style="font-size:1.8rem; color:var(--color-navy);"></i>
+                <?php endif; ?>
             </div>
             <div class="profile-hero-info">
                 <h1>
@@ -462,7 +509,7 @@ $memberFullName = $member['full_name'] ?? $displayName;
             </div>
         </div>
 
-        <!-- Settings Split Layout (Left Navigation Tabs, Right Group Panels) -->
+        <!-- Settings Split Layout -->
         <div class="settings-split-layout">
             <!-- Left Tabs -->
             <div class="settings-nav-list">
@@ -488,15 +535,38 @@ $memberFullName = $member['full_name'] ?? $displayName;
 
             <!-- Right Main Panels -->
             <div>
-                <!-- TAB 1: Personal Info (Editable) -->
+                <!-- TAB 1: Personal Info (Editable Form with Photo Upload) -->
                 <div id="tab_personal" class="tab-pane-content">
-                    <form method="POST" action="">
+                    <form method="POST" action="" enctype="multipart/form-data">
                         <input type="hidden" name="action" value="update_profile">
                         
                         <div class="settings-group-card">
                             <div class="settings-group-header">
-                                <h2 class="settings-group-title">Personal Information</h2>
-                                <p class="settings-group-subtitle">Update your personal identity details, contact records, and student identification.</p>
+                                <h2 class="settings-group-title">Personal Information &amp; Photo</h2>
+                                <p class="settings-group-subtitle">Update your profile picture, personal identity details, contact records, and student standing.</p>
+                            </div>
+
+                            <!-- Profile Picture Upload Row -->
+                            <div class="settings-row-item">
+                                <div>
+                                    <div class="settings-item-label">Profile Avatar Picture</div>
+                                    <div class="settings-item-desc">Upload a high-resolution 1:1 portrait photo for your Digital ID and chapter credentials.</div>
+                                </div>
+                                <div class="settings-control-box" style="align-items:flex-end;">
+                                    <div style="display:flex; align-items:center; gap:1rem; width:100%; justify-content:flex-end;">
+                                        <div style="width:50px; height:50px; border-radius:50%; background:#F8FAFC; border:2px solid #D4AF37; overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                            <?php if (!empty($currentAvatarUrl)): ?>
+                                                <img src="<?= htmlspecialchars($currentAvatarUrl) ?>" alt="Avatar" id="rowAvatarPreview" style="width:100%; height:100%; object-fit:cover;">
+                                            <?php else: ?>
+                                                <i class="fas fa-user-graduate" id="rowAvatarIcon" style="font-size:1.4rem; color:var(--color-navy);"></i>
+                                            <?php endif; ?>
+                                        </div>
+                                        <div style="flex:1;">
+                                            <input type="file" name="avatar_file" id="avatarFileInput" accept="image/png, image/jpeg, image/webp, image/gif" class="form-control-custom" style="font-size:0.78rem; padding:0.4rem;" onchange="previewSelectedAvatar(event)">
+                                        </div>
+                                    </div>
+                                    <span style="font-size:0.72rem; color:#64748B; margin-top:0.35rem;">Formats: JPG, PNG, WEBP. Max size: 5MB.</span>
+                                </div>
                             </div>
 
                             <!-- Full Legal Name -->
@@ -547,14 +617,14 @@ $memberFullName = $member['full_name'] ?? $displayName;
                             <div class="settings-row-item">
                                 <div>
                                     <div class="settings-item-label">Date of Birth</div>
-                                    <div class="settings-item-desc">Birthdate for demographic categorization.</div>
+                                    <div class="settings-item-desc">Birthdate for demographic records.</div>
                                 </div>
                                 <div class="settings-control-box">
                                     <input type="date" name="birthday" class="form-control-custom" value="<?= htmlspecialchars($rawBirthday) ?>">
                                 </div>
                             </div>
 
-                            <!-- Year Level & Course (Editable) -->
+                            <!-- Year Level -->
                             <div class="settings-row-item">
                                 <div>
                                     <div class="settings-item-label">Academic Year Level</div>
@@ -570,10 +640,11 @@ $memberFullName = $member['full_name'] ?? $displayName;
                                 </div>
                             </div>
 
+                            <!-- Degree Program -->
                             <div class="settings-row-item">
                                 <div>
                                     <div class="settings-item-label">Degree Program</div>
-                                    <div class="settings-item-desc">Curriculum department.</div>
+                                    <div class="settings-item-desc">Electronics Engineering curriculum.</div>
                                 </div>
                                 <div class="settings-control-box">
                                     <input type="text" name="course" class="form-control-custom" value="<?= htmlspecialchars($courseName) ?>">
@@ -591,7 +662,7 @@ $memberFullName = $member['full_name'] ?? $displayName;
                     </form>
                 </div>
 
-                <!-- TAB 2: Roles & Chapter (Matching Mockup Design) -->
+                <!-- TAB 2: Roles & Chapter -->
                 <div id="tab_academic" class="tab-pane-content" style="display:none;">
                     <div class="settings-group-card">
                         <div class="settings-group-header">
@@ -599,7 +670,6 @@ $memberFullName = $member['full_name'] ?? $displayName;
                             <p class="settings-group-subtitle">Official standing, assigned delegation roles, and institutional chapter scopes.</p>
                         </div>
 
-                        <!-- Roles Dropdown -->
                         <div class="settings-row-item">
                             <div>
                                 <div class="settings-item-label">Membership Category</div>
@@ -613,13 +683,12 @@ $memberFullName = $member['full_name'] ?? $displayName;
                             </div>
                         </div>
 
-                        <!-- Assigned Roles Tags -->
                         <div class="settings-row-item">
                             <div>
                                 <div class="settings-item-label">Assigned Chapter Roles</div>
                                 <div class="settings-item-desc">Applied on every regional assembly and portal sign-in.</div>
                             </div>
-                            <div class="settings-control-box" style="align-items:flex-start; justify-content:flex-start;">
+                            <div class="settings-control-box" style="align-items:flex-start;">
                                 <div>
                                     <span class="tag-pill dark"><i class="fas fa-user-check me-1"></i> Member</span>
                                     <span class="tag-pill gray"><i class="fas fa-graduation-cap me-1"></i> ECE Student</span>
@@ -628,7 +697,6 @@ $memberFullName = $member['full_name'] ?? $displayName;
                             </div>
                         </div>
 
-                        <!-- Chapter Team / School -->
                         <div class="settings-row-item">
                             <div>
                                 <div class="settings-item-label">Institutional Chapter</div>
@@ -641,7 +709,6 @@ $memberFullName = $member['full_name'] ?? $displayName;
                             </div>
                         </div>
 
-                        <!-- Teams Scope -->
                         <div class="settings-row-item">
                             <div>
                                 <div class="settings-item-label">Chapter Standing</div>
@@ -655,7 +722,6 @@ $memberFullName = $member['full_name'] ?? $displayName;
                             </div>
                         </div>
 
-                        <!-- Permission Scopes -->
                         <div class="settings-row-item">
                             <div>
                                 <div class="settings-item-label">Permission Scopes</div>
@@ -672,14 +738,14 @@ $memberFullName = $member['full_name'] ?? $displayName;
                         </div>
                     </div>
 
-                    <!-- Lower Card: Effective Access Card (as seen in mockup) -->
+                    <!-- Lower Card: Effective Access Card -->
                     <div class="settings-group-card">
                         <div class="settings-group-header">
                             <h2 class="settings-group-title">Effective Access</h2>
                             <p class="settings-group-subtitle">What this member can reach across the regional ecosystem today.</p>
                         </div>
                         <div style="padding:1.25rem 1.5rem;">
-                            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:1rem; display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
+                            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; padding:1rem; display:flex; justify-content:space-between; align-items:flex-start;">
                                 <div>
                                     <div style="font-size:0.88rem; font-weight:800; color:#0F172A; margin-bottom:0.2rem;">
                                         Full Chapter &amp; Event Privileges
@@ -803,17 +869,38 @@ $memberFullName = $member['full_name'] ?? $displayName;
 
     <script>
         function switchSettingsTab(tabName, btnElement) {
-            // Hide all tab panes
             document.querySelectorAll('.tab-pane-content').forEach(el => el.style.display = 'none');
-            // Remove active from all buttons
             document.querySelectorAll('.settings-nav-btn').forEach(btn => btn.classList.remove('active'));
 
-            // Show target tab
             const target = document.getElementById('tab_' + tabName);
             if (target) target.style.display = 'block';
 
-            // Mark button as active
             if (btnElement) btnElement.classList.add('active');
+        }
+
+        function previewSelectedAvatar(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const heroPrev = document.getElementById('heroAvatarPreview');
+                    const heroIcon = document.getElementById('heroAvatarIcon');
+                    if (heroPrev) {
+                        heroPrev.src = evt.target.result;
+                    } else if (heroIcon) {
+                        heroIcon.parentElement.innerHTML = `<img src="${evt.target.result}" alt="Preview" id="heroAvatarPreview">`;
+                    }
+
+                    const rowPrev = document.getElementById('rowAvatarPreview');
+                    const rowIcon = document.getElementById('rowAvatarIcon');
+                    if (rowPrev) {
+                        rowPrev.src = evt.target.result;
+                    } else if (rowIcon) {
+                        rowIcon.parentElement.innerHTML = `<img src="${evt.target.result}" alt="Preview" id="rowAvatarPreview" style="width:100%; height:100%; object-fit:cover;">`;
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
         }
     </script>
 </body>
