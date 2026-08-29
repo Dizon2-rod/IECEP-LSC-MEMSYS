@@ -494,9 +494,6 @@ if ($supabase && !empty($selectedEventId)) {
                     <button type="button" class="btn-rose" onclick="openScannerWithMode('check_out')">
                         <i class="fas fa-right-from-bracket"></i> Scan Check-Out (Time-Out)
                     </button>
-                    <button type="button" class="btn-primary-navy" onclick="openLiveQrModal()">
-                        <i class="fas fa-satellite-dish" style="color:#FDE047;"></i> Live Event QR
-                    </button>
                     <button type="button" id="btnExportAtt" class="btn-white">
                         <i class="fas fa-file-excel" style="color:var(--color-emerald);"></i> Export Excel
                     </button>
@@ -662,36 +659,7 @@ if ($supabase && !empty($selectedEventId)) {
         </div>
     </div>
 
-    <!-- Modal 2: Generate 30-Second Rolling Event Attendance QR Code -->
-    <div id="liveQrModal" class="doc-modal">
-        <div class="modal-inner-box">
-            <div class="ap-card-header" style="background:var(--color-navy); color:#FFFFFF;">
-                <h3 class="ap-card-title" style="color:#FFFFFF;"><i class="fas fa-qrcode"></i> Live Event Attendance QR</h3>
-                <button class="btn-white" style="border:none; padding:0.25rem 0.5rem; background:transparent; color:#FFFFFF;" onclick="closeLiveQrModal()">&times;</button>
-            </div>
-            <div style="padding:1.5rem; text-align:center;">
-                <div style="font-size:0.84rem; font-weight:800; color:#0F172A; margin-bottom:0.25rem;">
-                    Students Scan with Phone Camera
-                </div>
-                <div style="font-size:0.75rem; color:#64748B; margin-bottom:1rem;" id="liveQrEventTitle">
-                    Loading Event...
-                </div>
 
-                <div style="background:#F8FAFC; padding:1.25rem; border-radius:12px; display:inline-block; border:2px solid var(--color-navy);">
-                    <div id="liveQrContainer"></div>
-                </div>
-
-                <div class="progress-bar-container" style="width:100%; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden; margin-top:0.75rem;">
-                    <div id="qrProgressBar" style="height:100%; background:var(--color-emerald); transition:width 1s linear; width:100%;"></div>
-                </div>
-
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.65rem; font-size:0.74rem; font-weight:700; color:#64748B;">
-                    <span><i class="fas fa-shield-check" style="color:var(--color-emerald);"></i> 30s Dynamic Security</span>
-                    <span id="qrTimerText">Refreshing in 30s</span>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <script>
         let html5Scanner = null;
@@ -845,82 +813,7 @@ if ($supabase && !empty($selectedEventId)) {
             // Scanning continuously
         }
 
-        // --- GENERATE EVENT 30s ROLLING QR ---
-        function openLiveQrModal() {
-            document.getElementById('liveQrModal').classList.add('active');
-            const selectEl = document.getElementById('eventSelectDropdown');
-            const title = selectEl.options[selectEl.selectedIndex]?.text || 'Chapter Event';
-            document.getElementById('liveQrEventTitle').textContent = title;
 
-            fetchAndRenderEventQr();
-            if (qrTimerInterval) clearInterval(qrTimerInterval);
-            qrTimerInterval = setInterval(updateQrTimer, 1000);
-        }
-
-        function closeLiveQrModal() {
-            document.getElementById('liveQrModal').classList.remove('active');
-            if (qrTimerInterval) clearInterval(qrTimerInterval);
-        }
-
-        async function fetchAndRenderEventQr() {
-            try {
-                const res = await fetch(`/IECEP-LSC-MEMSYS/public/api/events/attendance.php?action=generate_event_qr&event_id=${encodeURIComponent(currentEventId)}`);
-                const data = await res.json();
-                if (data.success) {
-                    qrSecondsRemaining = data.seconds_left || 30;
-                    renderQrCode(data.qr_data);
-                }
-            } catch (e) {
-                console.error("Error fetching rolling event QR:", e);
-            }
-        }
-
-        function renderQrCode(qrDataString) {
-            const container = document.getElementById('liveQrContainer');
-            if (!container) return;
-            container.innerHTML = '';
-            
-            let rendered = false;
-            if (typeof QRCode !== 'undefined') {
-                try {
-                    new QRCode(container, {
-                        text: qrDataString,
-                        width: 200,
-                        height: 200,
-                        colorDark: "#0B1D4A",
-                        colorLight: "#FFFFFF",
-                        correctLevel: QRCode.CorrectLevel.M
-                    });
-                    rendered = true;
-                } catch (e) {
-                    console.warn("QRCodeJS instance failed, falling back to image renderer:", e);
-                }
-            }
-
-            if (!rendered) {
-                const encoded = encodeURIComponent(qrDataString);
-                const img = document.createElement('img');
-                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}&color=0B1D4A`;
-                img.alt = "Dynamic Attendance QR Code";
-                img.style.width = "200px";
-                img.style.height = "200px";
-                img.style.display = "block";
-                img.style.borderRadius = "8px";
-                container.appendChild(img);
-            }
-        }
-
-        function updateQrTimer() {
-            qrSecondsRemaining--;
-            if (qrSecondsRemaining <= 0) {
-                fetchAndRenderEventQr();
-            }
-            const pct = Math.max(0, (qrSecondsRemaining / 30) * 100);
-            const bar = document.getElementById('qrProgressBar');
-            if (bar) bar.style.width = pct + '%';
-            const txt = document.getElementById('qrTimerText');
-            if (txt) txt.textContent = `Refreshing in ${qrSecondsRemaining}s`;
-        }
 
         // --- FILTER TABLE ---
         function filterAttTable() {
