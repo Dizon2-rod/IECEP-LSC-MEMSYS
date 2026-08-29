@@ -415,13 +415,13 @@ ON DUPLICATE KEY UPDATE `last_number` = GREATEST(`last_number`, VALUES(`last_num
 -- SEED DATA: INITIAL ATTENDANCE & BLOCKCHAIN LOG
 INSERT INTO `event_attendees` (`id`, `event_id`, `member_id`, `status`, `check_in_time`)
 VALUES
-    ('00000000-0000-0000-0000-000000000021', '2f2f99ce-98e1-49f6-8949-760687189aa6', '00000000-0000-0000-0000-000000000011', 'attended', NOW() - INTERVAL 45 MINUTE),
-    ('00000000-0000-0000-0000-000000000022', '2f2f99ce-98e1-49f6-8949-760687189aa6', '00000000-0000-0000-0000-000000000012', 'attended', NOW() - INTERVAL 30 MINUTE)
+    ('00000000-0000-0000-0000-000000000021', '2f2f99ce-98e1-49f6-8949-760687189aa6', '10000000-0000-0000-0000-000000000001', 'attended', NOW() - INTERVAL 45 MINUTE),
+    ('00000000-0000-0000-0000-000000000022', '2f2f99ce-98e1-49f6-8949-760687189aa6', '10000000-0000-0000-0000-000000000003', 'attended', NOW() - INTERVAL 30 MINUTE)
 ON DUPLICATE KEY UPDATE `status` = VALUES(`status`);
 
 INSERT INTO `blockchain_records` (`id`, `block_index`, `entity_type`, `entity_id`, `transaction_hash`, `record_hash`, `data_json`, `confirmed`)
 VALUES
-    ('00000000-0000-0000-0000-000000000031', 1, 'event_attendance', '00000000-0000-0000-0000-000000000011', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f01234', '{"event": "IECEP-LSC Regional Technical Summit 2026", "student": "Juan Dela Cruz", "membership_id": "IECEP-2026-0001"}', TRUE)
+    ('00000000-0000-0000-0000-000000000031', 1, 'event_attendance', '10000000-0000-0000-0000-000000000001', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f01234', '{"event": "IECEP-LSC Regional Technical Summit 2026", "student": "Juan Dela Cruz", "membership_id": "IECEP-2026-0101"}', TRUE)
 ON DUPLICATE KEY UPDATE `confirmed` = VALUES(`confirmed`);
 
 -- SEED DATA: SYSTEM SETTINGS & FEES
