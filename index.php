@@ -419,7 +419,6 @@ try {
             .form-input, .form-textarea { font-size: 16px; }
             .verification-inputs { gap: 0.5rem; }
             .verification-inputs input { width: 40px; height: 45px; font-size: 1.25rem; }
-            .contact-container { grid-template-columns: 1fr; gap: 2rem; }
         }
 
         @media (min-width: 576px) and (max-width: 767.98px) {
@@ -1349,65 +1348,96 @@ try {
 
         @media (max-width: 768px) {
             .contact {
-                padding: 1.75rem 0 2rem !important;
+                padding: 1.5rem 0 1.75rem !important;
             }
             .contact-container {
-                gap: 1.25rem !important;
-                padding: 0 0.5rem !important;
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 0.5rem !important;
+                padding: 0 0.35rem !important;
+                align-items: stretch !important;
+            }
+            .contact-content {
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                padding-right: 0.15rem !important;
             }
             .contact-content h2 {
-                font-size: 1.35rem !important;
-                margin-bottom: 0.3rem !important;
+                font-size: 0.95rem !important;
+                margin-bottom: 0.2rem !important;
+                font-weight: 700 !important;
+                line-height: 1.2 !important;
             }
             .contact-content p {
-                font-size: 0.78rem !important;
-                line-height: 1.45 !important;
-                margin-bottom: 0.85rem !important;
+                font-size: 0.56rem !important;
+                line-height: 1.3 !important;
+                margin-bottom: 0.45rem !important;
+                color: rgba(255, 255, 255, 0.85) !important;
             }
             .contact-info-pills {
-                gap: 0.35rem !important;
-                margin-bottom: 0.95rem !important;
+                gap: 0.25rem !important;
+                margin-bottom: 0.45rem !important;
             }
             .contact-info-pill {
-                padding: 0.4rem 0.65rem !important;
-                font-size: 0.74rem !important;
-                gap: 0.45rem !important;
+                padding: 0.25rem 0.35rem !important;
+                font-size: 0.52rem !important;
+                gap: 0.3rem !important;
+                border-radius: 6px !important;
+            }
+            .contact-info-pill span {
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
             }
             .contact-info-pill i {
-                font-size: 0.82rem !important;
-                width: 15px !important;
+                font-size: 0.6rem !important;
+                width: 12px !important;
+            }
+            #ctaAffiliateBtn {
+                padding: 0.35rem 0.45rem !important;
+                font-size: 0.58rem !important;
+                width: 100% !important;
+                border-radius: 6px !important;
+                text-align: center !important;
+                justify-content: center !important;
             }
             .contact-form {
-                padding: 1rem 0.95rem !important;
-                border-radius: 12px !important;
+                padding: 0.55rem 0.45rem !important;
+                border-radius: 10px !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
             }
             .contact-form h3 {
-                font-size: 0.95rem !important;
-                margin-bottom: 0.6rem !important;
+                font-size: 0.72rem !important;
+                margin-bottom: 0.35rem !important;
+                gap: 0.2rem !important;
+                font-weight: 700 !important;
             }
             .contact-form .form-group {
-                margin-bottom: 0.5rem !important;
+                margin-bottom: 0.25rem !important;
             }
             .contact-form .form-label {
-                font-size: 0.72rem !important;
-                margin-bottom: 0.15rem !important;
+                font-size: 0.52rem !important;
+                margin-bottom: 0.1rem !important;
+                font-weight: 600 !important;
             }
             .contact-form .form-input,
             .contact-form .form-textarea {
-                padding: 0.45rem 0.65rem !important;
-                font-size: 0.78rem !important;
+                padding: 0.25rem 0.35rem !important;
+                font-size: 0.56rem !important;
+                border-radius: 5px !important;
             }
             .contact-form .form-textarea {
-                min-height: 60px !important;
-                height: 60px !important;
+                min-height: 40px !important;
+                height: 40px !important;
             }
             .contact-form .form-submit {
-                padding: 0.5rem 0.85rem !important;
-                font-size: 0.82rem !important;
-            }
-            #ctaAffiliateBtn {
-                padding: 0.45rem 0.95rem !important;
-                font-size: 0.8rem !important;
+                padding: 0.3rem 0.45rem !important;
+                font-size: 0.58rem !important;
+                border-radius: 5px !important;
+                margin-top: 0.15rem !important;
             }
         }
 
