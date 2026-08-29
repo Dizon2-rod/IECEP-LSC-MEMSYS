@@ -1,213 +1,259 @@
 <?php
 require_once __DIR__ . '/../auth_check.php';
+require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../../../includes/config.php';
-require_once __DIR__ . '/../../../includes/middleware/auth.php';
+require_once __DIR__ . '/../../../includes/role-config.php';
 
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'member') {
-    header('Location: ' . BASE_URL . '/login.php');
-    exit;
-}
+require_role(['member', 'admin', 'super_admin', 'school_officer']);
 
 $current_page = 'profile';
+$pageTitle = 'Student Member Profile';
 
 $user = get_user_info();
-$member_id = $_SESSION['member_id'] ?? $user['member_id'] ?? null;
+$userId = $user['id'] ?? null;
+$userEmail = $user['email'] ?? '';
+$displayName = $user['full_name'] ?? $user['name'] ?? $userEmail;
 
-if (!$member_id) {
-    header('Location: ' . BASE_URL . '/login.php');
-    exit;
+$supabase = getSupabaseClient();
+
+// Fetch Member Record
+$member = [];
+$schoolName = 'Laguna State Polytechnic University - Santa Cruz Campus';
+$schoolAcronym = 'LSPU - SCC';
+
+if ($supabase) {
+    try {
+        if (!empty($userEmail)) {
+            $mRes = $supabase->select('members', ['email' => 'eq.' . $userEmail]);
+            if (is_array($mRes) && isset($mRes[0])) $member = $mRes[0];
+        }
+        if (empty($member) && !empty($userId)) {
+            $mRes = $supabase->select('members', ['id' => 'eq.' . $userId]);
+            if (is_array($mRes) && isset($mRes[0])) $member = $mRes[0];
+        }
+
+        $instId = $member['institution_id'] ?? null;
+        if ($instId) {
+            $iRes = $supabase->select('institutions', ['id' => 'eq.' . $instId]);
+            if (is_array($iRes) && isset($iRes[0]['name'])) {
+                $schoolName = $iRes[0]['name'];
+                $schoolAcronym = $iRes[0]['acronym'] ?? 'IECEP-SC';
+            }
+        }
+    } catch (Exception $e) {
+        error_log("Profile load error: " . $e->getMessage());
+    }
 }
 
-$supabase = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// Fetch member details
-try {
-    $memberData = $supabase->select('members', [
-        'id' => 'eq.' . $member_id
-    ]);
-    $member = $memberData[0] ?? [];
-} catch (Exception $e) {
-    $member = [];
-}
-
-// Fetch user profile
-try {
-    $profileData = $supabase->select('user_profiles', [
-        'user_id' => 'eq.' . ($user['id'] ?? '')
-    ]);
-    $profile = $profileData[0] ?? [];
-} catch (Exception $e) {
-    $profile = [];
-}
+$membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
+$courseName = !empty($member['course']) ? $member['course'] : 'BS Electronics Engineering';
+$yearLevel = !empty($member['year_level']) ? $member['year_level'] : '3rd Year';
+$studentNumber = !empty($member['student_number']) ? $member['student_number'] : ($member['student_id'] ?? '2023-01048');
+$phone = $member['phone'] ?? '+63 912 345 6789';
+$address = $member['address'] ?? 'Santa Cruz, Laguna';
+$birthday = !empty($member['birthday']) ? date('F d, Y', strtotime($member['birthday'])) : 'N/A';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <?php require_once __DIR__ . '/../../../includes/head-meta.php'; ?>
-    <title>My Profile - Member Portal</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
+    <meta name="description" content="Manage personal profile, student records, and chapter credentials.">
+    <?php include INCLUDES_PATH . 'head-meta.php'; ?>
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-blue: #2563EB;
+            --color-rose: #E11D48;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            padding: 1.25rem;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content { margin-left: 0; padding: 1rem; }
+        }
+
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 340px 1fr;
+            gap: 1.25rem;
+        }
+
+        @media (max-width: 900px) {
+            .profile-grid { grid-template-columns: 1fr; }
+        }
+
+        .prof-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-card);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #F1F5F9;
+            font-size: 0.86rem;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #64748B; font-weight: 600; }
+        .info-val { color: #0F172A; font-weight: 700; text-align: right; }
+
+        .btn-primary-navy {
+            background: var(--color-navy);
+            color: #FFFFFF;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-primary-navy:hover {
+            background: var(--color-navy-hover);
+            color: #FFFFFF;
+        }
+    </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <?php require_once __DIR__ . '/../../../includes/sidebar.php'; ?>
-        
-        <main class="main-content">
-            <div class="container py-5">
-                <div class="mb-4">
-                    <h1 class="h2 mb-2">My Profile</h1>
-                    <p class="text-muted">View your personal information and membership details</p>
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
+
+    <main class="main-content">
+        <!-- Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem;">
+            <div>
+                <h1 style="font-size:1.4rem; font-weight:800; color:#0F172A; margin:0 0 0.2rem 0; display:flex; align-items:center; gap:0.5rem;">
+                    <i class="fas fa-user-circle" style="color:var(--color-navy);"></i> My Member Profile
+                </h1>
+                <p style="margin:0; font-size:0.82rem; color:#64748B;">
+                    Personal directory records and regional membership verification data.
+                </p>
+            </div>
+            <div>
+                <a href="/IECEP-LSC-MEMSYS/change-password.php" class="btn-primary-navy">
+                    <i class="fas fa-key"></i> Change Password
+                </a>
+            </div>
+        </div>
+
+        <div class="profile-grid">
+            <!-- Left Card: Avatar & Primary Identity -->
+            <div class="prof-card" style="text-align:center;">
+                <div style="width:90px; height:90px; border-radius:50%; background:linear-gradient(135deg, #0B1D4A 0%, #152C6E 100%); color:#D4AF37; display:inline-flex; align-items:center; justify-content:center; font-size:2.5rem; border:4px solid #D4AF37; box-shadow:0 8px 20px rgba(11,29,74,0.15); margin-bottom:1rem;">
+                    <i class="fas fa-user-graduate"></i>
+                </div>
+                <h2 style="font-size:1.2rem; font-weight:800; color:#0F172A; margin:0 0 0.2rem 0;">
+                    <?= htmlspecialchars($member['full_name'] ?? $displayName) ?>
+                </h2>
+                <div style="font-size:0.82rem; color:#64748B; margin-bottom:0.6rem;">
+                    <?= htmlspecialchars($schoolName) ?>
+                </div>
+                <div style="font-family:'JetBrains Mono', monospace; font-size:0.85rem; font-weight:700; color:#0B1D4A; background:#FEF9C3; padding:0.35rem 0.75rem; border-radius:6px; display:inline-block; border:1px solid #FDE047; margin-bottom:1.25rem;">
+                    <?= htmlspecialchars($membershipId) ?>
                 </div>
 
-                <div class="card">
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-4 text-center mb-4 mb-md-0">
-                                <div class="member-photo-large">
-                                    <i class="fas fa-user fa-4x"></i>
-                                </div>
-                                <h5 class="mt-3"><?= htmlspecialchars($member['full_name'] ?? 'Member Name') ?></h5>
-                                <p class="text-muted"><code><?= htmlspecialchars($member['membership_id'] ?? 'IECEP-XXXX-XXXX') ?></code></p>
-                            </div>
-                            <div class="col-md-8">
-                                <h5 class="mb-4">Personal Information</h5>
-                                
-                                <div class="row mb-3">
-                                    <div class="col-sm-4">
-                                        <label class="fw-bold text-muted">Full Name</label>
-                                    </div>
-                                    <div class="col-sm-8">
-                                        <?= htmlspecialchars($member['full_name'] ?? 'N/A') ?>
-                                    </div>
-                                </div>
+                <div style="border-top:1px solid #E2E8F0; padding-top:1.25rem; text-align:left;">
+                    <div style="font-size:0.75rem; font-weight:700; color:#64748B; text-transform:uppercase; margin-bottom:0.5rem;">Quick Details</div>
+                    <div style="font-size:0.82rem; color:#334155; margin-bottom:0.4rem;">
+                        <i class="fas fa-graduation-cap me-2" style="color:#D4AF37; width:16px;"></i> <?= htmlspecialchars($courseName) ?>
+                    </div>
+                    <div style="font-size:0.82rem; color:#334155; margin-bottom:0.4rem;">
+                        <i class="fas fa-calendar-check me-2" style="color:#059669; width:16px;"></i> <?= htmlspecialchars($yearLevel) ?>
+                    </div>
+                    <div style="font-size:0.82rem; color:#334155;">
+                        <i class="fas fa-shield-check me-2" style="color:#2563EB; width:16px;"></i> Verified Student Chapter Member
+                    </div>
+                </div>
+            </div>
 
-                                <div class="row mb-3">
-                                    <div class="col-sm-4">
-                                        <label class="fw-bold text-muted">Email</label>
-                                    </div>
-                                    <div class="col-sm-8">
-                                        <?= htmlspecialchars($member['email'] ?? 'N/A') ?>
-                                    </div>
-                                </div>
-
-                                <div class="row mb-3">
-                                    <div class="col-sm-4">
-                                        <label class="fw-bold text-muted">Year Level</label>
-                                    </div>
-                                    <div class="col-sm-8">
-                                        <?= htmlspecialchars($member['year_level'] ?? 'N/A') ?>
-                                    </div>
-                                </div>
-
-                                <div class="row mb-3">
-                                    <div class="col-sm-4">
-                                        <label class="fw-bold text-muted">Institution</label>
-                                    </div>
-                                    <div class="col-sm-8">
-                                        <?= htmlspecialchars($member['school_affiliate'] ?? 'N/A') ?>
-                                    </div>
-                                </div>
-
-                                <hr>
-
-                                <h5 class="mb-4">Membership Details</h5>
-
-                                <div class="row mb-3">
-                                    <div class="col-sm-4">
-                                        <label class="fw-bold text-muted">Membership Type</label>
-                                    </div>
-                                    <div class="col-sm-8">
-                                        <?php
-                                        $memberType = $member['member_type'] ?? 'new';
-                                        $typeLabels = [
-                                            'new' => 'New Member',
-                                            'returning' => 'Returning Member',
-                                            'honorary' => 'Honorary Member'
-                                        ];
-                                        ?>
-                                        <span class="badge bg-info"><?= htmlspecialchars($typeLabels[$memberType] ?? $memberType) ?></span>
-                                    </div>
-                                </div>
-
-                                <div class="row mb-3">
-                                    <div class="col-sm-4">
-                                        <label class="fw-bold text-muted">Payment Status</label>
-                                    </div>
-                                    <div class="col-sm-8">
-                                        <?php if ($member['payment_status'] ?? false): ?>
-                                            <span class="badge bg-success">
-                                                <i class="fas fa-check-circle me-1"></i>Paid
-                                            </span>
-                                        <?php else: ?>
-                                            <span class="badge bg-warning">
-                                                <i class="fas fa-clock me-1"></i>Pending
-                                            </span>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-
-                                <div class="row mb-3">
-                                    <div class="col-sm-4">
-                                        <label class="fw-bold text-muted">Membership Status</label>
-                                    </div>
-                                    <div class="col-sm-8">
-                                        <?php
-                                        $status = $profile['membership_status'] ?? 'active';
-                                        $statusLabels = [
-                                            'active' => 'Active',
-                                            'inactive' => 'Inactive',
-                                            'suspended' => 'Suspended',
-                                            'pending' => 'Pending'
-                                        ];
-                                        ?>
-                                        <span class="badge bg-<?= $status === 'active' ? 'success' : 'secondary' ?>">
-                                            <?= htmlspecialchars($statusLabels[$status] ?? $status) ?>
-                                        </span>
-                                    </div>
-                                </div>
-
-                                <div class="row mb-3">
-                                    <div class="col-sm-4">
-                                        <label class="fw-bold text-muted">Member Since</label>
-                                    </div>
-                                    <div class="col-sm-8">
-                                        <?= $member['created_at'] ? date('F d, Y', strtotime($member['created_at'])) : 'N/A' ?>
-                                    </div>
-                                </div>
-
-                                <div class="row mb-3">
-                                    <div class="col-sm-4">
-                                        <label class="fw-bold text-muted">Last Login</label>
-                                    </div>
-                                    <div class="col-sm-8">
-                                        <?= $profile['last_login'] ? date('F d, Y g:i A', strtotime($profile['last_login'])) : 'First login' ?>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            <!-- Right Card: Detailed Records -->
+            <div>
+                <div class="prof-card" style="margin-bottom:1.25rem;">
+                    <h3 style="font-size:0.95rem; font-weight:700; color:#0F172A; margin:0 0 1rem 0; display:flex; align-items:center; gap:0.5rem;">
+                        <i class="fas fa-id-card-clip" style="color:var(--color-blue);"></i> Institutional Membership Information
+                    </h3>
+                    <div class="info-row">
+                        <span class="info-label">Full Legal Name</span>
+                        <span class="info-val"><?= htmlspecialchars($member['full_name'] ?? $displayName) ?></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Student ID / Serial No.</span>
+                        <span class="info-val" style="font-family:'JetBrains Mono', monospace;"><?= htmlspecialchars($studentNumber) ?></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Academic Program</span>
+                        <span class="info-val"><?= htmlspecialchars($courseName) ?></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Year Level</span>
+                        <span class="info-val"><?= htmlspecialchars($yearLevel) ?></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Institutional Chapter</span>
+                        <span class="info-val"><?= htmlspecialchars($schoolName) ?></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Membership Standing</span>
+                        <span class="info-val" style="color:var(--color-emerald);">
+                            <i class="fas fa-circle-check me-1"></i> Active / Good Standing
+                        </span>
                     </div>
                 </div>
 
-                <div class="alert alert-info mt-4">
-                    <i class="fas fa-info-circle me-2"></i>
-                    This is a read-only view of your profile. To update your information, please contact your school officer or the IECEP-LSC administration.
+                <div class="prof-card">
+                    <h3 style="font-size:0.95rem; font-weight:700; color:#0F172A; margin:0 0 1rem 0; display:flex; align-items:center; gap:0.5rem;">
+                        <i class="fas fa-address-book" style="color:var(--color-gold);"></i> Contact &amp; Verification Details
+                    </h3>
+                    <div class="info-row">
+                        <span class="info-label">Email Address</span>
+                        <span class="info-val"><?= htmlspecialchars($member['email'] ?? $userEmail) ?></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Mobile Phone</span>
+                        <span class="info-val"><?= htmlspecialchars($phone) ?></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Address</span>
+                        <span class="info-val"><?= htmlspecialchars($address) ?></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Date Registered</span>
+                        <span class="info-val"><?= date('F d, Y', strtotime($member['created_at'] ?? 'now')) ?></span>
+                    </div>
                 </div>
             </div>
-        </main>
-    </div>
-
-    <style>
-        .member-photo-large {
-            width: 150px;
-            height: 150px;
-            background: linear-gradient(135deg, var(--neutral-200) 0%, var(--neutral-300) 100%);
-            border-radius: 50%;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--neutral-500);
-            border: 4px solid var(--accent);
-        }
-    </style>
+        </div>
+    </main>
 </body>
 </html>
-

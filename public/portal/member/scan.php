@@ -1,63 +1,169 @@
 <?php
-require_once __DIR__ . '/../../auth_check.php';
-require_once __DIR__ . '/../../bootstrap.php';
-require_once __DIR__ . '/../../../../includes/config.php';
-require_once __DIR__ . '/../../../../includes/role-config.php';
+require_once __DIR__ . '/../auth_check.php';
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../../../includes/config.php';
+require_once __DIR__ . '/../../../includes/role-config.php';
+
+require_role(['member', 'admin', 'super_admin', 'school_officer']);
 
 $current_page = 'scan';
 $pageTitle = 'Event QR Attendance Scanner';
 
-$user = $_SESSION['user'] ?? [];
-$userName = $user['user_metadata']['full_name'] ?? $user['name'] ?? $user['full_name'] ?? 'Rashed Dizon';
-$userEmail = $user['email'] ?? 'rasheddizon7@gmail.com';
-$userId = $user['id'] ?? 'mem_rashed_dizon';
+$user = get_user_info();
+$userId = $user['id'] ?? null;
+$userEmail = $user['email'] ?? '';
+$displayName = $user['full_name'] ?? $user['name'] ?? $userEmail;
+
+$supabase = getSupabaseClient();
+
+// Fetch Member Record
+$member = [];
+$schoolName = 'Laguna State Polytechnic University - Santa Cruz Campus';
+$schoolAcronym = 'LSPU - SCC';
+
+if ($supabase) {
+    try {
+        if (!empty($userEmail)) {
+            $mRes = $supabase->select('members', ['email' => 'eq.' . $userEmail]);
+            if (is_array($mRes) && isset($mRes[0])) $member = $mRes[0];
+        }
+        if (empty($member) && !empty($userId)) {
+            $mRes = $supabase->select('members', ['id' => 'eq.' . $userId]);
+            if (is_array($mRes) && isset($mRes[0])) $member = $mRes[0];
+        }
+        $instId = $member['institution_id'] ?? null;
+        if ($instId) {
+            $iRes = $supabase->select('institutions', ['id' => 'eq.' . $instId]);
+            if (is_array($iRes) && isset($iRes[0]['name'])) {
+                $schoolName = $iRes[0]['name'];
+                $schoolAcronym = $iRes[0]['acronym'] ?? 'IECEP-SC';
+            }
+        }
+    } catch (Exception $e) {}
+}
+
+$memberDbId = $member['id'] ?? $userId;
+$membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
-    <meta name="description" content="Scan live event QR codes from your mobile phone camera to verify your chapter attendance.">
+    <meta name="description" content="Live camera attendance scanner for verified IECEP-LSC chapter delegates.">
     <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700;800&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-blue: #2563EB;
+            --color-rose: #E11D48;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            padding: 1.25rem;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content { margin-left: 0; padding: 1rem; }
+        }
+
         .scanner-card {
-            max-width: 520px;
+            max-width: 480px;
             margin: 0 auto;
             background: #FFFFFF;
-            border-radius: 20px;
-            box-shadow: 0 12px 35px rgba(11,29,74,0.1);
-            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(11,29,74,0.08);
+            border: 1px solid var(--border-color);
             overflow: hidden;
         }
+
         .scanner-header {
-            background: linear-gradient(135deg, #0B1D4A 0%, #17306b 100%);
+            background: linear-gradient(135deg, #0B1D4A 0%, #152C6E 100%);
             color: #FFFFFF;
-            padding: 1.5rem;
+            padding: 1.25rem;
             text-align: center;
         }
+
         #reader {
             width: 100%;
-            border-radius: 12px;
+            border-radius: 10px;
             overflow: hidden;
-            background: #000;
+            background: #0F172A;
         }
+
         .result-success-box {
             display: none;
             background: #ECFDF5;
             border: 2px solid #10B981;
-            border-radius: 16px;
-            padding: 1.5rem;
+            border-radius: 14px;
+            padding: 1.25rem;
             text-align: center;
-            margin-top: 1.25rem;
+            margin-top: 1rem;
             animation: popIn 0.3s ease;
         }
         @keyframes popIn {
-            0% { transform: scale(0.9); opacity: 0; }
+            0% { transform: scale(0.95); opacity: 0; }
             100% { transform: scale(1); opacity: 1; }
+        }
+
+        .btn-primary-navy {
+            background: var(--color-navy);
+            color: #FFFFFF;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-primary-navy:hover {
+            background: var(--color-navy-hover);
+            color: #FFFFFF;
+        }
+
+        .btn-white {
+            background: #FFFFFF;
+            color: #334155;
+            border: 1px solid #CBD5E1;
+            padding: 0.5rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
         }
     </style>
 </head>
@@ -65,94 +171,81 @@ $userId = $user['id'] ?? 'mem_rashed_dizon';
     <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
     <main class="main-content">
-        <div class="ap-scope">
+        <!-- Header -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem;">
+            <div>
+                <h1 style="font-size:1.4rem; font-weight:800; color:#0F172A; margin:0 0 0.2rem 0; display:flex; align-items:center; gap:0.5rem;">
+                    <i class="fas fa-camera" style="color:var(--color-navy);"></i> Live Event QR Scanner
+                </h1>
+                <p style="margin:0; font-size:0.82rem; color:#64748B;">
+                    Scan the dynamic rotating event QR code presented at the organizer's registration desk.
+                </p>
+            </div>
+            <div>
+                <a href="/IECEP-LSC-MEMSYS/public/portal/member/events.php" class="btn-white">
+                    <i class="fas fa-calendar-check"></i> My Events
+                </a>
+            </div>
+        </div>
 
-            <!-- Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-camera"></i> Live Event QR Scanner</h1>
-                    <p class="ap-page-subtitle">Scan the dynamic 15-second rotating QR code on the organizer's laptop screen.</p>
+        <!-- Scanner Card -->
+        <div class="scanner-card">
+            <div class="scanner-header">
+                <div style="width:44px; height:44px; background:#D4AF37; color:#0B1D4A; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:0.4rem;">
+                    <i class="fas fa-qrcode"></i>
                 </div>
-                <div class="ap-header-actions">
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/member/events.php" class="ap-btn-secondary">
-                        <i class="fas fa-calendar"></i> My Events
-                    </a>
+                <h2 style="font-size:1.15rem; font-weight:800; margin:0; color:#FFFFFF;">Student Attendance Check-in</h2>
+                <div style="font-size:0.78rem; color:rgba(255,255,255,0.85); margin-top:2px;">
+                    Delegates: <strong><?= htmlspecialchars($member['full_name'] ?? $displayName) ?></strong> • <span style="font-family:'JetBrains Mono', monospace;"><?= htmlspecialchars($membershipId) ?></span>
                 </div>
             </div>
 
-            <!-- Scanner Card -->
-            <div class="scanner-card">
-                <div class="scanner-header">
-                    <div style="width:48px; height:48px; background:var(--iecep-gold); color:var(--iecep-navy); border-radius:12px; display:inline-flex; align-items:center; justify-content:center; font-size:1.4rem; margin-bottom:0.5rem;">
-                        <i class="fas fa-qrcode"></i>
-                    </div>
-                    <h2 style="font-size:1.25rem; font-weight:800; margin:0; color:#FFFFFF;">Student Attendance Check-in</h2>
-                    <div style="font-size:0.8rem; color:rgba(255,255,255,0.8); margin-top:2px;">
-                        Logged in as: <strong><?= htmlspecialchars($userName) ?></strong>
-                    </div>
+            <div style="padding: 1.25rem;">
+                <!-- Camera Viewport -->
+                <div id="reader"></div>
+
+                <div style="display:flex; gap:0.5rem; margin-top:1rem; justify-content:center;">
+                    <button id="startScanBtn" class="btn-primary-navy" onclick="startScanner()">
+                        <i class="fas fa-camera"></i> Start Camera Scanner
+                    </button>
+                    <button id="stopScanBtn" class="btn-white" style="display:none;" onclick="stopScanner()">
+                        <i class="fas fa-stop"></i> Stop Camera
+                    </button>
                 </div>
 
-                <div style="padding: 1.5rem;">
-                    <!-- Camera Viewport -->
-                    <div id="reader"></div>
+                <!-- Status Notification -->
+                <div id="scanStatus" style="display:none; margin-top:1rem; padding:0.75rem; border-radius:8px; font-size:0.82rem; text-align:center;">
+                    <i class="fas fa-spinner fa-spin me-1"></i> Validating dynamic QR code...
+                </div>
 
-                    <div style="display:flex; gap:0.5rem; margin-top:1rem; justify-content:center;">
-                        <button id="startScanBtn" class="ap-btn-primary" onclick="startScanner()">
-                            <i class="fas fa-camera"></i> Start Phone Camera
-                        </button>
-                        <button id="stopScanBtn" class="ap-btn-secondary" style="display:none;" onclick="stopScanner()">
-                            <i class="fas fa-stop"></i> Stop Camera
-                        </button>
+                <!-- Result Celebration Card -->
+                <div id="resultSuccess" class="result-success-box">
+                    <div style="width:48px; height:48px; background:#10B981; color:#FFFFFF; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:1.6rem; margin-bottom:0.5rem;">
+                        <i class="fas fa-check"></i>
                     </div>
+                    <h3 style="color:#065F46; font-weight:800; font-size:1.15rem; margin:0 0 2px 0;">Attendance Verified!</h3>
+                    <div style="font-size:0.84rem; color:#047857; margin-bottom:0.75rem;" id="resEventTitle">IECEP Technical Seminar</div>
 
-                    <!-- Status Notification -->
-                    <div id="scanStatus" style="display:none; margin-top:1rem;" class="ap-alert info">
-                        <i class="fas fa-spinner fa-spin"></i> Validating dynamic QR code...
-                    </div>
-
-                    <!-- Result Celebration Card -->
-                    <div id="resultSuccess" class="result-success-box">
-                        <div style="width:54px; height:54px; background:#10B981; color:#FFFFFF; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-size:1.8rem; margin-bottom:0.75rem;">
-                            <i class="fas fa-check"></i>
+                    <div style="background:#FFFFFF; border:1px solid #A7F3D0; border-radius:8px; padding:0.75rem; font-size:0.8rem; text-align:left; color:#064E3B; margin-bottom:1rem;">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                            <strong>Student Member:</strong>
+                            <span id="resStudentName"><?= htmlspecialchars($member['full_name'] ?? $displayName) ?></span>
                         </div>
-                        <h3 style="color:#065F46; font-weight:800; font-size:1.25rem; margin:0 0 4px 0;">Attendance Verified!</h3>
-                        <div style="font-size:0.9rem; color:#047857; margin-bottom:0.75rem;" id="resEventTitle">IECEP Technical Seminar</div>
-
-                        <div style="background:#FFFFFF; border:1px solid #A7F3D0; border-radius:10px; padding:0.75rem; font-size:0.82rem; text-align:left; color:#064E3B; margin-bottom:1rem;">
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                                <strong>Student Member:</strong>
-                                <span id="resStudentName"><?= htmlspecialchars($userName) ?></span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                                <strong>Attributed Campus:</strong>
-                                <span class="ap-pill gold" id="resCampus">LSPU SCC</span>
-                            </div>
-                            <div style="display:flex; justify-content:space-between;">
-                                <strong>Timestamp:</strong>
-                                <span id="resTime">Just now</span>
-                            </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                            <strong>Campus Chapter:</strong>
+                            <span style="font-weight:700; color:#0B1D4A;" id="resCampus"><?= htmlspecialchars($schoolAcronym) ?></span>
                         </div>
-
-                        <button class="ap-btn-primary" onclick="resetScanner()">
-                            <i class="fas fa-camera"></i> Scan Another Event
-                        </button>
+                        <div style="display:flex; justify-content:space-between;">
+                            <strong>Recorded Time:</strong>
+                            <span id="resTime">Just now</span>
+                        </div>
                     </div>
 
-                    <!-- Quick Testing Panel (Simulate scan on laptop) -->
-                    <div style="margin-top:1.5rem; padding-top:1rem; border-top:1px dashed var(--border-light); text-align:center;">
-                        <button class="ap-btn-secondary" style="font-size:0.75rem; padding:0.3rem 0.75rem;" onclick="simulateQuickScan()">
-                            <i class="fas fa-bolt"></i> Test Quick Check-in Simulation
-                        </button>
-                    </div>
+                    <button class="btn-primary-navy" onclick="resetScanner()">
+                        <i class="fas fa-camera"></i> Scan Another Event
+                    </button>
                 </div>
             </div>
-
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip" style="max-width:520px; margin:1.5rem auto 0 auto;">
-                <div class="ap-sentinel-item"><i class="fas fa-link"></i><span><strong>Proof-of-Attendance:</strong> SHA-256 Ledger Backed</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield"></i><span><strong>15s Anti-Proxy:</strong> Dynamic TOTP Validation</span></div>
-            </div>
-
         </div>
     </main>
 
@@ -162,7 +255,7 @@ $userId = $user['id'] ?? 'mem_rashed_dizon';
 
         function startScanner() {
             html5QrCode = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            const config = { fps: 10, qrbox: { width: 220, height: 220 } };
 
             html5QrCode.start(
                 { facingMode: "environment" },
@@ -174,7 +267,7 @@ $userId = $user['id'] ?? 'mem_rashed_dizon';
                 document.getElementById('startScanBtn').style.display = 'none';
                 document.getElementById('stopScanBtn').style.display = 'inline-flex';
             }).catch(err => {
-                alert('Camera permission denied or camera not found: ' + err);
+                alert('Camera permission needed: ' + err);
             });
         }
 
@@ -192,8 +285,10 @@ $userId = $user['id'] ?? 'mem_rashed_dizon';
             stopScanner();
             const statusEl = document.getElementById('scanStatus');
             statusEl.style.display = 'block';
-            statusEl.className = 'ap-alert info';
-            statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting attendance verification...';
+            statusEl.style.background = '#EFF6FF';
+            statusEl.style.color = '#1D4ED8';
+            statusEl.style.border = '1px solid #BFDBFE';
+            statusEl.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Submitting attendance verification...';
 
             try {
                 let parsed = null;
@@ -207,10 +302,10 @@ $userId = $user['id'] ?? 'mem_rashed_dizon';
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        event_id: parsed.event_id || '2f2f99ce-98e1-49f6-8949-760687189aa6',
+                        event_id: parsed.event_id || '',
                         token: parsed.token || decodedText,
-                        member_id: <?= json_encode($userId) ?>,
-                        full_name: <?= json_encode($userName) ?>,
+                        member_id: <?= json_encode($memberDbId) ?>,
+                        full_name: <?= json_encode($member['full_name'] ?? $displayName) ?>,
                         email: <?= json_encode($userEmail) ?>
                     })
                 });
@@ -221,46 +316,37 @@ $userId = $user['id'] ?? 'mem_rashed_dizon';
                 if (result.success && !result.already_recorded) {
                     const data = result.data || {};
                     document.getElementById('resEventTitle').textContent = data.event_title || 'IECEP Event';
-                    document.getElementById('resStudentName').textContent = data.student_name || <?= json_encode($userName) ?>;
-                    document.getElementById('resCampus').textContent = data.institution_acronym || 'LSPU SCC';
+                    document.getElementById('resStudentName').textContent = data.student_name || <?= json_encode($displayName) ?>;
+                    document.getElementById('resCampus').textContent = data.institution_acronym || <?= json_encode($schoolAcronym) ?>;
                     document.getElementById('resTime').textContent = new Date().toLocaleTimeString();
                     document.getElementById('resultSuccess').style.display = 'block';
                 } else if (result.already_recorded) {
                     statusEl.style.display = 'block';
-                    statusEl.className = 'ap-alert warning';
-                    statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + (result.message || 'You have ALREADY checked in for this event.');
+                    statusEl.style.background = '#FEF9C3';
+                    statusEl.style.color = '#A16207';
+                    statusEl.style.border = '1px solid #FDE047';
+                    statusEl.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> ' + (result.message || 'You have already checked in for this event.');
                 } else {
                     statusEl.style.display = 'block';
-                    statusEl.className = 'ap-alert danger';
-                    statusEl.innerHTML = '<i class="fas fa-times-circle"></i> ' + (result.message || 'Verification failed. QR code may have expired.');
+                    statusEl.style.background = '#FEE2E2';
+                    statusEl.style.color = '#B91C1C';
+                    statusEl.style.border = '1px solid #FECACA';
+                    statusEl.innerHTML = '<i class="fas fa-times-circle me-1"></i> ' + (result.message || 'Verification failed. QR code may have expired.');
                 }
             } catch (err) {
-                statusEl.className = 'ap-alert danger';
-                statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Network error: ' + err.message;
+                statusEl.style.display = 'block';
+                statusEl.style.background = '#FEE2E2';
+                statusEl.style.color = '#B91C1C';
+                statusEl.style.border = '1px solid #FECACA';
+                statusEl.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i> Network error: ' + err.message;
             }
         }
 
-        function onScanError(errorMessage) {
-            // parse error, ignore continuously
-        }
+        function onScanError(errorMessage) {}
 
         function resetScanner() {
             document.getElementById('resultSuccess').style.display = 'none';
             startScanner();
-        }
-
-        // Quick simulation for local testing on laptop
-        async function simulateQuickScan() {
-            const currentWindow = Math.floor(Date.now() / 1000 / 15);
-            // Simulate token
-            const buffer = new TextEncoder("utf-8").encode('2f2f99ce-98e1-49f6-8949-760687189aa6:' + currentWindow + ':IECEP_LSC_ROTATING_QR_SECRET_2026');
-            const digest = await crypto.subtle.digest("SHA-256", buffer);
-            const token = Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, '0')).join('');
-
-            onScanSuccess(JSON.stringify({
-                event_id: '2f2f99ce-98e1-49f6-8949-760687189aa6',
-                token: token
-            }));
         }
     </script>
 </body>

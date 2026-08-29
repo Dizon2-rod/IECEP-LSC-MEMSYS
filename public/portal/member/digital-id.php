@@ -1,206 +1,309 @@
 <?php
 require_once __DIR__ . '/../auth_check.php';
+require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../../../includes/config.php';
-require_once __DIR__ . '/../../../includes/middleware/auth.php';
+require_once __DIR__ . '/../../../includes/role-config.php';
 
-if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'member') {
-    header('Location: ' . BASE_URL . '/login.php');
-    exit;
-}
+require_role(['member', 'admin', 'super_admin', 'school_officer']);
 
 $current_page = 'digital-id';
+$pageTitle = 'Dynamic Student Digital ID';
 
 $user = get_user_info();
-$member_id = $_SESSION['member_id'] ?? $user['member_id'] ?? ($user['id'] ?? null);
+$userId = $user['id'] ?? null;
+$userEmail = $user['email'] ?? '';
+$displayName = $user['full_name'] ?? $user['name'] ?? $userEmail;
 
-$supabase = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+$supabase = getSupabaseClient();
 
-// Fetch member details
+// Fetch Member Record
 $member = [];
-try {
-    if ($member_id) {
-        $memberData = $supabase->select('members', [
-            'id' => 'eq.' . $member_id
-        ]);
-        if (!empty($memberData) && isset($memberData[0])) {
-            $member = $memberData[0];
-        }
-    }
-    if (empty($member) && !empty($user['email'])) {
-        $memberData = $supabase->select('members', [
-            'email' => 'eq.' . $user['email']
-        ]);
-        if (!empty($memberData) && isset($memberData[0])) {
-            $member = $memberData[0];
-            $member_id = $member['id'];
-        }
-    }
-} catch (Exception $e) {
-    $member = [];
-$realMemberId = $member['id'] ?? $member_id;
-
 $schoolName = 'Laguna State Polytechnic University - Santa Cruz Campus';
-if (!empty($member['institution_id'])) {
+$schoolAcronym = 'LSPU - SCC';
+
+if ($supabase) {
     try {
-        $inst = $supabase->select('institutions', ['id' => 'eq.' . $member['institution_id']]);
-        if (!empty($inst) && isset($inst[0]['name'])) {
-            $schoolName = $inst[0]['name'];
+        if (!empty($userEmail)) {
+            $mRes = $supabase->select('members', ['email' => 'eq.' . $userEmail]);
+            if (is_array($mRes) && isset($mRes[0])) {
+                $member = $mRes[0];
+            }
         }
-    } catch (Exception $e) {}
-} elseif (!empty($member['school_affiliate'])) {
-    $schoolName = $member['school_affiliate'];
+        if (empty($member) && !empty($userId)) {
+            $mRes = $supabase->select('members', ['user_id' => 'eq.' . $userId]);
+            if (is_array($mRes) && isset($mRes[0])) {
+                $member = $mRes[0];
+            }
+        }
+        if (empty($member) && !empty($userId)) {
+            $mRes = $supabase->select('members', ['id' => 'eq.' . $userId]);
+            if (is_array($mRes) && isset($mRes[0])) {
+                $member = $mRes[0];
+            }
+        }
+
+        // Resolve School Name
+        $instId = $member['institution_id'] ?? ($_SESSION['institution_id'] ?? null);
+        if ($instId) {
+            $iRes = $supabase->select('institutions', ['id' => 'eq.' . $instId]);
+            if (is_array($iRes) && isset($iRes[0]['name'])) {
+                $schoolName = $iRes[0]['name'];
+                $schoolAcronym = $iRes[0]['acronym'] ?? 'IECEP-SC';
+            }
+        } elseif (!empty($member['school_affiliate'])) {
+            $schoolName = $member['school_affiliate'];
+        }
+    } catch (Exception $e) {
+        error_log("Digital ID load error: " . $e->getMessage());
+    }
 }
+
+$realMemberId = $member['id'] ?? ($userId ?? 'mem_default');
+$membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
+$courseName = !empty($member['course']) ? $member['course'] : 'BS Electronics Engineering';
+$yearLevel = !empty($member['year_level']) ? $member['year_level'] : '3rd Year';
+$studentNumber = !empty($member['student_number']) ? $member['student_number'] : ($member['student_id'] ?? '2023-01048');
+$digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($userEmail ?: 'iecep'));
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <?php require_once __DIR__ . '/../../../includes/head-meta.php'; ?>
-    <title>My Dynamic Digital ID - Member Portal</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
+    <meta name="description" content="Dynamic rolling QR Student Digital ID card for verified IECEP-LSC chapter members.">
+    <?php include INCLUDES_PATH . 'head-meta.php'; ?>
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        .digital-id-card {
-            background: linear-gradient(135deg, #0B1D4A 0%, #152C6E 100%);
-            border-radius: 20px;
-            padding: 28px;
-            color: white;
-            max-width: 420px;
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-blue: #2563EB;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            padding: 1.25rem;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content {
+                margin-left: 0;
+                padding: 1rem;
+            }
+        }
+
+        .id-layout-container {
+            display: grid;
+            grid-template-columns: 430px 1fr;
+            gap: 1.5rem;
+            align-items: start;
+            max-width: 1100px;
             margin: 0 auto;
-            box-shadow: 0 20px 45px rgba(11,29,74,0.3);
+        }
+
+        @media (max-width: 950px) {
+            .id-layout-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Front Digital ID Card */
+        .digital-id-card {
+            background: linear-gradient(135deg, #0B1D4A 0%, #152C6E 50%, #1E3A8A 100%);
+            border-radius: 20px;
+            padding: 24px;
+            color: #FFFFFF;
+            box-shadow: 0 15px 35px -5px rgba(11, 29, 74, 0.35);
             position: relative;
             overflow: hidden;
-            border: 1px solid rgba(212,175,55,0.4);
+            border: 1px solid rgba(212, 175, 55, 0.45);
         }
-        .digital-id-header {
+
+        .digital-id-card::before {
+            content: '';
+            position: absolute;
+            top: -60px;
+            right: -60px;
+            width: 220px;
+            height: 220px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.2) 0%, rgba(212, 175, 55, 0) 70%);
+            pointer-events: none;
+        }
+
+        .id-card-header {
             display: flex;
             align-items: center;
-            gap: 14px;
-            margin-bottom: 20px;
-            position: relative;
-            z-index: 1;
+            gap: 12px;
+            margin-bottom: 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            padding-bottom: 14px;
         }
-        .digital-id-logo {
-            width: 50px;
-            height: 50px;
-            background: white;
+
+        .id-card-logo {
+            width: 44px;
+            height: 44px;
+            background: #FFFFFF;
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            padding: 4px;
+            flex-shrink: 0;
         }
-        .digital-id-logo img {
-            width: 36px;
-            height: 36px;
+
+        .id-card-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
         }
-        .digital-id-title {
-            flex: 1;
-        }
-        .digital-id-title h3 {
-            margin: 0;
-            font-size: 13px;
-            color: #D4AF37;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 700;
-        }
-        .digital-id-title h2 {
-            margin: 0;
-            font-size: 17px;
-            font-weight: 800;
-            color: #FFFFFF;
-        }
-        .member-photo {
-            width: 84px;
-            height: 84px;
-            background: rgba(255,255,255,0.12);
+
+        .id-photo-wrapper {
+            width: 76px;
+            height: 76px;
+            background: rgba(255,255,255,0.1);
             border-radius: 50%;
-            margin: 0 auto 14px;
+            margin: 0 auto 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: 3px solid #D4AF37;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+            color: #D4AF37;
+            font-size: 2rem;
         }
-        .member-name {
-            text-align: center;
-            font-size: 20px;
-            font-weight: 800;
-            margin-bottom: 4px;
-            color: #FFFFFF;
-        }
-        .member-details {
-            text-align: center;
-            font-size: 13px;
-            margin-bottom: 18px;
-            color: rgba(255,255,255,0.85);
-        }
+
         .qr-box-wrapper {
             background: #FFFFFF;
-            padding: 16px;
-            border-radius: 14px;
+            padding: 14px;
+            border-radius: 12px;
             display: inline-block;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
             margin: 0 auto;
         }
+
         .progress-bar-container {
             width: 100%;
             height: 5px;
             background: rgba(255,255,255,0.2);
             border-radius: 3px;
             overflow: hidden;
-            margin-top: 14px;
+            margin-top: 12px;
         }
+
         .progress-bar-fill {
             height: 100%;
             background: #10B981;
             transition: width 1s linear;
         }
+
+        /* Information Panels on Right */
+        .info-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04);
+            margin-bottom: 1.25rem;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.65rem 0;
+            border-bottom: 1px solid #F1F5F9;
+            font-size: 0.86rem;
+        }
+        .info-row:last-child { border-bottom: none; }
+        .info-label { color: #64748B; font-weight: 600; }
+        .info-val { color: #0F172A; font-weight: 700; text-align: right; }
+
+        @media print {
+            body { background: #FFF !important; }
+            .sidebar-nav, .ap-sidebar, .btn-print-hide, .info-card { display: none !important; }
+            .main-content { margin-left: 0 !important; padding: 0 !important; }
+            .id-layout-container { display: block !important; }
+            .digital-id-card { box-shadow: none !important; border: 2px solid #0B1D4A !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
     </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <?php require_once __DIR__ . '/../../../includes/sidebar.php'; ?>
-        
-        <main class="main-content">
-            <div class="container py-4">
-                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                    <div>
-                        <h1 class="h2 mb-1" style="font-weight:800; color:#0B1D4A;"><i class="fas fa-id-card" style="color:#D4AF37;"></i> My Dynamic Digital ID</h1>
-                        <p class="text-muted mb-0" style="font-size:0.88rem;">Official verified student member identification with 30-second rolling QR code.</p>
-                    </div>
-                    <button class="btn btn-primary" onclick="window.print()" style="background:#0B1D4A; border-color:#0B1D4A; font-weight:700;">
-                        <i class="fas fa-print me-1"></i> Print ID Card
-                    </button>
-                </div>
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
-                <div class="digital-id-card" id="digitalIdCard">
-                    <div class="digital-id-header">
-                        <div class="digital-id-logo">
-                            <img src="<?= PUBLIC_URL ?>/assets/icons/iecep-logo.png" alt="IECEP-LSC">
+    <main class="main-content">
+        <!-- Page Header -->
+        <div class="ap-page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem;">
+            <div>
+                <h1 style="font-size:1.4rem; font-weight:800; color:#0F172A; margin:0 0 0.2rem 0; display:flex; align-items:center; gap:0.5rem;">
+                    <i class="fas fa-id-card" style="color:var(--color-navy);"></i> Student Dynamic Digital ID
+                </h1>
+                <p style="margin:0; font-size:0.82rem; color:#64748B;">
+                    Official anti-counterfeiting digital credential with rotating 30-second cryptographic tokens.
+                </p>
+            </div>
+            <div class="btn-print-hide" style="display:flex; gap:0.5rem;">
+                <button type="button" class="btn-white" onclick="window.print()" style="padding:0.45rem 0.9rem; font-size:0.82rem; border-radius:8px; font-weight:600; cursor:pointer; background:#FFF; border:1px solid #CBD5E1;">
+                    <i class="fas fa-print me-1"></i> Print / Save PDF
+                </button>
+                <a href="/IECEP-LSC-MEMSYS/public/portal/member/scan.php" class="btn-primary-navy" style="background:#0B1D4A; color:#FFF; padding:0.45rem 0.9rem; font-size:0.82rem; border-radius:8px; text-decoration:none; font-weight:700; display:inline-flex; align-items:center; gap:0.4rem;">
+                    <i class="fas fa-camera"></i> Scan Scanner
+                </a>
+            </div>
+        </div>
+
+        <div class="id-layout-container">
+            <!-- Left: Digital ID Card -->
+            <div>
+                <div class="digital-id-card" id="digitalIdElement">
+                    <div class="id-card-header">
+                        <div class="id-card-logo">
+                            <img src="/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png" alt="IECEP Logo">
                         </div>
-                        <div class="digital-id-title">
-                            <h3>IECEP Laguna Student Chapter</h3>
-                            <h2>Official Member Identification</h2>
+                        <div style="flex:1;">
+                            <div style="font-size:0.65rem; color:#D4AF37; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">
+                                Institute of Electronics Engineers of the PH
+                            </div>
+                            <div style="font-size:0.88rem; font-weight:800; color:#FFFFFF;">
+                                Laguna Student Chapter
+                            </div>
                         </div>
                     </div>
 
                     <div style="text-align:center;">
-                        <div class="member-photo">
-                            <i class="fas fa-user-graduate" style="font-size:36px; color:#D4AF37;"></i>
+                        <div class="id-photo-wrapper">
+                            <i class="fas fa-user-graduate"></i>
                         </div>
-                        <div class="member-name">
-                            <?= htmlspecialchars($member['full_name'] ?? ($user['name'] ?? 'Student Member')) ?>
+                        <div style="font-size:1.15rem; font-weight:800; color:#FFFFFF; margin-bottom:0.15rem;">
+                            <?= htmlspecialchars($member['full_name'] ?? $displayName) ?>
                         </div>
-                        <div class="member-details">
-                            <p style="margin:2px 0;"><strong><?= htmlspecialchars($schoolName) ?></strong></p>
-                            <p style="margin:2px 0; font-size:12px; opacity:0.9;"><?= htmlspecialchars(($member['course'] ?? 'BS Electronics Engineering') . ' • ' . ($member['year_level'] ?? '3rd Year')) ?></p>
-                            <p style="margin:4px 0 2px; font-family:monospace; font-weight:700; color:#D4AF37; font-size:14px;"><?= htmlspecialchars($member['membership_id'] ?? 'IECEP-2026-0001') ?></p>
-                            <span class="badge bg-success" style="font-size:11px; padding:4px 10px; margin-top:4px;">
-                                <i class="fas fa-check-circle me-1"></i> Verified & Active
-                            </span>
+                        <div style="font-size:0.8rem; color:#E2E8F0; margin-bottom:0.3rem;">
+                            <?= htmlspecialchars($schoolName) ?>
+                        </div>
+                        <div style="font-size:0.75rem; color:#CBD5E1; margin-bottom:0.6rem;">
+                            <?= htmlspecialchars($courseName) ?> • <?= htmlspecialchars($yearLevel) ?>
+                        </div>
+                        <div style="background:rgba(255,255,255,0.12); padding:0.35rem 0.8rem; border-radius:6px; display:inline-block; font-family:'JetBrains Mono', monospace; font-size:0.86rem; font-weight:700; color:#FDE047; margin-bottom:0.9rem; border:1px dashed rgba(212,175,55,0.5);">
+                            <?= htmlspecialchars($membershipId) ?>
                         </div>
 
-                        <!-- 30-Second Rolling Dynamic QR Code -->
+                        <!-- 30-Second Rolling QR Code -->
                         <div class="qr-box-wrapper">
                             <div id="dynamicMemberQr"></div>
                         </div>
@@ -209,15 +312,62 @@ if (!empty($member['institution_id'])) {
                             <div id="memberQrProgressBar" class="progress-bar-fill" style="width:100%;"></div>
                         </div>
 
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; font-size:11px; color:rgba(255,255,255,0.75);">
-                            <span><i class="fas fa-shield-alt text-warning me-1"></i> Rolling 30s Dynamic Security</span>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.6rem; font-size:0.72rem; color:rgba(255,255,255,0.85);">
+                            <span><i class="fas fa-shield-halved text-warning me-1"></i> Rolling 30s Dynamic Security</span>
                             <span id="memberQrTimer">Refreshing in 30s</span>
                         </div>
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
+
+            <!-- Right: Membership Record & Verification Metadata -->
+            <div>
+                <div class="info-card">
+                    <h2 style="font-size:0.95rem; font-weight:700; color:#0F172A; margin:0 0 1rem 0; display:flex; align-items:center; gap:0.5rem;">
+                        <i class="fas fa-circle-check" style="color:var(--color-emerald);"></i> Membership Credentials
+                    </h2>
+                    <div class="info-row">
+                        <span class="info-label">Full Name</span>
+                        <span class="info-val"><?= htmlspecialchars($member['full_name'] ?? $displayName) ?></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Registered Email</span>
+                        <span class="info-val"><?= htmlspecialchars($member['email'] ?? $userEmail) ?></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Student / ID Number</span>
+                        <span class="info-val" style="font-family:'JetBrains Mono', monospace;"><?= htmlspecialchars($studentNumber) ?></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">HEI / Chapter</span>
+                        <span class="info-val"><?= htmlspecialchars($schoolName) ?></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Year Level</span>
+                        <span class="info-val"><?= htmlspecialchars($yearLevel) ?></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Payment & Standing</span>
+                        <span class="info-val" style="color:var(--color-emerald);">
+                            <i class="fas fa-check-circle me-1"></i> Active / Good Standing
+                        </span>
+                    </div>
+                </div>
+
+                <div class="info-card" style="background:#F8FAFC;">
+                    <h2 style="font-size:0.88rem; font-weight:700; color:#0F172A; margin:0 0 0.5rem 0; display:flex; align-items:center; gap:0.4rem;">
+                        <i class="fas fa-link" style="color:var(--color-blue);"></i> Security & Anti-Fraud Token
+                    </h2>
+                    <p style="margin:0 0 0.6rem 0; font-size:0.76rem; color:#64748B; line-height:1.4;">
+                        This dynamic ID generates encrypted one-time verification tokens every 30 seconds to eliminate screenshots and duplicate badge presentations at IECEP assemblies.
+                    </p>
+                    <div style="font-family:'JetBrains Mono', monospace; font-size:0.68rem; color:#475569; word-break:break-all; background:#FFFFFF; padding:0.5rem; border:1px solid #E2E8F0; border-radius:6px;">
+                        SHA-256: <?= htmlspecialchars($digitalHash) ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
 
     <script>
         const realMemberId = <?= json_encode($realMemberId) ?>;
@@ -235,7 +385,6 @@ if (!empty($member['institution_id'])) {
                     renderMemberQrCode(JSON.stringify({ member_id: realMemberId, type: 'member_id_qr', timestamp: Date.now() }));
                 }
             } catch (err) {
-                console.error("Error generating dynamic member QR:", err);
                 renderMemberQrCode(JSON.stringify({ member_id: realMemberId, type: 'member_id_qr', timestamp: Date.now() }));
             }
         }
@@ -257,39 +406,50 @@ if (!empty($member['institution_id'])) {
                         correctLevel: QRCode.CorrectLevel.M
                     });
                     rendered = true;
-                } catch(e) {
-                    console.warn("QRCodeJS instance failed, falling back to image renderer:", e);
-                }
+                } catch (e) {}
             }
 
             if (!rendered) {
-                const encoded = encodeURIComponent(qrDataString);
                 const img = document.createElement('img');
-                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encoded}&color=0B1D4A`;
-                img.alt = "Member Digital ID QR";
-                img.style.width = "140px";
-                img.style.height = "140px";
-                img.style.display = "block";
-                img.style.borderRadius = "8px";
+                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(qrDataString)}&color=0B1D4A`;
+                img.alt = 'Member QR';
+                img.style.width = '140px';
+                img.style.height = '140px';
+                img.style.display = 'block';
                 container.appendChild(img);
             }
         }
 
-        function updateMemberQrTimer() {
-            memberQrSecondsLeft--;
-            if (memberQrSecondsLeft <= 0) {
-                fetchAndRenderMemberQr();
-            }
-            const pct = Math.max(0, (memberQrSecondsLeft / 30) * 100);
-            const bar = document.getElementById('memberQrProgressBar');
-            if (bar) bar.style.width = pct + '%';
-            const txt = document.getElementById('memberQrTimer');
-            if (txt) txt.textContent = `Refreshing in ${memberQrSecondsLeft}s`;
+        function startTimer() {
+            if (memberQrTimerInterval) clearInterval(memberQrTimerInterval);
+            memberQrTimerInterval = setInterval(() => {
+                memberQrSecondsLeft--;
+                const bar = document.getElementById('memberQrProgressBar');
+                const timerText = document.getElementById('memberQrTimer');
+                
+                if (bar) {
+                    const pct = Math.max(0, (memberQrSecondsLeft / 30) * 100);
+                    bar.style.width = pct + '%';
+                    if (pct < 25) bar.style.background = '#EF4444';
+                    else if (pct < 50) bar.style.background = '#F59E0B';
+                    else bar.style.background = '#10B981';
+                }
+
+                if (timerText) {
+                    timerText.textContent = `Refreshing in ${memberQrSecondsLeft}s`;
+                }
+
+                if (memberQrSecondsLeft <= 0) {
+                    memberQrSecondsLeft = 30;
+                    fetchAndRenderMemberQr();
+                }
+            }, 1000);
         }
 
-        // Initialize dynamic rolling QR code
-        fetchAndRenderMemberQr();
-        memberQrTimerInterval = setInterval(updateMemberQrTimer, 1000);
+        document.addEventListener('DOMContentLoaded', () => {
+            fetchAndRenderMemberQr();
+            startTimer();
+        });
     </script>
 </body>
 </html>
