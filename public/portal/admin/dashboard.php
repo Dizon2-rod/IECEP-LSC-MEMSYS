@@ -1,8 +1,8 @@
 <?php
 require_once __DIR__ . '/../auth_check.php';
-require_once __DIR__ . '/../../bootstrap.php';
-require_once __DIR__ . '/../../../includes/config.php';
-require_once __DIR__ . '/../../../includes/role-config.php';
+require_once __DIR__ . '/../bootstrap.php';
+require_once dirname(__DIR__, 3) . '/includes/config.php';
+require_once dirname(__DIR__, 3) . '/includes/role-config.php';
 
 // Allow admin and super_admin
 require_role(['admin', 'super_admin']);
