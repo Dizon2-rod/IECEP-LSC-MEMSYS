@@ -59,9 +59,10 @@ class EmailService
             $mail->SMTPSecure = $options['secure'] ?? PHPMailer::ENCRYPTION_STARTTLS;
             $mail->SMTPAutoTLS = $options['auto_tls'] ?? true;
             $mail->AuthType = $options['auth_type'] ?? 'LOGIN';
-            $mail->Username = $this->config['email']['username'];
-            $mail->Password = $this->config['email']['password'];
-            $fromEmail = $this->config['email']['from_email'] ?: $this->config['email']['username'];
+            $cleanPassword = trim(str_replace(' ', '', $this->config['email']['password']));
+            $mail->Username = trim($this->config['email']['username']);
+            $mail->Password = $cleanPassword;
+            $fromEmail = trim($this->config['email']['from_email'] ?: $this->config['email']['username']);
             $fromName = $this->config['email']['from_name'];
             $mail->setFrom($fromEmail, $fromName);
             $mail->addReplyTo($fromEmail, $fromName);
@@ -69,10 +70,8 @@ class EmailService
             $mail->isHTML(true);
             
             // Validate Gmail App Password format
-            $password = $this->config['email']['password'];
-            if (strlen($password) < 16 || !preg_match('/^[a-z0-9]{16}$/', $password)) {
-                error_log("WARNING: Gmail password does not appear to be an App Password. App Passwords are 16 characters long and contain only lowercase letters and numbers.");
-                error_log("Please generate a Gmail App Password from Google Account Settings > Security > 2-Step Verification > App Passwords");
+            if (strlen($cleanPassword) < 16 || !preg_match('/^[a-z0-9]{16}$/', $cleanPassword)) {
+                error_log("WARNING: Gmail password does not appear to be an App Password (length=" . strlen($cleanPassword) . "). Gmail will reject standard passwords. Use a 16-character App Password.");
             }
             
             // Gmail-specific connection settings for better compatibility
@@ -102,6 +101,11 @@ class EmailService
         }
     }
 
+    public function getLastError(): string
+    {
+        return $this->lastError;
+    }
+
     public function sendVerificationCode(string $to, string $code): bool
     {
         try {
@@ -124,6 +128,7 @@ class EmailService
             error_log("Email verification sent to $to: " . ($result ? 'SUCCESS' : 'FAILED'));
             return $result;
         } catch (\Throwable $e) {
+            $this->lastError = $e->getMessage();
             error_log("Email verification error: " . $e->getMessage());
             return false;
         }

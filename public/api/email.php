@@ -165,6 +165,55 @@ if ($method === 'POST') {
                 exit;
             }
 
+            // 1. Check if email already exists in user_profiles
+            $userProfile = $supabase->select('user_profiles', ['email' => 'eq.' . $email]);
+            if (is_array($userProfile) && isset($userProfile[0]) && is_array($userProfile[0])) {
+                $rawRole = $userProfile[0]['role'] ?? 'user';
+                $roleMap = [
+                    'admin'           => 'Administrator (Admin)',
+                    'super_admin'     => 'Super Administrator',
+                    'school_officer'  => 'School Officer',
+                    'officer'         => 'School Officer',
+                    'school_admin'    => 'School Officer',
+                    'member'          => 'Student Member',
+                    'student'         => 'Student Member',
+                    'treasurer'       => 'Treasurer',
+                    'auditor'         => 'Auditor',
+                    'board_member'    => 'Executive Board Member',
+                    'executive_board' => 'Executive Board Member'
+                ];
+                $formattedRole = $roleMap[strtolower($rawRole)] ?? ucwords(str_replace('_', ' ', $rawRole));
+                
+                echo json_encode([
+                    'success' => false,
+                    'error' => "This email is already registered in the system as a {$formattedRole}. Affiliation applications cannot use an existing account email."
+                ]);
+                exit;
+            }
+
+            // 2. Check if email exists in members table
+            $existingMember = $supabase->select('members', ['email' => 'eq.' . $email]);
+            if (is_array($existingMember) && isset($existingMember[0]) && is_array($existingMember[0])) {
+                echo json_encode([
+                    'success' => false,
+                    'error' => "This email is already registered in the system as a Student Member. Affiliation applications cannot use an existing member email."
+                ]);
+                exit;
+            }
+
+            // 3. Check if active application exists in pending_affiliations
+            $existingAff = $supabase->select('pending_affiliations', ['email' => 'eq.' . $email]);
+            if (is_array($existingAff) && isset($existingAff[0]) && is_array($existingAff[0])) {
+                $status = $existingAff[0]['status'] ?? '';
+                if (in_array($status, ['pending', 'under_review'])) {
+                    echo json_encode([
+                        'success' => false,
+                        'error' => 'This email is already associated with an active affiliation application (Status: Under Review). Please contact support.'
+                    ]);
+                    exit;
+                }
+            }
+
             $result = sendVerificationCode($email, $emailService, $supabase);
             if ($result) {
                 echo json_encode(['success' => true, 'message' => 'Verification code sent successfully']);

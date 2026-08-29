@@ -161,6 +161,42 @@ try {
     // Database Logic
     $config = require __DIR__ . '/../../includes/supabase.php';
     $sb = new SupabaseClient($config['url'], $config['anon_key']);
+
+    // Check if email already exists in user_profiles
+    $userProfile = $sb->select('user_profiles', ['email' => 'eq.' . $contact_email]);
+    if (is_array($userProfile) && isset($userProfile[0]) && is_array($userProfile[0])) {
+        $rawRole = $userProfile[0]['role'] ?? 'user';
+        $roleMap = [
+            'admin'           => 'Administrator (Admin)',
+            'super_admin'     => 'Super Administrator',
+            'school_officer'  => 'School Officer',
+            'officer'         => 'School Officer',
+            'school_admin'    => 'School Officer',
+            'member'          => 'Student Member',
+            'student'         => 'Student Member',
+            'treasurer'       => 'Treasurer',
+            'auditor'         => 'Auditor',
+            'board_member'    => 'Executive Board Member',
+            'executive_board' => 'Executive Board Member'
+        ];
+        $formattedRole = $roleMap[strtolower($rawRole)] ?? ucwords(str_replace('_', ' ', $rawRole));
+        throw new Exception("This email is already registered in the system as a {$formattedRole}. Affiliation applications cannot use an existing account email.");
+    }
+
+    // Check if email exists in members table
+    $existingMember = $sb->select('members', ['email' => 'eq.' . $contact_email]);
+    if (is_array($existingMember) && isset($existingMember[0]) && is_array($existingMember[0])) {
+        throw new Exception("This email is already registered in the system as a Student Member. Affiliation applications cannot use an existing member email.");
+    }
+
+    // Check if active pending affiliation already exists
+    $existingAff = $sb->select('pending_affiliations', ['email' => 'eq.' . $contact_email]);
+    if (is_array($existingAff) && isset($existingAff[0]) && is_array($existingAff[0])) {
+        $status = $existingAff[0]['status'] ?? '';
+        if (in_array($status, ['pending', 'under_review'])) {
+            throw new Exception("This email is already associated with an active affiliation application (Status: Under Review). Please contact the Secretariat.");
+        }
+    }
     
     $uploadedFiles = [];
     $documentHashes = [];

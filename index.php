@@ -125,19 +125,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $supabaseConfig = require __DIR__ . '/includes/supabase.php';
             $supabaseClient = new SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
 
-            // Block only active applications (pending or under_review)
+            // 1. Check if email already exists in user_profiles (Admin, School Officer, Member, etc.)
+            $userProfile = $supabaseClient->select('user_profiles', ['email' => 'eq.' . $email]);
+            if (is_array($userProfile) && isset($userProfile[0]) && is_array($userProfile[0])) {
+                $rawRole = $userProfile[0]['role'] ?? 'user';
+                $roleMap = [
+                    'admin'           => 'Administrator (Admin)',
+                    'super_admin'     => 'Super Administrator',
+                    'school_officer'  => 'School Officer',
+                    'officer'         => 'School Officer',
+                    'school_admin'    => 'School Officer',
+                    'member'          => 'Student Member',
+                    'student'         => 'Student Member',
+                    'treasurer'       => 'Treasurer',
+                    'auditor'         => 'Auditor',
+                    'board_member'    => 'Executive Board Member',
+                    'executive_board' => 'Executive Board Member'
+                ];
+                $formattedRole = $roleMap[strtolower($rawRole)] ?? ucwords(str_replace('_', ' ', $rawRole));
+                
+                ob_end_clean();
+                echo json_encode([
+                    'success' => false,
+                    'message' => "This email is already registered in the system as a {$formattedRole}. Affiliation applications cannot use an existing account email."
+                ]);
+                exit;
+            }
+
+            // 2. Check if email exists in members table
+            $existingMember = $supabaseClient->select('members', ['email' => 'eq.' . $email]);
+            if (is_array($existingMember) && isset($existingMember[0]) && is_array($existingMember[0])) {
+                ob_end_clean();
+                echo json_encode([
+                    'success' => false,
+                    'message' => "This email is already registered in the system as a Student Member. Affiliation applications cannot use an existing member email."
+                ]);
+                exit;
+            }
+
+            // 3. Block active applications (pending or under_review)
             $existing = $supabaseClient->select('pending_affiliations', ['email' => 'eq.' . $email]);
-            // Only treat as a match if the response contains actual records,
-            // not a Supabase error response (e.g. table or column does not exist)
             if (is_array($existing) && isset($existing[0]) && is_array($existing[0])) {
                 $status = $existing[0]['status'] ?? '';
                 if (in_array($status, ['pending', 'under_review'])) {
-                    $message = 'This email is already associated with an active application. Please check your status or contact support.';
+                    $message = 'This email is already associated with an active affiliation application (Status: Under Review). Please check your application status or contact the Secretariat.';
                     ob_end_clean();
                     echo json_encode(['success' => false, 'message' => $message, 'resubmit_available' => true]);
                     exit;
                 }
-                // For approved, rejected, or requires_revision statuses, allow re-application
             }
 
             // Generate & store 6-digit code
@@ -165,6 +200,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 require_once __DIR__ . '/src/lib/EmailService.php';
                 $emailService = new \App\Lib\EmailService();
                 $emailSent    = $emailService->sendVerificationCode($email, $code);
+                if (!$emailSent) {
+                    $emailError = $emailService->getLastError() ?: 'SMTP connection error.';
+                }
             } catch (Exception $e) {
                 $emailError = $e->getMessage();
                 error_log("Email send error: $emailError\n" . $e->getTraceAsString());
@@ -172,9 +210,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             $response = ['success' => true, 'message' => 'Verification code sent to your email!'];
             if (!$emailSent) {
-                $response['code']    = $code; // dev fallback
+                $response['code']    = $code; // dev fallback for testability
                 $response['message'] = $emailError
-                    ? 'Verification code generated. Email failed: ' . $emailError
+                    ? 'Verification code generated. Email delivery notice: ' . $emailError
                     : 'Verification code generated (email delivery pending - code shown for testing)';
             }
 
@@ -283,7 +321,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             ob_end_clean();
             echo json_encode([
                 'success'  => true,
-                'redirect' => '/IECEP-LSC-MEMSYS/public/api/submit-affiliation.php',
+                'redirect' => BASE_URL . '/public/api/submit-affiliation.php',
                 'message'  => 'Processing application...',
             ]);
         } catch (Exception $e) {
@@ -1834,7 +1872,7 @@ try {
 <!-- ═══════════════════════════════════════════════════════════ Affiliate Modal -->
 <div id="affiliateModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal-content">
-        <form id="affiliationForm" action="/IECEP-LSC-MEMSYS/public/api/submit-affiliation.php" method="POST" enctype="multipart/form-data">
+        <form id="affiliationForm" action="<?php echo BASE_URL; ?>/public/api/submit-affiliation.php" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="action" value="submit_affiliation">
             <input type="hidden" id="form-contact-email" name="contact_email">
 
@@ -2462,6 +2500,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // ── Modal setup ────────────────────────────────────────────────────────────
+    const API_BASE_URL = '<?php echo BASE_URL; ?>';
     let verifiedEmail = '';
 
     const overlay = document.createElement('div');
@@ -2541,7 +2580,7 @@ document.addEventListener('DOMContentLoaded', function () {
         this.disabled = true;
         this.innerHTML = '<span class="spinner"></span> Sending...';
         try {
-            const res    = await fetch('/IECEP-LSC-MEMSYS/index.php', {
+            const res    = await fetch(API_BASE_URL + '/index.php', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -2577,7 +2616,7 @@ document.addEventListener('DOMContentLoaded', function () {
         this.disabled = true;
         this.innerHTML = '<span class="spinner"></span> Verifying...';
         try {
-            const res    = await fetch('/IECEP-LSC-MEMSYS/index.php', {
+            const res    = await fetch(API_BASE_URL + '/index.php', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -2768,7 +2807,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const oldMembers = parseInt(document.getElementById('hidden-old-members').value);
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-            const response = await fetch('/IECEP-LSC-MEMSYS/public/api/simulate-payment.php', {
+            const response = await fetch(API_BASE_URL + '/public/api/simulate-payment.php', {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
@@ -3045,7 +3084,7 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.delete('action');
         
         try {
-            const response = await fetch('/IECEP-LSC-MEMSYS/public/api/submit-affiliation.php', {
+            const response = await fetch(API_BASE_URL + '/public/api/submit-affiliation.php', {
                 method: 'POST',
                 body: formData
             });
