@@ -17,6 +17,7 @@ RUN apt-get update && apt-get install -y \
     && ln -sf /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load \
     && ln -sf /etc/apache2/mods-available/mpm_prefork.conf /etc/apache2/mods-enabled/mpm_prefork.conf \
     && a2enmod rewrite headers \
+    && echo "log_errors = On\nerror_log = /dev/stderr\ndisplay_errors = On\ndisplay_startup_errors = On" > /usr/local/etc/php/conf.d/docker-php-logging.ini \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Composer v2
@@ -45,6 +46,6 @@ RUN chmod +x /usr/local/bin/start-server.sh \
 
 ENV PORT=80
 
-EXPOSE ${PORT}
+EXPOSE 80 8080
 
 CMD ["/usr/local/bin/start-server.sh"]
