@@ -12,25 +12,25 @@ INSERT INTO auth_users (id, email, password_hash, created_at, updated_at)
 VALUES (
     'admin-001-iecep-lsc',
     'lspuscc.adminece@gmail.com',
-    '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+    '$2y$12$mypSMbD3y1XR5uuewBIV5ONYYT3yODWWKdOINbV7/2n86Xu0PupXK',
     NOW(),
     NOW()
 )
-ON CONFLICT (id) DO UPDATE SET updated_at = NOW();
+ON CONFLICT (id) DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = NOW();
 
 -- Insert admin profile
-INSERT INTO user_profiles (id, name, email, role, institution, verification_status, created_at, updated_at)
+INSERT INTO user_profiles (id, full_name, email, role, institution_id, status, created_at, updated_at)
 VALUES (
     'admin-001-iecep-lsc',
     'IECEP-LSC Administrator',
     'lspuscc.adminece@gmail.com',
-    'admin',                    -- role must match your CHECK constraint
-    'IECEP-LSC National Office',
-    'verified',
+    'super_admin',
+    '1fe48809-8ac6-4428-a6f1-3025cc47f5bb',
+    'active',
     NOW(),
     NOW()
 )
-ON CONFLICT (id) DO UPDATE SET updated_at = NOW();
+ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role, updated_at = NOW();
 
 -- =====================================================================
 -- SCHOOL ACCOUNT (Affiliated School)
@@ -40,53 +40,25 @@ INSERT INTO auth_users (id, email, password_hash, created_at, updated_at)
 VALUES (
     'school-001-pupsta',
     'ieceptest86@gmail.com',
-    '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+    '$2y$12$7QzP4zCK2as87c1og7U59et9vvPHU90pCYCNXn.zM7RuH/cti.cXa',
     NOW(),
     NOW()
 )
-ON CONFLICT (id) DO UPDATE SET updated_at = NOW();
-
--- Insert institution
-INSERT INTO institutions (id, email, name, acronym, type, address, city, province, region, country,
-                          contact_person, contact_email, contact_phone, status, affiliation_fee_paid,
-                          compliance_status, membership_count, established_year, created_at, updated_at)
-VALUES (
-    'school-001-pupsta',
-    'ieceptest86@gmail.com',
-    'Laguna State Polytechnic University - Santa Cruz Campus',
-    'LSPU - SCC',
-    'university',
-    'Santa Cruz, Laguna',
-    'Santa Cruz',
-    'Laguna',
-    'Region IV-A',
-    'Philippines',
-    'Jonnel Pabico',
-    'ieceptest86@gmail.com',
-    '632-5335-1787',
-    'active',
-    TRUE,
-    'compliant',
-    150,
-    1904,
-    NOW(),
-    NOW()
-)
-ON CONFLICT (id) DO UPDATE SET updated_at = NOW();
+ON CONFLICT (id) DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = NOW();
 
 -- Insert school officer profile
-INSERT INTO user_profiles (id, name, email, role, institution, verification_status, created_at, updated_at)
+INSERT INTO user_profiles (id, full_name, email, role, institution_id, status, created_at, updated_at)
 VALUES (
     'school-001-pupsta',
     'LSPU - SCC School Officer',
     'ieceptest86@gmail.com',
     'school_officer',
-    'Laguna State Polytechnic University - Santa Cruz Campus',
-    'verified',
+    '1fe48809-8ac6-4428-a6f1-3025cc47f5bb',
+    'active',
     NOW(),
     NOW()
 )
-ON CONFLICT (id) DO UPDATE SET updated_at = NOW();
+ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role, updated_at = NOW();
 
 -- =====================================================================
 -- MEMBER ACCOUNT
@@ -96,42 +68,47 @@ INSERT INTO auth_users (id, email, password_hash, created_at, updated_at)
 VALUES (
     'member-001',
     'rasheddizon7@gmail.com',
-    '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
+    '$2y$12$t6adOxlvvxUJa4Lu2U6EX.R5U.2KGRTwQNeE9i51ou9Cw59Ft2vDi',
     NOW(),
     NOW()
 )
-ON CONFLICT (id) DO UPDATE SET updated_at = NOW();
+ON CONFLICT (id) DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = NOW();
 
 -- Insert member record
-INSERT INTO members (id, full_name, email, membership_id, school_affiliate, year_level, member_type, status, created_at, updated_at)
+INSERT INTO members (id, full_name, email, membership_id, institution_id, year_level, course, status, payment_status, created_at, updated_at)
 VALUES (
-    'member-001',
+    '10000000-0000-0000-0000-000000000003',
     'Rashed Dizon',
     'rasheddizon7@gmail.com',
-    'IECEP-2026-0001',
-    'Laguna State Polytechnic University - Santa Cruz Campus',
+    'IECEP-2026-0103',
+    '1fe48809-8ac6-4428-a6f1-3025cc47f5bb',
     '3rd Year',
-    'returning',
+    'BS Electronics Engineering',
     'active',
+    'paid',
     NOW(),
     NOW()
 )
-ON CONFLICT (id) DO UPDATE SET updated_at = NOW();
+ON CONFLICT (email) DO UPDATE SET
+    full_name = EXCLUDED.full_name,
+    membership_id = EXCLUDED.membership_id,
+    year_level = EXCLUDED.year_level,
+    status = EXCLUDED.status,
+    updated_at = NOW();
 
 -- Insert member profile
-INSERT INTO user_profiles (id, name, email, role, institution, verification_status, digital_id_hash, created_at, updated_at)
+INSERT INTO user_profiles (id, full_name, email, role, institution_id, status, created_at, updated_at)
 VALUES (
     'member-001',
     'Rashed Dizon',
     'rasheddizon7@gmail.com',
     'member',
-    'Laguna State Polytechnic University - Santa Cruz Campus',
-    'verified',
-    sha256('member-001-verified-2026'),   -- PostgreSQL SHA‑256 function
+    '1fe48809-8ac6-4428-a6f1-3025cc47f5bb',
+    'active',
     NOW(),
     NOW()
 )
-ON CONFLICT (id) DO UPDATE SET updated_at = NOW();
+ON CONFLICT (id) DO UPDATE SET full_name = EXCLUDED.full_name, role = EXCLUDED.role, updated_at = NOW();
 
 -- =====================================================================
 -- FEE BRACKETS SEEDING

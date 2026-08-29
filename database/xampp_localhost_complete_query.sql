@@ -341,12 +341,23 @@ ON DUPLICATE KEY UPDATE
     `description` = VALUES(`description`),
     `status` = VALUES(`status`);
 
--- SEED DATA: USER PROFILES & MEMBERS
-INSERT INTO `user_profiles` (`id`, `email`, `full_name`, `role`, `institution_id`, `phone`, `status`)
+-- SEED DATA: OFFICIAL AUTH USERS & PROFILES
+INSERT INTO `users` (`id`, `email`, `password`, `full_name`, `role`, `is_active`, `created_at`, `updated_at`)
 VALUES
-    ('00000000-0000-0000-0000-000000000001', 'admin@iecep-lsc.org', 'Regional Admin Officer', 'super_admin', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '09171234567', 'active'),
-    ('00000000-0000-0000-0000-000000000002', 'officer.scc@iecep-lsc.org', 'LSPU Chapter President', 'school_officer', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '09181234567', 'active'),
-    ('00000000-0000-0000-0000-000000000003', 'juan.delacruz@student.lspu.edu.ph', 'Juan Dela Cruz', 'member', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '09191234567', 'active')
+    ('00000000-0000-0000-0000-000000000001', 'lspuscc.adminece@gmail.com', '$2y$12$mypSMbD3y1XR5uuewBIV5ONYYT3yODWWKdOINbV7/2n86Xu0PupXK', 'IECEP-LSC Regional Admin', 'super_admin', 1, NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000002', 'ieceptest86@gmail.com', '$2y$12$7QzP4zCK2as87c1og7U59et9vvPHU90pCYCNXn.zM7RuH/cti.cXa', 'LSPU - SCC School Officer', 'school_officer', 1, NOW(), NOW()),
+    ('00000000-0000-0000-0000-000000000003', 'rasheddizon7@gmail.com', '$2y$12$t6adOxlvvxUJa4Lu2U6EX.R5U.2KGRTwQNeE9i51ou9Cw59Ft2vDi', 'Rashed Dizon', 'member', 1, NOW(), NOW())
+ON DUPLICATE KEY UPDATE
+    `password` = VALUES(`password`),
+    `full_name` = VALUES(`full_name`),
+    `role` = VALUES(`role`),
+    `is_active` = VALUES(`is_active`);
+
+INSERT INTO `user_profiles` (`id`, `user_id`, `email`, `full_name`, `role`, `institution_id`, `phone`, `status`)
+VALUES
+    ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'lspuscc.adminece@gmail.com', 'IECEP-LSC Regional Admin', 'super_admin', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '09171234567', 'active'),
+    ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', 'ieceptest86@gmail.com', 'LSPU - SCC School Officer', 'school_officer', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '09181234567', 'active'),
+    ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000003', 'rasheddizon7@gmail.com', 'Rashed Dizon', 'member', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '09191234567', 'active')
 ON DUPLICATE KEY UPDATE
     `full_name` = VALUES(`full_name`),
     `role` = VALUES(`role`),
