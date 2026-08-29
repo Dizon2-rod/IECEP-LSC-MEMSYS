@@ -736,9 +736,11 @@ if (!function_exists('isMenuItemActive')) {
 .main-content {
     margin-left: var(--sb-width);
     transition: margin-left var(--sb-transition);
-    padding: 2rem;
+    padding: 1.15rem 1.35rem 2.5rem;
     min-height: 100vh;
     box-sizing: border-box;
+    width: calc(100% - var(--sb-width));
+    max-width: calc(100vw - var(--sb-width));
 }
 
 /* Tablet & Mobile Breakpoint (<= 991.98px) */

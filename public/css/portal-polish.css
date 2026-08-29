@@ -34,14 +34,20 @@ body {
 .main-content {
     background: var(--portal-bg);
     min-height: 100vh;
-    padding: 2rem;
+    padding: 1.15rem 1.35rem 2.5rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .main-content > .container,
 .main-content > .dashboard-scope,
-.dashboard-scope {
-    max-width: 1500px;
-    margin: 0 auto;
+.dashboard-scope,
+.main-content > .container-fluid {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 /* ─────────────────────────────────────────────────────────────

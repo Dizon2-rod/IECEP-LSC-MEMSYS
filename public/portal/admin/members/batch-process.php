@@ -378,25 +378,25 @@ try {
         }
 
         .white-theme-wrap {
-            padding: 1.5rem 2rem;
-            max-width: 1400px;
-            margin: 0 auto;
-            box-sizing: border-box;
-            width: 100%;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
             overflow-x: hidden !important;
         }
 
         .white-page-header {
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
-            border-radius: 16px;
-            padding: 1.25rem 1.5rem;
-            margin-bottom: 1.25rem;
+            border-radius: 12px;
+            padding: 0.75rem 1.15rem;
+            margin-bottom: 0.85rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
-            gap: 1rem;
+            gap: 0.75rem;
             box-shadow: var(--shadow-card);
             box-sizing: border-box;
             width: 100%;

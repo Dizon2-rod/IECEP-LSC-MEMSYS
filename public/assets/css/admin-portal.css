@@ -75,9 +75,13 @@ body {
    3. Page Scope Wrapper
    ========================================================= */
 .ap-scope {
-    padding: 0.85rem 1.25rem 2rem;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
     background: transparent;
     min-height: 100vh;
+    box-sizing: border-box !important;
 }
 
 /* =========================================================

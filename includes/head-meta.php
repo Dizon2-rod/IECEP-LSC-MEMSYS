@@ -712,7 +712,9 @@ define('HEAD_META_INCLUDED', true);
     @media (min-width: 768px) and (max-width: 991.98px) {
         .main-content {
             margin-left: 0 !important;
-            padding: 1.25rem 1rem 3rem !important;
+            padding: 1rem !important;
+            width: 100% !important;
+            max-width: 100vw !important;
         }
         .hero { padding: 100px 2rem 5rem; }
         .hero-tagline { font-size: 1.75rem; }
@@ -722,27 +724,18 @@ define('HEAD_META_INCLUDED', true);
         .grid-3 { grid-template-columns: repeat(2, 1fr) !important; }
     }
     
-    /* Desktops (992px - 1199.98px) */
-    @media (min-width: 992px) and (max-width: 1199.98px) {
+    /* Desktops & Large Monitors (992px+) - Seamless Single Left Alignment */
+    @media (min-width: 992px) {
         .main-content {
-            margin-left: var(--sidebar-width, 260px) !important;
-            padding: 1.75rem 1.5rem 3rem !important;
+            margin-left: 260px !important;
+            padding: 1.15rem 1.35rem 2.5rem !important;
+            width: calc(100% - 260px) !important;
+            max-width: calc(100vw - 260px) !important;
+            box-sizing: border-box !important;
         }
-        .hero { padding: 110px 2rem 6rem; }
-        .hero-tagline { font-size: 2rem; }
-        .hero-title { font-size: 3rem; }
-        .schools-grid img { width: 80px; height: 80px; }
-    }
-    
-    /* Large Monitors (1200px+) */
-    @media (min-width: 1200px) {
-        .main-content {
-            margin-left: var(--sidebar-width, 260px) !important;
-            padding: 2rem 2.25rem 3.5rem !important;
-        }
-        .hero { padding: 140px 2rem 6rem; }
-        .hero-tagline { font-size: 2.5rem; }
-        .hero-title { font-size: 3.5rem; }
+        .hero { padding: 120px 2rem 6rem; }
+        .hero-tagline { font-size: 2.25rem; }
+        .hero-title { font-size: 3.25rem; }
         .schools-grid img { width: 85px; height: 85px; }
     }
 </style>

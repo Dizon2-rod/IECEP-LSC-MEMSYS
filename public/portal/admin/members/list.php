@@ -361,11 +361,11 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         .white-theme-wrap {
-            padding: 0.85rem 1.25rem;
-            max-width: 1560px;
-            margin: 0 auto;
-            box-sizing: border-box;
-            width: 100%;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
             overflow-x: hidden !important;
         }
 
