@@ -67,6 +67,14 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 CREATE INDEX IF NOT EXISTS idx_user_profiles_role ON user_profiles(role);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_inst ON user_profiles(institution_id);
 
+-- Ensure all user_profiles columns exist on existing tables
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+
 -- 5. MEMBERS TABLE (Official Chapter Membership & Digital ID Roster)
 CREATE TABLE IF NOT EXISTS members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -83,6 +91,7 @@ CREATE TABLE IF NOT EXISTS members (
     student_number TEXT,
     membership_type TEXT DEFAULT 'student' CHECK (membership_type IN ('student', 'associate', 'regular', 'senior', 'fellow', 'honorary')),
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'pending', 'expired', 'suspended')),
+    payment_status TEXT DEFAULT 'paid' CHECK (payment_status IN ('paid', 'pending', 'waived', 'unpaid', 'overdue')),
     digital_id_hash TEXT,
     qr_code_url TEXT,
     joined_date DATE DEFAULT CURRENT_DATE,
@@ -92,9 +101,20 @@ CREATE TABLE IF NOT EXISTS members (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure all member columns exist on existing tables
+ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'paid';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS first_name TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS last_name TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS student_number TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS digital_id_hash TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS course TEXT DEFAULT 'Bachelor of Science in Electronics Engineering';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS year_level TEXT DEFAULT '4th Year';
+
 CREATE INDEX IF NOT EXISTS idx_members_mem_id ON members(membership_id);
 CREATE INDEX IF NOT EXISTS idx_members_inst ON members(institution_id);
 CREATE INDEX IF NOT EXISTS idx_members_status ON members(status);
+CREATE INDEX IF NOT EXISTS idx_members_payment ON members(payment_status);
 
 -- 6. MEMBER ID COUNTER (For auto-generating sequential IECEP-2026-XXXX)
 CREATE TABLE IF NOT EXISTS member_id_counter (
