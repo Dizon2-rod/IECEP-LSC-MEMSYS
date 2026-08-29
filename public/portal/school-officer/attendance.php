@@ -208,28 +208,37 @@ $complianceStatus = ($participationRate >= 40) ? 'compliant' : (($participationR
     </style>
 </head>
 <body>
-    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
+    <div class="dashboard-container">
+        <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
-    <main class="main-content">
-        <div class="ap-scope">
+        <main class="main-content">
+            <div class="ap-scope">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-calendar-check"></i> Chapter Event Attendance Ledger</h1>
-                    <p class="ap-page-subtitle">Institutional Chapter: <strong><?= htmlspecialchars($instName) ?> (<?= htmlspecialchars($instAcronym) ?>)</strong></p>
+                <!-- Page Header -->
+                <div class="ap-page-header">
+                    <div class="ap-title-block">
+                        <div class="text-muted small mb-1">
+                            <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="text-muted text-decoration-none">School Portal</a>
+                            <span class="mx-1">/</span>
+                            <span class="text-dark fw-bold">Attendance</span>
+                        </div>
+                        <h1 class="ap-page-title"><i class="fas fa-calendar-check text-primary"></i> Chapter Event Attendance Ledger</h1>
+                        <p class="ap-page-subtitle">Institutional Chapter: <strong><?= htmlspecialchars($instName) ?> (<?= htmlspecialchars($instAcronym) ?>)</strong></p>
+                    </div>
+                    <div class="ap-header-actions">
+                        <!-- Action Button 1: Open 15s Rotating Dynamic QR Modal -->
+                        <button class="ap-btn-primary" onclick="openLiveQrModal()">
+                            <i class="fas fa-qrcode"></i> Generate 15s Dynamic QR
+                        </button>
+                        <!-- Action Button 2: Open School Officer Camera Scanner Modal -->
+                        <button class="ap-btn-secondary" onclick="openScannerModal()">
+                            <i class="fas fa-camera"></i> Scan Student QR Code
+                        </button>
+                        <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="ap-btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i> Dashboard
+                        </a>
+                    </div>
                 </div>
-                <div class="ap-header-actions">
-                    <!-- Action Button 1: Open 15s Rotating Dynamic QR Modal -->
-                    <button class="ap-btn-primary" onclick="openLiveQrModal()">
-                        <i class="fas fa-qrcode"></i> Generate 15s Dynamic QR
-                    </button>
-                    <!-- Action Button 2: Open School Officer Camera Scanner Modal -->
-                    <button class="ap-btn-secondary" onclick="openScannerModal()">
-                        <i class="fas fa-camera"></i> Scan Student QR Code
-                    </button>
-                </div>
-            </div>
 
             <!-- KPI Cards -->
             <div class="ap-kpi-grid">
@@ -674,5 +683,6 @@ $complianceStatus = ($participationRate >= 40) ? 'compliant' : (($participationR
             });
         }
     </script>
+    </div>
 </body>
 </html>

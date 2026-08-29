@@ -3,6 +3,7 @@ if (!isset($current_page)) { $current_page = 'upload-members'; }
 require_once __DIR__ . '/../../bootstrap.php';
 require_once __DIR__ . '/../../auth_check.php';
 require_once __DIR__ . '/../../../../includes/config.php';
+require_once __DIR__ . '/../../../../includes/role-config.php';
 require_once __DIR__ . '/../../../../includes/csrf.php';
 
 require_role(['school_officer', 'admin', 'super_admin']);
@@ -13,15 +14,16 @@ $user = $_SESSION['user'] ?? [];
 $userId = $user['id'] ?? $_SESSION['user_id'] ?? null;
 $institutionId = $_SESSION['institution_id'] ?? $user['institution_id'] ?? null;
 
-$supabase = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+$supabase = getSupabaseClient() ?? new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 $recentBatches = [];
-if ($institutionId) {
+if ($institutionId && $supabase) {
     try {
         $recentBatches = $supabase->select('upload_batches', [
             'institution_id' => 'eq.' . $institutionId,
             'order' => 'uploaded_at.desc',
             'limit' => '5'
         ]);
+        if (!is_array($recentBatches)) $recentBatches = [];
     } catch (Exception $e) {
         $recentBatches = [];
     }
@@ -32,37 +34,58 @@ if ($institutionId) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Member Directory - IECEP-LSC MEMSYS</title>
+    <title>Upload Member Directory — IECEP-LSC MEMSYS</title>
     <?php require_once __DIR__ . '/../../../../includes/head-meta.php'; ?>
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/admin-portal.css">
     <style>
-        .upload-container {
-            max-width: 880px;
-            margin: 0 auto;
+        :root {
+            --bg-page: #F8FAFC;
+            --bg-surface: #FFFFFF;
+            --border-light: #E2E8F0;
+            --text-heading: #0B1D4A;
+            --text-primary: #0F172A;
+            --text-muted: #64748B;
         }
 
-        .upload-zone {
-            border: 2px dashed #cbd5e1;
-            border-radius: 12px;
+        body {
+            background-color: var(--bg-page) !important;
+            font-family: 'DM Sans', 'Inter', -apple-system, sans-serif;
+            color: var(--text-primary);
+        }
+
+        .upload-white-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 2rem 2.25rem;
+            box-shadow: 0 4px 20px -2px rgba(11, 29, 74, 0.04);
+            max-width: 900px;
+            margin: 0 auto 2rem;
+        }
+
+        .upload-dropzone-clean {
+            border: 2px dashed var(--border-light);
+            border-radius: 14px;
             padding: 3rem 2rem;
             text-align: center;
-            background: #f8fafc;
+            background: #FAFCFF;
             cursor: pointer;
             transition: all 0.2s ease;
             position: relative;
         }
 
-        .upload-zone:hover,
-        .upload-zone.dragover {
-            background: #f1f5f9;
-            border-color: var(--memsys-navy);
+        .upload-dropzone-clean:hover,
+        .upload-dropzone-clean.dragover {
+            background: #F1F5F9;
+            border-color: #0B1D4A;
         }
 
-        .upload-zone-icon {
+        .dropzone-icon-circle {
             width: 56px;
             height: 56px;
             border-radius: 50%;
-            background: #e2e8f0;
-            color: var(--memsys-navy);
+            background: rgba(11, 29, 74, 0.06);
+            color: #0B1D4A;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -71,17 +94,16 @@ if ($institutionId) {
             transition: all 0.2s ease;
         }
 
-        .upload-zone:hover .upload-zone-icon,
-        .upload-zone.dragover .upload-zone-icon {
-            background: var(--memsys-navy);
-            color: #ffffff;
-            transform: scale(1.05);
+        .upload-dropzone-clean:hover .dropzone-icon-circle {
+            background: #0B1D4A;
+            color: #FFFFFF;
+            transform: scale(1.08);
         }
 
-        .file-selected-card {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
+        .file-preview-card {
+            background: #F8FAFC;
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
             padding: 1.25rem 1.5rem;
             display: flex;
             align-items: center;
@@ -89,76 +111,24 @@ if ($institutionId) {
             gap: 1rem;
         }
 
-        .format-badge {
+        .format-badge-pill {
             display: inline-block;
             font-size: 0.75rem;
-            font-weight: 600;
-            padding: 0.2rem 0.5rem;
-            background: #e2e8f0;
+            font-weight: 700;
+            padding: 0.2rem 0.55rem;
+            background: #E2E8F0;
             color: #334155;
             border-radius: 4px;
             margin: 0 0.15rem;
         }
 
-        .helper-callout {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 0.85rem 1.25rem;
-            font-size: 0.88rem;
-            color: #475569;
-        }
-
-        details.format-details {
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 0.85rem 1.25rem;
-            background: #ffffff;
-            font-size: 0.9rem;
-        }
-
-        details.format-details summary {
-            font-weight: 600;
-            color: var(--memsys-navy);
-            cursor: pointer;
-            user-select: none;
-        }
-
-        details.format-details[open] summary {
-            margin-bottom: 0.75rem;
-        }
-
-        body.dark-mode .upload-zone {
-            background: #0f172a;
-            border-color: #334155;
-        }
-
-        body.dark-mode .upload-zone:hover,
-        body.dark-mode .upload-zone.dragover {
-            background: #1e293b;
-            border-color: var(--memsys-gold);
-        }
-
-        body.dark-mode .upload-zone-icon {
-            background: #1e293b;
-            color: #e2e8f0;
-        }
-
-        body.dark-mode .file-selected-card,
-        body.dark-mode .helper-callout,
-        body.dark-mode details.format-details {
-            background: #1e293b;
-            border-color: #334155;
-            color: #e2e8f0;
-        }
-
-        body.dark-mode .format-badge {
-            background: #334155;
-            color: #f1f5f9;
-        }
-
-        body.dark-mode details.format-details summary {
-            color: var(--memsys-gold);
+        .sheet-guideline-box {
+            background: #F8FAFC;
+            border: 1px solid var(--border-light);
+            border-left: 4px solid #0B1D4A;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.5rem;
         }
     </style>
 </head>
@@ -166,217 +136,131 @@ if ($institutionId) {
     <div class="dashboard-container">
         <?php require_once __DIR__ . '/../../../../includes/sidebar.php'; ?>
 
-        <main class="main-content">
-            <div class="container py-4 upload-container">
-                <!-- Clean Breadcrumbs & Header -->
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-2 border-bottom">
-                    <div>
+        <main class="main-content ap-scope">
+            <div class="container py-4">
+                <!-- Clean Page Header -->
+                <div class="ap-page-header" style="max-width: 900px; margin: 0 auto 1.5rem;">
+                    <div class="ap-title-block">
                         <div class="text-muted small mb-1">
                             <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="text-muted text-decoration-none">School Portal</a>
                             <span class="mx-1">/</span>
-                            <span>Members</span>
+                            <span class="text-muted">Members</span>
                             <span class="mx-1">/</span>
-                            <span class="text-dark fw-semibold">Upload Directory</span>
+                            <span class="text-dark fw-bold">Upload Directory</span>
                         </div>
-                        <h2 class="fw-bold text-dark mb-0">Upload Member Directory</h2>
+                        <h1 class="ap-page-title">
+                            <i class="fas fa-file-excel text-success"></i> Batch Upload Member Directory
+                        </h1>
+                        <p class="ap-page-subtitle">
+                            Import 1st to 4th year student roster workbook (.xlsx) into the regional registration system.
+                        </p>
                     </div>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="downloadSampleTemplate()">
-                            <i class="fas fa-download me-1"></i> Sample Template
+                    <div class="ap-header-actions">
+                        <button type="button" class="ap-btn-secondary" onclick="downloadSampleTemplate()">
+                            <i class="fas fa-download me-1"></i> Sample CSV Template
                         </button>
-                        <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="btn btn-sm btn-outline">
-                            <i class="fas fa-arrow-left me-1"></i> Dashboard
+                        <a href="<?= BASE_URL ?>/public/portal/school-officer/members/list.php" class="ap-btn-secondary">
+                            <i class="fas fa-users me-1"></i> Member List
                         </a>
                     </div>
                 </div>
 
-                <!-- Main Card -->
-                <div class="card mb-4">
-                    <p class="text-muted mb-3" style="font-size: 0.95rem;">
-                        Upload your official member directory workbook. The system will parse student records, validate data formats, and queue members for official registration.
-                    </p>
-
-                    <!-- Sheet Structure Notice -->
-                    <div class="helper-callout d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
+                <!-- Upload Card -->
+                <div class="upload-white-card">
+                    <!-- Guidelines Notice -->
+                    <div class="sheet-guideline-box d-flex align-items-center justify-content-between flex-wrap gap-2 mb-4">
                         <div class="d-flex align-items-center gap-2">
                             <i class="fas fa-info-circle text-primary"></i>
-                            <span>Workbook must contain 4 sheets:</span>
-                            <span class="format-badge">1st Yr</span>
-                            <span class="format-badge">2nd Yr</span>
-                            <span class="format-badge">3rd Yr</span>
-                            <span class="format-badge">4th Yr</span>
+                            <span class="small fw-semibold text-dark">Workbook must contain 4 worksheets:</span>
+                            <span class="format-badge-pill">1st Yr</span>
+                            <span class="format-badge-pill">2nd Yr</span>
+                            <span class="format-badge-pill">3rd Yr</span>
+                            <span class="format-badge-pill">4th Yr</span>
                         </div>
-                        <span class="text-muted small">Max 10 MB (.xlsx, .xls, .csv)</span>
+                        <span class="text-muted small">Max file size: 10 MB</span>
                     </div>
+
+                    <div id="responseMessage" class="mb-3" style="display: none;"></div>
 
                     <form id="uploadForm" enctype="multipart/form-data">
                         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf_token); ?>">
                         <input type="file" id="fileInput" name="directory_file" accept=".xlsx,.xls,.csv" style="display: none;">
 
-                        <!-- Clean Dropzone -->
-                        <div class="upload-zone mb-3" id="uploadArea">
-                            <div class="upload-zone-icon">
+                        <!-- Drag and Drop Zone -->
+                        <div class="upload-dropzone-clean mb-3" id="uploadArea">
+                            <div class="dropzone-icon-circle">
                                 <i class="fas fa-cloud-upload-alt"></i>
                             </div>
-                            <h5 class="fw-bold mb-1 text-dark">Click to browse or drag and drop</h5>
+                            <h5 class="fw-bold mb-1 text-dark">Click to browse or drag and drop workbook</h5>
                             <p class="text-muted small mb-0">Excel Workbook (.xlsx, .xls) or CSV format</p>
                         </div>
 
                         <!-- Selected File Preview -->
                         <div id="fileSelected" class="mb-3" style="display: none;">
-                            <div class="file-selected-card">
+                            <div class="file-preview-card">
                                 <div class="d-flex align-items-center gap-3">
-                                    <i class="fas fa-file-excel text-success fs-3"></i>
+                                    <i class="fas fa-file-excel text-success fa-2x"></i>
                                     <div>
-                                        <div class="fw-semibold text-dark" id="fileName">directory.xlsx</div>
+                                        <div class="fw-bold text-dark" id="fileName">directory.xlsx</div>
                                         <div class="text-muted small" id="fileSize">0 KB</div>
                                     </div>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline text-danger" id="removeFileBtn" title="Remove file">
+                                <button type="button" class="ap-btn-danger" id="removeFileBtn" style="padding: 0.35rem 0.85rem; font-size: 0.78rem;">
                                     <i class="fas fa-times me-1"></i> Change File
                                 </button>
                             </div>
 
-                            <button type="submit" class="btn btn-primary btn-lg w-100 mt-3" id="submitBtn">
+                            <button type="submit" class="ap-btn-primary w-100 justify-content-center mt-3" style="padding: 0.75rem 1.5rem; font-size: 0.95rem;" id="submitBtn">
                                 <i class="fas fa-upload me-1"></i> Upload and Process Directory
                             </button>
                         </div>
 
                         <!-- Progress Bar Container -->
-                        <div class="progress-container mt-3" id="progressContainer" style="display: none;">
+                        <div class="mt-3" id="progressContainer" style="display: none;">
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <span class="small fw-semibold text-muted" id="progressText">Uploading workbook...</span>
                                 <span class="small fw-bold text-primary" id="progressPercent">0%</span>
                             </div>
-                            <div class="progress" style="height: 8px; border-radius: 4px; background: #e2e8f0;">
-                                <div class="progress-bar progress-bar-striped progress-bar-animated" 
-                                     id="progressBar" 
-                                     role="progressbar" 
-                                     style="width: 0%; background: var(--memsys-navy);"></div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" id="progressBar" style="width: 0%"></div>
                             </div>
                         </div>
                     </form>
 
-                    <!-- Response Message -->
-                    <div id="responseMessage" class="mt-3" style="display: none;"></div>
-
                     <!-- Success Card -->
-                    <div id="successCard" class="p-4 rounded-3 border border-success bg-light mt-4" style="display: none;">
-                        <div class="d-flex align-items-center gap-3 mb-3">
-                            <i class="fas fa-check-circle text-success fs-2"></i>
+                    <div id="successCard" class="mt-4" style="display: none;">
+                        <div class="alert alert-success d-flex align-items-center gap-3 mb-3">
+                            <i class="fas fa-check-circle fa-2x text-success"></i>
                             <div>
-                                <h5 class="mb-0 text-success fw-bold">Directory Upload Complete</h5>
-                                <p class="text-muted small mb-0">Your member batch has been successfully received and validated.</p>
+                                <h6 class="fw-bold mb-1">Directory Uploaded & Validated Successfully!</h6>
+                                <p class="small mb-0">Batch Reference: <code class="fw-bold" id="batchId">BATCH-2026</code> &bull; Processed <span id="totalRows" class="fw-bold">0 records</span>.</p>
                             </div>
                         </div>
-
-                        <div class="row g-3 mb-3">
-                            <div class="col-sm-6">
-                                <div class="p-3 bg-white rounded border">
-                                    <div class="text-muted small mb-1">Batch Reference ID</div>
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <code class="fw-bold fs-6" id="batchId">-</code>
-                                        <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2" id="copyBatchBtn" onclick="copyBatchId()" title="Copy ID">
-                                            <i class="fas fa-copy"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-sm-6">
-                                <div class="p-3 bg-white rounded border">
-                                    <div class="text-muted small mb-1">Total Rows Processed</div>
-                                    <div class="h5 fw-bold mb-0 text-dark" id="totalRows">0</div>
-                                </div>
-                            </div>
-                        </div>
-
                         <div class="d-flex gap-2">
-                            <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="btn btn-sm btn-primary">
-                                <i class="fas fa-arrow-left me-1"></i> Return to Dashboard
+                            <a href="<?= BASE_URL ?>/public/portal/school-officer/members/list.php" class="ap-btn-primary">
+                                <i class="fas fa-users me-1"></i> View Member Directory
                             </a>
-                            <button type="button" class="btn btn-sm btn-outline" onclick="window.location.reload();">
-                                <i class="fas fa-redo me-1"></i> Upload Another File
+                            <button type="button" class="ap-btn-secondary" onclick="location.reload()">
+                                <i class="fas fa-plus me-1"></i> Upload Another Batch
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Collapsible Expected Format Drawer -->
-                <details class="format-details mb-4">
-                    <summary><i class="fas fa-table me-1"></i> View Expected Column Headers & Requirements</summary>
-                    <p class="text-muted small mb-2 mt-2">Each sheet (<code>1st Yr</code>, <code>2nd Yr</code>, <code>3rd Yr</code>, <code>4th Yr</code>) should have the following headers on row 1 or 2:</p>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-bordered mb-0">
-                            <thead class="bg-light">
-                                <tr>
-                                    <th>Header</th>
-                                    <th>Field Description</th>
-                                    <th>Format / Example</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>#</code></td>
-                                    <td>Row Number</td>
-                                    <td>1, 2, 3...</td>
-                                    <td><span class="badge bg-success">Required</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>Name</code></td>
-                                    <td>Full Name (Last Name, First Name)</td>
-                                    <td>Dela Cruz, Juan</td>
-                                    <td><span class="badge bg-success">Required</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>Birthday</code></td>
-                                    <td>Date of Birth</td>
-                                    <td>YYYY-MM-DD</td>
-                                    <td><span class="badge bg-secondary">Optional</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>Address</code></td>
-                                    <td>Home / Campus Address</td>
-                                    <td>Santa Cruz, Laguna</td>
-                                    <td><span class="badge bg-secondary">Optional</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>Cellphone</code></td>
-                                    <td>Mobile Contact Number</td>
-                                    <td>09123456789</td>
-                                    <td><span class="badge bg-success">Required</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>Email</code></td>
-                                    <td>Student / Institutional Email</td>
-                                    <td>student@school.edu.ph</td>
-                                    <td><span class="badge bg-success">Required</span></td>
-                                </tr>
-                                <tr>
-                                    <td><code>IECEP ID Number</code></td>
-                                    <td>Existing Chapter ID</td>
-                                    <td>IECEP-2026-XXXX</td>
-                                    <td><span class="badge bg-secondary">Optional</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </details>
-
-                <!-- Recent Upload Batches Section -->
+                <!-- Recent Batches Card -->
                 <?php if (!empty($recentBatches)): ?>
-                <div class="card">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold mb-0 text-dark"><i class="fas fa-history me-1 text-muted"></i> Recent Upload Batches</h6>
-                        <span class="text-muted small"><?= count($recentBatches) ?> recorded</span>
-                    </div>
+                <div class="upload-white-card">
+                    <h5 class="fw-bold text-dark mb-3" style="font-size: 1.05rem;">
+                        <i class="fas fa-history text-muted me-2"></i>Recent Directory Upload Batches
+                    </h5>
+
                     <div class="table-responsive">
-                        <table class="table table-hover table-sm mb-0">
+                        <table class="table table-hover align-middle mb-0">
                             <thead>
-                                <tr>
-                                    <th>Batch Reference</th>
+                                <tr style="background: #F8FAFC; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;">
+                                    <th>Batch ID</th>
                                     <th>File Name</th>
-                                    <th>Rows</th>
+                                    <th>Total Records</th>
                                     <th>Status</th>
                                     <th>Uploaded At</th>
                                 </tr>
@@ -384,14 +268,14 @@ if ($institutionId) {
                             <tbody>
                                 <?php foreach ($recentBatches as $batch): ?>
                                     <tr>
-                                        <td><code><?= htmlspecialchars($batch['id'] ?? 'N/A') ?></code></td>
-                                        <td><?= htmlspecialchars($batch['file_name'] ?? 'directory.xlsx') ?></td>
-                                        <td><?= number_format($batch['total_rows'] ?? 0) ?></td>
+                                        <td><code class="fw-bold text-dark"><?= htmlspecialchars(substr($batch['id'] ?? 'N/A', 0, 14)) ?>...</code></td>
+                                        <td class="fw-semibold text-dark"><?= htmlspecialchars($batch['file_name'] ?? 'directory.xlsx') ?></td>
+                                        <td class="fw-bold"><?= number_format($batch['total_rows'] ?? 0) ?></td>
                                         <td>
                                             <?php
-                                            $st = $batch['status'] ?? 'pending';
+                                            $st = strtolower($batch['status'] ?? 'pending');
                                             $badgeClass = match($st) {
-                                                'completed', 'approved' => 'bg-success',
+                                                'completed', 'approved', 'success' => 'bg-success',
                                                 'in_progress', 'validated' => 'bg-primary',
                                                 'failed', 'rejected' => 'bg-danger',
                                                 default => 'bg-secondary'
@@ -499,13 +383,12 @@ if ($institutionId) {
                 progressContainer.style.display = 'block';
                 updateProgress(35, 'Uploading workbook to server...');
 
-                const response = await fetch('../../api/affiliate/upload-directory.php', {
+                const response = await fetch('<?= BASE_URL ?>/public/api/affiliate/upload-directory.php', {
                     method: 'POST',
                     body: formData
                 });
 
                 updateProgress(75, 'Parsing worksheets and validating rows...');
-
                 const data = await response.json();
 
                 if (data.success) {
@@ -519,21 +402,12 @@ if ($institutionId) {
                         uploadForm.style.display = 'none';
                         progressContainer.style.display = 'none';
                     }, 350);
-
-                    if (data.import_errors && data.import_errors.length > 0) {
-                        const warnings = document.createElement('div');
-                        warnings.className = 'alert alert-warning mt-3';
-                        warnings.innerHTML = '<strong><i class="fas fa-exclamation-triangle me-1"></i>Import Warnings:</strong><ul class="mb-0 mt-2">' +
-                            data.import_errors.map(err => '<li>' + err + '</li>').join('') +
-                            '</ul>';
-                        successCard.insertAdjacentElement('afterend', warnings);
-                    }
                 } else {
                     showError(data.message || 'Upload failed. Please check workbook sheets and column headers.');
                     resetSubmitButton();
                 }
             } catch (error) {
-                showError('Server error: ' + error.message);
+                showError('Server communication error: ' + error.message);
                 resetSubmitButton();
             }
         });
@@ -555,15 +429,6 @@ if ($institutionId) {
             responseMessage.innerHTML = '<div class="alert alert-danger d-flex align-items-center gap-2 mb-0">' +
                 '<i class="fas fa-exclamation-circle flex-shrink-0"></i> <div>' + message + '</div></div>';
             progressContainer.style.display = 'none';
-        }
-
-        function copyBatchId() {
-            const batchText = document.getElementById('batchId').textContent;
-            navigator.clipboard.writeText(batchText).then(() => {
-                const btn = document.getElementById('copyBatchBtn');
-                btn.innerHTML = '<i class="fas fa-check text-success"></i>';
-                setTimeout(() => { btn.innerHTML = '<i class="fas fa-copy"></i>'; }, 2000);
-            });
         }
 
         function downloadSampleTemplate() {

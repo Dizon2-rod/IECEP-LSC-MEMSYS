@@ -101,168 +101,294 @@ if ($institutionId && $db) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>School Officer Dashboard - IECEP-LSC MEMSYS</title>
     <?php require_once __DIR__ . '/../../../includes/head-meta.php'; ?>
+    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/admin-portal.css">
     <style>
-        .hero-banner {
-            background: linear-gradient(135deg, #071330 0%, #0B1D4A 50%, #1E3A6E 100%) !important;
-            border-radius: var(--radius-lg);
-            padding: 2.25rem 2.5rem;
-            color: #ffffff !important;
-            margin-bottom: 2rem;
+        :root {
+            --bg-page: #F8FAFC;
+            --bg-surface: #FFFFFF;
+            --border-light: #E2E8F0;
+            --border-hover: #CBD5E1;
+            --text-heading: #0B1D4A;
+            --text-primary: #0F172A;
+            --text-muted: #64748B;
+            --color-navy: #0B1D4A;
+            --color-gold: #D4AF37;
+        }
+
+        body {
+            background-color: var(--bg-page) !important;
+            font-family: 'DM Sans', 'Inter', -apple-system, sans-serif;
+            color: var(--text-primary);
+        }
+
+        /* Executive White Hero Banner */
+        .officer-hero-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-light);
+            border-radius: 16px;
+            padding: 1.75rem 2rem;
+            margin-bottom: 1.5rem;
             position: relative;
             overflow: hidden;
-            box-shadow: 0 10px 25px rgba(11, 29, 74, 0.25);
+            box-shadow: 0 4px 20px -2px rgba(11, 29, 74, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+            transition: all 0.2s ease;
         }
 
-        .hero-banner h1,
-        .hero-banner h2,
-        .hero-banner h3 {
-            color: #ffffff !important;
-        }
-
-        .hero-banner p {
-            color: #e2e8f0 !important;
-        }
-
-        .hero-banner::after {
+        .officer-hero-card::before {
             content: '';
             position: absolute;
-            top: -40px;
-            right: -40px;
-            width: 220px;
-            height: 220px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(212, 175, 55, 0.3) 0%, rgba(212, 175, 55, 0) 70%);
-            pointer-events: none;
+            top: 0; left: 0; right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #0B1D4A 0%, #1E3A8A 50%, #D4AF37 100%);
         }
 
-        .hero-tag {
+        .chapter-pill-tag {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.4rem 0.95rem;
-            background: rgba(255, 255, 255, 0.15) !important;
-            border: 1px solid rgba(255, 255, 255, 0.28) !important;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #F5D76E !important;
-            margin-bottom: 0.85rem;
-            backdrop-filter: blur(6px);
+            gap: 0.45rem;
+            padding: 0.35rem 0.85rem;
+            background: rgba(11, 29, 74, 0.05);
+            border: 1px solid rgba(11, 29, 74, 0.12);
+            border-radius: 50px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: var(--color-navy);
+            margin-bottom: 0.75rem;
         }
 
-        .hero-banner .text-white-50 {
-            color: rgba(255, 255, 255, 0.85) !important;
+        .officer-hero-title {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--text-heading);
+            letter-spacing: -0.02em;
+            margin-bottom: 0.4rem;
         }
 
-        .hero-banner .btn-gold {
-            background: linear-gradient(135deg, #F5D76E 0%, #E5B82A 50%, #D4AF37 100%) !important;
-            color: #071330 !important;
-            font-weight: 700 !important;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
-            border: none !important;
-            padding: 0.7rem 1.4rem !important;
-            font-size: 0.92rem !important;
-            border-radius: var(--radius-sm) !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            gap: 0.5rem !important;
-            text-decoration: none !important;
+        .officer-hero-desc {
+            color: var(--text-muted);
+            font-size: 0.92rem;
+            max-width: 640px;
+            line-height: 1.55;
+            margin-bottom: 1rem;
         }
 
-        .hero-banner .btn-gold:hover {
-            background: #ffffff !important;
-            color: #0B1D4A !important;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4) !important;
-        }
-
-        .hero-banner .btn-gold i {
-            color: inherit !important;
-        }
-
-        .hero-banner .btn-outline {
-            background: rgba(255, 255, 255, 0.12) !important;
-            border: 1.5px solid rgba(255, 255, 255, 0.45) !important;
-            color: #ffffff !important;
-            font-weight: 600 !important;
-            backdrop-filter: blur(6px);
-            padding: 0.7rem 1.4rem !important;
-            font-size: 0.92rem !important;
-            border-radius: var(--radius-sm) !important;
-            display: inline-flex !important;
-            align-items: center !important;
-            gap: 0.5rem !important;
-            text-decoration: none !important;
-        }
-
-        .hero-banner .btn-outline:hover {
-            background: rgba(255, 255, 255, 0.25) !important;
-            border-color: #ffffff !important;
-            color: #ffffff !important;
-            transform: translateY(-2px);
-        }
-
-        .hero-banner .btn-outline i {
-            color: #ffffff !important;
-        }
-
-        .quick-action-tile {
-            background: var(--memsys-card-bg);
-            border: 1px solid var(--memsys-border);
-            border-radius: var(--radius-md);
-            padding: 1.5rem;
-            text-decoration: none;
-            color: inherit;
+        .hero-meta-strip {
             display: flex;
-            align-items: flex-start;
-            gap: 1.25rem;
-            transition: var(--transition);
-            height: 100%;
+            align-items: center;
+            gap: 0.85rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
         }
 
-        .quick-action-tile:hover {
-            transform: translateY(-3px);
-            border-color: rgba(212, 175, 55, 0.6);
-            box-shadow: var(--shadow-md);
-            color: inherit;
+        .badge-verified-session {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: rgba(5, 150, 105, 0.1);
+            color: #059669;
+            font-weight: 700;
+            padding: 0.25rem 0.65rem;
+            border-radius: 50px;
+            font-size: 0.78rem;
+            border: 1px solid rgba(5, 150, 105, 0.2);
         }
 
-        .quick-action-icon {
+        /* 4 KPI Grid */
+        .officer-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .officer-stat-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 1.25rem 1.4rem;
+            position: relative;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .officer-stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(11, 29, 74, 0.07);
+            border-color: rgba(212, 175, 55, 0.5);
+        }
+
+        .stat-icon-wrap {
             width: 48px;
             height: 48px;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.35rem;
+            font-size: 1.25rem;
             flex-shrink: 0;
-            transition: var(--transition);
         }
 
-        .quick-action-tile:hover .quick-action-icon {
-            transform: scale(1.08);
+        .icon-box-navy { background: rgba(11, 29, 74, 0.07); color: #0B1D4A; }
+        .icon-box-emerald { background: rgba(5, 150, 105, 0.1); color: #059669; }
+        .icon-box-gold { background: rgba(212, 175, 55, 0.14); color: #B8860B; }
+        .icon-box-indigo { background: rgba(99, 102, 241, 0.12); color: #4F46E5; }
+        .icon-box-cyan { background: rgba(2, 132, 199, 0.1); color: #0284C7; }
+        .icon-box-rose { background: rgba(225, 29, 72, 0.1); color: #E11D48; }
+
+        .stat-meta-label {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            margin-bottom: 0.15rem;
         }
 
-        .icon-navy { background: rgba(11, 29, 74, 0.08); color: var(--memsys-navy); }
-        .icon-gold { background: rgba(212, 175, 55, 0.15); color: #b8960c; }
-        .icon-emerald { background: rgba(16, 185, 129, 0.15); color: #059669; }
-        .icon-indigo { background: rgba(99, 102, 241, 0.15); color: #4f46e5; }
-        .icon-cyan { background: rgba(6, 182, 212, 0.15); color: #0891b2; }
-        .icon-rose { background: rgba(244, 63, 94, 0.15); color: #e11d48; }
-
-        body.dark-mode .hero-banner {
-            background: linear-gradient(135deg, #071228 0%, #0d1e3d 60%, #14284f 100%);
-            border: 1px solid #233554;
+        .stat-meta-val {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text-heading);
+            line-height: 1.2;
+            letter-spacing: -0.01em;
         }
 
-        body.dark-mode .quick-action-tile {
-            background: #152238;
-            border-color: #233554;
-            color: #f1f5f9;
+        .stat-meta-sub {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            margin-top: 0.15rem;
         }
 
-        body.dark-mode .quick-action-tile:hover {
-            border-color: var(--memsys-gold);
+        /* Action Tiles Grid */
+        .action-tiles-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .action-tile-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 1.25rem 1.4rem;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+            transition: all 0.2s ease;
+        }
+
+        .action-tile-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(11, 29, 74, 0.06);
+            border-color: rgba(11, 29, 74, 0.3);
+            color: inherit;
+        }
+
+        .action-tile-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-heading);
+            margin-bottom: 0.2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .action-tile-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* Content Card & Tables */
+        .white-content-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-light);
+            border-radius: 14px;
+            padding: 1.4rem 1.6rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+            height: 100%;
+        }
+
+        .card-header-clean {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.15rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .card-clean-title {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text-heading);
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .clean-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .clean-table thead th {
+            background: #F8FAFC;
+            color: var(--text-muted);
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid var(--border-light);
+            white-space: nowrap;
+        }
+
+        .clean-table tbody td {
+            padding: 0.75rem 0.85rem;
+            border-bottom: 1px solid var(--border-light);
+            color: var(--text-primary);
+            vertical-align: middle;
+        }
+
+        .clean-table tbody tr:hover {
+            background-color: #F8FAFC;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 50px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+
+        .status-pill.success { background: rgba(5, 150, 105, 0.1); color: #059669; }
+        .status-pill.warning { background: rgba(217, 119, 6, 0.1); color: #D97706; }
+        .status-pill.info { background: rgba(2, 132, 199, 0.1); color: #0284C7; }
+        .status-pill.danger { background: rgba(225, 29, 72, 0.1); color: #E11D48; }
+
+        @media (max-width: 992px) {
+            .officer-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .action-tiles-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 640px) {
+            .officer-kpi-grid { grid-template-columns: 1fr; }
+            .action-tiles-grid { grid-template-columns: 1fr; }
+            .officer-hero-card { padding: 1.25rem 1rem; }
         }
     </style>
 </head>
@@ -270,178 +396,170 @@ if ($institutionId && $db) {
     <div class="dashboard-container">
         <?php require_once __DIR__ . '/../../../includes/sidebar.php'; ?>
 
-        <main class="main-content">
+        <main class="main-content ap-scope">
             <div class="container py-4">
-                <!-- Hero Welcome Banner -->
-                <div class="hero-banner">
+                <!-- Executive White Welcome Hero Card -->
+                <div class="officer-hero-card">
                     <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
                         <div>
-                            <div class="hero-tag">
-                                <i class="fas fa-university"></i>
+                            <div class="chapter-pill-tag">
+                                <i class="fas fa-university text-warning"></i>
                                 <?= htmlspecialchars($schoolName) ?>
                             </div>
-                            <h1 class="fw-bold text-white mb-2" style="font-size: 2rem;">
+                            <h1 class="officer-hero-title">
                                 Welcome back, <?= htmlspecialchars($userName) ?>!
                             </h1>
-                            <p class="text-light opacity-90 mb-3" style="max-width: 580px; font-size: 0.95rem;">
-                                Manage your student member roster, upload annual batch directories, monitor chapter compliance, and view real-time affiliation billing.
+                            <p class="officer-hero-desc">
+                                Official school chapter administration desk. Manage your student member roster, upload annual batch directories, inspect compliance standing, and monitor affiliation billing statements.
                             </p>
-                            <div class="d-flex align-items-center gap-2 text-white-50 small">
-                                <i class="fas fa-calendar-day"></i>
-                                <span><?= htmlspecialchars($currentDate) ?></span>
+                            <div class="hero-meta-strip">
+                                <span><i class="fas fa-calendar-day me-1 text-muted"></i> <?= htmlspecialchars($currentDate) ?></span>
                                 <span>•</span>
-                                <span class="badge bg-success text-white"><i class="fas fa-check-circle me-1"></i> Active Officer Session</span>
+                                <span class="badge-verified-session">
+                                    <i class="fas fa-check-circle"></i> Active Chapter Officer Session
+                                </span>
                             </div>
                         </div>
 
-                        <div class="d-flex flex-column gap-2">
-                            <a href="<?= BASE_URL ?>/public/portal/school-officer/members/upload.php" class="btn btn-gold">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <a href="<?= BASE_URL ?>/public/portal/school-officer/members/upload.php" class="ap-btn-gold">
                                 <i class="fas fa-file-import me-1"></i> Upload Directory
                             </a>
-                            <a href="<?= BASE_URL ?>/public/portal/school-officer/members/list.php" class="btn btn-outline text-white border-white">
+                            <a href="<?= BASE_URL ?>/public/portal/school-officer/members/list.php" class="ap-btn-secondary">
                                 <i class="fas fa-users me-1"></i> View Members
                             </a>
                         </div>
                     </div>
                 </div>
 
-                <!-- 4 KPI Stat Cards -->
-                <div class="stats-grid mb-4">
-                    <div class="stat-card">
-                        <div class="stat-icon icon-navy">
+                <!-- 4 KPI Stat Cards Grid -->
+                <div class="officer-kpi-grid">
+                    <div class="officer-stat-card">
+                        <div class="stat-icon-wrap icon-box-navy">
                             <i class="fas fa-users"></i>
                         </div>
-                        <div class="stat-details">
-                            <div class="stat-label">Enrolled Members</div>
-                            <div class="stat-value" id="statMembers"><?= number_format($member_count) ?></div>
-                            <div class="stat-desc">Official student roster</div>
+                        <div>
+                            <div class="stat-meta-label">Enrolled Members</div>
+                            <div class="stat-meta-val" id="statMembers"><?= number_format($member_count) ?></div>
+                            <div class="stat-meta-sub">Official student roster</div>
                         </div>
                     </div>
 
-                    <div class="stat-card">
-                        <div class="stat-icon icon-emerald">
+                    <div class="officer-stat-card">
+                        <div class="stat-icon-wrap icon-box-emerald">
                             <i class="fas fa-money-bill-wave"></i>
                         </div>
-                        <div class="stat-details">
-                            <div class="stat-label">Fees Remitted</div>
-                            <div class="stat-value text-success">₱<?= number_format($total_paid, 2) ?></div>
-                            <div class="stat-desc">Verified transactions</div>
+                        <div>
+                            <div class="stat-meta-label">Fees Remitted</div>
+                            <div class="stat-meta-val" style="color: #059669;">₱<?= number_format($total_paid, 2) ?></div>
+                            <div class="stat-meta-sub">Verified collections</div>
                         </div>
                     </div>
 
-                    <div class="stat-card">
-                        <div class="stat-icon icon-gold">
+                    <div class="officer-stat-card">
+                        <div class="stat-icon-wrap icon-box-gold">
                             <i class="fas fa-shield-alt"></i>
                         </div>
-                        <div class="stat-details">
-                            <div class="stat-label">Chapter Compliance</div>
-                            <div class="stat-value" style="font-size: 1.35rem;">In Good Standing</div>
-                            <div class="stat-desc">AY <?= date('Y') ?>–<?= date('Y') + 1 ?></div>
+                        <div>
+                            <div class="stat-meta-label">Chapter Compliance</div>
+                            <div class="stat-meta-val" style="font-size: 1.25rem;">In Good Standing</div>
+                            <div class="stat-meta-sub">AY <?= date('Y') ?>–<?= date('Y') + 1 ?></div>
                         </div>
                     </div>
 
-                    <div class="stat-card">
-                        <div class="stat-icon icon-indigo">
+                    <div class="officer-stat-card">
+                        <div class="stat-icon-wrap icon-box-indigo">
                             <i class="fas fa-file-excel"></i>
                         </div>
-                        <div class="stat-details">
-                            <div class="stat-label">Directory Batches</div>
-                            <div class="stat-value"><?= count($recent_batches) ?></div>
-                            <div class="stat-desc">Import submissions</div>
+                        <div>
+                            <div class="stat-meta-label">Directory Batches</div>
+                            <div class="stat-meta-val"><?= count($recent_batches) ?></div>
+                            <div class="stat-meta-sub">Import submissions</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Quick Action Grid -->
+                <!-- Quick Management Action Tiles -->
                 <div class="mb-4">
-                    <h5 class="fw-bold text-dark mb-3">
-                        <i class="fas fa-bolt text-gold me-2"></i>Quick Management Actions
-                    </h5>
-                    <div class="row g-3">
-                        <div class="col-md-4 col-sm-6">
-                            <a href="<?= BASE_URL ?>/public/portal/school-officer/members/list.php" class="quick-action-tile">
-                                <div class="quick-action-icon icon-navy">
-                                    <i class="fas fa-user-graduate"></i>
-                                </div>
-                                <div>
-                                    <h6 class="fw-bold mb-1">My Chapter Members</h6>
-                                    <small class="text-muted">Browse, filter, and inspect enrolled student profiles.</small>
-                                </div>
-                            </a>
-                        </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold text-dark mb-0">
+                            <i class="fas fa-bolt text-warning me-2"></i>Chapter Quick Actions
+                        </h5>
+                    </div>
 
-                        <div class="col-md-4 col-sm-6">
-                            <a href="<?= BASE_URL ?>/public/portal/school-officer/members/upload.php" class="quick-action-tile">
-                                <div class="quick-action-icon icon-gold">
-                                    <i class="fas fa-cloud-upload-alt"></i>
-                                </div>
-                                <div>
-                                    <h6 class="fw-bold mb-1">Upload Member Directory</h6>
-                                    <small class="text-muted">Import Excel (.xlsx) workbook for 1st to 4th year members.</small>
-                                </div>
-                            </a>
-                        </div>
+                    <div class="action-tiles-grid">
+                        <a href="<?= BASE_URL ?>/public/portal/school-officer/members/list.php" class="action-tile-card">
+                            <div class="stat-icon-wrap icon-box-navy">
+                                <i class="fas fa-user-graduate"></i>
+                            </div>
+                            <div>
+                                <div class="action-tile-title">Chapter Members <i class="fas fa-arrow-right small ms-auto text-muted"></i></div>
+                                <div class="action-tile-sub">Search, filter, and inspect enrolled student profiles.</div>
+                            </div>
+                        </a>
 
-                        <div class="col-md-4 col-sm-6">
-                            <a href="<?= BASE_URL ?>/public/portal/school-officer/financial/reports.php" class="quick-action-tile">
-                                <div class="quick-action-icon icon-emerald">
-                                    <i class="fas fa-file-invoice-dollar"></i>
-                                </div>
-                                <div>
-                                    <h6 class="fw-bold mb-1">Financial & Billing Reports</h6>
-                                    <small class="text-muted">Review annual dues assessments, balances, and statements.</small>
-                                </div>
-                            </a>
-                        </div>
+                        <a href="<?= BASE_URL ?>/public/portal/school-officer/members/upload.php" class="action-tile-card">
+                            <div class="stat-icon-wrap icon-box-gold">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                            </div>
+                            <div>
+                                <div class="action-tile-title">Upload Member Directory <i class="fas fa-arrow-right small ms-auto text-muted"></i></div>
+                                <div class="action-tile-sub">Import Excel (.xlsx) workbook for 1st to 4th year members.</div>
+                            </div>
+                        </a>
 
-                        <div class="col-md-4 col-sm-6">
-                            <a href="<?= BASE_URL ?>/public/portal/school-officer/financial/receipts.php" class="quick-action-tile">
-                                <div class="quick-action-icon icon-indigo">
-                                    <i class="fas fa-receipt"></i>
-                                </div>
-                                <div>
-                                    <h6 class="fw-bold mb-1">Official Receipts</h6>
-                                    <small class="text-muted">Upload proof of payment and view verified receipts.</small>
-                                </div>
-                            </a>
-                        </div>
+                        <a href="<?= BASE_URL ?>/public/portal/school-officer/financial/reports.php" class="action-tile-card">
+                            <div class="stat-icon-wrap icon-box-emerald">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                            </div>
+                            <div>
+                                <div class="action-tile-title">Financial & Billing Reports <i class="fas fa-arrow-right small ms-auto text-muted"></i></div>
+                                <div class="action-tile-sub">Review annual dues assessments, balances, and statements.</div>
+                            </div>
+                        </a>
 
-                        <div class="col-md-4 col-sm-6">
-                            <a href="<?= BASE_URL ?>/public/portal/school-officer/digital-id/send.php" class="quick-action-tile">
-                                <div class="quick-action-icon icon-cyan">
-                                    <i class="fas fa-id-card"></i>
-                                </div>
-                                <div>
-                                    <h6 class="fw-bold mb-1">Issue Digital IDs</h6>
-                                    <small class="text-muted">Dispatch dynamic digital membership credentials to students.</small>
-                                </div>
-                            </a>
-                        </div>
+                        <a href="<?= BASE_URL ?>/public/portal/school-officer/financial/receipts.php" class="action-tile-card">
+                            <div class="stat-icon-wrap icon-box-indigo">
+                                <i class="fas fa-receipt"></i>
+                            </div>
+                            <div>
+                                <div class="action-tile-title">Official Receipts <i class="fas fa-arrow-right small ms-auto text-muted"></i></div>
+                                <div class="action-tile-sub">Upload proof of payment and view verified receipts.</div>
+                            </div>
+                        </a>
 
-                        <div class="col-md-4 col-sm-6">
-                            <a href="<?= BASE_URL ?>/public/portal/school-officer/compliance/status.php" class="quick-action-tile">
-                                <div class="quick-action-icon icon-rose">
-                                    <i class="fas fa-tasks"></i>
-                                </div>
-                                <div>
-                                    <h6 class="fw-bold mb-1">Compliance Status</h6>
-                                    <small class="text-muted">Track chapter accreditation requirements and submissions.</small>
-                                </div>
-                            </a>
-                        </div>
+                        <a href="<?= BASE_URL ?>/public/portal/school-officer/digital-id/send.php" class="action-tile-card">
+                            <div class="stat-icon-wrap icon-box-cyan">
+                                <i class="fas fa-id-card"></i>
+                            </div>
+                            <div>
+                                <div class="action-tile-title">Issue Digital IDs <i class="fas fa-arrow-right small ms-auto text-muted"></i></div>
+                                <div class="action-tile-sub">Dispatch dynamic digital membership credentials to students.</div>
+                            </div>
+                        </a>
+
+                        <a href="<?= BASE_URL ?>/public/portal/school-officer/compliance/status.php" class="action-tile-card">
+                            <div class="stat-icon-wrap icon-box-rose">
+                                <i class="fas fa-tasks"></i>
+                            </div>
+                            <div>
+                                <div class="action-tile-title">Compliance Status <i class="fas fa-arrow-right small ms-auto text-muted"></i></div>
+                                <div class="action-tile-sub">Track chapter accreditation requirements and submissions.</div>
+                            </div>
+                        </a>
                     </div>
                 </div>
 
-                <!-- 2-Column Activity & Batches Area -->
-                <div class="row">
+                <!-- 2-Column Area: Recent Members & Directory Batches -->
+                <div class="row g-4 mb-4">
                     <!-- Left: Recent Members -->
-                    <div class="col-lg-6 mb-4">
-                        <div class="card card-navy-top h-100">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="fw-bold text-dark mb-0">
-                                    <i class="fas fa-user-plus text-primary me-2"></i>Recently Added Members
-                                </h5>
-                                <a href="<?= BASE_URL ?>/public/portal/school-officer/members/list.php" class="small fw-semibold text-decoration-none">
+                    <div class="col-lg-6">
+                        <div class="white-content-card">
+                            <div class="card-header-clean">
+                                <h3 class="card-clean-title">
+                                    <i class="fas fa-user-plus text-primary"></i> Recently Added Members
+                                </h3>
+                                <a href="<?= BASE_URL ?>/public/portal/school-officer/members/list.php" class="ap-btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;">
                                     View All <i class="fas fa-arrow-right ms-1"></i>
                                 </a>
                             </div>
@@ -449,14 +567,14 @@ if ($institutionId && $db) {
                             <?php if (empty($recent_members)): ?>
                                 <div class="text-center py-4 text-muted">
                                     <i class="fas fa-users fa-2x mb-2 text-secondary opacity-50 d-block"></i>
-                                    <p class="mb-2">No members enrolled yet for this chapter.</p>
-                                    <a href="<?= BASE_URL ?>/public/portal/school-officer/members/upload.php" class="btn btn-sm btn-outline-primary">
+                                    <p class="mb-2 small">No members enrolled yet for this chapter.</p>
+                                    <a href="<?= BASE_URL ?>/public/portal/school-officer/members/upload.php" class="ap-btn-primary" style="padding: 0.4rem 0.9rem; font-size: 0.78rem;">
                                         <i class="fas fa-upload me-1"></i> Upload Directory
                                     </a>
                                 </div>
                             <?php else: ?>
                                 <div class="table-responsive">
-                                    <table class="table table-hover align-middle mb-0">
+                                    <table class="clean-table">
                                         <thead>
                                             <tr>
                                                 <th>Member</th>
@@ -468,13 +586,13 @@ if ($institutionId && $db) {
                                             <?php foreach ($recent_members as $m): ?>
                                                 <tr>
                                                     <td>
-                                                        <div class="fw-semibold text-dark">
+                                                        <div class="fw-bold text-dark">
                                                             <?= htmlspecialchars($m['full_name'] ?? $m['name'] ?? 'Member') ?>
                                                         </div>
                                                         <small class="text-muted"><?= htmlspecialchars($m['student_number'] ?? 'N/A') ?></small>
                                                     </td>
                                                     <td>
-                                                        <span class="badge bg-secondary"><?= htmlspecialchars($m['year_level'] ?? 'N/A') ?></span>
+                                                        <span class="status-pill info"><?= htmlspecialchars($m['year_level'] ?? 'N/A') ?></span>
                                                     </td>
                                                     <td class="small text-muted">
                                                         <?= htmlspecialchars($m['email'] ?? '—') ?>
@@ -489,13 +607,13 @@ if ($institutionId && $db) {
                     </div>
 
                     <!-- Right: Directory Upload Batches -->
-                    <div class="col-lg-6 mb-4">
-                        <div class="card card-gold-top h-100">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="fw-bold text-dark mb-0">
-                                    <i class="fas fa-file-excel text-success me-2"></i>Directory Import Batches
-                                </h5>
-                                <a href="<?= BASE_URL ?>/public/portal/school-officer/members/upload.php" class="small fw-semibold text-decoration-none">
+                    <div class="col-lg-6">
+                        <div class="white-content-card">
+                            <div class="card-header-clean">
+                                <h3 class="card-clean-title">
+                                    <i class="fas fa-file-excel text-success"></i> Directory Import Batches
+                                </h3>
+                                <a href="<?= BASE_URL ?>/public/portal/school-officer/members/upload.php" class="ap-btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;">
                                     Upload New <i class="fas fa-plus ms-1"></i>
                                 </a>
                             </div>
@@ -503,14 +621,14 @@ if ($institutionId && $db) {
                             <?php if (empty($recent_batches)): ?>
                                 <div class="text-center py-4 text-muted">
                                     <i class="fas fa-cloud-upload-alt fa-2x mb-2 text-secondary opacity-50 d-block"></i>
-                                    <p class="mb-2">No workbook batches uploaded yet.</p>
-                                    <a href="<?= BASE_URL ?>/public/portal/school-officer/members/upload.php" class="btn btn-sm btn-gold">
+                                    <p class="mb-2 small">No workbook batches uploaded yet.</p>
+                                    <a href="<?= BASE_URL ?>/public/portal/school-officer/members/upload.php" class="ap-btn-gold" style="padding: 0.4rem 0.9rem; font-size: 0.78rem;">
                                         <i class="fas fa-file-excel me-1"></i> Start First Import
                                     </a>
                                 </div>
                             <?php else: ?>
                                 <div class="table-responsive">
-                                    <table class="table table-hover align-middle mb-0">
+                                    <table class="clean-table">
                                         <thead>
                                             <tr>
                                                 <th>Batch Reference</th>
@@ -523,23 +641,23 @@ if ($institutionId && $db) {
                                             <?php foreach ($recent_batches as $b): ?>
                                                 <tr>
                                                     <td>
-                                                        <code class="fw-bold"><?= htmlspecialchars($b['id'] ?? 'N/A') ?></code>
+                                                        <code class="fw-bold text-dark"><?= htmlspecialchars(substr($b['id'] ?? 'BATCH', 0, 12)) ?>...</code>
                                                         <div class="small text-muted"><?= htmlspecialchars($b['file_name'] ?? 'workbook.xlsx') ?></div>
                                                     </td>
-                                                    <td class="fw-semibold">
+                                                    <td class="fw-bold">
                                                         <?= number_format($b['total_rows'] ?? 0) ?>
                                                     </td>
                                                     <td>
                                                         <?php
-                                                        $st = $b['status'] ?? 'pending';
-                                                        $badgeClass = match($st) {
-                                                            'completed', 'approved' => 'badge-success',
-                                                            'in_progress', 'validated' => 'badge-info',
-                                                            'failed', 'rejected' => 'badge-danger',
-                                                            default => 'badge-warning'
+                                                        $st = strtolower($b['status'] ?? 'pending');
+                                                        $badgeType = match($st) {
+                                                            'completed', 'approved', 'success' => 'success',
+                                                            'in_progress', 'validated' => 'info',
+                                                            'failed', 'rejected' => 'danger',
+                                                            default => 'warning'
                                                         };
                                                         ?>
-                                                        <span class="badge <?= $badgeClass ?>"><?= htmlspecialchars(ucfirst($st)) ?></span>
+                                                        <span class="status-pill <?= $badgeType ?>"><?= htmlspecialchars(ucfirst($st)) ?></span>
                                                     </td>
                                                     <td class="small text-muted">
                                                         <?= date('M d, Y', strtotime($b['uploaded_at'] ?? 'now')) ?>
@@ -568,7 +686,7 @@ if ($institutionId && $db) {
             institutionId: '<?php echo htmlspecialchars($_SESSION['institution_id'] ?? '', ENT_QUOTES); ?>'
         };
     </script>
-    <script src="/IECEP-LSC-MEMSYS/public/assets/js/realtime.js" defer></script>
-    <script src="/IECEP-LSC-MEMSYS/public/js/realtime.js" defer></script>
+    <script src="<?= BASE_URL ?>/public/assets/js/realtime.js" defer></script>
+    <script src="<?= BASE_URL ?>/public/js/realtime.js" defer></script>
 </body>
 </html>
