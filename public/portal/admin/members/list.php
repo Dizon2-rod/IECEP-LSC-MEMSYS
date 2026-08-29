@@ -310,7 +310,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         html, body {
             margin: 0;
             padding: 0;
-            overflow-x: hidden;
+            overflow-x: hidden !important;
             width: 100%;
             max-width: 100vw;
         }
@@ -325,7 +325,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             box-sizing: border-box;
             width: 100%;
             max-width: 100vw;
-            overflow-x: hidden;
+            overflow-x: hidden !important;
         }
 
         .white-theme-wrap {
@@ -334,7 +334,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             margin: 0 auto;
             box-sizing: border-box;
             width: 100%;
-            overflow-x: hidden;
+            overflow-x: hidden !important;
         }
 
         /* 1. Header Banner */
@@ -342,13 +342,13 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
             border-radius: 16px;
-            padding: 1.5rem 1.75rem;
-            margin-bottom: 1.5rem;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.25rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
-            gap: 1.25rem;
+            gap: 1rem;
             box-shadow: var(--shadow-card);
             box-sizing: border-box;
             width: 100%;
@@ -357,12 +357,12 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .header-title-box {
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 0.75rem;
         }
 
         .header-main-title {
-            margin: 0 0 0.25rem;
-            font-size: 1.4rem;
+            margin: 0 0 0.2rem;
+            font-size: 1.35rem;
             font-weight: 800;
             color: var(--text-heading);
             letter-spacing: -0.01em;
@@ -370,7 +370,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
 
         .header-subtitle {
             margin: 0;
-            font-size: 0.86rem;
+            font-size: 0.85rem;
             color: var(--text-muted);
             line-height: 1.4;
         }
@@ -378,7 +378,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .header-btn-group {
             display: flex;
             align-items: center;
-            gap: 0.65rem;
+            gap: 0.5rem;
             flex-wrap: wrap;
         }
 
@@ -386,10 +386,10 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .btn-white {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.6rem 1.15rem;
-            border-radius: 9px;
-            font-size: 0.84rem;
+            gap: 0.45rem;
+            padding: 0.55rem 1rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
             font-weight: 700;
             text-decoration: none;
             background: #FFFFFF;
@@ -410,17 +410,17 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .btn-primary-navy {
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            padding: 0.6rem 1.25rem;
-            border-radius: 9px;
-            font-size: 0.84rem;
+            gap: 0.45rem;
+            padding: 0.55rem 1.15rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
             font-weight: 800;
             text-decoration: none;
             background: var(--color-navy);
             border: 1px solid var(--color-navy);
             color: #FFFFFF;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(11, 29, 74, 0.15);
+            box-shadow: 0 3px 10px rgba(11, 29, 74, 0.15);
             transition: all 0.18s ease;
             white-space: nowrap;
         }
@@ -429,15 +429,15 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             border-color: var(--color-navy-hover);
             color: #FDE047;
             transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(11, 29, 74, 0.22);
+            box-shadow: 0 5px 14px rgba(11, 29, 74, 0.22);
         }
 
         /* 2. KPI Cards Grid - Left-to-Right layout on Desktop AND Mobile */
         .white-kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            gap: 0.85rem;
+            margin-bottom: 1.25rem;
             width: 100%;
             box-sizing: border-box;
         }
@@ -445,11 +445,11 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .kpi-card {
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
-            border-radius: 14px;
-            padding: 1.25rem 1.35rem;
+            border-radius: 12px;
+            padding: 1rem 1.15rem;
             display: flex;
             align-items: center;
-            gap: 1.15rem;
+            gap: 1rem;
             box-shadow: var(--shadow-card);
             transition: all 0.2s ease;
             min-width: 0;
@@ -462,13 +462,13 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         .kpi-icon-pill {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             flex-shrink: 0;
         }
         .kpi-icon-pill.blue { background: #EFF6FF; color: #2563EB; border: 1px solid #DBEAFE; }
@@ -477,30 +477,30 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .kpi-icon-pill.purple { background: #F5F3FF; color: #7C3AED; border: 1px solid #DDD6FE; }
 
         .kpi-number {
-            font-size: 1.55rem;
+            font-size: 1.4rem;
             font-weight: 800;
             color: var(--text-heading);
             line-height: 1.1;
         }
         .kpi-label {
-            font-size: 0.78rem;
+            font-size: 0.75rem;
             font-weight: 600;
             color: var(--text-muted);
-            margin-top: 3px;
+            margin-top: 2px;
         }
 
         /* 3. Filter & Search Controls Bar */
         .white-controls-card {
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
-            border-radius: 14px;
-            padding: 1rem 1.25rem;
-            margin-bottom: 1.25rem;
+            border-radius: 12px;
+            padding: 0.85rem 1.15rem;
+            margin-bottom: 1.15rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
-            gap: 1rem;
+            gap: 0.75rem;
             box-shadow: var(--shadow-card);
             width: 100%;
             box-sizing: border-box;
@@ -509,14 +509,14 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .filter-controls-left {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.65rem;
             flex: 1;
             flex-wrap: wrap;
         }
 
         .search-input-wrapper {
             position: relative;
-            min-width: 280px;
+            min-width: 260px;
             flex: 1;
             max-width: 440px;
             display: flex;
@@ -535,10 +535,10 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .search-input-field {
             width: 100%;
             box-sizing: border-box;
-            padding: 0.65rem 0.85rem 0.65rem 2.85rem !important; /* Generous left padding so icon never covers text */
+            padding: 0.6rem 0.85rem 0.6rem 2.85rem !important; /* Generous left padding so icon never covers text */
             border: 1px solid #CBD5E1;
             border-radius: 8px;
-            font-size: 0.86rem;
+            font-size: 0.84rem;
             font-family: inherit;
             outline: none;
             transition: all 0.2s ease;
@@ -551,10 +551,10 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         .select-filter-box {
-            padding: 0.65rem 2rem 0.65rem 0.85rem;
+            padding: 0.6rem 1.85rem 0.6rem 0.8rem;
             border: 1px solid #CBD5E1;
             border-radius: 8px;
-            font-size: 0.84rem;
+            font-size: 0.82rem;
             font-weight: 600;
             font-family: inherit;
             color: var(--text-body);
@@ -571,11 +571,11 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .filter-controls-right {
             display: flex;
             align-items: center;
-            gap: 0.85rem;
+            gap: 0.75rem;
         }
 
         .showing-counter-badge {
-            font-size: 0.84rem;
+            font-size: 0.82rem;
             font-weight: 700;
             color: var(--text-muted);
             white-space: nowrap;
@@ -584,35 +584,35 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             color: var(--color-navy);
         }
 
-        /* 4. Main Member Table Card (Compact & Fitted - NO HORIZONTAL SCROLL) */
+        /* 4. Main Member Table Card (Compact & Perfectly Sized to Mobile Viewport) */
         .white-table-card {
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
-            border-radius: 16px;
+            border-radius: 14px;
             overflow: hidden;
             box-shadow: var(--shadow-card);
-            margin-bottom: 1.75rem;
+            margin-bottom: 1.5rem;
             width: 100%;
             max-width: 100%;
             box-sizing: border-box;
         }
 
         .table-card-topbar {
-            padding: 1.15rem 1.5rem;
+            padding: 0.95rem 1.25rem;
             border-bottom: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: space-between;
             background: #FAFAFA;
             flex-wrap: wrap;
-            gap: 0.75rem;
+            gap: 0.5rem;
             box-sizing: border-box;
             width: 100%;
         }
 
         .table-card-heading {
             margin: 0;
-            font-size: 0.98rem;
+            font-size: 0.94rem;
             font-weight: 800;
             color: var(--text-heading);
             display: flex;
@@ -624,7 +624,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             width: 100%;
             max-width: 100%;
             box-sizing: border-box;
-            overflow-x: hidden;
+            overflow-x: hidden !important;
         }
 
         .roster-white-table {
@@ -632,15 +632,15 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             max-width: 100% !important;
             border-collapse: separate;
             border-spacing: 0;
-            font-size: 0.875rem;
+            font-size: 0.85rem;
             table-layout: auto;
             box-sizing: border-box;
         }
 
         .roster-white-table th {
             background: #F8FAFC;
-            padding: 0.9rem 1rem;
-            font-size: 0.72rem;
+            padding: 0.8rem 0.9rem;
+            font-size: 0.7rem;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.05em;
@@ -652,7 +652,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         .roster-white-table td {
-            padding: 0.85rem 1rem;
+            padding: 0.75rem 0.9rem;
             border-bottom: 1px solid #F1F5F9;
             color: var(--text-body);
             vertical-align: middle;
@@ -672,13 +672,13 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .member-info-cell {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.65rem;
             min-width: 0;
         }
 
         .member-avatar-thumb {
-            width: 38px;
-            height: 38px;
+            width: 34px;
+            height: 34px;
             border-radius: 50%;
             background: #EFF6FF;
             color: var(--color-navy);
@@ -686,7 +686,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             align-items: center;
             justify-content: center;
             font-weight: 800;
-            font-size: 0.88rem;
+            font-size: 0.82rem;
             flex-shrink: 0;
             border: 2px solid #DBEAFE;
             overflow: hidden;
@@ -700,15 +700,15 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .member-name-text {
             font-weight: 700;
             color: var(--text-heading);
-            font-size: 0.88rem;
-            line-height: 1.25;
+            font-size: 0.84rem;
+            line-height: 1.2;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
 
         .member-email-text {
-            font-size: 0.74rem;
+            font-size: 0.72rem;
             color: var(--text-muted);
             line-height: 1.2;
             font-family: 'JetBrains Mono', monospace;
@@ -720,10 +720,10 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .school-tag-badge {
             display: inline-flex;
             align-items: center;
-            gap: 0.35rem;
-            padding: 0.25rem 0.6rem;
-            border-radius: 6px;
-            font-size: 0.74rem;
+            gap: 0.3rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 5px;
+            font-size: 0.72rem;
             font-weight: 700;
             background: #EFF6FF;
             color: #1E3A8A;
@@ -738,7 +738,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             font-family: 'JetBrains Mono', monospace;
             font-weight: 700;
             color: var(--color-navy);
-            font-size: 0.82rem;
+            font-size: 0.8rem;
             white-space: nowrap;
         }
 
@@ -746,10 +746,10 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .pill-status {
             display: inline-flex;
             align-items: center;
-            gap: 0.35rem;
-            padding: 0.22rem 0.6rem;
+            gap: 0.3rem;
+            padding: 0.2rem 0.55rem;
             border-radius: 9999px;
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             font-weight: 700;
             text-transform: capitalize;
             white-space: nowrap;
@@ -765,8 +765,8 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             border: 1px solid #FDE68A;
         }
         .pill-status-dot {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
             border-radius: 50%;
             background: currentColor;
         }
@@ -775,10 +775,10 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .btn-row-action {
             display: inline-flex;
             align-items: center;
-            gap: 0.35rem;
-            padding: 0.4rem 0.8rem;
-            border-radius: 7px;
-            font-size: 0.78rem;
+            gap: 0.3rem;
+            padding: 0.35rem 0.7rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
             font-weight: 700;
             background: var(--color-navy);
             color: #FFFFFF;
@@ -795,55 +795,55 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         /* =========================================================================
-           MOBILE COMPACT ADAPTIVE STYLES (FITS 100% WITHOUT SCROLLING)
+           MOBILE COMPACT ADAPTIVE STYLES (FITS 100% WITHOUT ANY SCROLLING)
            ========================================================================= */
         @media (max-width: 768px) {
             .white-theme-wrap {
-                padding: 0.5rem !important;
+                padding: 0.4rem 0.3rem !important;
                 width: 100% !important;
                 max-width: 100vw !important;
                 overflow-x: hidden !important;
             }
             .white-page-header {
-                padding: 0.9rem !important;
-                gap: 0.75rem !important;
-                border-radius: 12px !important;
-                margin-bottom: 0.75rem !important;
+                padding: 0.75rem 0.65rem !important;
+                gap: 0.5rem !important;
+                border-radius: 10px !important;
+                margin-bottom: 0.55rem !important;
             }
             .header-title-box {
-                gap: 0.5rem !important;
+                gap: 0.4rem !important;
             }
             .header-main-title {
-                font-size: 1.1rem !important;
+                font-size: 1.05rem !important;
             }
             .header-subtitle {
-                font-size: 0.76rem !important;
+                font-size: 0.72rem !important;
             }
             .header-btn-group {
                 width: 100% !important;
                 display: flex !important;
                 flex-direction: row !important;
-                gap: 0.4rem !important;
+                gap: 0.35rem !important;
                 overflow-x: auto !important;
                 -webkit-overflow-scrolling: touch !important;
-                padding-bottom: 2px !important;
+                padding-bottom: 1px !important;
             }
             .btn-white, .btn-primary-navy {
-                padding: 0.42rem 0.7rem !important;
-                font-size: 0.74rem !important;
+                padding: 0.38rem 0.6rem !important;
+                font-size: 0.72rem !important;
                 flex-shrink: 0 !important;
             }
 
             /* Left-to-Right 4 KPI cards in a single row on Mobile */
             .white-kpi-grid {
                 grid-template-columns: repeat(4, 1fr) !important;
-                gap: 0.25rem !important;
-                margin-bottom: 0.75rem !important;
+                gap: 0.2rem !important;
+                margin-bottom: 0.55rem !important;
                 width: 100% !important;
             }
             .kpi-card {
-                padding: 0.4rem 0.2rem !important;
-                gap: 0.25rem !important;
+                padding: 0.35rem 0.15rem !important;
+                gap: 0.2rem !important;
                 flex-direction: column !important;
                 align-items: center !important;
                 text-align: center !important;
@@ -851,35 +851,35 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                 box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
             }
             .kpi-icon-pill {
-                width: 24px !important;
-                height: 24px !important;
-                font-size: 0.75rem !important;
-                border-radius: 6px !important;
+                width: 22px !important;
+                height: 22px !important;
+                font-size: 0.7rem !important;
+                border-radius: 5px !important;
             }
             .kpi-number {
-                font-size: 0.92rem !important;
+                font-size: 0.86rem !important;
                 line-height: 1 !important;
             }
             .kpi-label {
-                font-size: 0.54rem !important;
+                font-size: 0.5rem !important;
                 line-height: 1.1 !important;
                 margin-top: 1px !important;
             }
 
             /* Filter Controls on Mobile */
             .white-controls-card {
-                padding: 0.65rem !important;
+                padding: 0.55rem 0.6rem !important;
                 flex-direction: column !important;
                 align-items: stretch !important;
-                gap: 0.5rem !important;
-                border-radius: 12px !important;
-                margin-bottom: 0.75rem !important;
+                gap: 0.4rem !important;
+                border-radius: 10px !important;
+                margin-bottom: 0.55rem !important;
                 width: 100% !important;
             }
             .filter-controls-left {
                 flex-direction: column !important;
                 align-items: stretch !important;
-                gap: 0.5rem !important;
+                gap: 0.4rem !important;
                 width: 100% !important;
             }
             .search-input-wrapper {
@@ -892,36 +892,37 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                 font-size: 0.85rem !important;
             }
             .search-input-field {
-                padding: 0.5rem 0.75rem 0.5rem 2.85rem !important; /* Plenty of padding so text never touches the icon */
-                font-size: 0.78rem !important;
+                padding: 0.45rem 0.65rem 0.45rem 2.85rem !important; /* Plenty of padding so text never touches the icon */
+                font-size: 0.76rem !important;
                 width: 100% !important;
             }
             .select-filter-box {
                 width: 100% !important;
-                padding: 0.5rem 1.75rem 0.5rem 0.75rem !important;
-                font-size: 0.78rem !important;
+                padding: 0.45rem 1.6rem 0.45rem 0.65rem !important;
+                font-size: 0.76rem !important;
             }
             .filter-controls-right {
                 justify-content: space-between !important;
                 width: 100% !important;
             }
             .showing-counter-badge {
-                font-size: 0.74rem !important;
+                font-size: 0.72rem !important;
             }
 
             /* Compact Mobile Table Layout (100% FITTED - ZERO HORIZONTAL SCROLL) */
             .white-table-card {
-                border-radius: 12px !important;
-                margin-bottom: 0.85rem !important;
+                border-radius: 10px !important;
+                margin-bottom: 0.65rem !important;
                 width: 100% !important;
                 max-width: 100% !important;
                 overflow: hidden !important;
             }
             .table-card-topbar {
-                padding: 0.65rem 0.75rem !important;
+                padding: 0.55rem 0.65rem !important;
             }
             .table-card-heading {
-                font-size: 0.82rem !important;
+                font-size: 0.8rem !important;
+                gap: 0.35rem !important;
             }
             .table-responsive-viewport {
                 width: 100% !important;
@@ -933,36 +934,44 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                 width: 100% !important;
                 max-width: 100% !important;
                 border-collapse: collapse !important;
+                font-size: 0.7rem !important;
             }
             .roster-white-table th {
-                padding: 0.45rem 0.3rem !important;
-                font-size: 0.62rem !important;
+                padding: 0.4rem 0.25rem !important;
+                font-size: 0.6rem !important;
+                letter-spacing: 0.02em !important;
             }
             .roster-white-table td {
-                padding: 0.45rem 0.3rem !important;
-                font-size: 0.72rem !important;
+                padding: 0.4rem 0.25rem !important;
+                font-size: 0.68rem !important;
             }
 
             /* Column Sizing for Compact Mobile Screen (Total = 100%) */
             .col-checkbox {
-                width: 24px !important;
-                padding-left: 0.25rem !important;
-                padding-right: 0.15rem !important;
+                width: 22px !important;
+                padding-left: 0.2rem !important;
+                padding-right: 0.1rem !important;
                 text-align: center !important;
             }
             .col-member {
-                width: auto !important;
+                width: 48% !important;
+                padding-left: 0.2rem !important;
+                padding-right: 0.2rem !important;
             }
             .col-school {
-                width: 72px !important;
+                width: 24% !important;
+                padding-left: 0.2rem !important;
+                padding-right: 0.2rem !important;
             }
             .col-status {
-                width: 60px !important;
+                width: 15% !important;
                 text-align: center !important;
+                padding-left: 0.1rem !important;
+                padding-right: 0.1rem !important;
             }
             .col-actions {
-                width: 36px !important;
-                text-align: center !important;
+                width: 13% !important;
+                text-align: right !important;
                 padding-right: 0.25rem !important;
             }
 
@@ -972,24 +981,28 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             }
 
             .member-info-cell {
-                gap: 0.3rem !important;
+                gap: 0.25rem !important;
                 min-width: 0 !important;
             }
             .member-avatar-thumb {
-                width: 24px !important;
-                height: 24px !important;
-                font-size: 0.68rem !important;
+                width: 22px !important;
+                height: 22px !important;
+                font-size: 0.62rem !important;
             }
             .member-name-text {
-                font-size: 0.72rem !important;
-                line-height: 1.2 !important;
+                font-size: 0.68rem !important;
+                font-weight: 700 !important;
+                line-height: 1.15 !important;
             }
             .member-email-text {
-                font-size: 0.62rem !important;
+                font-size: 0.56rem !important;
+                line-height: 1.1 !important;
             }
             .school-tag-badge {
-                font-size: 0.62rem !important;
+                font-size: 0.58rem !important;
                 padding: 1px 3px !important;
+                border-radius: 4px !important;
+                max-width: 100% !important;
             }
             .school-tag-badge i {
                 display: none !important;
@@ -998,19 +1011,24 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                 display: none !important;
             }
             .pill-status {
-                font-size: 0.58rem !important;
-                padding: 1px 4px !important;
+                font-size: 0.55rem !important;
+                padding: 1px 3px !important;
+                border-radius: 9999px !important;
             }
             .pill-status-dot {
-                width: 3px !important;
-                height: 3px !important;
+                display: none !important;
             }
             .btn-row-action {
-                padding: 0.22rem 0.4rem !important;
-                font-size: 0.68rem !important;
+                padding: 2px 5px !important;
+                font-size: 0.65rem !important;
+                border-radius: 4px !important;
             }
             .btn-row-action .btn-action-text {
                 display: none !important;
+            }
+
+            #emptyDbRow td {
+                padding: 1.5rem 0.5rem !important;
             }
         }
 
@@ -1026,7 +1044,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             z-index: 99999;
             align-items: center;
             justify-content: center;
-            padding: 1rem;
+            padding: 0.75rem;
             animation: fadeInModal 0.2s ease;
         }
         .modal-backdrop-overlay.active {
@@ -1034,9 +1052,9 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
         .modal-card-box {
             background: #FFFFFF;
-            border-radius: 18px;
+            border-radius: 16px;
             width: 100%;
-            max-width: 640px;
+            max-width: 620px;
             max-height: 90vh;
             overflow-y: auto;
             box-shadow: var(--shadow-modal);
@@ -1048,36 +1066,36 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         @keyframes scaleInModal { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
         .modal-header-bar {
-            padding: 1.25rem 1.5rem;
+            padding: 1.15rem 1.35rem;
             background: #FFFFFF;
             border-bottom: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-top-left-radius: 17px;
-            border-top-right-radius: 17px;
+            border-top-left-radius: 15px;
+            border-top-right-radius: 15px;
         }
         .modal-header-title {
-            font-size: 1.05rem;
+            font-size: 1rem;
             font-weight: 800;
             letter-spacing: 0.02em;
             color: var(--text-heading);
             display: flex;
             align-items: center;
-            gap: 0.6rem;
+            gap: 0.5rem;
             margin: 0;
         }
         .modal-close-icon {
             background: #F1F5F9;
             border: 1px solid #E2E8F0;
             color: var(--text-muted);
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             cursor: pointer;
             transition: all 0.15s ease;
         }
@@ -1088,26 +1106,26 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         .modal-hero-profile {
-            padding: 1.5rem;
+            padding: 1.25rem 1.35rem;
             background: linear-gradient(135deg, #F8FAFC 0%, #FFFFFF 100%);
             border-bottom: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
-            gap: 1.25rem;
+            gap: 1rem;
         }
         .modal-avatar-lg {
-            width: 74px;
-            height: 74px;
+            width: 68px;
+            height: 68px;
             border-radius: 50%;
             background: #EFF6FF;
             color: var(--color-navy);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.8rem;
+            font-size: 1.6rem;
             font-weight: 800;
             border: 3px solid #D4AF37;
-            box-shadow: 0 4px 14px rgba(11, 29, 74, 0.12);
+            box-shadow: 0 4px 12px rgba(11, 29, 74, 0.12);
             flex-shrink: 0;
             overflow: hidden;
         }
@@ -1118,52 +1136,52 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         .modal-hero-name {
-            font-size: 1.35rem;
+            font-size: 1.25rem;
             font-weight: 800;
             color: var(--text-heading);
-            margin: 0 0 0.25rem;
+            margin: 0 0 0.2rem;
             line-height: 1.2;
         }
         .modal-hero-program {
-            font-size: 0.88rem;
+            font-size: 0.84rem;
             font-weight: 600;
             color: #B45309;
             display: flex;
             align-items: center;
-            gap: 0.4rem;
+            gap: 0.35rem;
         }
 
         .modal-content-grid {
-            padding: 1.5rem;
+            padding: 1.25rem 1.35rem;
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
+            gap: 0.85rem;
         }
         @media (max-width: 600px) {
             .modal-content-grid {
                 grid-template-columns: 1fr;
+                padding: 0.9rem;
+                gap: 0.65rem;
+            }
+            .modal-hero-profile {
                 padding: 1rem;
                 gap: 0.75rem;
             }
-            .modal-hero-profile {
-                padding: 1.15rem;
-                gap: 0.85rem;
-            }
             .modal-avatar-lg {
-                width: 58px;
-                height: 58px;
-                font-size: 1.4rem;
+                width: 52px;
+                height: 52px;
+                font-size: 1.3rem;
             }
             .modal-hero-name {
-                font-size: 1.15rem;
+                font-size: 1.1rem;
             }
         }
 
         .modal-field-item {
             background: #F8FAFC;
             border: 1px solid var(--border-subtle);
-            border-radius: 10px;
-            padding: 0.85rem 1rem;
+            border-radius: 9px;
+            padding: 0.75rem 0.9rem;
             transition: all 0.15s ease;
         }
         .modal-field-item:hover {
@@ -1175,19 +1193,19 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         .modal-field-label {
-            font-size: 0.72rem;
+            font-size: 0.7rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.04em;
             color: var(--text-muted);
             display: flex;
             align-items: center;
-            gap: 0.4rem;
-            margin-bottom: 0.35rem;
+            gap: 0.35rem;
+            margin-bottom: 0.25rem;
         }
 
         .modal-field-value {
-            font-size: 0.92rem;
+            font-size: 0.88rem;
             font-weight: 700;
             color: var(--text-heading);
             line-height: 1.3;
@@ -1199,15 +1217,15 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         .modal-footer-bar {
-            padding: 1.15rem 1.5rem;
+            padding: 1rem 1.35rem;
             background: #F8FAFC;
             border-top: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: flex-end;
-            gap: 0.75rem;
-            border-bottom-left-radius: 17px;
-            border-bottom-right-radius: 17px;
+            gap: 0.65rem;
+            border-bottom-left-radius: 15px;
+            border-bottom-right-radius: 15px;
             flex-wrap: wrap;
         }
         @media (max-width: 540px) {
@@ -1224,12 +1242,12 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         /* Digital ID Preview Card */
         .digital-id-card-view {
             background: linear-gradient(135deg, #0B1D4A 0%, #152C6E 50%, #0B1D4A 100%);
-            border-radius: 14px;
+            border-radius: 12px;
             color: #FFFFFF;
-            padding: 1.5rem;
+            padding: 1.35rem;
             border: 2px solid #D4AF37;
-            box-shadow: 0 10px 25px rgba(11, 29, 74, 0.25);
-            margin-bottom: 1.25rem;
+            box-shadow: 0 8px 22px rgba(11, 29, 74, 0.25);
+            margin-bottom: 1.15rem;
         }
     </style>
 </head>
@@ -1266,7 +1284,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
 
             <!-- Feedback Alert -->
             <?php if (!empty($feedbackMsg)): ?>
-                <div class="ap-alert <?= $feedbackType ?>" style="margin-bottom:1.5rem;">
+                <div class="ap-alert <?= $feedbackType ?>" style="margin-bottom:1.25rem;">
                     <i class="fas fa-circle-check"></i> <?= htmlspecialchars($feedbackMsg) ?>
                 </div>
             <?php endif; ?>
@@ -1352,7 +1370,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                 </div>
             </div>
 
-            <!-- 4. Members Table Card (Compact & Perfectly Fitted without Horizontal Scrolling) -->
+            <!-- 4. Members Table Card (Compact & Perfectly Sized to Mobile Viewport) -->
             <div class="white-table-card">
                 <div class="table-card-topbar">
                     <h3 class="table-card-heading">
@@ -1377,13 +1395,13 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                         <tbody id="membersTableBody">
                             <?php if (empty($allMembersList)): ?>
                                 <tr id="emptyDbRow">
-                                    <td colspan="7" style="text-align:center; padding:2.5rem 0.75rem; color:#64748B; word-break:break-word;">
-                                        <i class="fas fa-folder-open" style="font-size:2.2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
-                                        <h4 style="margin:0 0 0.3rem; color:#0F172A; font-weight:800; font-size:1rem;">No Member Directories Submitted Yet</h4>
-                                        <p style="margin:0 0 0.85rem; font-size:0.8rem; color:#64748B; line-height:1.35;">
+                                    <td colspan="7" style="text-align:center; padding:2rem 0.5rem; color:#64748B; word-break:break-word;">
+                                        <i class="fas fa-folder-open" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.4rem; display:block;"></i>
+                                        <h4 style="margin:0 0 0.25rem; color:#0F172A; font-weight:800; font-size:0.95rem;">No Member Directories Submitted Yet</h4>
+                                        <p style="margin:0 0 0.75rem; font-size:0.78rem; color:#64748B; line-height:1.35;">
                                             There are currently no member records in the database. Use <strong>"Bulk CSV Import"</strong> or wait for school rosters.
                                         </p>
-                                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="btn-primary-navy" style="font-size:0.8rem; padding:0.45rem 0.9rem; display:inline-flex; max-width:100%;">
+                                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="btn-primary-navy" style="font-size:0.76rem; padding:0.4rem 0.8rem; display:inline-flex; max-width:100%;">
                                             <i class="fas fa-file-import"></i> Upload Member Directory CSV
                                         </a>
                                     </td>
@@ -1460,7 +1478,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                                                 <i class="fas fa-building-columns"></i>
                                                 <?= htmlspecialchars($instData['acronym']) ?>
                                             </span>
-                                            <div class="school-sub-text" style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;"><?= htmlspecialchars($instData['name']) ?></div>
+                                            <div class="school-sub-text" style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;"><?= htmlspecialchars($instData['name']) ?></div>
                                         </td>
                                         <td class="col-student-id">
                                             <span class="mono-id-tag">
@@ -1468,8 +1486,8 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                                             </span>
                                         </td>
                                         <td class="col-program">
-                                            <strong style="color:var(--text-heading); font-size:0.84rem;"><?= htmlspecialchars($yr) ?></strong>
-                                            <div style="font-size:0.74rem; color:var(--text-muted);"><?= htmlspecialchars($prog) ?></div>
+                                            <strong style="color:var(--text-heading); font-size:0.82rem;"><?= htmlspecialchars($yr) ?></strong>
+                                            <div style="font-size:0.72rem; color:var(--text-muted);"><?= htmlspecialchars($prog) ?></div>
                                         </td>
                                         <td class="col-status">
                                             <?php if ($pStatus === 'paid' || $pStatus === 'active'): ?>
