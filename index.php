@@ -578,6 +578,41 @@ try {
             color: #D4AF37;
         }
 
+        /* ── Section Header Typography (Responsive SaaS) ── */
+        .section-heading {
+            margin-bottom: 2rem;
+        }
+        .section-title {
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #0B1D4A;
+            margin-bottom: 0.65rem;
+            font-family: 'Times New Roman', Arial, serif;
+            line-height: 1.2;
+        }
+        .section-subtitle {
+            max-width: 680px;
+            margin: 0 auto;
+            color: #64748b;
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+        @media (max-width: 768px) {
+            .section-heading {
+                margin-bottom: 1.25rem !important;
+            }
+            .section-title {
+                font-size: 1.35rem !important;
+                margin-bottom: 0.35rem !important;
+                line-height: 1.25 !important;
+            }
+            .section-subtitle {
+                font-size: 0.78rem !important;
+                line-height: 1.45 !important;
+                padding: 0 0.5rem !important;
+            }
+        }
+
         /* ── What's New Card Enhancements ── */
         .whats-new {
             background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
@@ -586,57 +621,87 @@ try {
         }
         .featured-cards-grid {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(3, 1fr);
             gap: 1.25rem;
             max-width: 1200px;
             margin: 0 auto;
             padding: 0 1rem;
         }
-        @media (max-width: 639.98px) {
+        @media (max-width: 768px) {
             .featured-cards-grid {
-                display: flex !important;
-                overflow-x: auto !important;
-                scroll-snap-type: x mandatory !important;
-                -webkit-overflow-scrolling: touch !important;
-                gap: 0.95rem !important;
-                padding: 0.5rem 1rem 1.25rem !important;
-                margin: 0 -0.5rem !important;
-                scrollbar-width: thin;
-            }
-            .featured-cards-grid::-webkit-scrollbar {
-                height: 5px;
-            }
-            .featured-cards-grid::-webkit-scrollbar-track {
-                background: #F1F5F9;
-                border-radius: 10px;
-            }
-            .featured-cards-grid::-webkit-scrollbar-thumb {
-                background: #CBD5E1;
-                border-radius: 10px;
+                grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+                gap: 0.35rem !important;
+                padding: 0 0.25rem !important;
             }
             .featured-card {
-                flex: 0 0 78vw !important;
-                max-width: 295px !important;
-                min-width: 255px !important;
-                scroll-snap-align: center !important;
-                scroll-snap-stop: always !important;
+                border-radius: 8px !important;
+                border: 1px solid #E2E8F0 !important;
             }
             .featured-card-image {
-                height: 145px !important;
+                height: 75px !important;
+            }
+            .featured-card-image-placeholder {
+                font-size: 1.25rem !important;
+            }
+            .featured-card-badge {
+                font-size: 0.48rem !important;
+                padding: 1px 4px !important;
+                top: 4px !important;
+                left: 4px !important;
+                gap: 2px !important;
             }
             .featured-card-body {
-                padding: 0.95rem !important;
+                padding: 0.45rem 0.35rem !important;
+            }
+            .featured-card-meta {
+                font-size: 0.52rem !important;
+                margin-bottom: 0.2rem !important;
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 1px !important;
+            }
+            .featured-card-meta span {
+                gap: 2px !important;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                max-width: 100%;
             }
             .featured-card-title {
-                font-size: 1rem !important;
+                font-size: 0.68rem !important;
+                line-height: 1.15 !important;
+                margin: 0 0 0.2rem !important;
+                font-weight: 700 !important;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
             }
             .featured-card-description {
-                font-size: 0.8rem !important;
+                font-size: 0.55rem !important;
+                line-height: 1.2 !important;
+                margin: 0 0 0.3rem !important;
                 -webkit-line-clamp: 2 !important;
             }
+            .featured-card-footer {
+                padding-top: 0.25rem !important;
+                gap: 0.2rem !important;
+            }
+            .btn-view-card {
+                font-size: 0.55rem !important;
+                padding: 0.25rem 0.3rem !important;
+                border-radius: 4px !important;
+                gap: 2px !important;
+                white-space: nowrap;
+            }
+            .btn-link-card {
+                font-size: 0.55rem !important;
+                padding: 0.25rem 0.35rem !important;
+                border-radius: 4px !important;
+            }
         }
-        @media (min-width: 640px) {
-            .featured-cards-grid { grid-template-columns: repeat(2, 1fr); }
+        @media (min-width: 640px) and (max-width: 991.98px) {
+            .featured-cards-grid { grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
         }
         @media (min-width: 992px) {
             .featured-cards-grid { grid-template-columns: repeat(3, 1fr); }
@@ -844,13 +909,46 @@ try {
         }
         .affiliate-steps-grid {
             display: grid;
-            grid-template-columns: 1fr;
+            grid-template-columns: repeat(4, 1fr);
             gap: 1rem;
             max-width: 1200px;
             margin: 0 auto 2rem;
         }
-        @media (min-width: 640px) {
-            .affiliate-steps-grid { grid-template-columns: repeat(2, 1fr); }
+        @media (max-width: 768px) {
+            .affiliate-steps-grid {
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+                gap: 0.3rem !important;
+                margin: 0 auto 1.25rem !important;
+                padding: 0 0.25rem !important;
+            }
+            .affiliate-step-card {
+                padding: 0.45rem 0.3rem !important;
+                border-radius: 8px !important;
+            }
+            .affiliate-step-header {
+                margin-bottom: 0.25rem !important;
+            }
+            .step-badge-number {
+                font-size: 0.52rem !important;
+                padding: 1px 4px !important;
+                letter-spacing: 0.02em !important;
+                font-weight: 700 !important;
+            }
+            .affiliate-step-title {
+                font-size: 0.65rem !important;
+                margin: 0 0 0.15rem !important;
+                line-height: 1.15 !important;
+                font-weight: 700 !important;
+            }
+            .affiliate-step-desc {
+                font-size: 0.54rem !important;
+                line-height: 1.2 !important;
+                color: #64748b !important;
+                margin: 0 !important;
+            }
+        }
+        @media (min-width: 640px) and (max-width: 1023px) {
+            .affiliate-steps-grid { grid-template-columns: repeat(4, 1fr); gap: 0.65rem; }
         }
         @media (min-width: 1024px) {
             .affiliate-steps-grid { grid-template-columns: repeat(4, 1fr); }
@@ -1448,11 +1546,11 @@ try {
 <!-- ═══════════════════════════════════════════════════════════ What's New -->
 <section id="features" class="section whats-new">
     <div class="container">
-        <div class="section-heading text-center" style="margin-bottom: 2rem;">
-            <h2 class="section-title" style="font-size: 2.35rem; font-weight: 800; color: #0B1D4A; margin-bottom: 0.75rem; font-family: 'Times New Roman', Arial, serif;">
+        <div class="section-heading text-center">
+            <h2 class="section-title">
                 What's New in IECEP-LSC?
             </h2>
-            <p class="section-subtitle" style="max-width: 680px; margin: 0 auto; color: #64748b; font-size: 1.05rem; line-height: 1.6;">
+            <p class="section-subtitle">
                 Stay updated on executive announcements, student conventions, technical research seminars, and institutional accreditation notices.
             </p>
         </div>
@@ -1604,11 +1702,11 @@ try {
 <!-- ═══════════════════════════════════════════════════════════ How to Affiliate -->
 <section id="how-to-affiliate" class="section how-to-affiliate">
     <div class="container">
-        <div class="section-heading text-center" style="margin-bottom: 2rem;">
-            <h2 class="section-title" style="font-size: 2.35rem; font-weight: 800; color: #0B1D4A; margin-bottom: 0.75rem; font-family: 'Times New Roman', Arial, serif;">
+        <div class="section-heading text-center">
+            <h2 class="section-title">
                 How to get Affiliated?
             </h2>
-            <p class="section-subtitle" style="max-width: 680px; margin: 0 auto; color: #64748b; font-size: 1.05rem; line-height: 1.6;">
+            <p class="section-subtitle">
                 A transparent, 4-stage digital onboarding workflow engineered for Laguna school chapters and student engineering leadership.
             </p>
         </div>
