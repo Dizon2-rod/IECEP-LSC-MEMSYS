@@ -52,7 +52,6 @@ $userRole = $_SESSION['role'] ?? '';
                         <li><a href="<?php echo BASE_URL; ?>/former-presidents.php" class="dropdown-item">Former Presidents</a></li>
                         <li><a href="<?php echo BASE_URL; ?>/iecep-hymn.php" class="dropdown-item">IECEP Hymn</a></li>
                         <li><a href="<?php echo BASE_URL; ?>/awards-distinctions.php" class="dropdown-item">Awards &amp; Distinctions</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>/public/blockchain-explorer.php" class="dropdown-item">Blockchain Explorer</a></li>
                     </ul>
                 </li>
                 <li class="nav-item">
@@ -64,7 +63,7 @@ $userRole = $_SESSION['role'] ?? '';
                         <li><a href="<?php echo BASE_URL; ?>/objective.php" class="dropdown-item">Institutional Objectives</a></li>
                         <li><a href="<?php echo BASE_URL; ?>/calendar-activity.php" class="dropdown-item">Calendar Activity</a></li>
                         <li><a href="<?php echo BASE_URL; ?>/affiliated-schools.php" class="dropdown-item">Affiliated Schools</a></li>
-                        <li><a href="<?php echo BASE_URL; ?>/contact.php" class="dropdown-item">Contact Secretariat</a></li>
+                        <li><a href="<?php echo BASE_URL; ?>/contact.php" class="dropdown-item">Contact IECEP - LSC</a></li>
                         <li><a href="<?php echo BASE_URL; ?>/public/merchandise.php" class="dropdown-item">Merchandise</a></li>
                     </ul>
                 </li>
@@ -156,7 +155,6 @@ $userRole = $_SESSION['role'] ?? '';
                         </div>
                         <div class="mobile-card-info">
                             <span class="mobile-card-title">Main Portal Home</span>
-                            <span class="mobile-card-sub">Overview, Affiliations & Activities</span>
                         </div>
                         <i class="fas fa-arrow-right mobile-card-arrow"></i>
                     </a>
@@ -170,7 +168,6 @@ $userRole = $_SESSION['role'] ?? '';
                         </div>
                         <div class="mobile-card-info">
                             <span class="mobile-card-title">Chapter Resources</span>
-                            <span class="mobile-card-sub">Officers, Hymn, Awards & Explorer</span>
                         </div>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </a>
@@ -199,13 +196,6 @@ $userRole = $_SESSION['role'] ?? '';
                                 <span class="sub-text">Awards &amp; Distinctions</span>
                             </a>
                         </li>
-                        <li>
-                            <a href="<?php echo BASE_URL; ?>/public/blockchain-explorer.php">
-                                <span class="sub-dot"><i class="fas fa-link"></i></span>
-                                <span class="sub-text">Blockchain Explorer</span>
-                                <span class="sub-badge gold">Live</span>
-                            </a>
-                        </li>
                     </ul>
                 </li>
 
@@ -217,7 +207,6 @@ $userRole = $_SESSION['role'] ?? '';
                         </div>
                         <div class="mobile-card-info">
                             <span class="mobile-card-title">About IECEP-LSC</span>
-                            <span class="mobile-card-sub">Vision, Calendar & Secretariat</span>
                         </div>
                         <i class="fas fa-chevron-down toggle-icon"></i>
                     </a>
@@ -249,7 +238,7 @@ $userRole = $_SESSION['role'] ?? '';
                         <li>
                             <a href="<?php echo BASE_URL; ?>/contact.php">
                                 <span class="sub-dot"><i class="fas fa-envelope"></i></span>
-                                <span class="sub-text">Contact Secretariat</span>
+                                <span class="sub-text">Contact IECEP - LSC</span>
                             </a>
                         </li>
                         <li>

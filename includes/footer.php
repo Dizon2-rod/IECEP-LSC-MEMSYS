@@ -195,7 +195,6 @@ define('FOOTER_INCLUDED', true);
                 <li><a href="<?php echo BASE_URL; ?>/#how-to-affiliate">How to Affiliate</a></li>
                 <li><a href="<?php echo BASE_URL; ?>/calendar-activity.php">Calendar</a></li>
                 <li><a href="<?php echo BASE_URL; ?>/public/merchandise.php">Merchandise</a></li>
-                <li><a href="<?php echo BASE_URL; ?>/public/blockchain-explorer.php">Blockchain</a></li>
             </ul>
         </div>
 

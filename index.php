@@ -1347,6 +1347,70 @@ try {
             box-shadow: 0 4px 12px rgba(212, 175, 55, 0.35);
         }
 
+        @media (max-width: 768px) {
+            .contact {
+                padding: 1.75rem 0 2rem !important;
+            }
+            .contact-container {
+                gap: 1.25rem !important;
+                padding: 0 0.5rem !important;
+            }
+            .contact-content h2 {
+                font-size: 1.35rem !important;
+                margin-bottom: 0.3rem !important;
+            }
+            .contact-content p {
+                font-size: 0.78rem !important;
+                line-height: 1.45 !important;
+                margin-bottom: 0.85rem !important;
+            }
+            .contact-info-pills {
+                gap: 0.35rem !important;
+                margin-bottom: 0.95rem !important;
+            }
+            .contact-info-pill {
+                padding: 0.4rem 0.65rem !important;
+                font-size: 0.74rem !important;
+                gap: 0.45rem !important;
+            }
+            .contact-info-pill i {
+                font-size: 0.82rem !important;
+                width: 15px !important;
+            }
+            .contact-form {
+                padding: 1rem 0.95rem !important;
+                border-radius: 12px !important;
+            }
+            .contact-form h3 {
+                font-size: 0.95rem !important;
+                margin-bottom: 0.6rem !important;
+            }
+            .contact-form .form-group {
+                margin-bottom: 0.5rem !important;
+            }
+            .contact-form .form-label {
+                font-size: 0.72rem !important;
+                margin-bottom: 0.15rem !important;
+            }
+            .contact-form .form-input,
+            .contact-form .form-textarea {
+                padding: 0.45rem 0.65rem !important;
+                font-size: 0.78rem !important;
+            }
+            .contact-form .form-textarea {
+                min-height: 60px !important;
+                height: 60px !important;
+            }
+            .contact-form .form-submit {
+                padding: 0.5rem 0.85rem !important;
+                font-size: 0.82rem !important;
+            }
+            #ctaAffiliateBtn {
+                padding: 0.45rem 0.95rem !important;
+                font-size: 0.8rem !important;
+            }
+        }
+
         /* ── What's New View Modal ── */
         #whatsNewViewModal {
             position: fixed;

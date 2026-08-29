@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contact Secretariat &amp; Inquiries — IECEP-LSC</title>
+    <title>Contact IECEP - LSC &amp; Inquiries — IECEP-LSC</title>
     <?php include __DIR__ . '/includes/head-meta.php'; ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -320,7 +320,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Get in Touch with <span>IECEP-LSC</span>
             </h1>
             <p class="hero-desc">
-                Have questions about chapter accreditation, student conventions, digital IDs, or partnership proposals? The Secretariat is ready to assist.
+                Have questions about chapter accreditation, student conventions, digital IDs, or partnership proposals? The IECEP - LSC is ready to assist.
             </p>
         </div>
     </header>
@@ -387,7 +387,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <?php if ($success): ?>
                         <div class="alert-box success">
                             <strong>Message Sent Successfully!</strong>
-                            <div>Thank you for reaching out. The Secretariat has received your message and will respond shortly.</div>
+                            <div>Thank you for reaching out. The IECEP - LSC has received your message and will respond shortly.</div>
                         </div>
                     <?php endif; ?>
 
@@ -420,7 +420,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
 
                         <button type="submit" class="btn-submit-message">
-                            Send Message to Secretariat
+                            Send Message to IECEP - LSC
                         </button>
                     </form>
                 </div>
