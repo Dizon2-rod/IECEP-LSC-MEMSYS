@@ -1355,10 +1355,10 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                     <button type="button" class="btn-white" onclick="exportFilteredCSV()">
                         <i class="fas fa-file-export" style="color:#059669;"></i> Export CSV
                     </button>
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="btn-white">
+                    <a href="<?= PORTAL_URL ?>/admin/members/batch-process.php" class="btn-white">
                         <i class="fas fa-file-excel" style="color:#107C41;"></i> Chapter Directory Submissions
                     </a>
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/institutions/list.php" class="btn-white">
+                    <a href="<?= PORTAL_URL ?>/admin/institutions/list.php" class="btn-white">
                         <i class="fas fa-university" style="color:var(--color-navy);"></i> Chapter Affiliations
                     </a>
                     <button type="button" class="btn-primary-navy" onclick="openAddModal()">
@@ -1486,7 +1486,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                                         <p style="margin:0 0 0.75rem; font-size:0.78rem; color:#64748B; line-height:1.35;">
                                             There are currently no member records in the database. Use <strong>"Bulk CSV Import"</strong> or wait for school rosters.
                                         </p>
-                                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="btn-primary-navy" style="font-size:0.76rem; padding:0.4rem 0.8rem; display:inline-flex; max-width:100%;">
+                                        <a href="<?= PORTAL_URL ?>/admin/members/batch-process.php" class="btn-primary-navy" style="font-size:0.76rem; padding:0.4rem 0.8rem; display:inline-flex; max-width:100%;">
                                             <i class="fas fa-file-import"></i> Upload Member Directory CSV
                                         </a>
                                     </td>

@@ -604,10 +604,10 @@ try {
                     </div>
                 </div>
                 <div class="header-btn-group">
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/institutions/list.php" class="btn-white">
+                    <a href="<?= PORTAL_URL ?>/admin/institutions/list.php" class="btn-white">
                         <i class="fas fa-university"></i> Chapter Affiliations
                     </a>
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php" class="btn-white">
+                    <a href="<?= PORTAL_URL ?>/admin/members/list.php" class="btn-white">
                         <i class="fas fa-users"></i> Member Directory
                     </a>
                     <button type="button" id="btnDownloadTemplate" class="btn-excel-green">

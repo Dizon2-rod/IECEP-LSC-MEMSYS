@@ -548,18 +548,15 @@ $chartSchoolData = array_values($schoolMemberDistribution);
                         <i class="fas fa-gauge-high" style="color:var(--color-navy);"></i>
                         Welcome back, <?= htmlspecialchars($displayName) ?>
                     </h1>
-                    <p class="dash-header-sub">
-                        Executive Overview &bull; Verified live database analytics &bull; <?= date('F d, Y') ?>
-                    </p>
                 </div>
                 <div class="dash-header-btn-group">
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php" class="btn-white">
+                    <a href="<?= PORTAL_URL ?>/admin/members/list.php" class="btn-white">
                         <i class="fas fa-users" style="color:var(--color-blue);"></i> Member Directory
                     </a>
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/institutions/list.php" class="btn-white">
+                    <a href="<?= PORTAL_URL ?>/admin/institutions/list.php" class="btn-white">
                         <i class="fas fa-university" style="color:var(--color-navy);"></i> Chapter Affiliations
                     </a>
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="btn-white">
+                    <a href="<?= PORTAL_URL ?>/admin/members/batch-process.php" class="btn-white">
                         <i class="fas fa-file-excel" style="color:#107C41;"></i> Chapter Submissions
                     </a>
                 </div>
@@ -614,29 +611,29 @@ $chartSchoolData = array_values($schoolMemberDistribution);
 
             <!-- 3. Strategic Shortcuts Bar -->
             <div class="dash-shortcuts-bar">
-                <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php" class="shortcut-btn">
+                <a href="<?= PORTAL_URL ?>/admin/members/list.php" class="shortcut-btn">
                     <div class="shortcut-icon" style="background:#EFF6FF; color:#2563EB;"><i class="fas fa-users"></i></div>
                     <span>Members</span>
                 </a>
-                <a href="/IECEP-LSC-MEMSYS/public/portal/admin/institutions/list.php" class="shortcut-btn">
+                <a href="<?= PORTAL_URL ?>/admin/institutions/list.php" class="shortcut-btn">
                     <div class="shortcut-icon" style="background:rgba(11,29,74,0.08); color:#0B1D4A;"><i class="fas fa-university"></i></div>
                     <span>Institutions</span>
                 </a>
-                <a href="/IECEP-LSC-MEMSYS/public/portal/admin/financial/transactions.php" class="shortcut-btn">
+                <a href="<?= PORTAL_URL ?>/admin/financial/transactions.php" class="shortcut-btn">
                     <div class="shortcut-icon" style="background:#ECFDF5; color:#059669;"><i class="fas fa-receipt"></i></div>
                     <span>Financials</span>
                 </a>
-                <a href="/IECEP-LSC-MEMSYS/public/portal/admin/compliance/dashboard.php" class="shortcut-btn">
+                <a href="<?= PORTAL_URL ?>/admin/compliance/dashboard.php" class="shortcut-btn">
                     <div class="shortcut-icon" style="background:#FEF9C3; color:#B45309;"><i class="fas fa-shield-halved"></i></div>
                     <span>Compliance</span>
                 </a>
-                <a href="/IECEP-LSC-MEMSYS/public/portal/admin/blockchain/explorer.php" class="shortcut-btn">
+                <a href="<?= PORTAL_URL ?>/admin/blockchain/explorer.php" class="shortcut-btn">
                     <div class="shortcut-icon" style="background:#F5F3FF; color:#7C3AED;"><i class="fas fa-link"></i></div>
                     <span>Blockchain</span>
                 </a>
-                <a href="/IECEP-LSC-MEMSYS/public/portal/admin/system/audit-logs.php" class="shortcut-btn">
-                    <div class="shortcut-icon" style="background:#FFF1F2; color:#E11D48;"><i class="fas fa-clock-rotate-left"></i></div>
-                    <span>Audit Logs</span>
+                <a href="<?= PORTAL_URL ?>/admin/system/users.php" class="shortcut-btn">
+                    <div class="shortcut-icon" style="background:#FFF1F2; color:#E11D48;"><i class="fas fa-users-gear"></i></div>
+                    <span>Users</span>
                 </a>
             </div>
 
@@ -695,7 +692,7 @@ $chartSchoolData = array_values($schoolMemberDistribution);
                             <i class="fas fa-building-columns" style="color:var(--color-navy);"></i>
                             Chartered Institutions & Chapters
                         </div>
-                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/institutions/list.php" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.6rem;">
+                        <a href="<?= PORTAL_URL ?>/admin/institutions/list.php" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.6rem;">
                             View All (<?= $totalSchools ?>)
                         </a>
                     </div>
@@ -735,7 +732,7 @@ $chartSchoolData = array_values($schoolMemberDistribution);
                                                 <span class="status-badge active"><i class="fas fa-circle" style="font-size:0.35rem;"></i> Active</span>
                                             </td>
                                             <td style="text-align:right;">
-                                                <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php?school=<?= urlencode($inst['id']) ?>" class="btn-white" style="font-size:0.7rem; padding:0.25rem 0.55rem;">
+                                                <a href="<?= PORTAL_URL ?>/admin/members/list.php?school=<?= urlencode($inst['id']) ?>" class="btn-white" style="font-size:0.7rem; padding:0.25rem 0.55rem;">
                                                     <i class="fas fa-users"></i> Members
                                                 </a>
                                             </td>
@@ -754,7 +751,7 @@ $chartSchoolData = array_values($schoolMemberDistribution);
                             <i class="fas fa-link" style="color:var(--color-gold-dark);"></i>
                             Recent Blockchain Audit Trail
                         </div>
-                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/blockchain/explorer.php" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.6rem;">
+                        <a href="<?= PORTAL_URL ?>/admin/blockchain/explorer.php" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.6rem;">
                             Explorer
                         </a>
                     </div>

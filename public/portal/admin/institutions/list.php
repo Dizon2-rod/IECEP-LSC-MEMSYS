@@ -295,10 +295,10 @@ try {
                     <p class="ap-page-subtitle">Review submitted chapter affiliation packets, inspect attached Excel student rosters, and grant official IECEP-LSC accreditation.</p>
                 </div>
                 <div class="ap-header-actions">
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php" class="ap-btn-secondary">
+                    <a href="<?= PORTAL_URL ?>/admin/members/list.php" class="ap-btn-secondary">
                         <i class="fas fa-users" style="color:var(--color-navy);"></i> Member Directory
                     </a>
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="ap-btn-secondary">
+                    <a href="<?= PORTAL_URL ?>/admin/members/batch-process.php" class="ap-btn-secondary">
                         <i class="fas fa-file-excel" style="color:#107C41;"></i> Chapter Directory Submissions
                     </a>
                     <button class="ap-btn-primary" onclick="openCharterModal()">
@@ -478,7 +478,7 @@ try {
                                             </span>
                                         </td>
                                         <td style="text-align:right;">
-                                            <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php?school=<?= urlencode($inst['id']) ?>" class="ap-btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.75rem;">
+                                            <a href="<?= PORTAL_URL ?>/admin/members/list.php?school=<?= urlencode($inst['id']) ?>" class="ap-btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.75rem;">
                                                 <i class="fas fa-users"></i> View Members
                                             </a>
                                         </td>
