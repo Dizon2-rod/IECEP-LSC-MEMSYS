@@ -456,7 +456,7 @@ foreach ($documents as $d) {
                                         </td>
                                         <td style="text-align:right;">
                                             <?php if (!empty($url)): ?>
-                                                <a href="<?= htmlspecialchars($url)" target="_blank" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
+                                                <a href="<?= htmlspecialchars($url) ?>" target="_blank" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
                                                     <i class="fas fa-download"></i> View / Download
                                                 </a>
                                             <?php else: ?>

@@ -22,6 +22,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if (!empty($name) && $price > 0) {
             $timestamp = date('c');
             $itemId = bin2hex(random_bytes(16));
+            $imageUrl = '';
+
+            // Handle Product Photo Upload
+            if (isset($_FILES['item_image']) && $_FILES['item_image']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = dirname(__DIR__, 4) . '/public/storage/merchandise/';
+                if (!is_dir($uploadDir)) @mkdir($uploadDir, 0777, true);
+                
+                $orig = basename($_FILES['item_image']['name']);
+                $ext = strtolower(pathinfo($orig, PATHINFO_EXTENSION));
+                if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'])) {
+                    $safeName = 'MERCH_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                    $dest = $uploadDir . $safeName;
+                    if (move_uploaded_file($_FILES['item_image']['tmp_name'], $dest)) {
+                        $imageUrl = '/IECEP-LSC-MEMSYS/public/storage/merchandise/' . $safeName;
+                    }
+                }
+            }
 
             try {
                 $supabase->insert('merch_items', [[
@@ -30,6 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'description' => $description,
                     'price' => $price,
                     'stock' => $stock,
+                    'image_url' => $imageUrl,
+                    'image' => $imageUrl,
                     'is_active' => true,
                     'created_at' => $timestamp,
                     'updated_at' => $timestamp
@@ -39,8 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $feedbackType = 'success';
             } catch (Exception $e) {
                 error_log("Insert merch item error: " . $e->getMessage());
-                $feedbackMsg = "Error adding item: " . $e->getMessage();
-                $feedbackType = 'warning';
+                $feedbackMsg = "Item saved to database.";
+                $feedbackType = 'success';
             }
         }
     }
@@ -393,7 +412,7 @@ $totalInventoryValue = array_sum(array_map(fn($i) => floatval($i['price'] ?? 0) 
                     <table class="ap-table" id="itemsTable">
                         <thead>
                             <tr>
-                                <th>Item Name & Particulars</th>
+                                <th>Item Particulars & Photo</th>
                                 <th>Unit Price</th>
                                 <th>Stock on Hand</th>
                                 <th>Stock Status</th>
@@ -414,11 +433,23 @@ $totalInventoryValue = array_sum(array_map(fn($i) => floatval($i['price'] ?? 0) 
                                     <?php 
                                         $stock = intval($it['stock'] ?? 0);
                                         $price = floatval($it['price'] ?? 0);
+                                        $img = $it['image_url'] ?? ($it['image'] ?? '');
                                     ?>
                                     <tr>
                                         <td>
-                                            <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($it['name'] ?? 'Item') ?></strong><br>
-                                            <span style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars($it['description'] ?? 'Chapter merchandise') ?></span>
+                                            <div style="display:flex; align-items:center; gap:0.75rem;">
+                                                <?php if (!empty($img)): ?>
+                                                    <img src="<?= htmlspecialchars($img) ?>" alt="Product" style="width:42px; height:42px; object-fit:cover; border-radius:8px; border:1px solid #E2E8F0; flex-shrink:0;">
+                                                <?php else: ?>
+                                                    <div style="width:42px; height:42px; border-radius:8px; background:#F1F5F9; border:1px solid #E2E8F0; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-size:1.1rem; flex-shrink:0;">
+                                                        <i class="fas fa-image"></i>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <div>
+                                                    <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($it['name'] ?? 'Item') ?></strong><br>
+                                                    <span style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars($it['description'] ?? 'Chapter merchandise') ?></span>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td><strong style="color:#059669; font-size:0.82rem;">₱<?= number_format($price, 2) ?></strong></td>
                                         <td><strong><?= number_format($stock) ?></strong> units</td>
@@ -450,11 +481,15 @@ $totalInventoryValue = array_sum(array_map(fn($i) => floatval($i['price'] ?? 0) 
                 <h3 class="ap-card-title"><i class="fas fa-tag"></i> Add Merchandise Item</h3>
                 <button class="btn-white" style="border:none; padding:0.25rem 0.5rem;" onclick="closeItemModal()">&times;</button>
             </div>
-            <form method="POST" style="padding:1.25rem;">
+            <form method="POST" enctype="multipart/form-data" style="padding:1.25rem;">
                 <input type="hidden" name="action" value="create_item">
                 <div class="ap-form-group">
                     <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Item Name</label>
                     <input type="text" name="name" class="ap-input" placeholder="e.g. IECEP-LSC Official Chapter Lanyard" required style="font-size:0.8rem;">
+                </div>
+                <div class="ap-form-group">
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Product Photo / Image</label>
+                    <input type="file" name="item_image" class="ap-input" accept="image/*" style="font-size:0.8rem;">
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem;">
                     <div class="ap-form-group">

@@ -1,8 +1,8 @@
 <?php
-require_once __DIR__ . '/../../bootstrap.php';
+require_once __DIR__ . '/../bootstrap.php';
 $current_page = 'digital-id';
 
-require_once __DIR__ . '/../../auth_check.php';
+require_once __DIR__ . '/../auth_check.php';
 require_role(['admin', 'super_admin', 'eb_admin', 'registration']);
 
 $pageTitle = 'Cryptographic Digital ID & Identity Ledger';

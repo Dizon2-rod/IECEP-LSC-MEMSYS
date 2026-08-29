@@ -22,6 +22,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if (!empty($title) && !empty($body)) {
             $timestamp = date('c');
             $annId = bin2hex(random_bytes(16));
+            $imageUrl = '';
+
+            // Handle Banner / Photo Upload
+            if (isset($_FILES['announcement_image']) && $_FILES['announcement_image']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = dirname(__DIR__, 4) . '/public/storage/announcements/';
+                if (!is_dir($uploadDir)) @mkdir($uploadDir, 0777, true);
+                
+                $orig = basename($_FILES['announcement_image']['name']);
+                $ext = strtolower(pathinfo($orig, PATHINFO_EXTENSION));
+                if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'])) {
+                    $safeName = 'ANN_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                    $dest = $uploadDir . $safeName;
+                    if (move_uploaded_file($_FILES['announcement_image']['tmp_name'], $dest)) {
+                        $imageUrl = '/IECEP-LSC-MEMSYS/public/storage/announcements/' . $safeName;
+                    }
+                }
+            }
 
             try {
                 $supabase->insert('announcements', [[
@@ -31,6 +48,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'body' => $body,
                     'priority' => $priority,
                     'status' => $status,
+                    'image_url' => $imageUrl,
+                    'banner_url' => $imageUrl,
                     'is_public' => true,
                     'created_at' => $timestamp,
                     'updated_at' => $timestamp
@@ -409,7 +428,7 @@ try {
                     <table class="ap-table" id="annTable">
                         <thead>
                             <tr>
-                                <th>Announcement Title & Summary</th>
+                                <th>Announcement Particulars & Photo</th>
                                 <th>Priority</th>
                                 <th>Target Audience</th>
                                 <th>Status</th>
@@ -430,11 +449,23 @@ try {
                                     <?php 
                                         $st = strtolower($a['status'] ?? 'published');
                                         $pr = strtolower($a['priority'] ?? 'normal');
+                                        $img = $a['image_url'] ?? ($a['banner_url'] ?? '');
                                     ?>
                                     <tr>
                                         <td>
-                                            <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($a['title'] ?? 'Announcement') ?></strong><br>
-                                            <span style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars(substr($a['content'] ?? ($a['body'] ?? ''), 0, 90)) ?>...</span>
+                                            <div style="display:flex; align-items:center; gap:0.75rem;">
+                                                <?php if (!empty($img)): ?>
+                                                    <img src="<?= htmlspecialchars($img) ?>" alt="Banner" style="width:48px; height:36px; object-fit:cover; border-radius:6px; border:1px solid #E2E8F0; flex-shrink:0;">
+                                                <?php else: ?>
+                                                    <div style="width:48px; height:36px; border-radius:6px; background:#F1F5F9; border:1px solid #E2E8F0; display:flex; align-items:center; justify-content:center; color:#94A3B8; font-size:1rem; flex-shrink:0;">
+                                                        <i class="fas fa-bullhorn"></i>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <div>
+                                                    <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($a['title'] ?? 'Announcement') ?></strong><br>
+                                                    <span style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars(substr($a['content'] ?? ($a['body'] ?? ''), 0, 90)) ?>...</span>
+                                                </div>
+                                            </div>
                                         </td>
                                         <td>
                                             <span class="ap-pill <?= ($pr === 'urgent' || $pr === 'high') ? 'danger' : 'blue' ?>">
@@ -466,11 +497,15 @@ try {
                 <h3 class="ap-card-title"><i class="fas fa-bullhorn"></i> Compose Announcement</h3>
                 <button class="btn-white" style="border:none; padding:0.25rem 0.5rem;" onclick="closeAnnModal()">&times;</button>
             </div>
-            <form method="POST" style="padding:1.25rem;">
+            <form method="POST" enctype="multipart/form-data" style="padding:1.25rem;">
                 <input type="hidden" name="action" value="create_announcement">
                 <div class="ap-form-group">
                     <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Announcement Title</label>
                     <input type="text" name="title" class="ap-input" placeholder="e.g. Schedule for General Assembly 2026" required style="font-size:0.8rem;">
+                </div>
+                <div class="ap-form-group">
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Photo / Banner Image</label>
+                    <input type="file" name="announcement_image" class="ap-input" accept="image/*" style="font-size:0.8rem;">
                 </div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem;">
                     <div class="ap-form-group">
