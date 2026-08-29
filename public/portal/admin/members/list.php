@@ -908,47 +908,83 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                 margin-top: 1px !important;
             }
 
-            /* Filter Controls on Mobile */
+            /* Filter Controls on Mobile - Compact App Style */
             .white-controls-card {
-                padding: 0.55rem 0.6rem !important;
+                padding: 0.45rem 0.55rem !important;
                 flex-direction: column !important;
                 align-items: stretch !important;
-                gap: 0.4rem !important;
-                border-radius: 10px !important;
-                margin-bottom: 0.55rem !important;
+                gap: 0.35rem !important;
+                border-radius: 8px !important;
+                margin-bottom: 0.45rem !important;
                 width: 100% !important;
+                background: #FFFFFF !important;
+                box-sizing: border-box !important;
             }
             .filter-controls-left {
-                flex-direction: column !important;
-                align-items: stretch !important;
-                gap: 0.4rem !important;
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 0.35rem !important;
                 width: 100% !important;
+                box-sizing: border-box !important;
             }
             .search-input-wrapper {
+                grid-column: span 2 !important;
                 min-width: 100% !important;
                 max-width: 100% !important;
                 width: 100% !important;
+                position: relative !important;
             }
             .search-input-wrapper .search-icon {
-                left: 12px !important;
-                font-size: 0.85rem !important;
+                left: 10px !important;
+                font-size: 0.78rem !important;
             }
             .search-input-field {
-                padding: 0.45rem 0.65rem 0.45rem 2.85rem !important; /* Plenty of padding so text never touches the icon */
-                font-size: 0.76rem !important;
+                height: 34px !important;
+                padding: 0.25rem 0.5rem 0.25rem 2rem !important;
+                font-size: 0.74rem !important;
                 width: 100% !important;
+                border-radius: 6px !important;
+                background: #F8FAFC !important;
+                border: 1px solid #CBD5E1 !important;
             }
-            .select-filter-box {
+            #schoolDropdownFilter {
+                grid-column: span 2 !important;
                 width: 100% !important;
-                padding: 0.45rem 1.6rem 0.45rem 0.65rem !important;
-                font-size: 0.76rem !important;
+                max-width: 100% !important;
+                height: 34px !important;
+                padding: 0.25rem 1.4rem 0.25rem 0.55rem !important;
+                font-size: 0.74rem !important;
+                border-radius: 6px !important;
+                background-color: #F8FAFC !important;
+                border: 1px solid #CBD5E1 !important;
+                text-overflow: ellipsis !important;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+            }
+            #statusFilter, #yearLevelFilter {
+                grid-column: span 1 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 34px !important;
+                padding: 0.25rem 1.4rem 0.25rem 0.55rem !important;
+                font-size: 0.74rem !important;
+                border-radius: 6px !important;
+                background-color: #F8FAFC !important;
+                border: 1px solid #CBD5E1 !important;
             }
             .filter-controls-right {
+                display: flex !important;
                 justify-content: space-between !important;
+                align-items: center !important;
                 width: 100% !important;
+                padding-top: 3px !important;
+                border-top: 1px dashed #E2E8F0 !important;
             }
             .showing-counter-badge {
-                font-size: 0.72rem !important;
+                font-size: 0.68rem !important;
+                color: var(--text-muted) !important;
+                width: 100% !important;
+                text-align: right !important;
             }
 
             /* Compact Mobile Table Layout (100% FITTED - ZERO HORIZONTAL SCROLL) */
