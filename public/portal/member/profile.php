@@ -32,48 +32,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $birthday = trim($_POST['birthday'] ?? '');
         $avatarDataUrl = trim($_POST['avatar_data_url'] ?? '');
 
-        // 1. Direct file upload handling
-        if (isset($_FILES['avatar_file']) && $_FILES['avatar_file']['error'] === UPLOAD_ERR_OK) {
-            $file = $_FILES['avatar_file'];
-            $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
-            $fileInfo = pathinfo($file['name']);
-            $ext = strtolower($fileInfo['extension'] ?? '');
-
-            if (in_array($ext, $allowedExts)) {
-                $uploadDir = __DIR__ . '/../../../public/uploads/avatars/';
-                if (!is_dir($uploadDir)) {
-                    @mkdir($uploadDir, 0777, true);
-                }
-                $cleanUid = !empty($userId) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $userId) : 'mem_' . time();
-                $fileName = 'avatar_' . $cleanUid . '_' . time() . '.' . $ext;
-                $targetPath = $uploadDir . $fileName;
-
-                if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-                    $uploadedAvatarUrl = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $fileName;
-                }
-            }
+        $uploadDir = __DIR__ . '/../../../public/uploads/avatars/';
+        if (!is_dir($uploadDir)) {
+            @mkdir($uploadDir, 0777, true);
         }
+        $cleanUid = !empty($userId) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $userId) : md5($userEmail);
 
-        // 2. Base64 Data URL fallback from client preview
-        if (empty($uploadedAvatarUrl) && !empty($avatarDataUrl) && strpos($avatarDataUrl, 'data:image') === 0) {
-            $uploadDir = __DIR__ . '/../../../public/uploads/avatars/';
-            if (!is_dir($uploadDir)) {
-                @mkdir($uploadDir, 0777, true);
-            }
-            $cleanUid = !empty($userId) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $userId) : 'mem_' . time();
-            $fileName = 'avatar_' . $cleanUid . '_' . time() . '.png';
+        // 1. Process Base64 Data URL (Lightweight compressed from client canvas)
+        if (!empty($avatarDataUrl) && strpos($avatarDataUrl, 'data:image') === 0) {
+            $fileName = 'avatar_' . $cleanUid . '.jpg';
             $targetPath = $uploadDir . $fileName;
 
             $parts = explode(',', $avatarDataUrl, 2);
             if (count($parts) === 2) {
                 $binary = base64_decode($parts[1]);
                 if ($binary !== false && file_put_contents($targetPath, $binary)) {
-                    $uploadedAvatarUrl = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $fileName;
+                    $uploadedAvatarUrl = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $fileName . '?v=' . time();
                 } else {
                     $uploadedAvatarUrl = $avatarDataUrl;
                 }
             } else {
                 $uploadedAvatarUrl = $avatarDataUrl;
+            }
+        }
+
+        // 2. Direct file upload handling if Base64 was not provided
+        if (empty($uploadedAvatarUrl) && isset($_FILES['avatar_file']) && $_FILES['avatar_file']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['avatar_file'];
+            $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+            $fileInfo = pathinfo($file['name']);
+            $ext = strtolower($fileInfo['extension'] ?? 'jpg');
+
+            if (in_array($ext, $allowedExts)) {
+                $fileName = 'avatar_' . $cleanUid . '.' . $ext;
+                $targetPath = $uploadDir . $fileName;
+
+                if (move_uploaded_file($file['tmp_name'], $targetPath)) {
+                    $uploadedAvatarUrl = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $fileName . '?v=' . time();
+                }
             }
         }
 
@@ -109,25 +105,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     try {
                         $supabase->update('members', $updateData, $existing[0]['id']);
                     } catch (\Throwable $t) {
-                        // In case avatar_url or birthday column is missing on members table, update without them
                         unset($updateData['avatar_url'], $updateData['birthday'], $updateData['address']);
                         $supabase->update('members', $updateData, $existing[0]['id']);
                     }
                 }
 
-                // Also update user_profiles & users table
+                // Also update user_profiles table
+                $profData = ['full_name' => $fullName, 'phone' => $phone];
+                if (!empty($uploadedAvatarUrl)) {
+                    $profData['avatar_url'] = $uploadedAvatarUrl;
+                    $profData['profile_photo'] = $uploadedAvatarUrl;
+                }
+                
                 if (!empty($userId)) {
-                    $profData = ['full_name' => $fullName, 'phone' => $phone];
-                    if (!empty($uploadedAvatarUrl)) {
-                        $profData['avatar_url'] = $uploadedAvatarUrl;
-                        $profData['profile_photo'] = $uploadedAvatarUrl;
-                    }
-                    try {
-                        $supabase->update('user_profiles', $profData, $userId, 'user_id');
-                    } catch (\Throwable $t) {}
-                    try {
-                        $supabase->update('users', ['full_name' => $fullName], $userId);
-                    } catch (\Throwable $t) {}
+                    try { $supabase->update('user_profiles', $profData, $userId, 'user_id'); } catch (\Throwable $t) {}
+                    try { $supabase->update('users', ['full_name' => $fullName], $userId); } catch (\Throwable $t) {}
+                }
+                if (!empty($userEmail)) {
+                    try { $supabase->update('user_profiles', $profData, $userEmail, 'email'); } catch (\Throwable $t) {}
                 }
 
                 $_SESSION['full_name'] = $fullName;
@@ -140,7 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $feedbackType = "success";
             } catch (Exception $e) {
                 error_log("Profile update error: " . $e->getMessage());
-                $feedbackMsg = "Profile saved.";
+                $feedbackMsg = "Profile details saved.";
                 $feedbackType = "success";
             }
         }
@@ -195,12 +190,12 @@ if ($supabase) {
         }
 
         // Check if there is a disk avatar file for this user
-        $cleanUid = !empty($userId) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $userId) : '';
+        $cleanUid = !empty($userId) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $userId) : md5($userEmail);
         if (empty($member['avatar_url']) && !empty($cleanUid)) {
-            $globMatches = glob(__DIR__ . '/../../../public/uploads/avatars/avatar_' . $cleanUid . '_*.*');
+            $globMatches = glob(__DIR__ . '/../../../public/uploads/avatars/avatar_' . $cleanUid . '.*');
             if (!empty($globMatches)) {
                 $latestAvatarFile = basename(end($globMatches));
-                $member['avatar_url'] = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $latestAvatarFile;
+                $member['avatar_url'] = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $latestAvatarFile . '?v=' . filemtime(end($globMatches));
             }
         }
 
@@ -923,25 +918,51 @@ $currentAvatarUrl = $uploadedAvatarUrl ?: ($member['avatar_url'] ?? ($_SESSION['
             if (btnElement) btnElement.classList.add('active');
         }
 
+        // Automatic image compression via HTML5 Canvas (Max 400x400, lightweight ~35KB)
         function previewSelectedAvatar(e) {
             const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(evt) {
-                    const dataUrl = evt.target.result;
-                    
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const maxDim = 400;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxDim) {
+                            height = Math.round(height * (maxDim / width));
+                            width = maxDim;
+                        }
+                    } else {
+                        if (height > maxDim) {
+                            width = Math.round(width * (maxDim / height));
+                            height = maxDim;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
                     // Populate hidden input
                     const dataInput = document.getElementById('avatarDataUrlInput');
-                    if (dataInput) dataInput.value = dataUrl;
+                    if (dataInput) dataInput.value = compressedDataUrl;
 
                     // Cache in browser
-                    try { localStorage.setItem(userEmailKey, dataUrl); } catch(e){}
+                    try { localStorage.setItem(userEmailKey, compressedDataUrl); } catch(err){}
 
                     // Update Top Hero Avatar
                     const heroPrev = document.getElementById('heroAvatarPreview');
                     const heroIcon = document.getElementById('heroAvatarIcon');
                     if (heroPrev) {
-                        heroPrev.src = dataUrl;
+                        heroPrev.src = compressedDataUrl;
                         heroPrev.style.display = 'block';
                     }
                     if (heroIcon) heroIcon.style.display = 'none';
@@ -950,13 +971,14 @@ $currentAvatarUrl = $uploadedAvatarUrl ?: ($member['avatar_url'] ?? ($_SESSION['
                     const rowPrev = document.getElementById('rowAvatarPreview');
                     const rowIcon = document.getElementById('rowAvatarIcon');
                     if (rowPrev) {
-                        rowPrev.src = dataUrl;
+                        rowPrev.src = compressedDataUrl;
                         rowPrev.style.display = 'block';
                     }
                     if (rowIcon) rowIcon.style.display = 'none';
                 };
-                reader.readAsDataURL(file);
-            }
+                img.src = evt.target.result;
+            };
+            reader.readAsDataURL(file);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
