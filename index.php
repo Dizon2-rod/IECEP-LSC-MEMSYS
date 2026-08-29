@@ -638,24 +638,24 @@ try {
                 border: 1px solid #E2E8F0 !important;
             }
             .featured-card-image {
-                height: 75px !important;
+                height: 115px !important;
             }
             .featured-card-image-placeholder {
-                font-size: 1.25rem !important;
+                font-size: 1.6rem !important;
             }
             .featured-card-badge {
-                font-size: 0.48rem !important;
+                font-size: 0.46rem !important;
                 padding: 1px 4px !important;
                 top: 4px !important;
                 left: 4px !important;
                 gap: 2px !important;
             }
             .featured-card-body {
-                padding: 0.45rem 0.35rem !important;
+                padding: 0.35rem 0.3rem 0.4rem !important;
             }
             .featured-card-meta {
-                font-size: 0.52rem !important;
-                margin-bottom: 0.2rem !important;
+                font-size: 0.46rem !important;
+                margin-bottom: 0.15rem !important;
                 flex-direction: column !important;
                 align-items: flex-start !important;
                 gap: 1px !important;
@@ -668,9 +668,9 @@ try {
                 max-width: 100%;
             }
             .featured-card-title {
-                font-size: 0.68rem !important;
+                font-size: 0.58rem !important;
                 line-height: 1.15 !important;
-                margin: 0 0 0.2rem !important;
+                margin: 0 0 0.15rem !important;
                 font-weight: 700 !important;
                 display: -webkit-box;
                 -webkit-line-clamp: 2;
@@ -678,25 +678,25 @@ try {
                 overflow: hidden;
             }
             .featured-card-description {
-                font-size: 0.55rem !important;
+                font-size: 0.48rem !important;
                 line-height: 1.2 !important;
-                margin: 0 0 0.3rem !important;
+                margin: 0 0 0.25rem !important;
                 -webkit-line-clamp: 2 !important;
             }
             .featured-card-footer {
-                padding-top: 0.25rem !important;
-                gap: 0.2rem !important;
+                padding-top: 0.2rem !important;
+                gap: 0.15rem !important;
             }
             .btn-view-card {
-                font-size: 0.55rem !important;
-                padding: 0.25rem 0.3rem !important;
+                font-size: 0.48rem !important;
+                padding: 0.2rem 0.25rem !important;
                 border-radius: 4px !important;
                 gap: 2px !important;
                 white-space: nowrap;
             }
             .btn-link-card {
-                font-size: 0.55rem !important;
-                padding: 0.25rem 0.35rem !important;
+                font-size: 0.48rem !important;
+                padding: 0.2rem 0.25rem !important;
                 border-radius: 4px !important;
             }
         }
