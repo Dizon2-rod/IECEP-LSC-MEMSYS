@@ -154,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title><?= htmlspecialchars($page_title) ?> — IECEP-LSC MEMSYS</title>
     <meta name="description" content="Bulk import chapter student members via CSV upload with instant validation for IECEP-LSC Laguna Student Chapter.">
     <?php include dirname(__DIR__, 4) . '/includes/head-meta.php'; ?>
@@ -163,7 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
     
     <style>
         /* =========================================================================
-           CLEAN WHITE THEME - BATCH INGESTION WORKSPACE
+           RESPONSIVE WHITE THEME - BATCH INGESTION WORKSPACE
            ========================================================================= */
         :root {
             --bg-page: #F8FAFC;
@@ -193,18 +193,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             color: var(--text-body);
             margin: 0;
             padding: 0;
+            overflow-x: hidden;
         }
 
         .white-theme-wrap {
             padding: 1.5rem 2rem;
             max-width: 1400px;
             margin: 0 auto;
-        }
-
-        @media (max-width: 768px) {
-            .white-theme-wrap {
-                padding: 1rem;
-            }
+            box-sizing: border-box;
+            width: 100%;
         }
 
         /* 1. Header Banner */
@@ -283,6 +280,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             cursor: pointer;
             box-shadow: var(--shadow-sm);
             transition: all 0.18s ease;
+            white-space: nowrap;
         }
         .btn-white:hover {
             background: #F8FAFC;
@@ -306,6 +304,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(11, 29, 74, 0.15);
             transition: all 0.18s ease;
+            white-space: nowrap;
         }
         .btn-primary-navy:hover:not(:disabled) {
             background: var(--color-navy-hover);
@@ -326,11 +325,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             grid-template-columns: repeat(3, 1fr);
             gap: 1rem;
             margin-bottom: 1.5rem;
-        }
-        @media (max-width: 768px) {
-            .pipeline-steps-grid {
-                grid-template-columns: 1fr;
-            }
         }
 
         .wizard-step-box {
@@ -463,8 +457,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             background: #FAFAFA;
         }
 
+        .table-responsive-viewport {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
         .preview-table {
             width: 100%;
+            min-width: 780px;
             border-collapse: separate;
             border-spacing: 0;
             font-size: 0.875rem;
@@ -479,12 +480,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             color: var(--text-muted);
             border-bottom: 1px solid var(--border-subtle);
             text-align: left;
+            white-space: nowrap;
         }
         .preview-table td {
             padding: 0.85rem 1.25rem;
             border-bottom: 1px solid #F1F5F9;
             color: var(--text-body);
             vertical-align: middle;
+            white-space: nowrap;
         }
 
         /* Schema Guidance Box */
@@ -536,6 +539,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
         }
         .sentinel-node-item i {
             color: var(--color-navy);
+        }
+
+        /* =========================================================================
+           MOBILE SPECIFIC BREAKPOINTS
+           ========================================================================= */
+        @media (max-width: 768px) {
+            .white-theme-wrap {
+                padding: 0.75rem;
+            }
+            .white-page-header {
+                padding: 1.15rem;
+                gap: 1rem;
+            }
+            .header-title-box {
+                gap: 0.75rem;
+            }
+            .header-icon-circle {
+                width: 44px;
+                height: 44px;
+                font-size: 1.2rem;
+            }
+            .header-main-title {
+                font-size: 1.2rem;
+            }
+            .header-btn-group {
+                width: 100%;
+                display: flex;
+                flex-direction: row;
+                gap: 0.5rem;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 4px;
+            }
+            .pipeline-steps-grid {
+                grid-template-columns: 1fr;
+                gap: 0.65rem;
+            }
+            .white-upload-card {
+                padding: 1.15rem;
+            }
+            .drag-drop-zone {
+                padding: 2.25rem 1rem;
+            }
+            .upload-icon-circle {
+                width: 56px;
+                height: 56px;
+                font-size: 1.5rem;
+                margin-bottom: 0.75rem;
+            }
         }
     </style>
 </head>
@@ -666,7 +718,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                         <span>CSV Preview (<span id="parsedRowCount" style="color:var(--color-navy);">0</span> Valid Rows Detected)</span>
                     </h3>
                 </div>
-                <div style="max-height:380px; overflow-y:auto;">
+                <div class="table-responsive-viewport" style="max-height:380px;">
                     <table class="preview-table" id="previewTable">
                         <thead>
                             <tr>

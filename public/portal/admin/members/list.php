@@ -138,7 +138,6 @@ try {
                     $name = $inst['name'] ?? 'Affiliated Higher Education Institution';
                     $acronym = $inst['acronym'] ?? '';
                     if (empty($acronym)) {
-                        // Generate clean short acronym if missing
                         $words = explode(' ', $name);
                         $acronym = count($words) > 1 ? implode('', array_map(fn($w) => strtoupper(substr($w, 0, 1)), array_slice($words, 0, 4))) : substr($name, 0, 8);
                     }
@@ -216,7 +215,7 @@ try {
             }
         }
 
-        // B. Fetch from `membership_directory_imports` (School-submitted rosters)
+        // B. Fetch from `membership_directory_imports`
         $directoryImports = $supabase->select('membership_directory_imports', ['select' => '*', 'order' => 'created_at.desc']);
         if (is_array($directoryImports)) {
             foreach ($directoryImports as $imp) {
@@ -277,7 +276,7 @@ foreach ($allMembersList as $mem) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>Member Directory — IECEP-LSC MEMSYS</title>
     <meta name="description" content="Verified student member directory, university chapter segmentation, and profile dossiers for IECEP-LSC Laguna Student Chapter.">
     <?php include dirname(__DIR__, 4) . '/includes/head-meta.php'; ?>
@@ -286,7 +285,7 @@ foreach ($allMembersList as $mem) {
     
     <style>
         /* =========================================================================
-           CLEAN WHITE THEME DESIGN SYSTEM (IECEP-LSC MEMSYS)
+           RESPONSIVE WHITE THEME DESIGN SYSTEM (IECEP-LSC MEMSYS)
            ========================================================================= */
         :root {
             --bg-page: #F8FAFC;
@@ -319,21 +318,18 @@ foreach ($allMembersList as $mem) {
             color: var(--text-body);
             margin: 0;
             padding: 0;
+            overflow-x: hidden;
         }
 
         .white-theme-wrap {
             padding: 1.5rem 2rem;
             max-width: 1560px;
             margin: 0 auto;
+            box-sizing: border-box;
+            width: 100%;
         }
 
-        @media (max-width: 768px) {
-            .white-theme-wrap {
-                padding: 1rem;
-            }
-        }
-
-        /* 1. Header Banner (Clean White Theme) */
+        /* 1. Header Banner (Clean White Theme & Mobile Responsive) */
         .white-page-header {
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
@@ -409,6 +405,7 @@ foreach ($allMembersList as $mem) {
             cursor: pointer;
             box-shadow: var(--shadow-sm);
             transition: all 0.18s ease;
+            white-space: nowrap;
         }
         .btn-white:hover {
             background: #F8FAFC;
@@ -432,6 +429,7 @@ foreach ($allMembersList as $mem) {
             cursor: pointer;
             box-shadow: 0 4px 12px rgba(11, 29, 74, 0.15);
             transition: all 0.18s ease;
+            white-space: nowrap;
         }
         .btn-primary-navy:hover {
             background: var(--color-navy-hover);
@@ -447,16 +445,6 @@ foreach ($allMembersList as $mem) {
             grid-template-columns: repeat(4, 1fr);
             gap: 1rem;
             margin-bottom: 1.5rem;
-        }
-        @media (max-width: 1024px) {
-            .white-kpi-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        @media (max-width: 540px) {
-            .white-kpi-grid {
-                grid-template-columns: 1fr;
-            }
         }
 
         .kpi-card {
@@ -538,7 +526,7 @@ foreach ($allMembersList as $mem) {
             align-items: center;
             gap: 0.5rem;
             overflow-x: auto;
-            padding-bottom: 4px;
+            padding-bottom: 6px;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: thin;
         }
@@ -546,7 +534,7 @@ foreach ($allMembersList as $mem) {
             height: 5px;
         }
         .school-tabs-scroll::-webkit-scrollbar-thumb {
-            background: #E2E8F0;
+            background: #CBD5E1;
             border-radius: 9999px;
         }
 
@@ -678,6 +666,7 @@ foreach ($allMembersList as $mem) {
             font-size: 0.84rem;
             font-weight: 700;
             color: var(--text-muted);
+            white-space: nowrap;
         }
         .showing-counter-badge strong {
             color: var(--color-navy);
@@ -700,6 +689,8 @@ foreach ($allMembersList as $mem) {
             align-items: center;
             justify-content: space-between;
             background: #FAFAFA;
+            flex-wrap: wrap;
+            gap: 0.75rem;
         }
 
         .table-card-heading {
@@ -712,8 +703,16 @@ foreach ($allMembersList as $mem) {
             gap: 0.5rem;
         }
 
+        /* Responsive Viewport for Table (Exact desktop layout preserved on mobile) */
+        .table-responsive-viewport {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
         .roster-white-table {
             width: 100%;
+            min-width: 860px; /* Guarantees complete monitor layout on mobile */
             border-collapse: separate;
             border-spacing: 0;
             font-size: 0.875rem;
@@ -730,6 +729,7 @@ foreach ($allMembersList as $mem) {
             border-bottom: 1px solid var(--border-subtle);
             text-align: left;
             user-select: none;
+            white-space: nowrap;
         }
 
         .roster-white-table td {
@@ -781,6 +781,7 @@ foreach ($allMembersList as $mem) {
             color: var(--text-heading);
             font-size: 0.9rem;
             line-height: 1.25;
+            white-space: nowrap;
         }
 
         .member-email-text {
@@ -788,6 +789,7 @@ foreach ($allMembersList as $mem) {
             color: var(--text-muted);
             line-height: 1.2;
             font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap;
         }
 
         .school-tag-badge {
@@ -801,6 +803,7 @@ foreach ($allMembersList as $mem) {
             background: #EFF6FF;
             color: #1E3A8A;
             border: 1px solid #DBEAFE;
+            white-space: nowrap;
         }
 
         .mono-id-tag {
@@ -808,6 +811,7 @@ foreach ($allMembersList as $mem) {
             font-weight: 700;
             color: var(--color-navy);
             font-size: 0.82rem;
+            white-space: nowrap;
         }
 
         /* Status Pills */
@@ -820,6 +824,7 @@ foreach ($allMembersList as $mem) {
             font-size: 0.72rem;
             font-weight: 700;
             text-transform: capitalize;
+            white-space: nowrap;
         }
         .pill-status.paid, .pill-status.active {
             background: #ECFDF5;
@@ -853,6 +858,7 @@ foreach ($allMembersList as $mem) {
             cursor: pointer;
             transition: all 0.15s ease;
             box-shadow: var(--shadow-sm);
+            white-space: nowrap;
         }
         .btn-row-action:hover {
             background: var(--color-navy);
@@ -870,6 +876,107 @@ foreach ($allMembersList as $mem) {
             color: #FDE047;
         }
 
+        /* Mobile Scroll Prompt */
+        .mobile-scroll-hint {
+            display: none;
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: #64748B;
+            background: #F1F5F9;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        /* =========================================================================
+           MOBILE SPECIFIC BREAKPOINTS & ADAPTIVE STYLES
+           ========================================================================= */
+        @media (max-width: 991px) {
+            .white-theme-wrap {
+                padding: 1rem 1.25rem;
+            }
+            .white-kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.75rem;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .white-theme-wrap {
+                padding: 0.75rem;
+            }
+            .white-page-header {
+                padding: 1.15rem;
+                gap: 1rem;
+            }
+            .header-title-box {
+                gap: 0.75rem;
+            }
+            .header-icon-circle {
+                width: 44px;
+                height: 44px;
+                font-size: 1.2rem;
+            }
+            .header-main-title {
+                font-size: 1.2rem;
+            }
+            .header-btn-group {
+                width: 100%;
+                display: flex;
+                flex-direction: row;
+                gap: 0.5rem;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                padding-bottom: 4px;
+            }
+            .btn-white, .btn-primary-navy {
+                padding: 0.5rem 0.85rem;
+                font-size: 0.8rem;
+                flex-shrink: 0;
+            }
+            .white-kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.6rem;
+            }
+            .kpi-card {
+                padding: 0.85rem;
+                gap: 0.75rem;
+            }
+            .kpi-icon-pill {
+                width: 40px;
+                height: 40px;
+                font-size: 1.15rem;
+            }
+            .kpi-number {
+                font-size: 1.3rem;
+            }
+            .kpi-label {
+                font-size: 0.72rem;
+            }
+            .white-controls-card {
+                padding: 0.85rem;
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-controls-left {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.65rem;
+            }
+            .search-input-wrapper {
+                min-width: 100%;
+                max-width: 100%;
+            }
+            .select-filter-box {
+                width: 100%;
+            }
+            .filter-controls-right {
+                justify-content: space-between;
+            }
+            .mobile-scroll-hint {
+                display: inline-block;
+            }
+        }
+
         /* =========================================================================
            PROFILE INFORMATION MODAL (WHITE THEME)
            ========================================================================= */
@@ -877,12 +984,12 @@ foreach ($allMembersList as $mem) {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(15, 23, 42, 0.6);
+            background: rgba(15, 23, 42, 0.65);
             backdrop-filter: blur(4px);
             z-index: 99999;
             align-items: center;
             justify-content: center;
-            padding: 1.25rem;
+            padding: 1rem;
             animation: fadeInModal 0.2s ease;
         }
         .modal-backdrop-overlay.active {
@@ -893,7 +1000,7 @@ foreach ($allMembersList as $mem) {
             border-radius: 18px;
             width: 100%;
             max-width: 640px;
-            max-height: 92vh;
+            max-height: 90vh;
             overflow-y: auto;
             box-shadow: var(--shadow-modal);
             border: 1px solid var(--border-subtle);
@@ -998,6 +1105,20 @@ foreach ($allMembersList as $mem) {
         @media (max-width: 600px) {
             .modal-content-grid {
                 grid-template-columns: 1fr;
+                padding: 1rem;
+                gap: 0.75rem;
+            }
+            .modal-hero-profile {
+                padding: 1.15rem;
+                gap: 0.85rem;
+            }
+            .modal-avatar-lg {
+                width: 58px;
+                height: 58px;
+                font-size: 1.4rem;
+            }
+            .modal-hero-name {
+                font-size: 1.15rem;
             }
         }
 
@@ -1051,6 +1172,16 @@ foreach ($allMembersList as $mem) {
             border-bottom-left-radius: 17px;
             border-bottom-right-radius: 17px;
             flex-wrap: wrap;
+        }
+        @media (max-width: 540px) {
+            .modal-footer-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .modal-footer-bar button, .modal-footer-bar a {
+                width: 100%;
+                justify-content: center;
+            }
         }
 
         /* Digital ID Preview Card */
@@ -1223,12 +1354,15 @@ foreach ($allMembersList as $mem) {
                         <i class="fas fa-address-book" style="color:var(--color-navy);"></i>
                         <span>Student Member Ledger</span>
                     </h3>
-                    <div style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">
-                        Click <span style="background:var(--color-navy); color:#FFFFFF; padding:3px 8px; border-radius:5px; font-size:0.72rem; font-weight:800;">👁️ View</span> to inspect profile info
+                    <div style="display:flex; align-items:center; gap:0.6rem;">
+                        <span class="mobile-scroll-hint"><i class="fas fa-arrows-left-right"></i> Scroll table &rarr;</span>
+                        <div style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">
+                            Click <span style="background:var(--color-navy); color:#FFFFFF; padding:3px 8px; border-radius:5px; font-size:0.72rem; font-weight:800;">👁️ View</span> for details
+                        </div>
                     </div>
                 </div>
 
-                <div style="overflow-x:auto;">
+                <div class="table-responsive-viewport">
                     <table class="roster-white-table" id="membersMainTable">
                         <thead>
                             <tr>
