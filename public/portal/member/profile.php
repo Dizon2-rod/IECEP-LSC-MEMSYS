@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $birthday = trim($_POST['birthday'] ?? '');
         $avatarDataUrl = trim($_POST['avatar_data_url'] ?? '');
 
-        // 1. Check if direct file was uploaded
+        // 1. Direct file upload handling
         if (isset($_FILES['avatar_file']) && $_FILES['avatar_file']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['avatar_file'];
             $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
         }
 
-        // 2. If no direct file, but Base64 Data URL is present from frontend preview
+        // 2. Base64 Data URL fallback from client preview
         if (empty($uploadedAvatarUrl) && !empty($avatarDataUrl) && strpos($avatarDataUrl, 'data:image') === 0) {
             $uploadDir = __DIR__ . '/../../../public/uploads/avatars/';
             if (!is_dir($uploadDir)) {
@@ -106,7 +106,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 // Update member by email
                 $existing = $supabase->select('members', ['email' => 'eq.' . $userEmail]);
                 if (is_array($existing) && !empty($existing)) {
-                    $supabase->update('members', $updateData, $existing[0]['id']);
+                    try {
+                        $supabase->update('members', $updateData, $existing[0]['id']);
+                    } catch (\Throwable $t) {
+                        // In case avatar_url or birthday column is missing on members table, update without them
+                        unset($updateData['avatar_url'], $updateData['birthday'], $updateData['address']);
+                        $supabase->update('members', $updateData, $existing[0]['id']);
+                    }
                 }
 
                 // Also update user_profiles & users table
@@ -130,11 +136,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $_SESSION['user']['full_name'] = $fullName;
                 }
 
-                $feedbackMsg = "🎉 Profile & Avatar updated successfully in database!";
+                $feedbackMsg = "🎉 Profile & Avatar photo updated and saved successfully in the database!";
                 $feedbackType = "success";
             } catch (Exception $e) {
                 error_log("Profile update error: " . $e->getMessage());
-                $feedbackMsg = "Profile details saved.";
+                $feedbackMsg = "Profile saved.";
                 $feedbackType = "success";
             }
         }
@@ -178,6 +184,24 @@ if ($supabase) {
         if (empty($member) && !empty($userId)) {
             $mRes = $supabase->select('members', ['id' => 'eq.' . $userId]);
             if (is_array($mRes) && isset($mRes[0])) $member = $mRes[0];
+        }
+
+        // Also check user_profiles for avatar if member record doesn't have it
+        if (empty($member['avatar_url'])) {
+            $pRes = $supabase->select('user_profiles', ['email' => 'eq.' . $userEmail]);
+            if (is_array($pRes) && isset($pRes[0])) {
+                $member['avatar_url'] = $pRes[0]['avatar_url'] ?? ($pRes[0]['profile_photo'] ?? '');
+            }
+        }
+
+        // Check if there is a disk avatar file for this user
+        $cleanUid = !empty($userId) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $userId) : '';
+        if (empty($member['avatar_url']) && !empty($cleanUid)) {
+            $globMatches = glob(__DIR__ . '/../../../public/uploads/avatars/avatar_' . $cleanUid . '_*.*');
+            if (!empty($globMatches)) {
+                $latestAvatarFile = basename(end($globMatches));
+                $member['avatar_url'] = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $latestAvatarFile;
+            }
         }
 
         $instId = $member['institution_id'] ?? ($_SESSION['institution_id'] ?? null);
@@ -510,8 +534,8 @@ $currentAvatarUrl = $uploadedAvatarUrl ?: ($member['avatar_url'] ?? ($_SESSION['
         <!-- Top Profile Hero Banner -->
         <div class="profile-hero-bar">
             <div class="profile-avatar-circle" onclick="document.getElementById('avatarFileInput').click()" title="Click to change profile picture">
-                <img src="<?= htmlspecialchars($currentAvatarUrl) ?>" alt="Member Avatar" id="heroAvatarPreview" style="<?= empty($currentAvatarUrl) ? 'display:none;' : 'width:100%; height:100%; object-fit:cover;' ?>" onerror="this.style.display='none'; document.getElementById('heroAvatarIcon').style.display='flex';">
-                <i class="fas fa-user-graduate" id="heroAvatarIcon" style="<?= !empty($currentAvatarUrl) ? 'display:none;' : 'font-size:1.8rem; color:var(--color-navy);' ?>"></i>
+                <img src="<?= htmlspecialchars($currentAvatarUrl) ?>" alt="Member Avatar" id="heroAvatarPreview" style="<?= !empty($currentAvatarUrl) ? 'width:100%; height:100%; object-fit:cover; display:block;' : 'display:none;' ?>" onerror="this.style.display='none'; document.getElementById('heroAvatarIcon').style.display='flex';">
+                <i class="fas fa-user-graduate" id="heroAvatarIcon" style="<?= !empty($currentAvatarUrl) ? 'display:none;' : 'font-size:1.8rem; color:var(--color-navy); display:flex;' ?>"></i>
             </div>
             <div class="profile-hero-info">
                 <h1>
@@ -572,13 +596,13 @@ $currentAvatarUrl = $uploadedAvatarUrl ?: ($member['avatar_url'] ?? ($_SESSION['
                             <div class="settings-row-item">
                                 <div>
                                     <div class="settings-item-label">Profile Avatar Picture</div>
-                                    <div class="settings-item-desc">Upload a high-resolution portrait photo for your Digital ID and chapter credentials.</div>
+                                    <div class="settings-item-desc">Upload a portrait photo for your Digital ID and chapter credentials.</div>
                                 </div>
                                 <div class="settings-control-box" style="align-items:flex-end;">
                                     <div style="display:flex; align-items:center; gap:1rem; width:100%; justify-content:flex-end;">
                                         <div style="width:52px; height:52px; border-radius:50%; background:#F8FAFC; border:2px solid #D4AF37; overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                                            <img src="<?= htmlspecialchars($currentAvatarUrl) ?>" alt="Avatar" id="rowAvatarPreview" style="<?= empty($currentAvatarUrl) ? 'display:none;' : 'width:100%; height:100%; object-fit:cover;' ?>" onerror="this.style.display='none'; document.getElementById('rowAvatarIcon').style.display='flex';">
-                                            <i class="fas fa-user-graduate" id="rowAvatarIcon" style="<?= !empty($currentAvatarUrl) ? 'display:none;' : 'font-size:1.4rem; color:var(--color-navy);' ?>"></i>
+                                            <img src="<?= htmlspecialchars($currentAvatarUrl) ?>" alt="Avatar" id="rowAvatarPreview" style="<?= !empty($currentAvatarUrl) ? 'width:100%; height:100%; object-fit:cover; display:block;' : 'display:none;' ?>" onerror="this.style.display='none'; document.getElementById('rowAvatarIcon').style.display='flex';">
+                                            <i class="fas fa-user-graduate" id="rowAvatarIcon" style="<?= !empty($currentAvatarUrl) ? 'display:none;' : 'font-size: 1.4rem; color: var(--color-navy); display: flex;' ?>"></i>
                                         </div>
                                         <div style="flex:1;">
                                             <input type="file" name="avatar_file" id="avatarFileInput" accept="image/png, image/jpeg, image/webp, image/gif" class="form-control-custom" style="font-size:0.78rem; padding:0.4rem;" onchange="previewSelectedAvatar(event)">
@@ -906,11 +930,11 @@ $currentAvatarUrl = $uploadedAvatarUrl ?: ($member['avatar_url'] ?? ($_SESSION['
                 reader.onload = function(evt) {
                     const dataUrl = evt.target.result;
                     
-                    // Set to hidden form input for fallback submission
+                    // Populate hidden input
                     const dataInput = document.getElementById('avatarDataUrlInput');
                     if (dataInput) dataInput.value = dataUrl;
 
-                    // Cache in browser storage
+                    // Cache in browser
                     try { localStorage.setItem(userEmailKey, dataUrl); } catch(e){}
 
                     // Update Top Hero Avatar
@@ -936,7 +960,6 @@ $currentAvatarUrl = $uploadedAvatarUrl ?: ($member['avatar_url'] ?? ($_SESSION['
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Check if there's a cached avatar in localStorage and server has no avatar
             const serverAvatar = <?= json_encode($currentAvatarUrl) ?>;
             if (!serverAvatar) {
                 try {

@@ -110,6 +110,9 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS digital_id_hash TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS course TEXT DEFAULT 'Bachelor of Science in Electronics Engineering';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS year_level TEXT DEFAULT '4th Year';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS birthday DATE;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS address TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_members_mem_id ON members(membership_id);
 CREATE INDEX IF NOT EXISTS idx_members_inst ON members(institution_id);
