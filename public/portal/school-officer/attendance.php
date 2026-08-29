@@ -100,7 +100,7 @@ if ($supabase && !empty($selectedEventId)) {
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
@@ -755,15 +755,37 @@ if ($supabase && !empty($selectedEventId)) {
 
         function renderQrCode(qrDataString) {
             const container = document.getElementById('liveQrContainer');
+            if (!container) return;
             container.innerHTML = '';
-            qrCodeInstance = new QRCode(container, {
-                text: qrDataString,
-                width: 200,
-                height: 200,
-                colorDark: "#0B1D4A",
-                colorLight: "#FFFFFF",
-                correctLevel: QRCode.CorrectLevel.M
-            });
+            
+            let rendered = false;
+            if (typeof QRCode !== 'undefined') {
+                try {
+                    new QRCode(container, {
+                        text: qrDataString,
+                        width: 200,
+                        height: 200,
+                        colorDark: "#0B1D4A",
+                        colorLight: "#FFFFFF",
+                        correctLevel: QRCode.CorrectLevel.M
+                    });
+                    rendered = true;
+                } catch (e) {
+                    console.warn("QRCodeJS instance failed, falling back to image renderer:", e);
+                }
+            }
+
+            if (!rendered) {
+                const encoded = encodeURIComponent(qrDataString);
+                const img = document.createElement('img');
+                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encoded}&color=0B1D4A`;
+                img.alt = "Dynamic Attendance QR Code";
+                img.style.width = "200px";
+                img.style.height = "200px";
+                img.style.display = "block";
+                img.style.borderRadius = "8px";
+                container.appendChild(img);
+            }
         }
 
         function updateQrTimer() {

@@ -46,7 +46,7 @@ $realMemberId = $member['id'] ?? $member_id;
 <head>
     <?php require_once __DIR__ . '/../../../includes/head-meta.php'; ?>
     <title>My Dynamic Digital ID - Member Portal</title>
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         .digital-id-card {
             background: linear-gradient(135deg, #0B1D4A 0%, #152C6E 100%);
@@ -215,23 +215,52 @@ $realMemberId = $member['id'] ?? $member_id;
 
         async function fetchAndRenderMemberQr() {
             try {
-                const res = await fetch(`/IECEP-LSC-MEMSYS/public/api/events/attendance.php?action=generate_member_qr&member_id=${encodeURIComponent(realMemberId)}`);
+                const res = await fetch(`/IECEP-LSC-MEMSYS/public/api/events/attendance.php?action=generate_member_qr&member_id=${encodeURIComponent(realMemberId || 'mem_default')}`);
                 const data = await res.json();
                 if (data.success) {
                     memberQrSecondsLeft = data.seconds_left || 30;
-                    const container = document.getElementById('dynamicMemberQr');
-                    container.innerHTML = '';
+                    renderMemberQrCode(data.qr_data);
+                } else {
+                    renderMemberQrCode(JSON.stringify({ member_id: realMemberId, type: 'member_id_qr', timestamp: Date.now() }));
+                }
+            } catch (err) {
+                console.error("Error generating dynamic member QR:", err);
+                renderMemberQrCode(JSON.stringify({ member_id: realMemberId, type: 'member_id_qr', timestamp: Date.now() }));
+            }
+        }
+
+        function renderMemberQrCode(qrDataString) {
+            const container = document.getElementById('dynamicMemberQr');
+            if (!container) return;
+            container.innerHTML = '';
+
+            let rendered = false;
+            if (typeof QRCode !== 'undefined') {
+                try {
                     new QRCode(container, {
-                        text: data.qr_data,
+                        text: qrDataString,
                         width: 140,
                         height: 140,
                         colorDark: "#0B1D4A",
                         colorLight: "#FFFFFF",
                         correctLevel: QRCode.CorrectLevel.M
                     });
+                    rendered = true;
+                } catch(e) {
+                    console.warn("QRCodeJS instance failed, falling back to image renderer:", e);
                 }
-            } catch (err) {
-                console.error("Error generating dynamic member QR:", err);
+            }
+
+            if (!rendered) {
+                const encoded = encodeURIComponent(qrDataString);
+                const img = document.createElement('img');
+                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encoded}&color=0B1D4A`;
+                img.alt = "Member Digital ID QR";
+                img.style.width = "140px";
+                img.style.height = "140px";
+                img.style.display = "block";
+                img.style.borderRadius = "8px";
+                container.appendChild(img);
             }
         }
 
