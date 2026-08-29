@@ -86,6 +86,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 $members = [];
 $paidCount = 0;
 $pendingCount = 0;
+$yearCounts = [
+    'all' => 0,
+    '1st' => 0,
+    '2nd' => 0,
+    '3rd' => 0,
+    '4th' => 0,
+];
 
 if ($supabase && $institutionId) {
     try {
@@ -95,10 +102,17 @@ if ($supabase && $institutionId) {
         ]);
         if (is_array($res) && !isset($res['code'])) {
             $members = $res;
+            $yearCounts['all'] = count($members);
             foreach ($members as $m) {
                 $isPaid = strtolower($m['payment_status'] ?? '') === 'paid' || !empty($m['is_paid']);
                 if ($isPaid) $paidCount++;
                 else $pendingCount++;
+
+                $yr = strtolower(trim($m['year_level'] ?? ''));
+                if (strpos($yr, '1') !== false) $yearCounts['1st']++;
+                elseif (strpos($yr, '2') !== false) $yearCounts['2nd']++;
+                elseif (strpos($yr, '3') !== false) $yearCounts['3rd']++;
+                elseif (strpos($yr, '4') !== false) $yearCounts['4th']++;
             }
         }
     } catch (Exception $e) {
@@ -112,7 +126,7 @@ if ($supabase && $institutionId) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
-    <meta name="description" content="Chapter student membership roster, verification, and records ledger.">
+    <meta name="description" content="Chapter student membership roster categorized by academic year level and school standing.">
     <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -125,6 +139,7 @@ if ($supabase && $institutionId) {
             --color-gold: #D4AF37;
             --color-emerald: #059669;
             --color-amber: #D97706;
+            --color-purple: #7C3AED;
             --bg-page: #F8FAFC;
             --border-color: #E2E8F0;
             --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
@@ -171,21 +186,6 @@ if ($supabase && $institutionId) {
             margin: 0;
             font-size: 0.8rem;
             color: #64748B;
-        }
-
-        .mobile-toggle-btn {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            background: #F1F5F9;
-            border: 1px solid var(--border-color);
-            color: var(--color-navy);
-            font-size: 1rem;
-            cursor: pointer;
-            flex-shrink: 0;
         }
 
         .btn-white {
@@ -261,8 +261,8 @@ if ($supabase && $institutionId) {
         }
         .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
         .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
-        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
         .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
 
         .kpi-val {
             font-size: 1.25rem;
@@ -276,6 +276,80 @@ if ($supabase && $institutionId) {
             color: #64748B;
             margin-top: 1px;
         }
+
+        /* Category Tabs Bar */
+        .category-filter-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.6rem 0.85rem;
+            margin-bottom: 0.85rem;
+            box-shadow: var(--shadow-card);
+        }
+        .cat-pills-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+        }
+        .cat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.75rem;
+            border-radius: 8px;
+            border: 1px solid #E2E8F0;
+            background: #FFFFFF;
+            color: #475569;
+            font-size: 0.75rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            user-select: none;
+        }
+        .cat-pill:hover {
+            background: #F1F5F9;
+            color: #0F172A;
+            border-color: #CBD5E1;
+        }
+        .cat-pill.active {
+            background: var(--color-navy);
+            color: #FFFFFF;
+            border-color: var(--color-navy);
+            box-shadow: 0 2px 6px rgba(11, 29, 74, 0.2);
+        }
+        .cat-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.1rem 0.45rem;
+            border-radius: 12px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            background: rgba(0, 0, 0, 0.08);
+            color: inherit;
+        }
+        .cat-pill.active .cat-count {
+            background: rgba(255, 255, 255, 0.25);
+            color: #FFFFFF;
+        }
+
+        /* Year Badges */
+        .year-pill-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.2rem 0.55rem;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+        }
+        .year-pill-badge.yr-1 { background: #EFF6FF; color: #1D4ED8; border: 1px solid #DBEAFE; }
+        .year-pill-badge.yr-2 { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
+        .year-pill-badge.yr-3 { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
+        .year-pill-badge.yr-4 { background: #F5F3FF; color: #6D28D9; border: 1px solid #DDD6FE; }
+        .year-pill-badge.yr-5 { background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }
+        .year-pill-badge.yr-other { background: #F1F5F9; color: #475569; border: 1px solid #E2E8F0; }
 
         .white-controls-card {
             background: #FFFFFF;
@@ -346,6 +420,19 @@ if ($supabase && $institutionId) {
             vertical-align: middle;
         }
 
+        .school-badge-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.2rem 0.55rem;
+            border-radius: 6px;
+            background: #EFF6FF;
+            color: #1E40AF;
+            font-weight: 700;
+            font-size: 0.72rem;
+            border: 1px solid #DBEAFE;
+        }
+
         .doc-modal {
             display: none;
             position: fixed;
@@ -370,7 +457,6 @@ if ($supabase && $institutionId) {
 
         @media (max-width: 1024px) {
             .main-content { margin-left: 0; padding: 0.85rem; }
-            .mobile-toggle-btn { display: inline-flex; }
             .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
         }
 
@@ -399,7 +485,7 @@ if ($supabase && $institutionId) {
                             <?= htmlspecialchars($schoolName) ?> — Student Roster
                         </h1>
                         <p class="dash-header-sub">
-                            Official chapter membership directory, academic standings, and digital verification statuses.
+                            Categorized chapter student directory, academic year standings, and digital verification statuses.
                         </p>
                     </div>
                 </div>
@@ -429,7 +515,7 @@ if ($supabase && $institutionId) {
                     <div class="kpi-icon-pill navy"><i class="fas fa-id-badge"></i></div>
                     <div>
                         <div class="kpi-val"><?= count($members) ?></div>
-                        <div class="kpi-lbl">Total Registered Members</div>
+                        <div class="kpi-lbl">Total Members</div>
                     </div>
                 </div>
 
@@ -458,18 +544,47 @@ if ($supabase && $institutionId) {
                 </div>
             </div>
 
-            <!-- 3. Search & Filter Bar -->
+            <!-- 3. Categorization by Year Level -->
+            <div class="category-filter-card">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.45rem; flex-wrap:wrap; gap:0.5rem;">
+                    <div style="font-size:0.78rem; font-weight:800; color:#0F172A; display:flex; align-items:center; gap:0.4rem;">
+                        <i class="fas fa-graduation-cap" style="color:var(--color-navy);"></i> Categorize by Academic Year Level:
+                    </div>
+                    <div style="font-size:0.72rem; color:#64748B;">
+                        Affiliated Chapter: <strong><?= htmlspecialchars($schoolName) ?></strong>
+                    </div>
+                </div>
+                <div class="cat-pills-wrap">
+                    <button type="button" class="cat-pill active" onclick="setYearFilter('all', this)">
+                        <i class="fas fa-layer-group"></i> All Years <span class="cat-count"><?= $yearCounts['all'] ?></span>
+                    </button>
+                    <button type="button" class="cat-pill" onclick="setYearFilter('1st', this)">
+                        <i class="fas fa-dice-one" style="color:#2563EB;"></i> 1st Year <span class="cat-count"><?= $yearCounts['1st'] ?></span>
+                    </button>
+                    <button type="button" class="cat-pill" onclick="setYearFilter('2nd', this)">
+                        <i class="fas fa-dice-two" style="color:#059669;"></i> 2nd Year <span class="cat-count"><?= $yearCounts['2nd'] ?></span>
+                    </button>
+                    <button type="button" class="cat-pill" onclick="setYearFilter('3rd', this)">
+                        <i class="fas fa-dice-three" style="color:#D97706;"></i> 3rd Year <span class="cat-count"><?= $yearCounts['3rd'] ?></span>
+                    </button>
+                    <button type="button" class="cat-pill" onclick="setYearFilter('4th', this)">
+                        <i class="fas fa-dice-four" style="color:#7C3AED;"></i> 4th Year <span class="cat-count"><?= $yearCounts['4th'] ?></span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 4. Search & Controls Bar -->
             <div class="white-controls-card">
                 <div style="position:relative; flex:1; max-width:380px;">
                     <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94A3B8; font-size:0.8rem;"></i>
                     <input type="text" id="memberSearchInput" class="search-input-field" placeholder="Search student name, email, student #, ID..." onkeyup="filterMembersTable()">
                 </div>
                 <div style="font-size:0.75rem; font-weight:700; color:#64748B;">
-                    Showing <?= count($members) ?> student members
+                    Showing <strong id="visibleMemberCount" style="color:var(--color-navy);"><?= count($members) ?></strong> of <?= count($members) ?> student members
                 </div>
             </div>
 
-            <!-- 4. Table -->
+            <!-- 5. Members Table -->
             <div class="ap-card">
                 <div class="ap-card-header">
                     <h3 class="ap-card-title"><i class="fas fa-address-book"></i> Chapter Student Member Directory</h3>
@@ -479,16 +594,17 @@ if ($supabase && $institutionId) {
                         <thead>
                             <tr>
                                 <th>Student Particulars</th>
+                                <th>School & Program</th>
                                 <th>Student Number</th>
                                 <th>Membership ID</th>
-                                <th>Year Level</th>
+                                <th>Academic Year</th>
                                 <th>Payment Status</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($members)): ?>
                                 <tr>
-                                    <td colspan="5" style="text-align:center; padding:2.5rem; color:#64748B;">
+                                    <td colspan="6" style="text-align:center; padding:2.5rem; color:#64748B;">
                                         <i class="fas fa-users-slash" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
                                         <strong style="color:#0F172A; font-size:0.92rem;">No Registered Chapter Members Found in Database</strong>
                                         <p style="margin:0.25rem 0 0; font-size:0.78rem;">Click "+ Add Student Member" or "Batch Upload" to populate your school chapter directory.</p>
@@ -498,11 +614,27 @@ if ($supabase && $institutionId) {
                                 <?php foreach ($members as $m): ?>
                                     <?php 
                                         $paid = strtolower($m['payment_status'] ?? '') === 'paid' || !empty($m['is_paid']);
+                                        $yrRaw = $m['year_level'] ?? '3rd Year';
+                                        $yrLower = strtolower($yrRaw);
+                                        $yrClass = 'yr-other';
+                                        if (strpos($yrLower, '1') !== false) $yrClass = 'yr-1';
+                                        elseif (strpos($yrLower, '2') !== false) $yrClass = 'yr-2';
+                                        elseif (strpos($yrLower, '3') !== false) $yrClass = 'yr-3';
+                                        elseif (strpos($yrLower, '4') !== false) $yrClass = 'yr-4';
+                                        elseif (strpos($yrLower, '5') !== false) $yrClass = 'yr-5';
                                     ?>
-                                    <tr>
+                                    <tr class="member-table-row" data-year="<?= htmlspecialchars($yrLower) ?>">
                                         <td>
                                             <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($m['full_name'] ?? 'Student') ?></strong><br>
                                             <span style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars($m['email'] ?? '') ?></span>
+                                        </td>
+                                        <td>
+                                            <span class="school-badge-tag">
+                                                <i class="fas fa-building-columns"></i> <?= htmlspecialchars($schoolName) ?>
+                                            </span>
+                                            <div style="font-size:0.7rem; color:#64748B; margin-top:2px;">
+                                                <?= htmlspecialchars($m['course'] ?? 'BS Electronics Engineering') ?>
+                                            </div>
                                         </td>
                                         <td style="font-family:'JetBrains Mono', monospace; font-size:0.76rem; color:#334155;">
                                             <?= htmlspecialchars($m['student_number'] ?? 'N/A') ?>
@@ -510,8 +642,10 @@ if ($supabase && $institutionId) {
                                         <td style="font-family:'JetBrains Mono', monospace; font-size:0.76rem; color:var(--color-navy); font-weight:700;">
                                             <?= htmlspecialchars($m['membership_id'] ?? 'Pending') ?>
                                         </td>
-                                        <td style="color:#64748B; font-size:0.75rem;">
-                                            <?= htmlspecialchars($m['year_level'] ?? 'N/A') ?>
+                                        <td>
+                                            <span class="year-pill-badge <?= $yrClass ?>">
+                                                <i class="fas fa-graduation-cap"></i> <?= htmlspecialchars($yrRaw) ?>
+                                            </span>
                                         </td>
                                         <td>
                                             <?php if ($paid): ?>
@@ -554,13 +688,12 @@ if ($supabase && $institutionId) {
                         <input type="text" name="student_number" class="ap-input" placeholder="2023-00123" style="font-size:0.8rem;">
                     </div>
                     <div class="ap-form-group">
-                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Year Level</label>
+                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Academic Year Level</label>
                         <select name="year_level" class="ap-input" style="font-size:0.8rem;">
                             <option value="1st Year">1st Year</option>
                             <option value="2nd Year">2nd Year</option>
-                            <option value="3rd Year">3rd Year</option>
+                            <option value="3rd Year" selected>3rd Year</option>
                             <option value="4th Year">4th Year</option>
-                            <option value="5th Year">5th Year</option>
                         </select>
                     </div>
                 </div>
@@ -580,6 +713,8 @@ if ($supabase && $institutionId) {
     </div>
 
     <script>
+        let currentYearFilter = 'all';
+
         function openMemberModal() {
             document.getElementById('memberModal').classList.add('active');
         }
@@ -587,17 +722,35 @@ if ($supabase && $institutionId) {
             document.getElementById('memberModal').classList.remove('active');
         }
 
-        function filterMembersTable() {
-            const query = document.getElementById('memberSearchInput').value.toLowerCase();
-            const table = document.getElementById('membersTable');
-            const trs = table.getElementsByTagName('tr');
+        function setYearFilter(year, btn) {
+            currentYearFilter = year.toLowerCase();
+            document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            filterMembersTable();
+        }
 
-            for (let i = 1; i < trs.length; i++) {
-                const tr = trs[i];
-                if (tr.children.length === 1 && tr.children[0].getAttribute('colspan')) continue;
+        function filterMembersTable() {
+            const query = (document.getElementById('memberSearchInput').value || '').toLowerCase().trim();
+            const rows = document.querySelectorAll('.member-table-row');
+            let visibleCount = 0;
+
+            rows.forEach(tr => {
                 const text = tr.textContent.toLowerCase();
-                tr.style.display = (text.indexOf(query) > -1) ? '' : 'none';
-            }
+                const rowYear = (tr.getAttribute('data-year') || '').toLowerCase();
+
+                const matchesQuery = !query || text.indexOf(query) > -1;
+                const matchesYear = (currentYearFilter === 'all') || (rowYear.indexOf(currentYearFilter) > -1);
+
+                if (matchesQuery && matchesYear) {
+                    tr.style.display = '';
+                    visibleCount++;
+                } else {
+                    tr.style.display = 'none';
+                }
+            });
+
+            const counterEl = document.getElementById('visibleMemberCount');
+            if (counterEl) counterEl.textContent = visibleCount;
         }
 
         // Export to Excel

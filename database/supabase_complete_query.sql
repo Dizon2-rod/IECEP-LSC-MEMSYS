@@ -314,21 +314,26 @@ CREATE TABLE IF NOT EXISTS fee_brackets (
 );
 
 -- =====================================================================
--- SEED DATA: OFFICIAL LAGUNA HEI CHAPTERS (All 8 Campuses)
+-- SEED DATA: OFFICIAL LAGUNA HEI CHAPTERS (All 8 Official Campuses)
 -- =====================================================================
-INSERT INTO institutions (id, email, name, acronym, type, province, status, compliance_status, membership_count)
+INSERT INTO institutions (id, email, name, acronym, type, address, city, province, contact_email, facebook_url, status, compliance_status, membership_count)
 VALUES
-    ('1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'lspu.scc@iecep-lsc.org', 'Laguna State Polytechnic University - Santa Cruz Campus', 'LSPU - SCC', 'university', 'Laguna', 'active', 'compliant', 150),
-    ('3c6f8a12-9844-48f6-b11c-99d9b626e5a1', 'lspu.spcc@iecep-lsc.org', 'Laguna State Polytechnic University - San Pablo City Campus', 'LSPU - SPCC', 'university', 'Laguna', 'active', 'compliant', 120),
-    ('7d8e9f01-1234-4567-89ab-cdef01234567', 'mmcl@iecep-lsc.org', 'Mapúa Malayan Colleges Laguna', 'MMCL', 'college', 'Laguna', 'active', 'compliant', 110),
-    ('a1b2c3d4-e5f6-7890-abcd-ef1234567890', 'dlsu.laguna@iecep-lsc.org', 'De La Salle University - Laguna Campus', 'DLSU - Laguna', 'university', 'Laguna', 'active', 'compliant', 85),
-    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'letran.calamba@iecep-lsc.org', 'Colegio de San Juan de Letran - Calamba', 'Letran - Calamba', 'college', 'Laguna', 'active', 'compliant', 95),
-    ('c3d4e5f6-a7b8-9012-cdef-123456789012', 'pup.starosa@iecep-lsc.org', 'Polytechnic University of the Philippines - Santa Rosa Campus', 'PUP - Santa Rosa', 'university', 'Laguna', 'active', 'compliant', 130),
-    ('d4e5f6a7-b8c9-0123-def1-234567890123', 'uphsd.calamba@iecep-lsc.org', 'University of Perpetual Help System DALTA - Calamba', 'UPHSD - Calamba', 'university', 'Laguna', 'active', 'compliant', 75),
-    ('e5f6a7b8-c9d0-1234-ef12-345678901234', 'uphsl.binan@iecep-lsc.org', 'University of Perpetual Help System Laguna - Biñan', 'UPHSL - Biñan', 'university', 'Laguna', 'active', 'compliant', 90)
-ON CONFLICT (email) DO UPDATE SET
+    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'ecelss@letran-calamba.edu.ph', 'Colegio de San Juan de Letran - Calamba', 'Letran - Calamba', 'college', 'Colegio de San Juan de Letran, Calamba, Philippines, 4027', 'Calamba', 'Laguna', 'ecelss@letran-calamba.edu.ph', 'https://www.facebook.com/ECELSSrocks', 'active', 'compliant', 95),
+    ('3c6f8a12-9844-48f6-b11c-99d9b626e5a1', 'afece_spc@lspu.edu.ph', 'Laguna State Polytechnic University - San Pablo City Campus', 'LSPU - SPCC', 'university', 'San Pablo City, Philippines, 4000', 'San Pablo City', 'Laguna', 'afece_spc@lspu.edu.ph', 'https://www.facebook.com/LSPUAFECE', 'active', 'compliant', 120),
+    ('7d8e9f01-1234-4567-89ab-cdef01234567', 'iecepmmcl@gmail.com', 'Mapúa Malayan Colleges Laguna', 'MMCL', 'college', 'Pulo, Cabuyao, Philippines, 4025', 'Cabuyao', 'Laguna', 'iecepmmcl@gmail.com', 'https://www.facebook.com/iecepmmcl', 'active', 'compliant', 110),
+    ('4d5e6f7a-8b9c-0123-def4-567890123456', 'jieceppnc@gmail.com', 'University of Cabuyao (Pamantasan ng Cabuyao)', 'PnC', 'university', 'Cabuyao, Philippines, 4025', 'Cabuyao', 'Laguna', 'jieceppnc@gmail.com', 'https://www.facebook.com/jiecep.pnc.official', 'active', 'compliant', 85),
+    ('c3d4e5f6-a7b8-9012-cdef-123456789012', 'officialaeces.pupsrc@gmail.com', 'Polytechnic University of the Philippines - Santa Rosa Campus', 'PUP - Santa Rosa', 'university', 'Room 3-4, PUP-Sta. Rosa, Barangay Tagapo, Santa Rosa, Philippines, 4026', 'Santa Rosa', 'Laguna', 'officialaeces.pupsrc@gmail.com', 'https://www.facebook.com/OfficialAECES', 'active', 'compliant', 130),
+    ('e5f6a7b8-c9d0-1234-ef12-345678901234', 'uphsl.pieces@gmail.com', 'University of Perpetual Help System Laguna – Biñan Campus', 'UPHSL - Biñan', 'university', 'National Hi-way, Brgy. Sto. Niño, Biñan, Philippines, 4024', 'Biñan', 'Laguna', 'uphsl.pieces@gmail.com', 'https://www.facebook.com/uphslpieces', 'active', 'compliant', 90),
+    ('d4e5f6a7-b8c9-0123-def1-234567890123', 'pieces.uphsd@gmail.com', 'University of Perpetual Help System DALTA - Calamba Campus', 'UPHSD - Calamba', 'university', 'Calamba, Philippines, 4027', 'Calamba', 'Laguna', 'pieces.uphsd@gmail.com', 'https://www.facebook.com/eceperpslp.org', 'active', 'compliant', 75),
+    ('1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'official.lspusccecess@gmail.com', 'Laguna State Polytechnic University - Santa Cruz Campus', 'LSPU - SCC', 'university', 'Santa Cruz National High-way, Brgy. Bubukal, Santa Cruz, Laguna', 'Santa Cruz', 'Laguna', 'official.lspusccecess@gmail.com', 'https://www.facebook.com/LSPUSCCECESS', 'active', 'compliant', 150)
+ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
     name = EXCLUDED.name,
     acronym = EXCLUDED.acronym,
+    address = EXCLUDED.address,
+    city = EXCLUDED.city,
+    facebook_url = EXCLUDED.facebook_url,
+    contact_email = EXCLUDED.contact_email,
     compliance_status = EXCLUDED.compliance_status,
     membership_count = EXCLUDED.membership_count;
 

@@ -290,10 +290,30 @@ try {
     error_log("Database members fetch error: " . $e->getMessage());
 }
 
-// Calculations
+// Calculations & Categorization Breakdown
 $totalMembers = count($allMembersList);
 $paidMembers = count(array_filter($allMembersList, fn($m) => ($m['payment_status'] ?? '') === 'paid' || ($m['payment_status'] ?? '') === 'active'));
 $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership_id'])));
+
+$schoolMemberCounts = [];
+$yearLevelMemberCounts = [
+    'all' => $totalMembers,
+    '1st' => 0,
+    '2nd' => 0,
+    '3rd' => 0,
+    '4th' => 0,
+];
+
+foreach ($allMembersList as $mem) {
+    $inst = $mem['institution_id'] ?? 'other';
+    $schoolMemberCounts[$inst] = ($schoolMemberCounts[$inst] ?? 0) + 1;
+
+    $yr = strtolower(trim($mem['year_level'] ?? ''));
+    if (strpos($yr, '1') !== false) $yearLevelMemberCounts['1st']++;
+    elseif (strpos($yr, '2') !== false) $yearLevelMemberCounts['2nd']++;
+    elseif (strpos($yr, '3') !== false) $yearLevelMemberCounts['3rd']++;
+    elseif (strpos($yr, '4') !== false) $yearLevelMemberCounts['4th']++;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -524,6 +544,91 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
+        /* Categorization Bar & Pills */
+        .category-filter-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 0.65rem 0.95rem;
+            margin-bottom: 0.75rem;
+            box-shadow: var(--shadow-card);
+        }
+        .cat-group-header {
+            font-size: 0.76rem;
+            font-weight: 800;
+            color: var(--text-heading);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-bottom: 0.45rem;
+        }
+        .cat-pills-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+        }
+        .cat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.38rem;
+            padding: 0.32rem 0.68rem;
+            border-radius: 8px;
+            border: 1px solid #E2E8F0;
+            background: #FFFFFF;
+            color: #475569;
+            font-size: 0.74rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .cat-pill:hover {
+            background: #F1F5F9;
+            color: #0F172A;
+            border-color: #CBD5E1;
+        }
+        .cat-pill.active {
+            background: var(--color-navy);
+            color: #FFFFFF !important;
+            border-color: var(--color-navy);
+            box-shadow: 0 2px 6px rgba(11, 29, 74, 0.2);
+        }
+        .cat-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.1rem 0.4rem;
+            border-radius: 10px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            background: rgba(0, 0, 0, 0.08);
+            color: inherit;
+        }
+        .cat-pill.active .cat-count {
+            background: rgba(255, 255, 255, 0.25);
+            color: #FFFFFF;
+        }
+
+        /* Year Level Badges */
+        .year-pill-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.2rem 0.55rem;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .year-pill-badge.yr-1 { background: #EFF6FF; color: #1D4ED8; border: 1px solid #DBEAFE; }
+        .year-pill-badge.yr-2 { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
+        .year-pill-badge.yr-3 { background: #FEF3C7; color: #B45309; border: 1px solid #FDE68A; }
+        .year-pill-badge.yr-4 { background: #F5F3FF; color: #6D28D9; border: 1px solid #DDD6FE; }
+        .year-pill-badge.yr-5 { background: #FFFBEB; color: #92400E; border: 1px solid #FDE68A; }
+        .year-pill-badge.yr-other { background: #F1F5F9; color: #475569; border: 1px solid #E2E8F0; }
 
         /* 3. Filter & Search Controls Bar - Compact Single Row on Desktop */
         .white-controls-card {
@@ -1417,6 +1522,52 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                 </div>
             </div>
 
+            <!-- 2.5 Categorization Section (School & Academic Year Breakdowns) -->
+            <div class="category-filter-card">
+                <!-- School Campus Tabs -->
+                <div class="cat-group-header">
+                    <i class="fas fa-building-columns" style="color:var(--color-navy);"></i> Categorize by Enrolled Higher Education Institution (School):
+                </div>
+                <div class="cat-pills-wrap" style="margin-bottom:0.75rem;">
+                    <button type="button" class="cat-pill active school-cat-pill" onclick="setAdminSchoolFilter('all', this)">
+                        <i class="fas fa-layer-group"></i> All Universities <span class="cat-count"><?= $totalMembers ?></span>
+                    </button>
+                    <?php foreach ($schoolNamesMap as $sId => $sData): ?>
+                        <?php $sCount = $schoolMemberCounts[$sId] ?? 0; ?>
+                        <button type="button" class="cat-pill school-cat-pill" onclick="setAdminSchoolFilter('<?= htmlspecialchars($sId) ?>', this)">
+                            <i class="fas fa-school" style="color:#2563EB;"></i> <?= htmlspecialchars($sData['acronym']) ?> 
+                            <span class="cat-count"><?= $sCount ?></span>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+
+                <!-- Academic Year Level Tabs -->
+                <div class="cat-group-header" style="border-top:1px solid #F1F5F9; padding-top:0.6rem;">
+                    <i class="fas fa-graduation-cap" style="color:#D4AF37;"></i> Categorize by Academic Year Level:
+                </div>
+                <div class="cat-pills-wrap">
+                    <button type="button" class="cat-pill active year-cat-pill" onclick="setAdminYearFilter('all', this)">
+                        <i class="fas fa-layer-group"></i> All Years <span class="cat-count"><?= $yearLevelMemberCounts['all'] ?></span>
+                    </button>
+                    <button type="button" class="cat-pill year-cat-pill" onclick="setAdminYearFilter('1st', this)">
+                        <span class="year-pill-badge yr-1" style="padding:0.1rem 0.4rem; font-size:0.68rem;">1st Year</span>
+                        <span class="cat-count"><?= $yearLevelMemberCounts['1st'] ?></span>
+                    </button>
+                    <button type="button" class="cat-pill year-cat-pill" onclick="setAdminYearFilter('2nd', this)">
+                        <span class="year-pill-badge yr-2" style="padding:0.1rem 0.4rem; font-size:0.68rem;">2nd Year</span>
+                        <span class="cat-count"><?= $yearLevelMemberCounts['2nd'] ?></span>
+                    </button>
+                    <button type="button" class="cat-pill year-cat-pill" onclick="setAdminYearFilter('3rd', this)">
+                        <span class="year-pill-badge yr-3" style="padding:0.1rem 0.4rem; font-size:0.68rem;">3rd Year</span>
+                        <span class="cat-count"><?= $yearLevelMemberCounts['3rd'] ?></span>
+                    </button>
+                    <button type="button" class="cat-pill year-cat-pill" onclick="setAdminYearFilter('4th', this)">
+                        <span class="year-pill-badge yr-4" style="padding:0.1rem 0.4rem; font-size:0.68rem;">4th Year</span>
+                        <span class="cat-count"><?= $yearLevelMemberCounts['4th'] ?></span>
+                    </button>
+                </div>
+            </div>
+
             <!-- 3. Search and Filter Bar -->
             <div class="white-controls-card">
                 <div class="filter-controls-left">
@@ -1444,7 +1595,6 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                         <option value="2nd Year">2nd Year</option>
                         <option value="3rd Year">3rd Year</option>
                         <option value="4th Year">4th Year</option>
-                        <option value="5th Year">5th Year</option>
                     </select>
                 </div>
 
@@ -1571,8 +1721,19 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                                             </span>
                                         </td>
                                         <td class="col-program">
-                                            <strong style="color:var(--text-heading); font-size:0.82rem;"><?= htmlspecialchars($yr) ?></strong>
-                                            <div style="font-size:0.72rem; color:var(--text-muted);"><?= htmlspecialchars($prog) ?></div>
+                                            <?php 
+                                                $yrLower = strtolower($yr);
+                                                $yrBadgeClass = 'yr-other';
+                                                if (strpos($yrLower, '1') !== false) $yrBadgeClass = 'yr-1';
+                                                elseif (strpos($yrLower, '2') !== false) $yrBadgeClass = 'yr-2';
+                                                elseif (strpos($yrLower, '3') !== false) $yrBadgeClass = 'yr-3';
+                                                elseif (strpos($yrLower, '4') !== false) $yrBadgeClass = 'yr-4';
+                                                elseif (strpos($yrLower, '5') !== false) $yrBadgeClass = 'yr-5';
+                                            ?>
+                                            <span class="year-pill-badge <?= $yrBadgeClass ?>">
+                                                <i class="fas fa-graduation-cap"></i> <?= htmlspecialchars($yr) ?>
+                                            </span>
+                                            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;"><?= htmlspecialchars($prog) ?></div>
                                         </td>
                                         <td class="col-status">
                                             <?php if ($pStatus === 'paid' || $pStatus === 'active'): ?>
@@ -1842,7 +2003,6 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                             <option value="2nd Year">2nd Year</option>
                             <option value="3rd Year">3rd Year</option>
                             <option value="4th Year">4th Year</option>
-                            <option value="5th Year">5th Year</option>
                         </select>
                     </div>
                     <div class="ap-form-group">
@@ -1928,7 +2088,6 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                             <option value="2nd Year">2nd Year</option>
                             <option value="3rd Year" selected>3rd Year</option>
                             <option value="4th Year">4th Year</option>
-                            <option value="5th Year">5th Year</option>
                         </select>
                     </div>
                 </div>
@@ -1963,10 +2122,32 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
     <!-- Client-side Scripts -->
     <script>
         let currentSelectedSchool = 'all';
+        let currentSelectedYear = 'all';
 
-        // On School Dropdown Change
+        // On School Dropdown / Tab Change
         function onSchoolDropdownChange(schoolId) {
             currentSelectedSchool = schoolId;
+            document.querySelectorAll('.school-cat-pill').forEach(p => p.classList.remove('active'));
+            applyFilters();
+        }
+
+        function setAdminSchoolFilter(schoolId, btn) {
+            currentSelectedSchool = schoolId;
+            document.querySelectorAll('.school-cat-pill').forEach(p => p.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            const sel = document.getElementById('schoolDropdownFilter');
+            if (sel) sel.value = schoolId;
+            applyFilters();
+        }
+
+        function setAdminYearFilter(yearVal, btn) {
+            currentSelectedYear = yearVal.toLowerCase();
+            document.querySelectorAll('.year-cat-pill').forEach(p => p.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            const sel = document.getElementById('yearLevelFilter');
+            if (sel) {
+                sel.value = (yearVal === 'all') ? 'all' : (yearVal.toUpperCase().includes('YEAR') ? yearVal : yearVal + ' Year');
+            }
             applyFilters();
         }
 
@@ -1974,7 +2155,9 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         function applyFilters() {
             const query = (document.getElementById('memberSearchInput').value || '').toLowerCase().trim();
             const statusVal = (document.getElementById('statusFilter').value || 'all').toLowerCase();
-            const yearVal = (document.getElementById('yearLevelFilter').value || 'all').toLowerCase();
+            const yearDropdownVal = (document.getElementById('yearLevelFilter').value || 'all').toLowerCase();
+            const effectiveYear = (currentSelectedYear !== 'all') ? currentSelectedYear : yearDropdownVal;
+
             const rows = document.querySelectorAll('.member-row');
             let visibleCount = 0;
 
@@ -1986,7 +2169,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
 
                 const matchesSchool = (currentSelectedSchool === 'all' || rowSchool === currentSelectedSchool);
                 const matchesStatus = (statusVal === 'all' || rowStatus === statusVal);
-                const matchesYear = (yearVal === 'all' || rowYear.includes(yearVal));
+                const matchesYear = (effectiveYear === 'all' || rowYear.includes(effectiveYear));
                 const matchesQuery = (!query || rowSearch.includes(query));
 
                 if (matchesSchool && matchesStatus && matchesYear && matchesQuery) {

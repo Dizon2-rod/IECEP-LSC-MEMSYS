@@ -267,72 +267,54 @@ require_once __DIR__ . '/bootstrap.php';
         <!-- Overview Statement Box -->
         <section class="overview-box">
             <div class="overview-text-wrap">
-                <h2>Institutional Charter &amp; Commitment</h2>
-                <p>
-                    The Institute of Electronics Engineers of the Philippines - Laguna Student Chapter (IECEP-LSC) is dedicated to empowering students through rigorous technical development, industry immersion, and community engagement. Our objectives serve as the measurable pillars supporting the national vision of "One IECEP".
+                <h2>ARTICLE 2. PURPOSE AND OBJECTIVES</h2>
+                <p style="font-size: 1.08rem; font-weight: 700; color: var(--primary); margin-top: 0.35rem;">
+                    SECTION 1: The IECEP-LSC aims to:
                 </p>
             </div>
         </section>
 
-        <!-- 6 Key Objectives -->
+        <!-- 4 Key Objectives from Constitution -->
         <section>
             <div class="objectives-heading-wrap">
-                <h2 class="objectives-title">Core Strategic Objectives</h2>
-                <p class="objectives-subtitle">The six actionable goals driving every convention, workshop, competition, and academic partnership.</p>
+                <h2 class="objectives-title">IECEP-LSC Objectives</h2>
+                <p class="objectives-subtitle">The foundational principles that guide every program, initiative, and assembly of the student chapter.</p>
             </div>
 
-            <div class="objectives-grid">
-                <!-- 1. Professional Development -->
+            <div class="objectives-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+                <!-- a.) Academic Excellence -->
                 <article class="objective-card">
-                    <div class="obj-num-badge">1</div>
-                    <h3 class="obj-card-title">Professional Development</h3>
-                    <p class="obj-card-desc">
-                        Enhancing technical competence and applied skills through certified engineering masterclasses, hands-on IoT workshops, and emerging technology symposiums aligned with PRC and international industry standards.
-                    </p>
-                </article>
-
-                <!-- 2. Academic Excellence -->
-                <article class="objective-card">
-                    <div class="obj-num-badge">2</div>
+                    <div class="obj-num-badge">A</div>
                     <h3 class="obj-card-title">Academic Excellence</h3>
-                    <p class="obj-card-desc">
-                        Promoting academic distinction by providing educational resources, PRC licensure examination mentorship, quiz bowl competitions, and research symposium support to help student members excel.
+                    <p class="obj-card-desc" style="font-size: 1rem; color: #1E293B;">
+                        To promote and uphold academic excellence among its members.
                     </p>
                 </article>
 
-                <!-- 3. Industry Partnership -->
+                <!-- b.) Student Unity -->
                 <article class="objective-card">
-                    <div class="obj-num-badge">3</div>
-                    <h3 class="obj-card-title">Industry Partnership</h3>
-                    <p class="obj-card-desc">
-                        Establishing robust corporate linkages with leading semiconductor, electronics, automation, and telecom enterprises — unlocking internship slots, technical facility tours, and direct employment pathways.
+                    <div class="obj-num-badge">B</div>
+                    <h3 class="obj-card-title">Chapter &amp; Student Unity</h3>
+                    <p class="obj-card-desc" style="font-size: 1rem; color: #1E293B;">
+                        To develop a sense of unity among the Electronics Engineering students of different schools.
                     </p>
                 </article>
 
-                <!-- 4. Ethical Standards -->
+                <!-- c.) Community & Institutional Responsibility -->
                 <article class="objective-card">
-                    <div class="obj-num-badge">4</div>
-                    <h3 class="obj-card-title">Ethical Standards</h3>
-                    <p class="obj-card-desc">
-                        Instilling strict professional ethics, engineering integrity, intellectual property respect, and environmental safety consciousness among future electronics engineers.
+                    <div class="obj-num-badge">C</div>
+                    <h3 class="obj-card-title">Sense of Responsibility</h3>
+                    <p class="obj-card-desc" style="font-size: 1rem; color: #1E293B;">
+                        To instill a sense of responsibility among the Electronics Engineering students in serving the whole academic community in general and the organization in particular.
                     </p>
                 </article>
 
-                <!-- 5. Community Service -->
+                <!-- d.) Technical Dissemination -->
                 <article class="objective-card">
-                    <div class="obj-num-badge">5</div>
-                    <h3 class="obj-card-title">Community Service</h3>
-                    <p class="obj-card-desc">
-                        Contributing meaningfully to nation-building through technology transfer initiatives, STEM educational campaigns in public secondary schools, and digital disaster preparedness outreach.
-                    </p>
-                </article>
-
-                <!-- 6. National Unity -->
-                <article class="objective-card">
-                    <div class="obj-num-badge">6</div>
-                    <h3 class="obj-card-title">National Chapter Unity</h3>
-                    <p class="obj-card-desc">
-                        Fostering deep camaraderie and mutual collaboration among all 8 affiliated higher education institutions across Laguna, championing the enduring "One LSC, One IECEP" spirit.
+                    <div class="obj-num-badge">D</div>
+                    <h3 class="obj-card-title">Technical Information Dissemination</h3>
+                    <p class="obj-card-desc" style="font-size: 1rem; color: #1E293B;">
+                        To disseminate vital technical information in order to develop a well-rounded professional.
                     </p>
                 </article>
             </div>
@@ -342,7 +324,7 @@ require_once __DIR__ . '/bootstrap.php';
         <div class="chapter-synergy-banner">
             <div class="synergy-text">
                 <h3>One LSC. One IECEP. One Vision.</h3>
-                <p>Guided by our institutional objectives, we continue to bridge the aspirations of Laguna engineering students with limitless technological horizons.</p>
+                <p>Guided by our constitutional purpose and objectives, we continue to unite Laguna Electronics Engineering students toward academic distinction and professional development.</p>
             </div>
         </div>
     </main>

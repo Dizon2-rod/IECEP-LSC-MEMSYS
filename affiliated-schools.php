@@ -4,66 +4,82 @@ require_once __DIR__ . '/bootstrap.php';
 $staticSchools = [
     [
         'name' => 'Colegio de San Juan de Letran - Calamba',
+        'org_name' => 'ELECTRONICS ENGINEERING LETRAN STUDENTS SOCIETY',
         'short_name' => 'Letran Calamba',
         'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/LETRAN.png',
-        'location' => 'Bucal, Calamba City, Laguna',
-        'facebook_url' => 'https://www.facebook.com/LetranCalamba',
-        'established' => 'AY 2024-2025',
-    ],
-    [
-        'name' => 'Laguna State Polytechnic University - Santa Cruz Campus',
-        'short_name' => 'LSPU - SCC',
-        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/LSPU-SCC.png',
-        'location' => 'Bubukal, Santa Cruz, Laguna',
-        'facebook_url' => 'https://www.facebook.com/LSPUSantaCruz',
+        'location' => 'Colegio de San Juan de Letran, Calamba, Philippines, 4027',
+        'email' => 'ecelss@letran-calamba.edu.ph',
+        'facebook_url' => 'https://www.facebook.com/ECELSSrocks',
         'established' => 'AY 2024-2025',
     ],
     [
         'name' => 'Laguna State Polytechnic University - San Pablo City Campus',
+        'org_name' => 'ASSOCIATION OF FUTURE ELECTRONICS ENGINEERS',
         'short_name' => 'LSPU - SPCC',
         'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/LSPU-SPCC.png',
-        'location' => 'Del Remedio, San Pablo City, Laguna',
-        'facebook_url' => 'https://www.facebook.com/LSPUSanPablo',
+        'location' => 'San Pablo City, Philippines, 4000',
+        'email' => 'afece_spc@lspu.edu.ph',
+        'facebook_url' => 'https://www.facebook.com/LSPUAFECE',
         'established' => 'AY 2024-2025',
     ],
     [
-        'name' => 'Mapua Malayan Colleges Laguna',
+        'name' => 'Mapúa Malayan Colleges Laguna',
+        'org_name' => 'INSTITUTE OF ELECTRONICS ENGINEERS OF THE PHILIPPINES - MCL STUDENT CHAPTER',
         'short_name' => 'MMCL',
         'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/MMCL.webp',
-        'location' => 'Pulo, Cabuyao City, Laguna',
-        'facebook_url' => 'https://www.facebook.com/MMCLaguna',
+        'location' => 'Pulo, Cabuyao, Philippines, 4025',
+        'email' => 'iecepmmcl@gmail.com',
+        'facebook_url' => 'https://www.facebook.com/iecepmmcl',
+        'established' => 'AY 2024-2025',
+    ],
+    [
+        'name' => 'University of Cabuyao (Pamantasan ng Cabuyao)',
+        'org_name' => 'ORGANIZATION OF ELECTRONICS ENGINEERING STUDENTS',
+        'short_name' => 'PnC / UC-PNC',
+        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/UC-PNC.png',
+        'location' => 'Cabuyao, Philippines, 4025',
+        'email' => 'jieceppnc@gmail.com',
+        'facebook_url' => 'https://www.facebook.com/jiecep.pnc.official',
         'established' => 'AY 2024-2025',
     ],
     [
         'name' => 'Polytechnic University of the Philippines - Santa Rosa Campus',
+        'org_name' => 'ASSOCIATION OF ELECTRONICS AND COMMUNICATIONS ENGINEERING STUDENTS',
         'short_name' => 'PUP - SRC',
         'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/PUP-STA ROSA.png',
-        'location' => 'Tagapo, Santa Rosa City, Laguna',
-        'facebook_url' => 'https://www.facebook.com/PUPSantaRosa',
+        'location' => 'Room 3-4, PUP-Sta. Rosa, Barangay Tagapo, Santa Rosa, Philippines, 4026',
+        'email' => 'officialaeces.pupsrc@gmail.com',
+        'facebook_url' => 'https://www.facebook.com/OfficialAECES',
         'established' => 'AY 2024-2025',
     ],
     [
-        'name' => 'Pamantasan ng Cabuyao',
-        'short_name' => 'PnC / UC-PNC',
-        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/UC-PNC.png',
-        'location' => 'Banay-Banay, Cabuyao City, Laguna',
-        'facebook_url' => 'https://www.facebook.com/PamantasanNgCabuyao',
+        'name' => 'University of Perpetual Help System Laguna – Biñan Campus',
+        'org_name' => 'PERPETUAL INSTITUTE OF ELECTRONICS ENGINEERING STUDENTS',
+        'short_name' => 'UPHSL Biñan',
+        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/UPHSL-BINAN.png',
+        'location' => 'National Hi-way, Brgy. Sto. Niño, Biñan, Philippines, 4024',
+        'email' => 'uphsl.pieces@gmail.com',
+        'facebook_url' => 'https://www.facebook.com/uphslpieces',
         'established' => 'AY 2024-2025',
     ],
     [
         'name' => 'University of Perpetual Help System DALTA - Calamba Campus',
+        'org_name' => 'ELECTRONICS ENGINEERING STUDENTS SOCIETY - UPHSD CALAMBA',
         'short_name' => 'UPHSD Calamba',
         'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/UPHSD.png',
-        'location' => 'Paciano Rizal, Calamba City, Laguna',
-        'facebook_url' => 'https://www.facebook.com/UPHSDCalamba',
+        'location' => 'Calamba, Philippines, 4027',
+        'email' => 'pieces.uphsd@gmail.com',
+        'facebook_url' => 'https://www.facebook.com/eceperpslp.org',
         'established' => 'AY 2024-2025',
     ],
     [
-        'name' => 'University of Perpetual Help System Laguna - Biñan Campus',
-        'short_name' => 'UPHSL Biñan',
-        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/UPHSL-BINAN.png',
-        'location' => 'Santo Niño, Biñan City, Laguna',
-        'facebook_url' => 'https://www.facebook.com/UPHSLBinan',
+        'name' => 'Laguna State Polytechnic University - Santa Cruz Campus',
+        'org_name' => 'ELECTRONICS ENGINEERING STUDENTS SOCIETY',
+        'short_name' => 'LSPU - SCC',
+        'logo' => '/IECEP-LSC-MEMSYS/public/assets/icons/LSPU-SCC.png',
+        'location' => 'Santa Cruz National High-way, Brgy. Bubukal, Santa Cruz, Laguna',
+        'email' => 'official.lspusccecess@gmail.com',
+        'facebook_url' => 'https://www.facebook.com/LSPUSCCECESS',
         'established' => 'AY 2024-2025',
     ]
 ];
@@ -104,9 +120,11 @@ if ($supabase) {
                 }
                 $affiliatedSchools[] = [
                     'name'          => $schoolName,
+                    'org_name'      => $matchingStatic['org_name'] ?? 'Official IECEP-LSC Student Chapter',
                     'short_name'    => $matchingStatic['short_name'] ?? '',
                     'logo'          => $school['logo'] ?? ($matchingStatic['logo'] ?? '/IECEP-LSC-MEMSYS/public/assets/icons/default-school.png'),
                     'location'      => $school['location'] ?? ($matchingStatic['location'] ?? 'Laguna, Philippines'),
+                    'email'         => $school['email'] ?? ($matchingStatic['email'] ?? ''),
                     'facebook_url'  => $school['facebook_url'] ?? ($matchingStatic['facebook_url'] ?? ''),
                     'status'        => 'active',
                     'source'        => 'affiliated_schools',
@@ -120,9 +138,11 @@ if ($supabase) {
         if (($app['status'] ?? 'pending') === 'pending') {
             $affiliatedSchools[] = [
                 'name'          => $app['institution_name'] ?? $app['name'] ?? '',
+                'org_name'      => 'Pending Affiliation Applicant',
                 'short_name'    => '',
                 'logo'          => $app['logo'] ?? '/IECEP-LSC-MEMSYS/public/assets/icons/default-school.png',
                 'location'      => $app['institution_address'] ?? $app['location'] ?? 'Laguna, Philippines',
+                'email'         => $app['email'] ?? '',
                 'facebook_url'  => $app['facebook_url'] ?? '',
                 'status'        => 'pending',
                 'source'        => 'pending_affiliations',
@@ -138,9 +158,11 @@ if (empty($affiliatedSchools)) {
     foreach ($staticSchools as $s) {
         $affiliatedSchools[] = [
             'name'          => $s['name'],
+            'org_name'      => $s['org_name'] ?? 'Official IECEP-LSC Student Chapter',
             'short_name'    => $s['short_name'],
             'logo'          => $s['logo'],
             'location'      => $s['location'],
+            'email'         => $s['email'] ?? '',
             'facebook_url'  => $s['facebook_url'],
             'status'        => 'active',
             'source'        => 'static',
@@ -368,18 +390,57 @@ $schoolsToShow = $affiliatedSchools;
             font-weight: 700;
             color: var(--primary);
             line-height: 1.35;
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.4rem;
             min-height: 2.7rem;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
-        .school-card-location {
-            font-size: 0.85rem;
-            color: var(--slate-600);
-            margin-bottom: 1.25rem;
+
+        .society-title-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: rgba(11, 29, 74, 0.05);
+            color: var(--primary);
+            border: 1px solid rgba(11, 29, 74, 0.12);
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            margin-bottom: 0.65rem;
             line-height: 1.3;
+        }
+
+        .school-card-location {
+            font-size: 0.8rem;
+            color: var(--slate-600);
+            margin-bottom: 0.5rem;
+            line-height: 1.3;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 0.35rem;
+        }
+
+        .school-card-email {
+            font-size: 0.75rem;
+            color: var(--slate-600);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            word-break: break-all;
+        }
+        .school-card-email a {
+            color: #2563EB;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .school-card-email a:hover {
+            text-decoration: underline;
         }
 
         /* School Button */
@@ -389,6 +450,7 @@ $schoolsToShow = $affiliatedSchools;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            gap: 0.4rem;
             background: #F1F5F9;
             color: var(--primary);
             border: 1px solid var(--slate-200);
@@ -461,22 +523,22 @@ $schoolsToShow = $affiliatedSchools;
         }
         .cta-btn-affiliate:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.45);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.45);
             filter: brightness(1.05);
         }
 
-        /* ── Empty Search Results ─────────────────────────────── */
+        /* ── Empty State ──────────────────────────────────────── */
         .empty-search-state {
-            text-align: center;
-            padding: 4rem 1rem;
             grid-column: 1 / -1;
+            padding: 4rem 1.5rem;
+            text-align: center;
             display: none;
         }
         .empty-search-state h3 {
-            font-size: 1.25rem;
             color: var(--primary);
+            font-size: 1.25rem;
             font-weight: 700;
-            margin-bottom: 0.35rem;
+            margin-bottom: 0.5rem;
         }
         .empty-search-state p {
             color: var(--slate-600);
@@ -504,7 +566,7 @@ $schoolsToShow = $affiliatedSchools;
         <!-- Search & Counter -->
         <div class="filter-wrapper">
             <div class="search-box">
-                <input type="text" id="schoolSearch" class="search-input" placeholder="Search by institution name or city..." onkeyup="filterSchools()">
+                <input type="text" id="schoolSearch" class="search-input" placeholder="Search by institution, student society, or city..." onkeyup="filterSchools()">
             </div>
             <div class="filter-counter">
                 Showing <strong id="schoolCountDisplay"><?php echo count($schoolsToShow); ?></strong> institutions
@@ -516,8 +578,10 @@ $schoolsToShow = $affiliatedSchools;
             <?php foreach ($schoolsToShow as $school): 
                 $logo = !empty($school['logo']) ? htmlspecialchars($school['logo']) : '/IECEP-LSC-MEMSYS/public/assets/icons/default-school.png';
                 $facebook = !empty($school['facebook_url']) ? htmlspecialchars($school['facebook_url']) : '';
+                $orgName = !empty($school['org_name']) ? htmlspecialchars($school['org_name']) : 'Official IECEP-LSC Student Chapter';
+                $email = !empty($school['email']) ? htmlspecialchars($school['email']) : '';
             ?>
-                <div class="school-card" data-name="<?php echo htmlspecialchars(strtolower($school['name'] . ' ' . ($school['location'] ?? ''))); ?>">
+                <div class="school-card" data-name="<?php echo htmlspecialchars(strtolower($school['name'] . ' ' . $orgName . ' ' . ($school['location'] ?? ''))); ?>">
                     <div class="school-logo-disc">
                         <img src="<?php echo $logo; ?>" 
                              alt="<?php echo htmlspecialchars($school['name']); ?>" 
@@ -529,13 +593,25 @@ $schoolsToShow = $affiliatedSchools;
                         <?php echo htmlspecialchars($school['name']); ?>
                     </h3>
 
-                    <div class="school-card-location">
-                        <?php echo htmlspecialchars($school['location'] ?? 'Laguna, Philippines'); ?>
+                    <div class="society-title-badge" title="<?php echo $orgName; ?>">
+                        <i class="fas fa-certificate" style="color:#D4AF37;"></i> <?php echo $orgName; ?>
                     </div>
+
+                    <div class="school-card-location">
+                        <i class="fas fa-map-marker-alt" style="color:#EF4444; margin-top:2px; flex-shrink:0;"></i>
+                        <span><?php echo htmlspecialchars($school['location'] ?? 'Laguna, Philippines'); ?></span>
+                    </div>
+
+                    <?php if ($email): ?>
+                        <div class="school-card-email">
+                            <i class="fas fa-envelope" style="color:#64748B;"></i>
+                            <a href="mailto:<?php echo $email; ?>"><?php echo $email; ?></a>
+                        </div>
+                    <?php endif; ?>
 
                     <?php if ($facebook): ?>
                         <a href="<?php echo $facebook; ?>" target="_blank" rel="noopener noreferrer" class="school-action-btn">
-                            Visit Student Chapter
+                            <i class="fab fa-facebook" style="color:#1877F2;"></i> Visit Student Chapter
                         </a>
                     <?php else: ?>
                         <span class="school-action-btn" style="opacity:0.6; cursor:default;">

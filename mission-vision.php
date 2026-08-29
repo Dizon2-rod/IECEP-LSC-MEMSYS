@@ -242,19 +242,19 @@ require_once __DIR__ . '/bootstrap.php';
         <section class="mv-grid">
             <!-- Mission Card -->
             <article class="mv-card">
-                <span class="mv-card-label">Institutional Purpose</span>
+                <span class="mv-card-label">IECEP Mission</span>
                 <h2 class="mv-card-title">Our Mission</h2>
-                <p class="mv-card-text">
-                    To foster excellence in electronics engineering education and professional practice across Laguna higher education institutions. We promote holistic technical competence, strict ethical standards, and innovation by creating an active synergy between academic theory and real-world industrial applications — preparing the next generation of engineers to become visionary leaders.
+                <p class="mv-card-text" style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--primary);">
+                    TO BE THE SHOWCASE OF PROFESSIONAL AND TECHNICAL DEVELOPMENT AND THE PARADIGM OF EXCELLENCE IN APPLYING THE PRINCIPLES OF ELECTRONICS TECHNOLOGY FOR THE ADVANCEMENT OF HUMANITY.
                 </p>
             </article>
 
             <!-- Vision Card -->
             <article class="mv-card">
-                <span class="mv-card-label">Future Outlook</span>
+                <span class="mv-card-label">IECEP Vision</span>
                 <h2 class="mv-card-title">Our Vision</h2>
-                <p class="mv-card-text">
-                    To be the premier, globally recognized student organization for electronics engineering in the Philippines — renowned for producing competent, socially responsible, and technologically innovative professionals who contribute significantly to national technological sovereignty and global engineering progress.
+                <p class="mv-card-text" style="font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--primary);">
+                    THE ORGANIZATION ENVISIONS &ldquo;WORLD-CLASS ORGANIZATION OF HUMANE, COMPETENT, VIRTUOUS AND GLOBALLY-COMPETITIVE ELECTRONICS PROFESSIONALS&rdquo;.
                 </p>
             </article>
         </section>
