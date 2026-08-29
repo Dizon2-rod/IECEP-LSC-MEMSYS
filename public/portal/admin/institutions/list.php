@@ -335,16 +335,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
-// Fetch real institutions and all pending submissions from database
+// Fetch real institutions, members count, and all pending submissions from database
 $institutionsList = [];
 $pendingApps = [];
 $approvedApps = [];
 $rejectedApps = [];
+$totalMembersCount = 0;
 
 try {
     $rawInst = $supabase->select('institutions', ['select' => '*', 'order' => 'created_at.desc']);
     if (is_array($rawInst)) {
         $institutionsList = $rawInst;
+    }
+
+    $rawMembers = $supabase->select('members', ['select' => 'id']);
+    if (is_array($rawMembers)) {
+        $totalMembersCount = count($rawMembers);
     }
 
     $rawAllApps = $supabase->select('pending_affiliations', ['select' => '*', 'order' => 'created_at.desc']);
@@ -375,126 +381,494 @@ try {
     <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <style>
-        .doc-modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: rgba(11, 29, 74, 0.65);
-            backdrop-filter: blur(4px);
-            z-index: 9999;
-            align-items: center;
-            justify-content: center;
-            padding: 1.5rem;
-        }
-        .doc-modal.active {
-            display: flex;
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-amber: #D97706;
+            --color-rose: #E11D48;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
         }
 
-        /* Clean Tab Buttons */
-        .tab-btn-group {
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .ap-scope {
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-sizing: border-box !important;
+        }
+
+        /* 1. Header Banner */
+        .dash-header-banner {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .dash-header-title {
+            margin: 0 0 0.15rem;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            margin-bottom: 1.25rem;
+        }
+        .dash-header-sub {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #64748B;
+        }
+        .dash-header-btn-group {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+            white-space: nowrap;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            transform: translateY(-1px);
+        }
+
+        .btn-excel-green {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #ECFDF5;
+            border: 1px solid #A7F3D0;
+            color: #065F46;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+            white-space: nowrap;
+        }
+        .btn-excel-green:hover {
+            background: #D1FAE5;
+            border-color: #6EE7B7;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary-navy {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.95rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-decoration: none;
+            background: var(--color-navy);
+            border: 1px solid var(--color-navy);
+            color: #FFFFFF !important;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(11, 29, 74, 0.15);
+            transition: all 0.18s ease;
+            white-space: nowrap;
+        }
+        .btn-primary-navy:hover {
+            background: var(--color-navy-hover);
+            transform: translateY(-1px);
+            color: #FDE047 !important;
+        }
+
+        /* 2. Top 4 KPI Cards */
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 0.85rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .dash-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+            min-width: 0;
+        }
+        .dash-kpi-card:hover {
+            border-color: #CBD5E1;
+            transform: translateY(-1px);
+        }
+        .kpi-icon-pill {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-lbl {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 3. Search & Control Bar */
+        .white-controls-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.95rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            box-shadow: var(--shadow-card);
+        }
+        .filter-controls-left {
+            display: flex;
+            align-items: center;
+            gap: 0.55rem;
+            flex: 1;
+            min-width: 260px;
+        }
+        .search-input-wrapper {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+        }
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94A3B8;
+            font-size: 0.8rem;
+        }
+        .search-input-field {
+            width: 100%;
+            padding: 0.45rem 0.75rem 0.45rem 2rem;
+            border: 1px solid #CBD5E1;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            outline: none;
+            box-sizing: border-box;
+            background: #F8FAFC;
+        }
+        .search-input-field:focus {
+            background: #FFFFFF;
+            border-color: var(--color-navy);
+        }
+
+        /* Tab Switchers */
+        .tab-btn-group {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            margin-bottom: 0.85rem;
             flex-wrap: wrap;
         }
         .tab-btn {
             background: #FFFFFF;
-            border: 1px solid #E2E8F0;
+            border: 1px solid #CBD5E1;
             border-radius: 8px;
-            padding: 0.5rem 1rem;
-            font-size: 0.82rem;
+            padding: 0.45rem 0.95rem;
+            font-size: 0.78rem;
             font-weight: 700;
             color: #475569;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
-            gap: 0.5rem;
-            transition: all 0.2s ease;
+            gap: 0.45rem;
+            transition: all 0.18s ease;
         }
         .tab-btn:hover {
-            border-color: #0B1D4A;
-            color: #0B1D4A;
+            border-color: var(--color-navy);
+            color: var(--color-navy);
+            background: #F8FAFC;
         }
         .tab-btn.active {
-            background: #0B1D4A;
-            border-color: #0B1D4A;
+            background: var(--color-navy);
+            border-color: var(--color-navy);
             color: #FFFFFF;
-            box-shadow: 0 2px 8px rgba(11, 29, 74, 0.2);
+            box-shadow: 0 2px 6px rgba(11, 29, 74, 0.18);
         }
         .tab-count {
-            background: rgba(0,0,0,0.1);
-            padding: 2px 6px;
-            border-radius: 12px;
-            font-size: 0.72rem;
+            background: rgba(0,0,0,0.08);
+            padding: 1px 6px;
+            border-radius: 10px;
+            font-size: 0.7rem;
         }
         .tab-btn.active .tab-count {
             background: rgba(255,255,255,0.25);
             color: #FFFFFF;
         }
 
-        /* Document Packet Grid */
+        /* Tables & Cards */
+        .ap-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+        }
+        .ap-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+        }
+        .ap-card-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+        }
+
+        .ap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            text-align: left;
+        }
+        .ap-table th {
+            background: #F8FAFC;
+            color: #64748B;
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 0.55rem 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .ap-table td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid #F1F5F9;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .ap-table tr:hover td {
+            background: #F8FAFC;
+        }
+
+        .ap-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+        .ap-pill.active { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .ap-pill.pending { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+        .ap-pill.blue { background: #EFF6FF; color: #2563EB; border: 1px solid #DBEAFE; }
+
+        /* Action Buttons */
+        .btn-act-green {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.32rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.74rem;
+            font-weight: 800;
+            background: #059669;
+            border: 1px solid #059669;
+            color: #FFFFFF;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .btn-act-green:hover {
+            background: #047857;
+            transform: translateY(-1px);
+        }
+
+        .btn-act-amber {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.32rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.74rem;
+            font-weight: 800;
+            background: #FEF9C3;
+            border: 1px solid #FDE68A;
+            color: #B45309;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .btn-act-amber:hover {
+            background: #FEF3C7;
+            border-color: #F59E0B;
+            transform: translateY(-1px);
+        }
+
+        .btn-act-red {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.32rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.74rem;
+            font-weight: 700;
+            background: #FFFFFF;
+            border: 1px solid #FECACA;
+            color: #DC2626;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .btn-act-red:hover {
+            background: #FEF2F2;
+            border-color: #DC2626;
+        }
+
+        /* Modals */
+        .doc-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(11, 29, 74, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+            box-sizing: border-box;
+        }
+        .doc-modal.active {
+            display: flex;
+        }
+        .modal-inner-box {
+            background: #FFFFFF;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 620px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
         .packet-doc-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 0.75rem;
-            margin: 1rem 0 1.5rem;
+            gap: 0.65rem;
+            margin: 0.85rem 0 1.25rem;
         }
         .packet-doc-card {
-            border: 1px solid #E2E8F0;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
-            padding: 0.75rem 1rem;
+            padding: 0.65rem 0.85rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
             background: #F8FAFC;
         }
-        .packet-doc-title {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #0F172A;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
 
-        /* Checklist styles for Request Revision */
         .revision-check-list {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
-            margin: 0.75rem 0 1rem;
-            max-height: 220px;
+            gap: 0.45rem;
+            margin: 0.65rem 0 0.85rem;
+            max-height: 200px;
             overflow-y: auto;
-            padding-right: 4px;
         }
         .revision-check-item {
             display: flex;
             align-items: center;
-            gap: 0.65rem;
-            padding: 0.6rem 0.85rem;
-            border: 1px solid #E2E8F0;
+            gap: 0.6rem;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
             border-radius: 6px;
             background: #F8FAFC;
             cursor: pointer;
-            transition: all 0.15s ease;
+            font-size: 0.78rem;
+            font-weight: 700;
         }
         .revision-check-item:hover {
             background: #EFF6FF;
             border-color: #93C5FD;
         }
-        .revision-check-item input[type="checkbox"] {
-            width: 16px;
-            height: 16px;
-            accent-color: #0B1D4A;
-            cursor: pointer;
+
+        @media (max-width: 1024px) {
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .packet-doc-grid { grid-template-columns: 1fr; }
         }
-        .revision-check-label {
-            font-size: 0.82rem;
-            font-weight: 700;
-            color: #1E293B;
-            cursor: pointer;
+        @media (max-width: 640px) {
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
+            .dash-header-banner { padding: 0.65rem 0.85rem; }
         }
     </style>
 </head>
@@ -504,69 +878,97 @@ try {
     <main class="main-content">
         <div class="ap-scope">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-university"></i> Institutional Chapter Affiliations</h1>
-                    <p class="ap-page-subtitle">Central review queue for all incoming school affiliation applications submitted via the public portal, attached Excel student rosters, and accreditation governance.</p>
+            <!-- 1. Header Banner -->
+            <div class="dash-header-banner">
+                <div>
+                    <h1 class="dash-header-title">
+                        <i class="fas fa-university" style="color:var(--color-navy);"></i>
+                        Institutional Chapter Affiliations & Applications
+                    </h1>
+                    <p class="dash-header-sub">
+                        Review pending school affiliation packets, audit attached Excel rosters, and manage accredited chapters.
+                    </p>
                 </div>
-                <div class="ap-header-actions">
-                    <a href="<?= PORTAL_URL ?>/admin/members/list.php" class="ap-btn-secondary">
-                        <i class="fas fa-users" style="color:var(--color-navy);"></i> Member Directory
+                <div class="dash-header-btn-group">
+                    <button type="button" id="btnDownloadTemplate" class="btn-excel-green">
+                        <i class="fas fa-file-excel"></i> Excel Template (.xlsx)
+                    </button>
+                    <a href="<?= PORTAL_URL ?>/admin/members/list.php" class="btn-white">
+                        <i class="fas fa-users" style="color:var(--color-blue);"></i> Member Directory
                     </a>
-                    <a href="<?= PORTAL_URL ?>/admin/members/batch-process.php" class="ap-btn-secondary">
-                        <i class="fas fa-file-excel" style="color:#107C41;"></i> Chapter Directory Submissions
+                    <a href="<?= PORTAL_URL ?>/admin/members/batch-process.php" class="btn-white">
+                        <i class="fas fa-file-excel" style="color:#107C41;"></i> Chapter Submissions
                     </a>
-                    <button class="ap-btn-primary" onclick="openCharterModal()">
-                        <i class="fas fa-plus"></i> Charter New Institution
+                    <button type="button" class="btn-primary-navy" onclick="openCharterModal()">
+                        <i class="fas fa-plus" style="color:#FDE047;"></i> Charter Institution
                     </button>
                 </div>
             </div>
 
             <?php if (!empty($feedbackMsg)): ?>
-                <div class="ap-alert <?= $feedbackType ?>" style="margin-bottom:1.25rem;">
-                    <i class="fas fa-check-circle" style="font-size:1.3rem;"></i> 
+                <div class="ap-alert <?= $feedbackType ?>" style="margin-bottom:0.85rem;">
+                    <i class="fas fa-check-circle" style="font-size:1.2rem;"></i> 
                     <div><?= htmlspecialchars($feedbackMsg) ?></div>
                 </div>
             <?php endif; ?>
 
-            <!-- KPI Cards -->
-            <div class="ap-kpi-grid">
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon amber"><i class="fas fa-hourglass-half"></i></div>
-                        <div><div class="ap-stat-label">Pending Review</div><div class="ap-stat-sublabel">Affiliation Requests</div></div>
+            <!-- 2. Top 4 KPI Cards -->
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill amber">
+                        <i class="fas fa-hourglass-half"></i>
                     </div>
-                    <div class="ap-stat-value" style="color:var(--accent-amber);"><?= count($pendingApps) ?></div>
-                    <div class="ap-stat-footer">Awaiting Accreditation Approval</div>
+                    <div style="min-width:0;">
+                        <div class="kpi-val"><?= count($pendingApps) ?></div>
+                        <div class="kpi-lbl">Pending Review</div>
+                    </div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon navy"><i class="fas fa-school"></i></div>
-                        <div><div class="ap-stat-label">Chartered</div><div class="ap-stat-sublabel">Total Institutions</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy">
+                        <i class="fas fa-school"></i>
                     </div>
-                    <div class="ap-stat-value"><?= count($institutionsList) ?></div>
-                    <div class="ap-stat-footer">Accredited Higher Education Partners</div>
+                    <div style="min-width:0;">
+                        <div class="kpi-val"><?= count($institutionsList) ?></div>
+                        <div class="kpi-lbl">Chartered Institutions</div>
+                    </div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon emerald"><i class="fas fa-circle-check"></i></div>
-                        <div><div class="ap-stat-label">Approved</div><div class="ap-stat-sublabel">Accredited Archive</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill emerald">
+                        <i class="fas fa-circle-check"></i>
                     </div>
-                    <div class="ap-stat-value" style="color:var(--accent-emerald);"><?= count($approvedApps) ?></div>
-                    <div class="ap-stat-footer">Processed Applications</div>
+                    <div style="min-width:0;">
+                        <div class="kpi-val"><?= count($approvedApps) ?></div>
+                        <div class="kpi-lbl">Approved Archive</div>
+                    </div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon gold"><i class="fas fa-sack-dollar"></i></div>
-                        <div><div class="ap-stat-label">Governance</div><div class="ap-stat-sublabel">Accreditation Cycle</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill gold">
+                        <i class="fas fa-users"></i>
                     </div>
-                    <div class="ap-stat-value" style="color:var(--iecep-gold);">AY 26-27</div>
-                    <div class="ap-stat-footer">Laguna Student Chapters</div>
+                    <div style="min-width:0;">
+                        <div class="kpi-val"><?= number_format($totalMembersCount) ?></div>
+                        <div class="kpi-lbl">Enrolled Student Members</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- View Tab Switchers -->
+            <!-- 3. Search & Filter Bar -->
+            <div class="white-controls-card">
+                <div class="filter-controls-left">
+                    <div class="search-input-wrapper">
+                        <i class="fas fa-search search-icon"></i>
+                        <input type="text" id="affiliationSearchInput" class="search-input-field" placeholder="Search school name, contact person, acronym, city..." onkeyup="filterAffiliationsTable()">
+                    </div>
+                </div>
+                <div style="font-size:0.75rem; font-weight:700; color:#64748B;" id="filterCountBadge">
+                    Showing <?= count($pendingApps) + count($institutionsList) ?> total chapters
+                </div>
+            </div>
+
+            <!-- 4. Tab Switchers -->
             <div class="tab-btn-group">
                 <button type="button" class="tab-btn active" id="tabBtnPending" onclick="switchAffiliationTab('pending')">
                     <i class="fas fa-bell"></i> Pending Submissions
@@ -583,31 +985,31 @@ try {
             </div>
 
             <!-- SECTION 1: Pending Chapter Affiliation Applications Queue -->
-            <div id="sectionPending" class="ap-card" style="margin-bottom:1.5rem; border:2px solid <?= count($pendingApps) > 0 ? '#FDE047' : '#E2E8F0' ?>;">
+            <div id="sectionPending" class="ap-card" style="border:2px solid <?= count($pendingApps) > 0 ? '#FDE047' : 'var(--border-color)' ?>;">
                 <div class="ap-card-header" style="<?= count($pendingApps) > 0 ? 'background:#FEFCE8;' : '' ?>">
-                    <h3 class="ap-card-title" style="color:<?= count($pendingApps) > 0 ? '#854D0E;' : 'var(--text-heading);' ?>">
-                        <i class="fas fa-inbox"></i> Incoming Affiliation Submissions (<?= count($pendingApps) ?> Requiring Review)
+                    <h3 class="ap-card-title" style="color:<?= count($pendingApps) > 0 ? '#854D0E;' : '#0F172A;' ?>">
+                        <i class="fas fa-inbox"></i> Incoming Affiliation Submissions (<?= count($pendingApps) ?> Requiring Action)
                     </h3>
                 </div>
-                <div class="ap-table-wrapper">
-                    <table class="ap-table">
+                <div style="overflow-x:auto;">
+                    <table class="ap-table" id="pendingTable">
                         <thead>
                             <tr>
                                 <th>Applicant School & Chapter</th>
                                 <th>Contact Officer</th>
                                 <th>Requirements Packet</th>
                                 <th>Student Roster</th>
-                                <th>Application Status</th>
+                                <th>Status</th>
                                 <th>Submitted Date</th>
-                                <th style="text-align:right;">3-Way Admin Decision</th>
+                                <th style="text-align:right;">3-Way Decision</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($pendingApps)): ?>
                                 <tr>
-                                    <td colspan="7" style="text-align:center; padding:2.5rem; color:var(--text-muted);">
+                                    <td colspan="7" style="text-align:center; padding:2.5rem; color:#64748B;">
                                         <i class="fas fa-check-circle" style="font-size:2.2rem; color:#10B981; margin-bottom:0.5rem; display:block;"></i>
-                                        <strong style="color:var(--text-heading); font-size:0.95rem;">Queue is Clear — No Pending Affiliations</strong>
+                                        <strong style="color:#0F172A; font-size:0.95rem;">Queue is Clear — No Pending Affiliations</strong>
                                         <p style="margin:0.25rem 0 0; font-size:0.78rem;">All incoming affiliation applications submitted via the public form on the homepage will immediately land here for review & approval.</p>
                                     </td>
                                 </tr>
@@ -627,18 +1029,18 @@ try {
                                     ?>
                                     <tr>
                                         <td>
-                                            <strong style="color:var(--text-heading);"><?= htmlspecialchars($app['institution_name'] ?? 'School Application') ?></strong><br>
-                                            <span style="font-size:0.75rem; color:var(--text-muted);"><?= htmlspecialchars($app['institution_address'] ?? 'Laguna, Philippines') ?></span>
+                                            <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($app['institution_name'] ?? 'School Application') ?></strong><br>
+                                            <span style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars($app['institution_address'] ?? 'Laguna, Philippines') ?></span>
                                         </td>
                                         <td>
-                                            <strong style="font-size:0.82rem;"><?= htmlspecialchars($app['contact_person'] ?? 'School Officer') ?></strong><br>
-                                            <span style="font-size:0.72rem; color:var(--text-muted);"><?= htmlspecialchars($app['contact_email'] ?? $app['email'] ?? '') ?></span>
+                                            <strong style="font-size:0.8rem;"><?= htmlspecialchars($app['contact_person'] ?? 'School Officer') ?></strong><br>
+                                            <span style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars($app['contact_email'] ?? $app['email'] ?? '') ?></span>
                                             <?php if (!empty($app['contact_phone'])): ?>
-                                                <div style="font-size:0.7rem; color:var(--text-muted);"><i class="fas fa-phone"></i> <?= htmlspecialchars($app['contact_phone']) ?></div>
+                                                <div style="font-size:0.7rem; color:#64748B;"><i class="fas fa-phone"></i> <?= htmlspecialchars($app['contact_phone']) ?></div>
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <button type="button" class="ap-btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.72rem;" onclick='openInspectModal(<?= $appJson ?>)'>
+                                            <button type="button" class="btn-white" style="padding:0.25rem 0.6rem; font-size:0.72rem;" onclick='openInspectModal(<?= $appJson ?>)'>
                                                 <i class="fas fa-folder-open" style="color:var(--color-navy);"></i> <?= $docsCount ?>/6 Documents
                                             </button>
                                         </td>
@@ -649,12 +1051,12 @@ try {
                                                     <i class="fas fa-file-excel" style="color:#107C41;"></i> View Excel Roster
                                                 </a>
                                             <?php else: ?>
-                                                <span style="font-size:0.72rem; color:var(--text-muted);">Standard Roster</span>
+                                                <span style="font-size:0.72rem; color:#64748B;">Standard Roster</span>
                                             <?php endif; ?>
                                         </td>
                                         <td>
                                             <?php if ($st === 'resubmitted'): ?>
-                                                <span class="ap-pill" style="background:#EFF6FF; color:#2563EB; border:1px solid #DBEAFE; font-weight:800;">
+                                                <span class="ap-pill blue">
                                                     <i class="fas fa-rotate"></i> Resubmitted
                                                 </span>
                                             <?php elseif ($st === 'requires_revision'): ?>
@@ -667,7 +1069,7 @@ try {
                                                 </span>
                                             <?php endif; ?>
                                         </td>
-                                        <td style="font-size:0.78rem; color:var(--text-muted);">
+                                        <td style="font-size:0.76rem; color:#64748B; white-space:nowrap;">
                                             <?= !empty($app['created_at']) ? date('M d, Y', strtotime($app['created_at'])) : 'Recent' ?>
                                         </td>
                                         <td style="text-align:right;">
@@ -680,18 +1082,18 @@ try {
                                                     <input type="hidden" name="email" value="<?= htmlspecialchars($app['contact_email'] ?? $app['email']) ?>">
                                                     <input type="hidden" name="contact_person" value="<?= htmlspecialchars($app['contact_person']) ?>">
                                                     <input type="hidden" name="contact_phone" value="<?= htmlspecialchars($app['contact_phone']) ?>">
-                                                    <button type="submit" class="ap-btn-primary" style="padding:0.32rem 0.75rem; font-size:0.75rem; background:#059669; border-color:#059669;" title="Approve Affiliation & Provision Accounts">
+                                                    <button type="submit" class="btn-act-green" title="Approve Affiliation & Provision Accounts">
                                                         <i class="fas fa-check"></i> Approve
                                                     </button>
                                                 </form>
 
                                                 <!-- 2. REQUEST TO EDIT / REVISION -->
-                                                <button type="button" class="ap-btn-secondary" style="padding:0.32rem 0.75rem; font-size:0.75rem; color:#B45309; border-color:#FDE68A; background:#FEF9C3;" onclick='openRevisionModal(<?= $appJson ?>)' title="Request Specific File Revisions via Gmail">
+                                                <button type="button" class="btn-act-amber" onclick='openRevisionModal(<?= $appJson ?>)' title="Request Specific File Revisions via Gmail">
                                                     <i class="fas fa-pen-to-square"></i> Request Edit
                                                 </button>
 
                                                 <!-- 3. REJECT / DECLINE -->
-                                                <button type="button" class="ap-btn-secondary" style="padding:0.32rem 0.65rem; font-size:0.75rem; color:#DC2626;" onclick="openDeclineModal('<?= htmlspecialchars($app['id']) ?>', '<?= htmlspecialchars($app['institution_name'] ?? 'Institution') ?>', '<?= htmlspecialchars($app['contact_email'] ?? $app['email'] ?? '') ?>', '<?= htmlspecialchars($app['contact_person'] ?? '') ?>')" title="Decline Application">
+                                                <button type="button" class="btn-act-red" onclick="openDeclineModal('<?= htmlspecialchars($app['id']) ?>', '<?= htmlspecialchars($app['institution_name'] ?? 'Institution') ?>', '<?= htmlspecialchars($app['contact_email'] ?? $app['email'] ?? '') ?>', '<?= htmlspecialchars($app['contact_person'] ?? '') ?>')" title="Decline Application">
                                                     <i class="fas fa-times"></i> Reject
                                                 </button>
                                             </div>
@@ -705,13 +1107,13 @@ try {
             </div>
 
             <!-- SECTION 2: Chartered Higher Education Institutions -->
-            <div id="sectionChartered" class="ap-card" style="margin-bottom:1.5rem;">
+            <div id="sectionChartered" class="ap-card">
                 <div class="ap-card-header">
                     <h3 class="ap-card-title"><i class="fas fa-building-columns"></i> Chartered University & College Chapters (<?= count($institutionsList) ?>)</h3>
                 </div>
 
-                <div class="ap-table-wrapper">
-                    <table class="ap-table">
+                <div style="overflow-x:auto;">
+                    <table class="ap-table" id="charteredTable">
                         <thead>
                             <tr>
                                 <th>Institution Name & Acronym</th>
@@ -724,24 +1126,26 @@ try {
                         </thead>
                         <tbody>
                             <?php if (empty($institutionsList)): ?>
-                                <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">No chartered institutions found in database.</td></tr>
+                                <tr><td colspan="6" style="text-align:center; padding:2rem; color:#64748B;">No chartered institutions found in database.</td></tr>
                             <?php else: ?>
                                 <?php foreach ($institutionsList as $inst): ?>
                                     <tr>
                                         <td>
-                                            <div style="display:flex; align-items:center; gap:0.75rem;">
-                                                <div class="ap-avatar-badge gold"><i class="fas fa-university"></i></div>
+                                            <div style="display:flex; align-items:center; gap:0.65rem;">
+                                                <div style="width:32px; height:32px; border-radius:6px; background:#FEF9C3; color:#B45309; border:1px solid #FDE68A; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.75rem; flex-shrink:0;">
+                                                    <?= htmlspecialchars(substr($inst['acronym'] ?: $inst['name'], 0, 3)) ?>
+                                                </div>
                                                 <div>
-                                                    <strong style="color:var(--text-heading);"><?= htmlspecialchars($inst['name'] ?? 'Institution') ?></strong><br>
-                                                    <span style="font-size:0.75rem; color:var(--text-muted);"><?= htmlspecialchars($inst['acronym'] ?? 'HEI') ?> &bull; <?= htmlspecialchars($inst['email'] ?? '') ?></span>
+                                                    <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($inst['name'] ?? 'Institution') ?></strong><br>
+                                                    <span style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars($inst['acronym'] ?? 'HEI') ?> &bull; <?= htmlspecialchars($inst['email'] ?? '') ?></span>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            <strong style="color:var(--text-heading); font-size:0.85rem;"><?= htmlspecialchars($inst['contact_person'] ?: 'Faculty Advisor') ?></strong><br>
-                                            <span style="font-size:0.75rem; color:var(--text-muted);"><?= htmlspecialchars($inst['contact_phone'] ?: '+63 912 345 6789') ?></span>
+                                            <strong style="color:#0F172A; font-size:0.82rem;"><?= htmlspecialchars($inst['contact_person'] ?: 'Faculty Advisor') ?></strong><br>
+                                            <span style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars($inst['contact_phone'] ?: '+63 912 345 6789') ?></span>
                                         </td>
-                                        <td style="font-size:0.82rem; color:var(--text-muted);">
+                                        <td style="font-size:0.78rem; color:#64748B;">
                                             <?= htmlspecialchars($inst['city'] ?: 'Santa Cruz') ?>, <?= htmlspecialchars($inst['province'] ?: 'Laguna') ?>
                                         </td>
                                         <td>
@@ -753,8 +1157,8 @@ try {
                                             </span>
                                         </td>
                                         <td style="text-align:right;">
-                                            <a href="<?= PORTAL_URL ?>/admin/members/list.php?school=<?= urlencode($inst['id']) ?>" class="ap-btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.75rem;">
-                                                <i class="fas fa-users"></i> View Members
+                                            <a href="<?= PORTAL_URL ?>/admin/members/list.php?school=<?= urlencode($inst['id']) ?>" class="btn-white" style="font-size:0.72rem; padding:0.28rem 0.65rem;">
+                                                <i class="fas fa-users" style="color:var(--color-navy);"></i> View Members
                                             </a>
                                         </td>
                                     </tr>
@@ -766,11 +1170,11 @@ try {
             </div>
 
             <!-- SECTION 3: Approved Applications Archive -->
-            <div id="sectionApproved" class="ap-card" style="display:none; margin-bottom:1.5rem;">
+            <div id="sectionApproved" class="ap-card" style="display:none;">
                 <div class="ap-card-header">
                     <h3 class="ap-card-title"><i class="fas fa-archive"></i> Approved Affiliations Archive (<?= count($approvedApps) ?>)</h3>
                 </div>
-                <div class="ap-table-wrapper">
+                <div style="overflow-x:auto;">
                     <table class="ap-table">
                         <thead>
                             <tr>
@@ -783,7 +1187,7 @@ try {
                         </thead>
                         <tbody>
                             <?php if (empty($approvedApps)): ?>
-                                <tr><td colspan="5" style="text-align:center; padding:2rem; color:var(--text-muted);">No approved application history recorded yet.</td></tr>
+                                <tr><td colspan="5" style="text-align:center; padding:2rem; color:#64748B;">No approved application history recorded yet.</td></tr>
                             <?php else: ?>
                                 <?php foreach ($approvedApps as $app): ?>
                                     <tr>
@@ -791,7 +1195,7 @@ try {
                                         <td><?= htmlspecialchars($app['contact_email'] ?? $app['email'] ?? 'N/A') ?></td>
                                         <td><?= intval($app['total_members'] ?? 0) ?> Students</td>
                                         <td><span class="ap-pill active"><span class="ap-pill-dot"></span> Approved & Chartered</span></td>
-                                        <td style="color:var(--text-muted); font-size:0.78rem;"><?= !empty($app['updated_at']) ? date('M d, Y', strtotime($app['updated_at'])) : 'Recent' ?></td>
+                                        <td style="color:#64748B; font-size:0.76rem;"><?= !empty($app['updated_at']) ? date('M d, Y', strtotime($app['updated_at'])) : 'Recent' ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -801,7 +1205,7 @@ try {
             </div>
 
             <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
+            <div class="ap-sentinel-strip" style="margin-top:1.5rem;">
                 <div class="ap-sentinel-item"><i class="fas fa-university"></i><span><strong>Affiliation Protocol:</strong> National Constitution Compliance</span></div>
                 <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Proof-of-Charter:</strong> Cryptographically Anchored Verification</span></div>
             </div>
@@ -811,20 +1215,20 @@ try {
 
     <!-- 1. Inspect Requirements Packet Modal -->
     <div id="inspectModal" class="doc-modal">
-        <div class="ap-card" style="max-width:680px; width:100%; margin:0; box-shadow:var(--card-shadow);">
+        <div class="modal-inner-box">
             <div class="ap-card-header">
                 <h3 class="ap-card-title" id="inspectSchoolTitle"><i class="fas fa-folder-open"></i> Affiliation Requirements Packet</h3>
-                <button class="ap-btn-secondary" style="border:none; padding:0.25rem 0.5rem;" onclick="closeInspectModal()">&times;</button>
+                <button class="btn-white" style="border:none; padding:0.25rem 0.5rem;" onclick="closeInspectModal()">&times;</button>
             </div>
             <div style="padding:1rem;">
-                <p style="font-size:0.8rem; color:var(--text-muted); margin:0 0 1rem;">
+                <p style="font-size:0.8rem; color:#64748B; margin:0 0 0.85rem;">
                     Official accreditation submission documents uploaded by the school chapter applicant:
                 </p>
                 <div class="packet-doc-grid" id="inspectDocsGrid">
                     <!-- Dynamic docs rendered via JS -->
                 </div>
-                <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1rem;">
-                    <button type="button" class="ap-btn-secondary" onclick="closeInspectModal()">Close</button>
+                <div style="display:flex; justify-content:flex-end; gap:0.65rem;">
+                    <button type="button" class="btn-white" onclick="closeInspectModal()">Close</button>
                 </div>
             </div>
         </div>
@@ -832,19 +1236,19 @@ try {
 
     <!-- 2. Request Revision / Edit Modal (Pumili ng files na papalitan) -->
     <div id="revisionModal" class="doc-modal">
-        <div class="ap-card" style="max-width:580px; width:100%; margin:0; box-shadow:var(--card-shadow);">
+        <div class="modal-inner-box" style="max-width:560px;">
             <div class="ap-card-header" style="background:#FEFCE8;">
                 <h3 class="ap-card-title" style="color:#854D0E;"><i class="fas fa-pen-to-square"></i> Request Document Revision / Correction</h3>
-                <button class="ap-btn-secondary" style="border:none; padding:0.25rem 0.5rem;" onclick="closeRevisionModal()">&times;</button>
+                <button class="btn-white" style="border:none; padding:0.25rem 0.5rem;" onclick="closeRevisionModal()">&times;</button>
             </div>
-            <form method="POST" style="padding:1.25rem;">
+            <form method="POST" style="padding:1rem;">
                 <input type="hidden" name="action" value="request_revision">
                 <input type="hidden" id="revAppId" name="application_id" value="">
                 <input type="hidden" id="revInstName" name="institution_name" value="">
                 <input type="hidden" id="revEmail" name="email" value="">
                 <input type="hidden" id="revContactPerson" name="contact_person" value="">
 
-                <p style="font-size:0.85rem; color:#1E293B; margin:0 0 0.5rem;">
+                <p style="font-size:0.82rem; color:#1E293B; margin:0 0 0.4rem;">
                     Select the specific file(s) that <strong id="revSchoolNameDisplay"></strong> needs to correct/re-upload:
                 </p>
 
@@ -852,42 +1256,42 @@ try {
                 <div class="revision-check-list">
                     <label class="revision-check-item">
                         <input type="checkbox" name="requested_files[]" value="letter_of_intent">
-                        <span class="revision-check-label"><i class="fas fa-file-lines" style="color:var(--color-navy); margin-right:4px;"></i> 1. Letter of Intent</span>
+                        <span><i class="fas fa-file-lines" style="color:var(--color-navy); margin-right:4px;"></i> 1. Letter of Intent</span>
                     </label>
                     <label class="revision-check-item">
                         <input type="checkbox" name="requested_files[]" value="endorsement_letter">
-                        <span class="revision-check-label"><i class="fas fa-certificate" style="color:var(--color-navy); margin-right:4px;"></i> 2. Endorsement Letter (Dean/Chair)</span>
+                        <span><i class="fas fa-certificate" style="color:var(--color-navy); margin-right:4px;"></i> 2. Endorsement Letter (Dean/Chair)</span>
                     </label>
                     <label class="revision-check-item">
                         <input type="checkbox" name="requested_files[]" value="constitution_by_laws">
-                        <span class="revision-check-label"><i class="fas fa-scale-balanced" style="color:var(--color-navy); margin-right:4px;"></i> 3. Constitution & By-Laws</span>
+                        <span><i class="fas fa-scale-balanced" style="color:var(--color-navy); margin-right:4px;"></i> 3. Constitution & By-Laws</span>
                     </label>
                     <label class="revision-check-item">
                         <input type="checkbox" name="requested_files[]" value="officers_cvs">
-                        <span class="revision-check-label"><i class="fas fa-user-tie" style="color:var(--color-navy); margin-right:4px;"></i> 4. Officers Curriculum Vitae (CVs)</span>
+                        <span><i class="fas fa-user-tie" style="color:var(--color-navy); margin-right:4px;"></i> 4. Officers Curriculum Vitae (CVs)</span>
                     </label>
                     <label class="revision-check-item">
                         <input type="checkbox" name="requested_files[]" value="organizational_chart">
-                        <span class="revision-check-label"><i class="fas fa-sitemap" style="color:var(--color-navy); margin-right:4px;"></i> 5. Organizational Chart</span>
+                        <span><i class="fas fa-sitemap" style="color:var(--color-navy); margin-right:4px;"></i> 5. Organizational Chart</span>
                     </label>
                     <label class="revision-check-item">
                         <input type="checkbox" name="requested_files[]" value="member_directory">
-                        <span class="revision-check-label"><i class="fas fa-file-excel" style="color:#107C41; margin-right:4px;"></i> 6. Member Directory Spreadsheet (.xlsx / .csv)</span>
+                        <span><i class="fas fa-file-excel" style="color:#107C41; margin-right:4px;"></i> 6. Member Directory Spreadsheet (.xlsx / .csv)</span>
                     </label>
                 </div>
 
                 <div class="ap-form-group">
-                    <label class="ap-form-label">Specific Correction Notes & Instructions for Applicant</label>
-                    <textarea name="instructions" class="ap-input" rows="3" placeholder="e.g. Please secure the Dean's official signature on the endorsement letter and update columns 2-4 in the student roster." required></textarea>
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Specific Correction Notes & Instructions for Applicant</label>
+                    <textarea name="instructions" class="ap-input" rows="3" placeholder="e.g. Please secure the Dean's official signature on the endorsement letter and update columns 2-4 in the student roster." required style="font-size:0.8rem;"></textarea>
                 </div>
 
-                <div style="font-size:0.75rem; color:#64748B; background:#F1F5F9; padding:0.5rem 0.75rem; border-radius:6px; margin-bottom:1rem;">
+                <div style="font-size:0.74rem; color:#64748B; background:#F8FAFC; border:1px solid #E2E8F0; padding:0.45rem 0.65rem; border-radius:6px; margin-bottom:0.85rem;">
                     <i class="fas fa-paper-plane" style="color:#2563EB;"></i> A direct secure re-upload link will be sent to the applicant's Gmail address (<span id="revEmailDisplay" style="font-weight:700;"></span>).
                 </div>
 
-                <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
-                    <button type="button" class="ap-btn-secondary" onclick="closeRevisionModal()">Cancel</button>
-                    <button type="submit" class="ap-btn-primary" style="background:#D97706; border-color:#D97706;">
+                <div style="display:flex; justify-content:flex-end; gap:0.65rem;">
+                    <button type="button" class="btn-white" onclick="closeRevisionModal()">Cancel</button>
+                    <button type="submit" class="btn-primary-navy" style="background:#D97706; border-color:#D97706;">
                         <i class="fas fa-paper-plane"></i> Send Revision Request via Gmail
                     </button>
                 </div>
@@ -897,10 +1301,10 @@ try {
 
     <!-- 3. Decline / Reject Modal -->
     <div id="declineModal" class="doc-modal">
-        <div class="ap-card" style="max-width:480px; width:100%; margin:0; box-shadow:var(--card-shadow);">
+        <div class="modal-inner-box" style="max-width:460px;">
             <div class="ap-card-header">
                 <h3 class="ap-card-title" style="color:#DC2626;"><i class="fas fa-times-circle"></i> Decline Affiliation</h3>
-                <button class="ap-btn-secondary" style="border:none; padding:0.25rem 0.5rem;" onclick="closeDeclineModal()">&times;</button>
+                <button class="btn-white" style="border:none; padding:0.25rem 0.5rem;" onclick="closeDeclineModal()">&times;</button>
             </div>
             <form method="POST" style="padding:1rem;">
                 <input type="hidden" name="action" value="reject_charter">
@@ -909,16 +1313,16 @@ try {
                 <input type="hidden" id="declineContactPerson" name="contact_person" value="">
                 <input type="hidden" id="declineInstName" name="institution_name" value="">
 
-                <p style="font-size:0.85rem; color:var(--text-body); margin:0 0 1rem;">
+                <p style="font-size:0.82rem; color:#1E293B; margin:0 0 0.75rem;">
                     State the deficiency or reason for declining <strong id="declineSchoolName"></strong>:
                 </p>
                 <div class="ap-form-group">
-                    <label class="ap-form-label">Notes / Deficiencies for Applicant</label>
-                    <textarea name="notes" class="ap-input" rows="3" placeholder="e.g. Ineligible academic program or missing administrative endorsement."></textarea>
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Notes / Deficiencies for Applicant</label>
+                    <textarea name="notes" class="ap-input" rows="3" placeholder="e.g. Ineligible academic program or missing administrative endorsement." style="font-size:0.8rem;"></textarea>
                 </div>
-                <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.25rem;">
-                    <button type="button" class="ap-btn-secondary" onclick="closeDeclineModal()">Cancel</button>
-                    <button type="submit" class="ap-btn-primary" style="background:#DC2626; border-color:#DC2626;">Confirm Decline & Notify</button>
+                <div style="display:flex; justify-content:flex-end; gap:0.65rem; margin-top:1rem;">
+                    <button type="button" class="btn-white" onclick="closeDeclineModal()">Cancel</button>
+                    <button type="submit" class="btn-act-red" style="padding:0.45rem 0.95rem;">Confirm Decline & Notify</button>
                 </div>
             </form>
         </div>
@@ -926,38 +1330,85 @@ try {
 
     <!-- 4. Charter Institution Modal -->
     <div id="charterModal" class="doc-modal">
-        <div class="ap-card" style="max-width:560px; width:100%; margin:0; box-shadow:var(--card-shadow);">
+        <div class="modal-inner-box" style="max-width:540px;">
             <div class="ap-card-header">
                 <h3 class="ap-card-title"><i class="fas fa-stamp"></i> Charter & Register New Chapter</h3>
-                <button class="ap-btn-secondary" style="border:none; padding:0.25rem 0.5rem;" onclick="closeCharterModal()">&times;</button>
+                <button class="btn-white" style="border:none; padding:0.25rem 0.5rem;" onclick="closeCharterModal()">&times;</button>
             </div>
             <form method="POST" style="padding:1rem;">
                 <input type="hidden" name="action" value="approve_charter">
                 <div class="ap-form-group">
-                    <label class="ap-form-label">Institution / University Name</label>
-                    <input type="text" name="institution_name" class="ap-input" placeholder="e.g. Mapúa Malayan Colleges Laguna" required>
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Institution / University Name</label>
+                    <input type="text" name="institution_name" class="ap-input" placeholder="e.g. Mapúa Malayan Colleges Laguna" required style="font-size:0.8rem;">
                 </div>
                 <div class="ap-form-group">
-                    <label class="ap-form-label">Official Chapter Email</label>
-                    <input type="email" name="email" class="ap-input" placeholder="e.g. ece.chapter@mmcl.edu.ph" required>
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Official Chapter Email</label>
+                    <input type="email" name="email" class="ap-input" placeholder="e.g. ece.chapter@mmcl.edu.ph" required style="font-size:0.8rem;">
                 </div>
                 <div class="ap-form-group">
-                    <label class="ap-form-label">Faculty Advisor / Contact Person</label>
-                    <input type="text" name="contact_person" class="ap-input" placeholder="e.g. Engr. Maria Santos">
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Faculty Advisor / Contact Person</label>
+                    <input type="text" name="contact_person" class="ap-input" placeholder="e.g. Engr. Maria Santos" style="font-size:0.8rem;">
                 </div>
                 <div class="ap-form-group">
-                    <label class="ap-form-label">Contact Phone</label>
-                    <input type="text" name="contact_phone" class="ap-input" placeholder="e.g. +63 912 345 6789">
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Contact Phone</label>
+                    <input type="text" name="contact_phone" class="ap-input" placeholder="e.g. +63 912 345 6789" style="font-size:0.8rem;">
                 </div>
-                <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
-                    <button type="button" class="ap-btn-secondary" onclick="closeCharterModal()">Cancel</button>
-                    <button type="submit" class="ap-btn-primary"><i class="fas fa-floppy-disk"></i> Save Institution & Activate Chapter</button>
+                <div style="display:flex; justify-content:flex-end; gap:0.65rem; margin-top:1.25rem;">
+                    <button type="button" class="btn-white" onclick="closeCharterModal()">Cancel</button>
+                    <button type="submit" class="btn-primary-navy"><i class="fas fa-floppy-disk"></i> Save & Activate Chapter</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
+        // Universal Excel Template Generator
+        document.getElementById('btnDownloadTemplate').addEventListener('click', function() {
+            const headers = [
+                "Student ID",
+                "Full Name",
+                "Email Address",
+                "School / Chapter",
+                "Degree Program",
+                "Year Level",
+                "Contact Number",
+                "Home Address",
+                "Birthday (YYYY-MM-DD)",
+                "Payment Status (Paid/Pending)"
+            ];
+
+            const sampleRows = [
+                headers,
+                ["2023-08912", "Maria Santos", "mariasantos@gmail.com", "Laguna State Polytechnic University - Santa Cruz Campus (LSPU - SCC)", "BS Electronics Engineering", "3rd Year", "+63 912 345 6789", "Santa Cruz, Laguna", "2003-05-14", "Paid"],
+                ["2022-04192", "Juan Dela Cruz", "jdelacruz@gmail.com", "De La Salle University - Laguna Campus (DLSU - Laguna)", "BS Electronics Engineering", "4th Year", "+63 917 892 3411", "Biñan, Laguna", "2002-11-20", "Paid"],
+                ["2023-10892", "Carlos Ramos", "cmramos@mcl.edu.ph", "Mapúa Malayan Colleges Laguna (MMCL)", "BS Electronics Engineering", "3rd Year", "+63 915 771 2233", "Cabuyao, Laguna", "2003-08-09", "Paid"]
+            ];
+
+            if (typeof XLSX !== 'undefined') {
+                const ws = XLSX.utils.aoa_to_sheet(sampleRows);
+                ws['!cols'] = [
+                    { wch: 15 }, { wch: 22 }, { wch: 26 }, { wch: 45 },
+                    { wch: 30 }, { wch: 12 }, { wch: 18 }, { wch: 25 },
+                    { wch: 20 }, { wch: 18 }
+                ];
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Member Roster");
+                XLSX.writeFile(wb, "IECEP_LSC_Official_Member_Roster_Template.xlsx");
+            } else {
+                let csvContent = "";
+                sampleRows.forEach(row => {
+                    csvContent += row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\r\n";
+                });
+                const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "IECEP_LSC_Official_Member_Roster_Template.csv";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        });
+
         // Tab switching logic
         function switchAffiliationTab(tabKey) {
             document.getElementById('tabBtnPending').classList.remove('active');
@@ -980,6 +1431,32 @@ try {
             }
         }
 
+        // Search Filter for Affiliation tables
+        function filterAffiliationsTable() {
+            const query = document.getElementById('affiliationSearchInput').value.toLowerCase();
+            const activeTab = document.querySelector('.tab-btn.active').id;
+            let targetTableId = 'pendingTable';
+            if (activeTab === 'tabBtnChartered') targetTableId = 'charteredTable';
+            
+            const table = document.getElementById(targetTableId);
+            if (!table) return;
+
+            const trs = table.getElementsByTagName('tr');
+            let matchCount = 0;
+
+            for (let i = 1; i < trs.length; i++) {
+                const tr = trs[i];
+                if (tr.children.length === 1 && tr.children[0].getAttribute('colspan')) continue;
+                const text = tr.textContent.toLowerCase();
+                if (text.indexOf(query) > -1) {
+                    tr.style.display = '';
+                    matchCount++;
+                } else {
+                    tr.style.display = 'none';
+                }
+            }
+        }
+
         // Modals
         function openCharterModal() {
             document.getElementById('charterModal').classList.add('active');
@@ -997,7 +1474,6 @@ try {
             document.getElementById('revContactPerson').value = app.contact_person || '';
             document.getElementById('revSchoolNameDisplay').textContent = app.institution_name || 'the school';
             
-            // Uncheck all checkboxes by default
             const checkboxes = document.querySelectorAll('#revisionModal input[type="checkbox"]');
             checkboxes.forEach(cb => cb.checked = false);
 
@@ -1038,12 +1514,12 @@ try {
                 const card = document.createElement('div');
                 card.className = 'packet-doc-card';
                 card.innerHTML = `
-                    <div class="packet-doc-title">
-                        <i class="fas ${doc.icon}" style="color:${doc.color || 'var(--color-navy)'};"></i>
+                    <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.78rem; font-weight:700; color:#0F172A;">
+                        <i class="fas ${doc.icon}" style="color:${doc.color || 'var(--color-navy)'}; font-size:0.9rem;"></i>
                         <span>${doc.label}</span>
                     </div>
                     <div>
-                        ${url ? `<a href="${url}" target="_blank" class="ap-btn-secondary" style="padding:0.25rem 0.6rem; font-size:0.72rem;"><i class="fas fa-eye"></i> View</a>` : `<span style="font-size:0.72rem; color:var(--text-muted);">Not Attached</span>`}
+                        ${url ? `<a href="${url}" target="_blank" class="btn-white" style="padding:0.25rem 0.55rem; font-size:0.7rem;"><i class="fas fa-eye"></i> View</a>` : `<span style="font-size:0.7rem; color:#94A3B8;">Not Attached</span>`}
                     </div>
                 `;
                 grid.appendChild(card);
