@@ -99,31 +99,33 @@ $avatar_url = $_SESSION['avatar_url'] ??
               $user['avatar_url'] ?? 
               '';
 
-// If avatar is not in session, attempt fetching from Supabase user_profiles
-if (empty($avatar_url) && !empty($userId)) {
+// If avatar is not in session, attempt fetching from Supabase user_profiles (production UUIDs only)
+if (empty($avatar_url) && !empty($userId) && is_string($userId) && strpos($userId, 'local-') === false) {
     try {
         if (function_exists('getSupabaseClient')) {
             $sb = getSupabaseClient();
-            if ($sb) {
+            if ($sb && is_object($sb)) {
                 $profs = $sb->select('user_profiles', [
                     'select' => 'avatar_url, profile_photo, full_name',
                     'user_id' => 'eq.' . $userId,
                     'limit' => 1
                 ]);
-                if (!empty($profs[0]['avatar_url'])) {
-                    $avatar_url = $profs[0]['avatar_url'];
-                    $_SESSION['avatar_url'] = $avatar_url;
-                } elseif (!empty($profs[0]['profile_photo'])) {
-                    $avatar_url = $profs[0]['profile_photo'];
-                    $_SESSION['avatar_url'] = $avatar_url;
-                }
-                if (empty($_SESSION['full_name']) && !empty($profs[0]['full_name'])) {
-                    $user_name = $profs[0]['full_name'];
-                    $_SESSION['full_name'] = $user_name;
+                if (is_array($profs) && !empty($profs[0])) {
+                    if (!empty($profs[0]['avatar_url'])) {
+                        $avatar_url = $profs[0]['avatar_url'];
+                        $_SESSION['avatar_url'] = $avatar_url;
+                    } elseif (!empty($profs[0]['profile_photo'])) {
+                        $avatar_url = $profs[0]['profile_photo'];
+                        $_SESSION['avatar_url'] = $avatar_url;
+                    }
+                    if (empty($_SESSION['full_name']) && !empty($profs[0]['full_name'])) {
+                        $user_name = $profs[0]['full_name'];
+                        $_SESSION['full_name'] = $user_name;
+                    }
                 }
             }
         }
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         // Silently continue
     }
 }
