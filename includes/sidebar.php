@@ -474,39 +474,126 @@ if (!function_exists('isMenuItemActive')) {
     border-color: #FCA5A5;
 }
 
-/* Mobile Toggle */
+/* Mobile Toggle & Top Bar */
+.mobile-top-bar {
+    display: none;
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 58px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--sb-border);
+    z-index: 1000;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.mobile-bar-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.mobile-logo-frame {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #FAF9F6;
+    border: 1px solid rgba(212, 175, 55, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px;
+}
+
+.mobile-logo-frame img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.mobile-brand-title {
+    font-family: 'Times New Roman', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0B1D4A;
+    letter-spacing: 0.02em;
+    line-height: 1;
+}
+
+.mobile-portal-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #B8860B;
+    background: #FEF9C3;
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
 .sidebar-toggle {
-    position: fixed;
-    top: 14px;
-    left: 14px;
-    z-index: 1001;
     background: var(--sb-navy);
     color: #FFFFFF;
     border: none;
     border-radius: 9px;
-    width: 40px;
-    height: 40px;
-    font-size: 1.05rem;
+    width: 38px;
+    height: 38px;
+    font-size: 1rem;
     cursor: pointer;
-    box-shadow: 0 2px 10px rgba(11, 29, 74, 0.25);
+    box-shadow: 0 2px 8px rgba(11, 29, 74, 0.25);
     transition: var(--sb-transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-toggle:hover {
+    background: var(--sb-navy-hover);
+    transform: scale(1.03);
+}
+
+.sidebar-close-btn {
     display: none;
     align-items: center;
     justify-content: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: 1px solid #E2E8F0;
+    background: #F8FAFC;
+    color: #64748B;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.sidebar-close-btn:hover {
+    background: #FEF2F2;
+    color: #DC2626;
+    border-color: #FECACA;
+    transform: scale(1.05);
 }
 
 .sidebar-overlay {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(15, 23, 42, 0.45);
+    width: 100vw;
+    height: 100vh;
+    background: rgba(11, 29, 74, 0.45);
     backdrop-filter: blur(4px);
-    z-index: 999;
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 1050;
     display: none;
     opacity: 0;
-    transition: opacity 0.25s ease;
+    transition: opacity 0.28s ease;
 }
 
 .sidebar-overlay.active {
@@ -519,29 +606,51 @@ if (!function_exists('isMenuItemActive')) {
     transition: margin-left var(--sb-transition);
     padding: 2rem;
     min-height: 100vh;
+    box-sizing: border-box;
 }
 
-@media (max-width: 767.98px) {
-    .sidebar-toggle {
+/* Tablet & Mobile Breakpoint (<= 991.98px) */
+@media (max-width: 991.98px) {
+    .mobile-top-bar {
         display: flex;
     }
-    #sidebar {
-        transform: translateX(-100%);
+
+    .sidebar-close-btn {
+        display: flex;
     }
+
+    #sidebar {
+        width: 280px;
+        max-width: 85vw;
+        transform: translateX(-100%);
+        z-index: 1100;
+        box-shadow: none;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+    }
+
     #sidebar.open {
         transform: translateX(0);
-        box-shadow: 8px 0 30px rgba(0, 0, 0, 0.15);
+        box-shadow: 12px 0 45px rgba(11, 29, 74, 0.28);
     }
+
     .main-content {
-        margin-left: 0;
-        padding-top: 4.5rem;
+        margin-left: 0 !important;
+        padding: 1.25rem 0.85rem !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
     }
 }
 
-@media (min-width: 768px) {
-    .sidebar-toggle {
+@media (min-width: 992px) {
+    .mobile-top-bar {
         display: none !important;
     }
+
+    .sidebar-close-btn {
+        display: none !important;
+    }
+
     .sidebar-overlay {
         display: none !important;
     }
@@ -630,15 +739,24 @@ if (!function_exists('isMenuItemActive')) {
 }
 </style>
 
-<!-- Mobile Toggle Button -->
-<button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-    <i class="fas fa-bars"></i>
-</button>
+<!-- Mobile Top Sticky Navigation Bar -->
+<div class="mobile-top-bar" id="mobileTopBar">
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle navigation menu">
+        <i class="fas fa-bars"></i>
+    </button>
+    <div class="mobile-bar-brand">
+        <div class="mobile-logo-frame">
+            <img src="<?php echo $base_public_url; ?>/assets/icons/iecep-logo.png" alt="IECEP-LSC Seal" onerror="this.style.display='none';">
+        </div>
+        <span class="mobile-brand-title">IECEP-LSC</span>
+        <span class="mobile-portal-badge"><?php echo htmlspecialchars($portal_title); ?></span>
+    </div>
+</div>
 
-<!-- Mobile Overlay -->
+<!-- Mobile Overlay Backdrop -->
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-<!-- Sidebar -->
+<!-- Sidebar Drawer -->
 <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
         <div class="sidebar-header-top">
@@ -651,6 +769,10 @@ if (!function_exists('isMenuItemActive')) {
                     <span class="sidebar-portal-badge"><?php echo htmlspecialchars($portal_title); ?></span>
                 </div>
             </div>
+            <!-- Mobile Close (X) Button -->
+            <button type="button" class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close sidebar">
+                <i class="fas fa-xmark"></i>
+            </button>
         </div>
         
         <div class="sidebar-status-strip">
@@ -735,6 +857,7 @@ if (typeof window.sidebarInitialized === 'undefined') {
     document.addEventListener('DOMContentLoaded', function() {
         const sidebar = document.getElementById('sidebar');
         const sidebarToggle = document.getElementById('sidebarToggle');
+        const sidebarCloseBtn = document.getElementById('sidebarCloseBtn');
         const sidebarOverlay = document.getElementById('sidebarOverlay');
         
         function openSidebar() {
@@ -764,6 +887,14 @@ if (typeof window.sidebarInitialized === 'undefined') {
                 toggleSidebar();
             });
         }
+
+        if (sidebarCloseBtn) {
+            sidebarCloseBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeSidebar();
+            });
+        }
         
         if (sidebarOverlay) {
             sidebarOverlay.addEventListener('click', closeSidebar);
@@ -774,6 +905,28 @@ if (typeof window.sidebarInitialized === 'undefined') {
                 closeSidebar();
             }
         });
+
+        // Touch Swipe Handling on Mobile
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+
+        document.addEventListener('touchend', function(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            const swipeDistance = touchEndX - touchStartX;
+
+            // Swipe Left to Close Drawer
+            if (sidebar && sidebar.classList.contains('open') && swipeDistance < -60) {
+                closeSidebar();
+            }
+            // Edge Swipe Right (< 35px from left edge) to Open Drawer
+            else if (sidebar && !sidebar.classList.contains('open') && touchStartX < 35 && swipeDistance > 60) {
+                openSidebar();
+            }
+        }, { passive: true });
         
         // Dropdown accordion toggles
         if (sidebar) {
@@ -809,10 +962,11 @@ if (typeof window.sidebarInitialized === 'undefined') {
                 });
             });
 
+            // Auto-close sidebar on mobile after clicking any direct navigation link
             const navLinks = sidebar.querySelectorAll('.nav-menu a:not(.dropdown-toggle)');
             navLinks.forEach(function(link) {
                 link.addEventListener('click', function() {
-                    if (window.innerWidth <= 767) {
+                    if (window.innerWidth <= 991) {
                         setTimeout(closeSidebar, 150);
                     }
                 });
@@ -820,7 +974,7 @@ if (typeof window.sidebarInitialized === 'undefined') {
         }
         
         window.addEventListener('resize', function() {
-            if (window.innerWidth > 767) {
+            if (window.innerWidth > 991) {
                 if (sidebar) sidebar.classList.remove('open');
                 if (sidebarOverlay) sidebarOverlay.classList.remove('active');
                 document.body.style.overflow = '';
