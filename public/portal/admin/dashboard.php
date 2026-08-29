@@ -157,7 +157,11 @@ $totalBlocksCount = count($realBlockchainRecords) > 0 ? count($realBlockchainRec
         .command-desk-scope {
             background: transparent;
             min-height: 100vh;
-            padding: 1.75rem 2rem 3rem;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
             color: var(--text-primary);
         }
 
@@ -984,7 +988,7 @@ $totalBlocksCount = count($realBlockchainRecords) > 0 ? count($realBlockchainRec
     <!-- Unified Dynamic Sidebar -->
     <?php include __DIR__ . '/../../../includes/sidebar.php'; ?>
 
-    <main class="main-content" style="background: transparent; padding: 0;">
+    <main class="main-content">
         <div class="command-desk-scope">
 
             <!-- Top Command Header Bar -->
