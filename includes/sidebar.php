@@ -200,14 +200,16 @@ if (!function_exists('isMenuItemActive')) {
     top: 0 !important;
     bottom: 0 !important;
     height: 100% !important;
+    height: 100vh !important;
     height: 100dvh !important;
     max-height: 100% !important;
+    max-height: 100vh !important;
     max-height: 100dvh !important;
     overflow: hidden !important;
     z-index: 1000;
     display: flex !important;
     flex-direction: column !important;
-    justify-content: space-between !important;
+    justify-content: flex-start !important;
     transform: translateX(0);
     transition: var(--sb-transition);
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.04);
@@ -233,11 +235,13 @@ if (!function_exists('isMenuItemActive')) {
 /* Header & Brand (Locked to Pure White) */
 #sidebar .sidebar-header,
 .sidebar-header {
+    flex: 0 0 auto !important;
     flex-shrink: 0 !important;
-    padding: 1.15rem 1.15rem 0.85rem !important;
+    padding: 0.9rem 1rem 0.7rem !important;
     border-bottom: 1px solid #E2E8F0 !important;
     background: #FFFFFF !important;
     z-index: 10 !important;
+    box-sizing: border-box !important;
 }
 
 .sidebar-header-top {
@@ -338,12 +342,15 @@ if (!function_exists('isMenuItemActive')) {
 
 /* Nav Menu (Independently scrollable middle section) */
 #sidebar .sidebar-nav {
-    flex: 1 1 auto !important;
+    flex: 1 1 0px !important;
     min-height: 0 !important;
+    height: auto !important;
     overflow-y: auto !important;
+    overflow-x: hidden !important;
     overscroll-behavior: contain !important;
     -webkit-overflow-scrolling: touch !important;
-    padding: 8px 10px 12px !important;
+    padding: 6px 10px !important;
+    box-sizing: border-box !important;
 }
 
 #sidebar .nav-menu {
@@ -742,18 +749,58 @@ if (!function_exists('isMenuItemActive')) {
         bottom: 0 !important;
         left: 0 !important;
         height: 100% !important;
+        height: 100vh !important;
         height: 100dvh !important;
         max-height: 100% !important;
+        max-height: 100vh !important;
         max-height: 100dvh !important;
         transform: translateX(-100%) !important;
         z-index: 1100 !important;
         box-shadow: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-start !important;
         transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease !important;
     }
 
     #sidebar.open {
         transform: translateX(0) !important;
         box-shadow: 12px 0 45px rgba(11, 29, 74, 0.28) !important;
+    }
+
+    #sidebar .sidebar-header {
+        padding: 0.75rem 0.85rem 0.6rem !important;
+    }
+
+    #sidebar .sidebar-status-strip {
+        margin-top: 0.45rem !important;
+        padding: 4px 8px !important;
+    }
+
+    #sidebar .sidebar-nav {
+        flex: 1 1 0px !important;
+        min-height: 0 !important;
+        padding: 4px 8px !important;
+    }
+
+    #sidebar .nav-menu a {
+        padding: 7px 10px !important;
+        font-size: 0.82rem !important;
+        gap: 10px !important;
+    }
+
+    #sidebar .sidebar-footer {
+        flex: 0 0 auto !important;
+        flex-shrink: 0 !important;
+        margin-top: auto !important;
+        padding: 8px 10px !important;
+        padding-bottom: max(10px, env(safe-area-inset-bottom, 10px)) !important;
+        background: #FFFFFF !important;
+    }
+
+    #sidebar .user-info {
+        padding: 5px 8px !important;
+        min-height: 44px !important;
     }
 
     .main-content {
