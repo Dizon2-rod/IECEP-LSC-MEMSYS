@@ -218,15 +218,21 @@ $userId = $user['id'] ?? 'mem_rashed_dizon';
                 const result = await response.json();
                 statusEl.style.display = 'none';
 
-                if (result.success) {
+                if (result.success && !result.already_recorded) {
                     const data = result.data || {};
                     document.getElementById('resEventTitle').textContent = data.event_title || 'IECEP Event';
                     document.getElementById('resStudentName').textContent = data.student_name || <?= json_encode($userName) ?>;
                     document.getElementById('resCampus').textContent = data.institution_acronym || 'LSPU SCC';
                     document.getElementById('resTime').textContent = new Date().toLocaleTimeString();
                     document.getElementById('resultSuccess').style.display = 'block';
+                } else if (result.already_recorded) {
+                    statusEl.style.display = 'block';
+                    statusEl.className = 'ap-alert warning';
+                    statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + (result.message || 'You have ALREADY checked in for this event.');
                 } else {
-                    alert(result.message || 'Verification failed. QR code may have expired.');
+                    statusEl.style.display = 'block';
+                    statusEl.className = 'ap-alert danger';
+                    statusEl.innerHTML = '<i class="fas fa-times-circle"></i> ' + (result.message || 'Verification failed. QR code may have expired.');
                 }
             } catch (err) {
                 statusEl.className = 'ap-alert danger';
