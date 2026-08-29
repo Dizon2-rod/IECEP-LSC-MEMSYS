@@ -391,9 +391,6 @@ if ($supabase) {
             <!-- 1. Header Banner -->
             <div class="dash-header-banner">
                 <div style="display:flex; align-items:center; gap:0.65rem;">
-                    <button type="button" id="sidebarToggle" class="mobile-toggle-btn" aria-label="Toggle Navigation">
-                        <i class="fas fa-bars"></i>
-                    </button>
                     <div>
                         <h1 class="dash-header-title">
                             <i class="fas fa-folder-open" style="color:var(--color-navy);"></i>
