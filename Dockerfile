@@ -13,8 +13,10 @@ RUN apt-get update && apt-get install -y \
     git \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j$(nproc) gd pdo pdo_mysql mbstring zip \
-    && rm -f /etc/apache2/mods-enabled/mpm_*.load /etc/apache2/mods-enabled/mpm_*.conf /etc/apache2/mods-available/mpm_event.* /etc/apache2/mods-available/mpm_worker.* \
+    && a2dismod -f mpm_event mpm_worker 2>/dev/null || true \
     && a2enmod mpm_prefork rewrite headers \
+    && find /etc/apache2/mods-enabled/ -name "mpm_*.load" ! -name "mpm_prefork.load" -delete 2>/dev/null || true \
+    && find /etc/apache2/mods-enabled/ -name "mpm_*.conf" ! -name "mpm_prefork.conf" -delete 2>/dev/null || true \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install Composer v2
@@ -36,8 +38,18 @@ COPY . /var/www/html/
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html
 
-# Create startup script to bind Apache to Railway dynamic $PORT and enforce single MPM
-RUN printf '#!/bin/sh\nset -e\nexport PORT="${PORT:-80}"\nrm -f /etc/apache2/mods-enabled/mpm_event.* /etc/apache2/mods-enabled/mpm_worker.* 2>/dev/null || true\nln -sf /etc/apache2/mods-available/mpm_prefork.load /etc/apache2/mods-enabled/mpm_prefork.load 2>/dev/null || true\nsed -i "s/Listen .*/Listen ${PORT}/" /etc/apache2/ports.conf\nsed -i "s/<VirtualHost \\*:.*/<VirtualHost \\*:${PORT}>/" /etc/apache2/sites-available/000-default.conf\nexec apache2-foreground\n' > /usr/local/bin/start-server.sh \
+# Create startup script to bind Apache to dynamic $PORT and enforce single MPM
+RUN printf '#!/bin/sh\n\
+set -e\n\
+export PORT="${PORT:-80}"\n\
+a2dismod -f mpm_event mpm_worker 2>/dev/null || true\n\
+a2enmod mpm_prefork 2>/dev/null || true\n\
+find /etc/apache2/mods-enabled/ -name "mpm_*.load" ! -name "mpm_prefork.load" -delete 2>/dev/null || true\n\
+find /etc/apache2/mods-enabled/ -name "mpm_*.conf" ! -name "mpm_prefork.conf" -delete 2>/dev/null || true\n\
+sed -i "s/Listen .*/Listen ${PORT}/" /etc/apache2/ports.conf\n\
+sed -i "s/<VirtualHost \\*:.*/<VirtualHost \\*:${PORT}>/" /etc/apache2/sites-available/000-default.conf\n\
+sed -i "/<Directory \\/var\\/www\\/>/,/<\\/Directory>/ s/AllowOverride None/AllowOverride All/" /etc/apache2/apache2.conf 2>/dev/null || true\n\
+exec apache2-foreground\n' > /usr/local/bin/start-server.sh \
     && chmod +x /usr/local/bin/start-server.sh
 
 ENV PORT=80
