@@ -28,6 +28,7 @@ cat <<EOF > /etc/apache2/sites-available/000-default.conf
 <VirtualHost *:${PORT} *:80>
     ServerName localhost
     DocumentRoot /var/www/html
+    DirectoryIndex index.php index.html
     <Directory /var/www/html>
         Options -Indexes +FollowSymLinks
         AllowOverride All

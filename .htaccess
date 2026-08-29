@@ -1,5 +1,10 @@
+DirectoryIndex index.php index.html
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Route root request directly to index.php
+    RewriteRule ^$ index.php [L]
 
     # Allow direct access to existing files and directories
     RewriteCond %{REQUEST_FILENAME} -f [OR]
@@ -10,6 +15,11 @@
     RewriteRule ^IECEP-LSC-MEMSYS/api/(.*)$ src/api/index.php [QSA,L]
     RewriteRule ^api/(.*)$ src/api/index.php [QSA,L]
 
-    # Route everything else to public directory
+    # If file exists in public directory, route to public
+    RewriteCond %{DOCUMENT_ROOT}/public/$1 -f [OR]
+    RewriteCond %{DOCUMENT_ROOT}/public/$1 -d
     RewriteRule ^(.*)$ public/$1 [QSA,L]
+
+    # Fallback to index.php
+    RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>
