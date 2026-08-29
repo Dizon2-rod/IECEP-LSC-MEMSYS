@@ -1274,7 +1274,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                         <i class="fas fa-file-export"></i> Export CSV
                     </button>
                     <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="btn-white">
-                        <i class="fas fa-file-import"></i> Bulk CSV Import
+                        <i class="fas fa-file-excel" style="color:#107C41;"></i> Chapter Directory Submissions
                     </a>
                     <button type="button" class="btn-primary-navy" onclick="openAddModal()">
                         <i class="fas fa-user-plus" style="color:#FDE047;"></i> Add New Member
