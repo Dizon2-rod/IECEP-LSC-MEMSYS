@@ -7,7 +7,7 @@ require_once __DIR__ . '/../../../includes/role-config.php';
 require_role(['member', 'admin', 'super_admin', 'school_officer']);
 
 $current_page = 'digital-id';
-$pageTitle = 'Dynamic Student Digital ID';
+$pageTitle = 'Student Dynamic Digital ID';
 
 $user = get_user_info();
 $userId = $user['id'] ?? null;
@@ -16,10 +16,10 @@ $displayName = $user['full_name'] ?? $user['name'] ?? $userEmail;
 
 $supabase = getSupabaseClient();
 
-// Fetch Member Record
+// Fetch Member Record Directly from Database
 $member = [];
-$schoolName = 'Laguna State Polytechnic University - Santa Cruz Campus';
-$schoolAcronym = 'LSPU - SCC';
+$schoolName = 'Affiliated Student Chapter';
+$schoolAcronym = 'IECEP-SC';
 
 if ($supabase) {
     try {
@@ -42,7 +42,7 @@ if ($supabase) {
             }
         }
 
-        // Resolve School Name
+        // Resolve School from institutions table
         $instId = $member['institution_id'] ?? ($_SESSION['institution_id'] ?? null);
         if ($instId) {
             $iRes = $supabase->select('institutions', ['id' => 'eq.' . $instId]);
@@ -59,11 +59,12 @@ if ($supabase) {
 }
 
 $realMemberId = $member['id'] ?? ($userId ?? 'mem_default');
-$membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
-$courseName = !empty($member['course']) ? $member['course'] : 'BS Electronics Engineering';
-$yearLevel = !empty($member['year_level']) ? $member['year_level'] : '3rd Year';
-$studentNumber = !empty($member['student_number']) ? $member['student_number'] : ($member['student_id'] ?? '2023-01048');
+$membershipId = $member['membership_id'] ?? 'Pending Assignment';
+$courseName = !empty($member['course']) ? $member['course'] : (!empty($member['program']) ? $member['program'] : 'BS Electronics Engineering');
+$yearLevel = !empty($member['year_level']) ? $member['year_level'] : 'Undergraduate';
+$studentNumber = !empty($member['student_number']) ? $member['student_number'] : ($member['student_id'] ?? 'N/A');
 $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($userEmail ?: 'iecep'));
+$memberFullName = $member['full_name'] ?? $displayName;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -97,7 +98,7 @@ $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($us
 
         .main-content {
             margin-left: 260px;
-            padding: 1.25rem;
+            padding: 1.5rem;
             min-height: 100vh;
             box-sizing: border-box;
         }
@@ -124,27 +125,17 @@ $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($us
             }
         }
 
-        /* Front Digital ID Card */
-        .digital-id-card {
-            background: linear-gradient(135deg, #0B1D4A 0%, #152C6E 50%, #1E3A8A 100%);
+        /* Clean White Digital ID Card */
+        .digital-id-card-white {
+            background: #FFFFFF;
             border-radius: 20px;
             padding: 24px;
-            color: #FFFFFF;
-            box-shadow: 0 15px 35px -5px rgba(11, 29, 74, 0.35);
+            color: #0F172A;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
             position: relative;
             overflow: hidden;
-            border: 1px solid rgba(212, 175, 55, 0.45);
-        }
-
-        .digital-id-card::before {
-            content: '';
-            position: absolute;
-            top: -60px;
-            right: -60px;
-            width: 220px;
-            height: 220px;
-            background: radial-gradient(circle, rgba(212, 175, 55, 0.2) 0%, rgba(212, 175, 55, 0) 70%);
-            pointer-events: none;
+            border: 2px solid #E2E8F0;
+            border-top: 6px solid #0B1D4A;
         }
 
         .id-card-header {
@@ -152,7 +143,7 @@ $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($us
             align-items: center;
             gap: 12px;
             margin-bottom: 18px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            border-bottom: 1px solid #F1F5F9;
             padding-bottom: 14px;
         }
 
@@ -164,8 +155,9 @@ $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($us
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             padding: 4px;
+            border: 1px solid #E2E8F0;
             flex-shrink: 0;
         }
 
@@ -178,39 +170,41 @@ $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($us
         .id-photo-wrapper {
             width: 76px;
             height: 76px;
-            background: rgba(255,255,255,0.1);
+            background: #F8FAFC;
             border-radius: 50%;
             margin: 0 auto 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: 3px solid #D4AF37;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.3);
-            color: #D4AF37;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            color: #0B1D4A;
             font-size: 2rem;
         }
 
         .qr-box-wrapper {
             background: #FFFFFF;
-            padding: 14px;
+            padding: 12px;
             border-radius: 12px;
             display: inline-block;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
             margin: 0 auto;
+            border: 1px solid #E2E8F0;
         }
 
         .progress-bar-container {
             width: 100%;
-            height: 5px;
-            background: rgba(255,255,255,0.2);
+            height: 6px;
+            background: #F1F5F9;
             border-radius: 3px;
             overflow: hidden;
             margin-top: 12px;
+            border: 1px solid #E2E8F0;
         }
 
         .progress-bar-fill {
             height: 100%;
-            background: #10B981;
+            background: #059669;
             transition: width 1s linear;
         }
 
@@ -235,12 +229,52 @@ $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($us
         .info-label { color: #64748B; font-weight: 600; }
         .info-val { color: #0F172A; font-weight: 700; text-align: right; }
 
+        .btn-primary-navy {
+            background: var(--color-navy);
+            color: #FFFFFF;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            border: 1px solid var(--color-navy);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-primary-navy:hover {
+            background: var(--color-navy-hover);
+            color: #FFFFFF;
+        }
+
+        .btn-white {
+            background: #FFFFFF;
+            color: #334155;
+            border: 1px solid #CBD5E1;
+            padding: 0.5rem 0.9rem;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+        }
+
         @media print {
             body { background: #FFF !important; }
             .sidebar-nav, .ap-sidebar, .btn-print-hide, .info-card { display: none !important; }
             .main-content { margin-left: 0 !important; padding: 0 !important; }
             .id-layout-container { display: block !important; }
-            .digital-id-card { box-shadow: none !important; border: 2px solid #0B1D4A !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .digital-id-card-white { box-shadow: none !important; border: 2px solid #0B1D4A !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
     </style>
 </head>
@@ -249,7 +283,7 @@ $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($us
 
     <main class="main-content">
         <!-- Page Header -->
-        <div class="ap-page-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1.25rem;">
             <div>
                 <h1 style="font-size:1.4rem; font-weight:800; color:#0F172A; margin:0 0 0.2rem 0; display:flex; align-items:center; gap:0.5rem;">
                     <i class="fas fa-id-card" style="color:var(--color-navy);"></i> Student Dynamic Digital ID
@@ -259,28 +293,28 @@ $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($us
                 </p>
             </div>
             <div class="btn-print-hide" style="display:flex; gap:0.5rem;">
-                <button type="button" class="btn-white" onclick="window.print()" style="padding:0.45rem 0.9rem; font-size:0.82rem; border-radius:8px; font-weight:600; cursor:pointer; background:#FFF; border:1px solid #CBD5E1;">
+                <button type="button" class="btn-white" onclick="window.print()">
                     <i class="fas fa-print me-1"></i> Print / Save PDF
                 </button>
-                <a href="/IECEP-LSC-MEMSYS/public/portal/member/scan.php" class="btn-primary-navy" style="background:#0B1D4A; color:#FFF; padding:0.45rem 0.9rem; font-size:0.82rem; border-radius:8px; text-decoration:none; font-weight:700; display:inline-flex; align-items:center; gap:0.4rem;">
-                    <i class="fas fa-camera"></i> Scan Scanner
+                <a href="/IECEP-LSC-MEMSYS/public/portal/member/scan.php" class="btn-primary-navy">
+                    <i class="fas fa-camera"></i> Scan Attendance
                 </a>
             </div>
         </div>
 
         <div class="id-layout-container">
-            <!-- Left: Digital ID Card -->
+            <!-- Left: White Theme Digital ID Card -->
             <div>
-                <div class="digital-id-card" id="digitalIdElement">
+                <div class="digital-id-card-white" id="digitalIdElement">
                     <div class="id-card-header">
                         <div class="id-card-logo">
                             <img src="/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png" alt="IECEP Logo">
                         </div>
                         <div style="flex:1;">
-                            <div style="font-size:0.65rem; color:#D4AF37; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">
-                                Institute of Electronics Engineers of the PH
+                            <div style="font-size:0.68rem; color:#D4AF37; font-weight:800; text-transform:uppercase; letter-spacing:0.05em;">
+                                Institute of Electronics Engineers of the Philippines
                             </div>
-                            <div style="font-size:0.88rem; font-weight:800; color:#FFFFFF;">
+                            <div style="font-size:0.88rem; font-weight:800; color:#0B1D4A;">
                                 Laguna Student Chapter
                             </div>
                         </div>
@@ -290,16 +324,16 @@ $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($us
                         <div class="id-photo-wrapper">
                             <i class="fas fa-user-graduate"></i>
                         </div>
-                        <div style="font-size:1.15rem; font-weight:800; color:#FFFFFF; margin-bottom:0.15rem;">
-                            <?= htmlspecialchars($member['full_name'] ?? $displayName) ?>
+                        <div style="font-size:1.2rem; font-weight:800; color:#0B1D4A; margin-bottom:0.15rem;">
+                            <?= htmlspecialchars($memberFullName) ?>
                         </div>
-                        <div style="font-size:0.8rem; color:#E2E8F0; margin-bottom:0.3rem;">
+                        <div style="font-size:0.82rem; color:#475569; font-weight:700; margin-bottom:0.25rem;">
                             <?= htmlspecialchars($schoolName) ?>
                         </div>
-                        <div style="font-size:0.75rem; color:#CBD5E1; margin-bottom:0.6rem;">
+                        <div style="font-size:0.76rem; color:#64748B; margin-bottom:0.65rem;">
                             <?= htmlspecialchars($courseName) ?> • <?= htmlspecialchars($yearLevel) ?>
                         </div>
-                        <div style="background:rgba(255,255,255,0.12); padding:0.35rem 0.8rem; border-radius:6px; display:inline-block; font-family:'JetBrains Mono', monospace; font-size:0.86rem; font-weight:700; color:#FDE047; margin-bottom:0.9rem; border:1px dashed rgba(212,175,55,0.5);">
+                        <div style="background:#FEF9C3; padding:0.35rem 0.8rem; border-radius:6px; display:inline-block; font-family:'JetBrains Mono', monospace; font-size:0.88rem; font-weight:700; color:#0B1D4A; margin-bottom:0.9rem; border:1px solid #FDE047;">
                             <?= htmlspecialchars($membershipId) ?>
                         </div>
 
@@ -312,30 +346,30 @@ $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($us
                             <div id="memberQrProgressBar" class="progress-bar-fill" style="width:100%;"></div>
                         </div>
 
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.6rem; font-size:0.72rem; color:rgba(255,255,255,0.85);">
-                            <span><i class="fas fa-shield-halved text-warning me-1"></i> Rolling 30s Dynamic Security</span>
-                            <span id="memberQrTimer">Refreshing in 30s</span>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.6rem; font-size:0.72rem; color:#64748B; font-weight:600;">
+                            <span><i class="fas fa-shield-halved text-warning me-1"></i> Rolling 30s Dynamic Token</span>
+                            <span id="memberQrTimer" style="font-family:'JetBrains Mono', monospace;">Refreshing in 30s</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Right: Membership Record & Verification Metadata -->
+            <!-- Right: Membership Credentials & Security Details -->
             <div>
                 <div class="info-card">
                     <h2 style="font-size:0.95rem; font-weight:700; color:#0F172A; margin:0 0 1rem 0; display:flex; align-items:center; gap:0.5rem;">
                         <i class="fas fa-circle-check" style="color:var(--color-emerald);"></i> Membership Credentials
                     </h2>
                     <div class="info-row">
-                        <span class="info-label">Full Name</span>
-                        <span class="info-val"><?= htmlspecialchars($member['full_name'] ?? $displayName) ?></span>
+                        <span class="info-label">Full Legal Name</span>
+                        <span class="info-val"><?= htmlspecialchars($memberFullName) ?></span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Registered Email</span>
                         <span class="info-val"><?= htmlspecialchars($member['email'] ?? $userEmail) ?></span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">Student / ID Number</span>
+                        <span class="info-label">Student ID / Serial No.</span>
                         <span class="info-val" style="font-family:'JetBrains Mono', monospace;"><?= htmlspecialchars($studentNumber) ?></span>
                     </div>
                     <div class="info-row">
@@ -347,7 +381,7 @@ $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($us
                         <span class="info-val"><?= htmlspecialchars($yearLevel) ?></span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">Payment & Standing</span>
+                        <span class="info-label">Membership Standing</span>
                         <span class="info-val" style="color:var(--color-emerald);">
                             <i class="fas fa-check-circle me-1"></i> Active / Good Standing
                         </span>
@@ -356,7 +390,7 @@ $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($us
 
                 <div class="info-card" style="background:#F8FAFC;">
                     <h2 style="font-size:0.88rem; font-weight:700; color:#0F172A; margin:0 0 0.5rem 0; display:flex; align-items:center; gap:0.4rem;">
-                        <i class="fas fa-link" style="color:var(--color-blue);"></i> Security & Anti-Fraud Token
+                        <i class="fas fa-link" style="color:var(--color-navy);"></i> Cryptographic Proof of Identity
                     </h2>
                     <p style="margin:0 0 0.6rem 0; font-size:0.76rem; color:#64748B; line-height:1.4;">
                         This dynamic ID generates encrypted one-time verification tokens every 30 seconds to eliminate screenshots and duplicate badge presentations at IECEP assemblies.
@@ -432,7 +466,7 @@ $digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($us
                     bar.style.width = pct + '%';
                     if (pct < 25) bar.style.background = '#EF4444';
                     else if (pct < 50) bar.style.background = '#F59E0B';
-                    else bar.style.background = '#10B981';
+                    else bar.style.background = '#059669';
                 }
 
                 if (timerText) {

@@ -16,10 +16,10 @@ $displayName = $user['full_name'] ?? $user['name'] ?? $userEmail;
 
 $supabase = getSupabaseClient();
 
-// Fetch Member Record
+// Fetch Member Record Strictly from Database
 $member = [];
-$schoolName = 'Laguna State Polytechnic University - Santa Cruz Campus';
-$schoolAcronym = 'LSPU - SCC';
+$schoolName = 'Affiliated Student Chapter';
+$schoolAcronym = 'IECEP-SC';
 
 if ($supabase) {
     try {
@@ -43,7 +43,8 @@ if ($supabase) {
 }
 
 $memberDbId = $member['id'] ?? $userId;
-$membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
+$membershipId = $member['membership_id'] ?? 'Pending Assignment';
+$memberFullName = $member['full_name'] ?? $displayName;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -79,7 +80,7 @@ $membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
 
         .main-content {
             margin-left: 260px;
-            padding: 1.25rem;
+            padding: 1.5rem;
             min-height: 100vh;
             box-sizing: border-box;
         }
@@ -88,26 +89,28 @@ $membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
             .main-content { margin-left: 0; padding: 1rem; }
         }
 
-        .scanner-card {
-            max-width: 480px;
+        .scanner-card-white {
+            max-width: 500px;
             margin: 0 auto;
             background: #FFFFFF;
             border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(11,29,74,0.08);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
             border: 1px solid var(--border-color);
+            border-top: 5px solid #0B1D4A;
             overflow: hidden;
         }
 
-        .scanner-header {
-            background: linear-gradient(135deg, #0B1D4A 0%, #152C6E 100%);
-            color: #FFFFFF;
-            padding: 1.25rem;
+        .scanner-header-white {
+            background: #FFFFFF;
+            color: #0F172A;
+            padding: 1.5rem 1.25rem 1rem;
             text-align: center;
+            border-bottom: 1px solid #F1F5F9;
         }
 
         #reader {
             width: 100%;
-            border-radius: 10px;
+            border-radius: 12px;
             overflow: hidden;
             background: #0F172A;
         }
@@ -130,15 +133,15 @@ $membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
         .btn-primary-navy {
             background: var(--color-navy);
             color: #FFFFFF;
-            padding: 0.5rem 1rem;
+            padding: 0.55rem 1.1rem;
             border-radius: 8px;
-            font-size: 0.82rem;
+            font-size: 0.84rem;
             font-weight: 700;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 0.4rem;
-            border: none;
+            gap: 0.45rem;
+            border: 1px solid var(--color-navy);
             cursor: pointer;
             transition: all 0.2s ease;
         }
@@ -178,7 +181,7 @@ $membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
                     <i class="fas fa-camera" style="color:var(--color-navy);"></i> Live Event QR Scanner
                 </h1>
                 <p style="margin:0; font-size:0.82rem; color:#64748B;">
-                    Scan the dynamic rotating event QR code presented at the organizer's registration desk.
+                    Scan the dynamic rotating event QR code presented at the chapter registration desk.
                 </p>
             </div>
             <div>
@@ -188,15 +191,15 @@ $membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
             </div>
         </div>
 
-        <!-- Scanner Card -->
-        <div class="scanner-card">
-            <div class="scanner-header">
-                <div style="width:44px; height:44px; background:#D4AF37; color:#0B1D4A; border-radius:10px; display:inline-flex; align-items:center; justify-content:center; font-size:1.3rem; margin-bottom:0.4rem;">
+        <!-- White Theme Scanner Card -->
+        <div class="scanner-card-white">
+            <div class="scanner-header-white">
+                <div style="width:48px; height:48px; background:#FEF9C3; color:#0B1D4A; border:1px solid #FDE047; border-radius:12px; display:inline-flex; align-items:center; justify-content:center; font-size:1.4rem; margin-bottom:0.5rem;">
                     <i class="fas fa-qrcode"></i>
                 </div>
-                <h2 style="font-size:1.15rem; font-weight:800; margin:0; color:#FFFFFF;">Student Attendance Check-in</h2>
-                <div style="font-size:0.78rem; color:rgba(255,255,255,0.85); margin-top:2px;">
-                    Delegates: <strong><?= htmlspecialchars($member['full_name'] ?? $displayName) ?></strong> • <span style="font-family:'JetBrains Mono', monospace;"><?= htmlspecialchars($membershipId) ?></span>
+                <h2 style="font-size:1.2rem; font-weight:800; margin:0 0 0.2rem 0; color:#0B1D4A;">Student Attendance Check-in</h2>
+                <div style="font-size:0.8rem; color:#64748B; margin-top:2px;">
+                    Delegate: <strong style="color:#0F172A;"><?= htmlspecialchars($memberFullName) ?></strong> • <span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:#0B1D4A;"><?= htmlspecialchars($membershipId) ?></span>
                 </div>
             </div>
 
@@ -229,7 +232,7 @@ $membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
                     <div style="background:#FFFFFF; border:1px solid #A7F3D0; border-radius:8px; padding:0.75rem; font-size:0.8rem; text-align:left; color:#064E3B; margin-bottom:1rem;">
                         <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
                             <strong>Student Member:</strong>
-                            <span id="resStudentName"><?= htmlspecialchars($member['full_name'] ?? $displayName) ?></span>
+                            <span id="resStudentName"><?= htmlspecialchars($memberFullName) ?></span>
                         </div>
                         <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
                             <strong>Campus Chapter:</strong>
@@ -305,7 +308,7 @@ $membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
                         event_id: parsed.event_id || '',
                         token: parsed.token || decodedText,
                         member_id: <?= json_encode($memberDbId) ?>,
-                        full_name: <?= json_encode($member['full_name'] ?? $displayName) ?>,
+                        full_name: <?= json_encode($memberFullName) ?>,
                         email: <?= json_encode($userEmail) ?>
                     })
                 });
@@ -316,7 +319,7 @@ $membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
                 if (result.success && !result.already_recorded) {
                     const data = result.data || {};
                     document.getElementById('resEventTitle').textContent = data.event_title || 'IECEP Event';
-                    document.getElementById('resStudentName').textContent = data.student_name || <?= json_encode($displayName) ?>;
+                    document.getElementById('resStudentName').textContent = data.student_name || <?= json_encode($memberFullName) ?>;
                     document.getElementById('resCampus').textContent = data.institution_acronym || <?= json_encode($schoolAcronym) ?>;
                     document.getElementById('resTime').textContent = new Date().toLocaleTimeString();
                     document.getElementById('resultSuccess').style.display = 'block';
