@@ -592,6 +592,49 @@ try {
             margin: 0 auto;
             padding: 0 1rem;
         }
+        @media (max-width: 639.98px) {
+            .featured-cards-grid {
+                display: flex !important;
+                overflow-x: auto !important;
+                scroll-snap-type: x mandatory !important;
+                -webkit-overflow-scrolling: touch !important;
+                gap: 0.95rem !important;
+                padding: 0.5rem 1rem 1.25rem !important;
+                margin: 0 -0.5rem !important;
+                scrollbar-width: thin;
+            }
+            .featured-cards-grid::-webkit-scrollbar {
+                height: 5px;
+            }
+            .featured-cards-grid::-webkit-scrollbar-track {
+                background: #F1F5F9;
+                border-radius: 10px;
+            }
+            .featured-cards-grid::-webkit-scrollbar-thumb {
+                background: #CBD5E1;
+                border-radius: 10px;
+            }
+            .featured-card {
+                flex: 0 0 78vw !important;
+                max-width: 295px !important;
+                min-width: 255px !important;
+                scroll-snap-align: center !important;
+                scroll-snap-stop: always !important;
+            }
+            .featured-card-image {
+                height: 145px !important;
+            }
+            .featured-card-body {
+                padding: 0.95rem !important;
+            }
+            .featured-card-title {
+                font-size: 1rem !important;
+            }
+            .featured-card-description {
+                font-size: 0.8rem !important;
+                -webkit-line-clamp: 2 !important;
+            }
+        }
         @media (min-width: 640px) {
             .featured-cards-grid { grid-template-columns: repeat(2, 1fr); }
         }
@@ -1620,9 +1663,9 @@ try {
                     <i class="fa-solid fa-envelope"></i>
                     <span>ieceplsc24@gmail.com</span>
                 </a>
-                <a href="https://www.facebook.com/IECEPLSC" target="_blank" rel="noopener noreferrer" class="contact-info-pill" title="Connect on Facebook Messenger">
-                    <i class="fa-brands fa-facebook-messenger"></i>
-                    <span>facebook.com/IECEPLSC (Messenger)</span>
+                <a href="https://www.facebook.com/IECEPLSC" target="_blank" rel="noopener noreferrer" class="contact-info-pill" title="Visit Official Facebook Page">
+                    <i class="fa-brands fa-facebook"></i>
+                    <span>facebook.com/IECEPLSC (Facebook Page)</span>
                 </a>
                 <div class="contact-info-pill">
                     <i class="fa-solid fa-clock"></i>
