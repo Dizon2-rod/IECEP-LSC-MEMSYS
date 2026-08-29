@@ -428,7 +428,7 @@ try {
         }
 
         @media (hover: none) and (pointer: coarse) {
-            .btn, button, input[type="submit"], input[type="button"] { min-height: 48px; min-width: 48px; }
+            .btn-large, .mobile-cta-login, .hero-btn { min-height: 44px; }
         }
 
         /* ── Member Stats Section ─────────────────────────────────────────── */
@@ -1325,20 +1325,26 @@ try {
         }
         .contact-form .form-submit {
             width: 100%;
-            padding: 0.65rem 1rem;
+            padding: 0.45rem 0.9rem;
             background: #D4AF37;
             color: #0B1D4A;
             border: none;
-            border-radius: 8px;
+            border-radius: 6px;
             font-weight: 700;
-            font-size: 0.9rem;
+            font-size: 0.82rem;
             cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.45rem;
+            gap: 0.35rem;
             margin-top: 0.25rem;
+        }
+        #ctaAffiliateBtn {
+            padding: 0.45rem 0.9rem;
+            font-size: 0.82rem;
+            font-weight: 700;
+            border-radius: 6px;
         }
         .contact-form .form-submit:hover {
             background: #e5be3e;
@@ -1395,12 +1401,15 @@ try {
                 width: 12px !important;
             }
             #ctaAffiliateBtn {
-                padding: 0.35rem 0.45rem !important;
-                font-size: 0.58rem !important;
+                padding: 0.22rem 0.35rem !important;
+                font-size: 0.48rem !important;
+                font-weight: 700 !important;
                 width: 100% !important;
-                border-radius: 6px !important;
+                border-radius: 4px !important;
                 text-align: center !important;
                 justify-content: center !important;
+                min-height: unset !important;
+                min-width: unset !important;
             }
             .contact-form {
                 padding: 0.55rem 0.45rem !important;
@@ -1434,10 +1443,13 @@ try {
                 height: 40px !important;
             }
             .contact-form .form-submit {
-                padding: 0.3rem 0.45rem !important;
-                font-size: 0.58rem !important;
-                border-radius: 5px !important;
-                margin-top: 0.15rem !important;
+                padding: 0.22rem 0.35rem !important;
+                font-size: 0.48rem !important;
+                font-weight: 700 !important;
+                border-radius: 4px !important;
+                margin-top: 0.1rem !important;
+                min-height: unset !important;
+                min-width: unset !important;
             }
         }
 
@@ -1865,7 +1877,7 @@ try {
                 </div>
             </div>
 
-            <button type="button" class="btn btn-primary" id="ctaAffiliateBtn" style="padding:0.7rem 1.35rem; font-size:0.9rem; font-weight:700;">
+            <button type="button" class="btn btn-primary" id="ctaAffiliateBtn">
                 <i class="fa-solid fa-arrow-right me-2"></i> Start Affiliation Now
             </button>
         </div>
