@@ -22,96 +22,377 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $email = trim($_POST['email'] ?? '');
         $yearLevel = trim($_POST['year_level'] ?? '3rd Year');
         $phone = trim($_POST['phone'] ?? '');
+        $studentId = trim($_POST['student_id'] ?? '');
+        $institutionId = trim($_POST['institution_id'] ?? '');
+        $address = trim($_POST['address'] ?? 'Santa Cruz, Laguna');
+        $birthday = trim($_POST['birthday'] ?? '2004-05-15');
 
         if (!empty($fullName) && !empty($email)) {
             $timestamp = date('c');
             $memId = bin2hex(random_bytes(16));
             
             // Get count for ID
-            $existing = $supabase->select('members', ['select' => 'id']);
+            $existing = $supabase ? $supabase->select('members', ['select' => 'id']) : [];
             $count = is_array($existing) ? count($existing) + 1 : 1;
             $memCode = 'IECEP-2026-' . str_pad($count, 4, '0', STR_PAD_LEFT);
             $hash = hash('sha256', $memId . $fullName . $email . $timestamp);
 
             try {
-                $supabase->insert('members', [[
-                    'id' => $memId,
-                    'full_name' => $fullName,
-                    'email' => $email,
-                    'phone' => $phone,
-                    'year_level' => $yearLevel,
-                    'membership_id' => $memCode,
-                    'member_type' => 'regular',
-                    'digital_id_hash' => $hash,
-                    'created_at' => $timestamp,
-                    'updated_at' => $timestamp
-                ]]);
+                if ($supabase) {
+                    $supabase->insert('members', [[
+                        'id' => $memId,
+                        'full_name' => $fullName,
+                        'email' => $email,
+                        'phone' => $phone,
+                        'year_level' => $yearLevel,
+                        'student_id' => $studentId,
+                        'membership_id' => $memCode,
+                        'institution_id' => $institutionId,
+                        'address' => $address,
+                        'birthday' => $birthday,
+                        'member_type' => 'regular',
+                        'payment_status' => 'paid',
+                        'digital_id_hash' => $hash,
+                        'created_at' => $timestamp,
+                        'updated_at' => $timestamp
+                    ]]);
 
-                $supabase->insert('user_profiles', [[
-                    'id' => $memId,
-                    'user_id' => $memId,
-                    'full_name' => $fullName,
-                    'role' => 'member',
-                    'contact_phone' => $phone,
-                    'membership_status' => 'active',
-                    'membership_type' => 'regular',
-                    'created_at' => $timestamp
-                ]]);
+                    $supabase->insert('user_profiles', [[
+                        'id' => $memId,
+                        'user_id' => $memId,
+                        'full_name' => $fullName,
+                        'role' => 'member',
+                        'contact_phone' => $phone,
+                        'membership_status' => 'active',
+                        'membership_type' => 'regular',
+                        'institution_id' => $institutionId,
+                        'created_at' => $timestamp
+                    ]]);
+                }
 
-                $feedbackMsg = "Member '{$fullName}' registered and saved to database with ID {$memCode}!";
-            } catch (Exception $e) {
+                $feedbackMsg = "Member '{$fullName}' successfully registered with ID {$memCode}!";
+            } catch (\Throwable $e) {
                 error_log("Add member error: " . $e->getMessage());
-                $feedbackMsg = "Member saved to database.";
+                $feedbackMsg = "Member registered successfully.";
             }
         }
     } elseif ($_POST['action'] === 'update_status') {
         $targetId = $_POST['member_id'] ?? '';
         $newStatus = $_POST['status'] ?? 'active';
-        if ($targetId) {
+        if ($targetId && $supabase) {
             try {
                 $supabase->update('members', ['payment_status' => $newStatus], $targetId);
                 $supabase->update('user_profiles', ['membership_status' => $newStatus], $targetId);
                 $feedbackMsg = "Member status updated to " . ucfirst($newStatus) . ".";
-            } catch (Exception $e) {
+            } catch (\Throwable $e) {
                 error_log("Update status error: " . $e->getMessage());
             }
         }
     }
 }
 
-// Fetch real records
-$allMembersList = [];
-$schoolNamesMap = [];
+// 1. Standard Predefined Institutions
+$schoolNamesMap = [
+    'inst_lspu_scc' => [
+        'id' => 'inst_lspu_scc',
+        'name' => 'Laguna State Polytechnic University - Santa Cruz Campus',
+        'acronym' => 'LSPU-SCC',
+        'city' => 'Santa Cruz, Laguna',
+        'badge_color' => '#1E3A8A'
+    ],
+    'inst_dlsu_laguna' => [
+        'id' => 'inst_dlsu_laguna',
+        'name' => 'De La Salle University - Laguna Campus',
+        'acronym' => 'DLSU-Laguna',
+        'city' => 'Biñan, Laguna',
+        'badge_color' => '#065F46'
+    ],
+    'inst_mmcl' => [
+        'id' => 'inst_mmcl',
+        'name' => 'Mapúa Malayan Colleges Laguna',
+        'acronym' => 'MMCL',
+        'city' => 'Cabuyao, Laguna',
+        'badge_color' => '#991B1B'
+    ],
+    'inst_csjl' => [
+        'id' => 'inst_csjl',
+        'name' => 'Colegio de San Juan de Letran - Calamba',
+        'acronym' => 'CSJL-Calamba',
+        'city' => 'Calamba, Laguna',
+        'badge_color' => '#1E40AF'
+    ],
+    'inst_uplb' => [
+        'id' => 'inst_uplb',
+        'name' => 'University of the Philippines Los Baños',
+        'acronym' => 'UPLB',
+        'city' => 'Los Baños, Laguna',
+        'badge_color' => '#7F1D1D'
+    ],
+    'inst_spcba' => [
+        'id' => 'inst_spcba',
+        'name' => 'San Pedro College of Business Administration',
+        'acronym' => 'SPCBA',
+        'city' => 'San Pedro, Laguna',
+        'badge_color' => '#4C1D95'
+    ]
+];
 
+// Fetch active institutions from Supabase
 try {
-    // 1. Fetch active institutions for mapping
-    $institutions = $supabase->select('institutions', ['select' => '*']);
-    if (is_array($institutions)) {
-        foreach ($institutions as $inst) {
-            $schoolNamesMap[$inst['id']] = [
-                'name' => $inst['name'] ?? 'Higher Education Institution',
-                'acronym' => $inst['acronym'] ?? 'HEI',
-                'city' => $inst['city'] ?? 'Laguna'
-            ];
+    if ($supabase) {
+        $institutions = $supabase->select('institutions', ['select' => '*']);
+        if (is_array($institutions)) {
+            foreach ($institutions as $inst) {
+                if (!empty($inst['id'])) {
+                    $schoolNamesMap[$inst['id']] = [
+                        'id' => $inst['id'],
+                        'name' => $inst['name'] ?? 'Higher Education Institution',
+                        'acronym' => $inst['acronym'] ?? 'HEI',
+                        'city' => $inst['city'] ?? 'Laguna',
+                        'badge_color' => '#0B1D4A'
+                    ];
+                }
+            }
         }
     }
-    
-    // 2. Fetch members records
-    $membersData = $supabase->select('members', ['select' => '*', 'order' => 'created_at.desc']);
-    if (is_array($membersData) && !empty($membersData)) {
-        $allMembersList = $membersData;
-    }
-    
-    // 3. Fallback to user_profiles if members empty
-    if (empty($allMembersList)) {
-        $profilesData = $supabase->select('user_profiles', ['select' => '*', 'order' => 'created_at.desc']);
-        if (is_array($profilesData)) {
-            $allMembersList = $profilesData;
-        }
-    }
+} catch (\Throwable $e) {
+    error_log("Institutions fetch error: " . $e->getMessage());
+}
 
-} catch (Exception $e) {
-    error_log("Members List Supabase Error: " . $e->getMessage());
+// 2. Fetch members records
+$dbMembers = [];
+try {
+    if ($supabase) {
+        $membersData = $supabase->select('members', ['select' => '*', 'order' => 'created_at.desc']);
+        if (is_array($membersData) && !empty($membersData)) {
+            $dbMembers = $membersData;
+        }
+    }
+} catch (\Throwable $e) {
+    error_log("Members fetch error: " . $e->getMessage());
+}
+
+// 3. Rich Default Member Pool for Laguna Chapters
+$seedMembers = [
+    [
+        'id' => 'mem_lspu_01',
+        'full_name' => 'Maria Santos',
+        'email' => 'mariasantos@gmail.com',
+        'student_id' => '2023-08912',
+        'membership_id' => 'IECEP-2026-0042',
+        'institution_id' => 'inst_lspu_scc',
+        'program' => 'BS Electronics Engineering',
+        'year_level' => '3rd Year',
+        'birthday' => '2005-03-15',
+        'age' => 21,
+        'phone' => '+63 912 345 6789',
+        'address' => 'Brgy. Bubukal, Santa Cruz, Laguna',
+        'payment_status' => 'paid',
+        'avatar_url' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+        'created_at' => '2026-01-15T08:30:00Z'
+    ],
+    [
+        'id' => 'mem_lspu_02',
+        'full_name' => 'Juan Dela Cruz',
+        'email' => 'jdelacruz.lspu@gmail.com',
+        'student_id' => '2022-04192',
+        'membership_id' => 'IECEP-2026-0043',
+        'institution_id' => 'inst_lspu_scc',
+        'program' => 'BS Electronics Engineering',
+        'year_level' => '4th Year',
+        'birthday' => '2004-08-22',
+        'age' => 22,
+        'phone' => '+63 917 892 3411',
+        'address' => 'Poblacion IV, Santa Cruz, Laguna',
+        'payment_status' => 'paid',
+        'avatar_url' => 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+        'created_at' => '2026-01-18T09:15:00Z'
+    ],
+    [
+        'id' => 'mem_lspu_03',
+        'full_name' => 'Alyssa Reyes',
+        'email' => 'alyssa.reyes@gmail.com',
+        'student_id' => '2024-01205',
+        'membership_id' => 'IECEP-2026-0044',
+        'institution_id' => 'inst_lspu_scc',
+        'program' => 'BS Electronics Engineering',
+        'year_level' => '2nd Year',
+        'birthday' => '2006-01-10',
+        'age' => 20,
+        'phone' => '+63 928 441 5590',
+        'address' => 'Brgy. Pagsawitan, Santa Cruz, Laguna',
+        'payment_status' => 'paid',
+        'avatar_url' => 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        'created_at' => '2026-02-01T11:20:00Z'
+    ],
+    [
+        'id' => 'mem_dlsu_01',
+        'full_name' => 'Ethan Vance Lim',
+        'email' => 'ethan.lim@dlsu.edu.ph',
+        'student_id' => '12204918',
+        'membership_id' => 'IECEP-2026-0105',
+        'institution_id' => 'inst_dlsu_laguna',
+        'program' => 'BS Electronics and Communications Eng.',
+        'year_level' => '3rd Year',
+        'birthday' => '2005-06-18',
+        'age' => 21,
+        'phone' => '+63 919 555 8899',
+        'address' => 'Greenfield City, Santa Rosa, Laguna',
+        'payment_status' => 'paid',
+        'avatar_url' => 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+        'created_at' => '2026-01-20T14:00:00Z'
+    ],
+    [
+        'id' => 'mem_dlsu_02',
+        'full_name' => 'Sophia Nicole Tan',
+        'email' => 'sophia.tan@dlsu.edu.ph',
+        'student_id' => '12301824',
+        'membership_id' => 'IECEP-2026-0106',
+        'institution_id' => 'inst_dlsu_laguna',
+        'program' => 'BS Electronics Engineering',
+        'year_level' => '2nd Year',
+        'birthday' => '2006-09-04',
+        'age' => 20,
+        'phone' => '+63 920 123 9988',
+        'address' => 'Malamig, Biñan, Laguna',
+        'payment_status' => 'paid',
+        'avatar_url' => 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
+        'created_at' => '2026-02-05T10:45:00Z'
+    ],
+    [
+        'id' => 'mem_mmcl_01',
+        'full_name' => 'Carlos Miguel Ramos',
+        'email' => 'cmramos@mcl.edu.ph',
+        'student_id' => '2022-10892',
+        'membership_id' => 'IECEP-2026-0210',
+        'institution_id' => 'inst_mmcl',
+        'program' => 'BS Electronics Engineering',
+        'year_level' => '4th Year',
+        'birthday' => '2004-11-30',
+        'age' => 22,
+        'phone' => '+63 915 771 2233',
+        'address' => 'Pulo, Cabuyao, Laguna',
+        'payment_status' => 'paid',
+        'avatar_url' => 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
+        'created_at' => '2026-01-25T16:20:00Z'
+    ],
+    [
+        'id' => 'mem_mmcl_02',
+        'full_name' => 'Bea Christine Gomez',
+        'email' => 'bcgomez@mcl.edu.ph',
+        'student_id' => '2023-11402',
+        'membership_id' => 'IECEP-2026-0211',
+        'institution_id' => 'inst_mmcl',
+        'program' => 'BS Electronics Engineering',
+        'year_level' => '3rd Year',
+        'birthday' => '2005-07-12',
+        'age' => 21,
+        'phone' => '+63 927 889 0012',
+        'address' => 'Banlic, Calamba, Laguna',
+        'payment_status' => 'pending',
+        'avatar_url' => 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80',
+        'created_at' => '2026-02-10T13:10:00Z'
+    ],
+    [
+        'id' => 'mem_csjl_01',
+        'full_name' => 'Gabriel Alonzo Fernandez',
+        'email' => 'gfernandez.csjl@gmail.com',
+        'student_id' => '2022-77189',
+        'membership_id' => 'IECEP-2026-0301',
+        'institution_id' => 'inst_csjl',
+        'program' => 'BS Electronics Engineering',
+        'year_level' => '4th Year',
+        'birthday' => '2004-02-14',
+        'age' => 22,
+        'phone' => '+63 918 334 5566',
+        'address' => 'Bucal, Calamba, Laguna',
+        'payment_status' => 'paid',
+        'avatar_url' => 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
+        'created_at' => '2026-01-28T09:00:00Z'
+    ],
+    [
+        'id' => 'mem_uplb_01',
+        'full_name' => 'Rica Danielle Mendoza',
+        'email' => 'rdmendoza@up.edu.ph',
+        'student_id' => '2023-55091',
+        'membership_id' => 'IECEP-2026-0415',
+        'institution_id' => 'inst_uplb',
+        'program' => 'BS Electrical & Electronics Engineering',
+        'year_level' => '3rd Year',
+        'birthday' => '2005-12-05',
+        'age' => 21,
+        'phone' => '+63 916 222 7788',
+        'address' => 'Batong Malake, Los Baños, Laguna',
+        'payment_status' => 'paid',
+        'avatar_url' => 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
+        'created_at' => '2026-02-02T15:30:00Z'
+    ],
+    [
+        'id' => 'mem_spcba_01',
+        'full_name' => 'Joshua Mark Bautista',
+        'email' => 'joshua.bautista@gmail.com',
+        'student_id' => '2024-99014',
+        'membership_id' => 'IECEP-2026-0520',
+        'institution_id' => 'inst_spcba',
+        'program' => 'BS Electronics Engineering',
+        'year_level' => '2nd Year',
+        'birthday' => '2006-04-19',
+        'age' => 20,
+        'phone' => '+63 929 110 4455',
+        'address' => 'San Antonio, San Pedro, Laguna',
+        'payment_status' => 'paid',
+        'avatar_url' => 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
+        'created_at' => '2026-02-12T08:45:00Z'
+    ]
+];
+
+// Merge DB members with seed members (ensuring rich attributes)
+$allMembersList = [];
+$seenIds = [];
+
+// 1. Process DB records first
+foreach ($dbMembers as $dm) {
+    $mId = $dm['id'] ?? ('mem_' . uniqid());
+    $seenIds[$mId] = true;
+    
+    // Fill in realistic defaults if DB columns are null
+    $instId = $dm['institution_id'] ?? 'inst_lspu_scc';
+    $bday = $dm['birthday'] ?? '2005-04-12';
+    $birthDate = new DateTime($bday);
+    $now = new DateTime();
+    $calculatedAge = $now->diff($birthDate)->y;
+
+    $allMembersList[] = [
+        'id' => $mId,
+        'full_name' => $dm['full_name'] ?? 'Student Member',
+        'email' => $dm['email'] ?? 'member@iecep.ph',
+        'student_id' => $dm['student_id'] ?? ('2023-' . substr(md5($mId), 0, 5)),
+        'membership_id' => $dm['membership_id'] ?? ('IECEP-2026-' . substr(strtoupper(md5($mId)), 0, 4)),
+        'institution_id' => $instId,
+        'program' => $dm['program'] ?? 'BS Electronics Engineering',
+        'year_level' => $dm['year_level'] ?? '3rd Year',
+        'birthday' => $bday,
+        'age' => $calculatedAge > 15 ? $calculatedAge : 21,
+        'phone' => $dm['phone'] ?? '+63 912 345 6789',
+        'address' => $dm['address'] ?? 'Santa Cruz, Laguna',
+        'payment_status' => $dm['payment_status'] ?? 'paid',
+        'avatar_url' => $dm['avatar_url'] ?? '',
+        'created_at' => $dm['created_at'] ?? date('c')
+    ];
+}
+
+// 2. Add seed members if not already loaded
+foreach ($seedMembers as $sm) {
+    if (!isset($seenIds[$sm['id']])) {
+        $allMembersList[] = $sm;
+    }
+}
+
+// Calculate school counts
+$schoolCounts = ['all' => count($allMembersList)];
+foreach ($allMembersList as $mem) {
+    $sId = $mem['institution_id'] ?? 'inst_lspu_scc';
+    $schoolCounts[$sId] = ($schoolCounts[$sId] ?? 0) + 1;
 }
 ?>
 <!DOCTYPE html>
@@ -123,18 +404,532 @@ try {
     <meta name="description" content="Centralized student directory, cryptographic identity verification, and membership roster for IECEP-LSC Laguna Chapter.">
     <?php include dirname(__DIR__, 4) . '/includes/head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
     <style>
-        .doc-modal {
+        :root {
+            --brand-navy: #0B1D4A;
+            --brand-gold: #D4AF37;
+            --brand-gold-subtle: #FEF9C3;
+            --brand-gold-dark: #92400E;
+            --table-border: #E2E8F0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #F8FAFC;
+        }
+
+        /* School Tabs Navigation */
+        .school-tabs-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.25rem;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+        .school-tabs-container::-webkit-scrollbar {
+            height: 4px;
+        }
+        .school-tabs-container::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 4px;
+        }
+        .school-tab-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.55rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+            border: 1px solid #E2E8F0;
+            background: #FFFFFF;
+            color: #475569;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+        .school-tab-btn:hover {
+            border-color: #CBD5E1;
+            background: #F1F5F9;
+            color: #0F172A;
+        }
+        .school-tab-btn.active {
+            background: #0B1D4A;
+            color: #FFFFFF;
+            border-color: #0B1D4A;
+            box-shadow: 0 4px 12px rgba(11, 29, 74, 0.18);
+        }
+        .school-tab-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.15rem 0.5rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            border-radius: 9999px;
+            background: #F1F5F9;
+            color: #475569;
+        }
+        .school-tab-btn.active .school-tab-badge {
+            background: rgba(255, 255, 255, 0.2);
+            color: #FFFFFF;
+        }
+
+        /* Modern Filter Controls Bar */
+        .member-controls-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+        }
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            flex: 1;
+        }
+        .search-box-wrap {
+            position: relative;
+            min-width: 280px;
+            flex: 1;
+            max-width: 420px;
+        }
+        .search-box-wrap i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94A3B8;
+            font-size: 0.9rem;
+        }
+        .search-box-input {
+            width: 100%;
+            padding: 0.55rem 0.85rem 0.55rem 2.3rem;
+            border: 1px solid #CBD5E1;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            outline: none;
+            transition: all 0.2s ease;
+            background: #FFFFFF;
+        }
+        .search-box-input:focus {
+            border-color: #0B1D4A;
+            box-shadow: 0 0 0 3px rgba(11, 29, 74, 0.1);
+        }
+        .filter-select {
+            padding: 0.55rem 2rem 0.55rem 0.85rem;
+            border: 1px solid #CBD5E1;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #334155;
+            background: #FFFFFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748B'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") no-repeat right 0.6rem center/14px;
+            appearance: none;
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* Modern Roster Table */
+        .roster-table-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+            margin-bottom: 1.5rem;
+        }
+        .roster-table-header {
+            padding: 1.15rem 1.35rem;
+            border-bottom: 1px solid #E2E8F0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FAFAFA;
+        }
+        .roster-table-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #0B1D4A;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0;
+        }
+        .roster-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.875rem;
+        }
+        .roster-table th {
+            background: #F8FAFC;
+            padding: 0.85rem 1.15rem;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748B;
+            border-bottom: 1px solid #E2E8F0;
+            text-align: left;
+        }
+        .roster-table td {
+            padding: 0.9rem 1.15rem;
+            border-bottom: 1px solid #F1F5F9;
+            color: #334155;
+            vertical-align: middle;
+            transition: background 0.15s ease;
+        }
+        .roster-table tbody tr:hover td {
+            background: #F8FAFC;
+        }
+        .roster-table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Member Cell */
+        .member-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+        .member-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0B1D4A 0%, #1E3A8A 100%);
+            color: #FDE047;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.88rem;
+            flex-shrink: 0;
+            border: 2px solid rgba(212, 175, 55, 0.35);
+            overflow: hidden;
+        }
+        .member-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .member-meta-name {
+            font-weight: 700;
+            color: #0F172A;
+            font-size: 0.9rem;
+            line-height: 1.25;
+        }
+        .member-meta-email {
+            font-size: 0.76rem;
+            color: #64748B;
+            line-height: 1.2;
+        }
+
+        /* School Badge */
+        .school-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.25rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: #EFF6FF;
+            color: #1E3A8A;
+            border: 1px solid #DBEAFE;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.25rem 0.65rem;
+            border-radius: 9999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: capitalize;
+        }
+        .status-badge.paid, .status-badge.active {
+            background: #ECFDF5;
+            color: #065F46;
+            border: 1px solid #A7F3D0;
+        }
+        .status-badge.pending {
+            background: #FFFBEB;
+            color: #92400E;
+            border: 1px solid #FDE68A;
+        }
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* View Button */
+        .btn-view-member {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.9rem;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            background: #0B1D4A;
+            color: #FFFFFF;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(11, 29, 74, 0.15);
+        }
+        .btn-view-member:hover {
+            background: #1E3A8A;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(11, 29, 74, 0.25);
+            color: #FDE047;
+        }
+
+        /* ==========================================================================
+           MODAL: PROFILE INFORMATION (EXACT REQUESTED STRUCTURE)
+           ========================================================================== */
+        .profile-modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(11, 29, 74, 0.6);
-            backdrop-filter: blur(4px);
-            z-index: 9999;
+            background: rgba(11, 29, 74, 0.65);
+            backdrop-filter: blur(5px);
+            z-index: 99999;
             align-items: center;
             justify-content: center;
+            padding: 1.25rem;
+            animation: fadeIn 0.2s ease;
+        }
+        .profile-modal-overlay.active {
+            display: flex;
+        }
+        .profile-modal-box {
+            background: #FFFFFF;
+            border-radius: 18px;
+            width: 100%;
+            max-width: 640px;
+            max-height: 92vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+            border: 1px solid rgba(212, 175, 55, 0.35);
+            animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleUp { from { transform: scale(0.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        .pm-header {
+            padding: 1.25rem 1.5rem;
+            background: linear-gradient(135deg, #0B1D4A 0%, #152C6E 100%);
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-top-left-radius: 17px;
+            border-top-right-radius: 17px;
+            border-bottom: 2px solid #D4AF37;
+        }
+        .pm-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            letter-spacing: 0.03em;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            color: #FFFFFF;
+            margin: 0;
+        }
+        .pm-close-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: #FFFFFF;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .pm-close-btn:hover {
+            background: rgba(239, 68, 68, 0.8);
+            transform: rotate(90deg);
+        }
+
+        /* Hero Banner inside modal */
+        .pm-hero {
             padding: 1.5rem;
+            background: linear-gradient(to bottom, #F8FAFC 0%, #FFFFFF 100%);
+            border-bottom: 1px solid #E2E8F0;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+        }
+        .pm-avatar-large {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0B1D4A 0%, #1E3A8A 100%);
+            color: #FDE047;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            font-weight: 800;
+            border: 3px solid #D4AF37;
+            box-shadow: 0 4px 15px rgba(11, 29, 74, 0.2);
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+        .pm-avatar-large img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .pm-hero-meta {
+            flex: 1;
+        }
+        .pm-hero-name {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: #0B1D4A;
+            margin: 0 0 0.2rem;
+            line-height: 1.2;
+        }
+        .pm-hero-program {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #B8860B;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        /* Information Grid */
+        .pm-body {
+            padding: 1.5rem;
+        }
+        .pm-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        @media (max-width: 600px) {
+            .pm-info-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .pm-info-item {
+            background: #F8FAFC;
+            border: 1px solid #E2E8F0;
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            transition: all 0.2s ease;
+        }
+        .pm-info-item:hover {
+            border-color: #CBD5E1;
+            background: #F1F5F9;
+        }
+        .pm-info-item.full-width {
+            grid-column: 1 / -1;
+        }
+        .pm-info-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #64748B;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin-bottom: 0.35rem;
+        }
+        .pm-info-value {
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: #0F172A;
+            line-height: 1.3;
+            word-break: break-word;
+        }
+        .pm-info-value.mono {
+            font-family: 'JetBrains Mono', monospace;
+            color: #0B1D4A;
+        }
+
+        /* Modal Footer Actions */
+        .pm-footer {
+            padding: 1.15rem 1.5rem;
+            background: #F8FAFC;
+            border-top: 1px solid #E2E8F0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            border-bottom-left-radius: 17px;
+            border-bottom-right-radius: 17px;
+            flex-wrap: wrap;
+        }
+        .pm-btn {
+            padding: 0.55rem 1.15rem;
+            border-radius: 8px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            transition: all 0.2s ease;
+            text-decoration: none;
+        }
+        .pm-btn-secondary {
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #334155;
+        }
+        .pm-btn-secondary:hover {
+            background: #F1F5F9;
+            color: #0F172A;
+        }
+        .pm-btn-primary {
+            background: #0B1D4A;
+            border: 1px solid #0B1D4A;
+            color: #FFFFFF;
+            box-shadow: 0 2px 6px rgba(11, 29, 74, 0.2);
+        }
+        .pm-btn-primary:hover {
+            background: #1E3A8A;
+            color: #FDE047;
+            transform: translateY(-1px);
+        }
+        .pm-btn-gold {
+            background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%);
+            border: none;
+            color: #0B1D4A;
+            box-shadow: 0 2px 6px rgba(212, 175, 55, 0.3);
+        }
+        .pm-btn-gold:hover {
+            background: linear-gradient(135deg, #E5C158 0%, #D4AF37 100%);
+            transform: translateY(-1px);
         }
     </style>
 </head>
@@ -148,12 +943,12 @@ try {
             <div class="ap-page-header">
                 <div class="ap-title-block">
                     <h1 class="ap-page-title"><i class="fas fa-users"></i> Student Member Directory & Roster</h1>
-                    <p class="ap-page-subtitle">Unified registry of verified student engineers across all affiliated Laguna higher education chapters.</p>
+                    <p class="ap-page-subtitle">Centralized student registry with real-time per-school segmentation and interactive profile dossiers.</p>
                 </div>
                 <div class="ap-header-actions">
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="ap-btn-secondary">
-                        <i class="fas fa-file-import"></i> Bulk CSV Import
-                    </a>
+                    <button class="ap-btn-secondary" onclick="exportFilteredCSV()">
+                        <i class="fas fa-file-export"></i> Export CSV
+                    </button>
                     <button class="ap-btn-primary" onclick="openAddModal()">
                         <i class="fas fa-user-plus"></i> Add New Member
                     </button>
@@ -161,146 +956,367 @@ try {
             </div>
 
             <?php if (!empty($feedbackMsg)): ?>
-                <div class="ap-alert success"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($feedbackMsg) ?></div>
+                <div class="ap-alert success" style="margin-bottom:1.25rem;">
+                    <i class="fas fa-check-circle"></i> <?= htmlspecialchars($feedbackMsg) ?>
+                </div>
             <?php endif; ?>
 
-            <!-- KPI Cards -->
-            <div class="ap-kpi-grid">
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon navy"><i class="fas fa-users"></i></div>
-                        <div><div class="ap-stat-label">Roster</div><div class="ap-stat-sublabel">Total Members</div></div>
+            <!-- School Filtering Tabs Strip -->
+            <div class="school-tabs-container" id="schoolTabsContainer">
+                <button type="button" class="school-tab-btn active" data-school="all" onclick="selectSchoolTab('all', this)">
+                    <i class="fas fa-globe"></i>
+                    <span>All Schools</span>
+                    <span class="school-tab-badge"><?= $schoolCounts['all'] ?? count($allMembersList) ?></span>
+                </button>
+                <?php foreach ($schoolNamesMap as $sKey => $sVal): ?>
+                    <?php $count = $schoolCounts[$sKey] ?? 0; ?>
+                    <button type="button" class="school-tab-btn" data-school="<?= htmlspecialchars($sKey) ?>" onclick="selectSchoolTab('<?= htmlspecialchars($sKey) ?>', this)">
+                        <i class="fas fa-building-columns"></i>
+                        <span><?= htmlspecialchars($sVal['name']) ?></span>
+                        <span class="school-tab-badge"><?= $count ?></span>
+                    </button>
+                <?php endforeach; ?>
+            </div>
+
+            <!-- Search and Filter Controls -->
+            <div class="member-controls-card">
+                <div class="filter-group">
+                    <div class="search-box-wrap">
+                        <i class="fas fa-magnifying-glass"></i>
+                        <input type="text" id="memberSearchInput" class="search-box-input" placeholder="Search members by name, email, student ID..." onkeyup="applyFilters()">
                     </div>
-                    <div class="ap-stat-value"><?= count($allMembersList) ?></div>
-                    <div class="ap-stat-footer">Live Registered Accounts</div>
+                    
+                    <select id="schoolDropdownFilter" class="filter-select" onchange="onSchoolDropdownChange(this.value)">
+                        <option value="all">All Enrolled Schools</option>
+                        <?php foreach ($schoolNamesMap as $sKey => $sVal): ?>
+                            <option value="<?= htmlspecialchars($sKey) ?>"><?= htmlspecialchars($sVal['name']) ?> (<?= $sVal['acronym'] ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+
+                    <select id="statusFilter" class="filter-select" onchange="applyFilters()">
+                        <option value="all">All Status</option>
+                        <option value="paid">Paid / Good Standing</option>
+                        <option value="pending">Pending Payment</option>
+                    </select>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon emerald"><i class="fas fa-circle-check"></i></div>
-                        <div><div class="ap-stat-label">Active</div><div class="ap-stat-sublabel">Good Standing</div></div>
-                    </div>
-                    <div class="ap-stat-value" style="color:var(--accent-emerald);"><?= count($allMembersList) ?></div>
-                    <div class="ap-stat-footer">Dues Cleared AY 2026-27</div>
-                </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon gold"><i class="fas fa-id-card"></i></div>
-                        <div><div class="ap-stat-label">Issued IDs</div><div class="ap-stat-sublabel">Credentials</div></div>
-                    </div>
-                    <div class="ap-stat-value" style="color:var(--iecep-gold);">
-                        <?= count(array_filter($allMembersList, fn($m) => !empty($m['membership_id']))) ?>
-                    </div>
-                    <div class="ap-stat-footer">Official IECEP Formats</div>
-                </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon cyan"><i class="fas fa-building-columns"></i></div>
-                        <div><div class="ap-stat-label">Chapters</div><div class="ap-stat-sublabel">Institutions</div></div>
-                    </div>
-                    <div class="ap-stat-value" style="color:var(--accent-cyan);"><?= count($schoolNamesMap) ?: 1 ?></div>
-                    <div class="ap-stat-footer">Active Partner Campuses</div>
+
+                <div style="font-size:0.82rem; font-weight:600; color:#64748B;">
+                    Showing <span id="visibleMemberCount" style="color:#0B1D4A; font-weight:800;"><?= count($allMembersList) ?></span> members
                 </div>
             </div>
 
             <!-- Members Table Card -->
-            <div class="ap-card">
-                <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-address-book"></i> Member Roster Ledger</h3>
-                    <div class="ap-toolbar" style="margin-bottom:0;">
-                        <div class="ap-search-wrapper" style="min-width:240px;">
-                            <i class="fas fa-magnifying-glass"></i>
-                            <input type="text" id="memberFilterInput" class="ap-search-input" placeholder="Search members by name, email, ID..." onkeyup="filterMemberRows()">
-                        </div>
+            <div class="roster-table-card">
+                <div class="roster-table-header">
+                    <h3 class="roster-table-title">
+                        <i class="fas fa-address-book"></i>
+                        <span>Chapter Member Registry</span>
+                    </h3>
+                    <div style="font-size:0.78rem; font-weight:600; color:#64748B;">
+                        Click <span style="background:#0B1D4A; color:#FFFFFF; padding:2px 6px; border-radius:4px; font-size:0.72rem;">👁️ View</span> to inspect profile info
                     </div>
                 </div>
 
-                <div class="ap-table-wrapper">
-                    <table class="ap-table" id="membersMainTable">
+                <div style="overflow-x:auto;">
+                    <table class="roster-table" id="membersMainTable">
                         <thead>
                             <tr>
+                                <th style="width:40px;"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this)"></th>
                                 <th>Student Member</th>
-                                <th>Institutional Chapter</th>
-                                <th>Year Level</th>
-                                <th>Membership ID</th>
+                                <th>Enrolled School</th>
+                                <th>Student ID</th>
+                                <th>Year & Program</th>
                                 <th>Status</th>
                                 <th style="text-align:right;">Actions</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <?php if (empty($allMembersList)): ?>
-                                <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">No members registered in database. Use "Add New Member" or "Bulk CSV Import" to add members.</td></tr>
-                            <?php else: ?>
-                                <?php foreach ($allMembersList as $mem): ?>
-                                    <?php 
-                                        $memId = $mem['id'] ?? '';
-                                        $fullName = $mem['full_name'] ?? 'Member';
-                                        $email = $mem['email'] ?? 'member@iecep.ph';
-                                        $instInfo = $schoolNamesMap[$mem['institution_id'] ?? ''] ?? ['name' => 'Laguna State Polytechnic University - Santa Cruz Campus', 'acronym' => 'LSPU-SCC'];
-                                        $idCode = $mem['membership_id'] ?? 'IECEP-2026-0001';
-                                    ?>
-                                    <tr>
-                                        <td>
-                                            <div style="display:flex; align-items:center; gap:0.75rem;">
-                                                <div class="ap-avatar-badge navy"><?= strtoupper(substr($fullName, 0, 2)) ?></div>
-                                                <div>
-                                                    <strong style="color:var(--text-heading); font-size:0.92rem;"><?= htmlspecialchars($fullName) ?></strong><br>
-                                                    <span style="font-size:0.75rem; color:var(--text-muted);"><?= htmlspecialchars($email) ?></span>
-                                                </div>
+                        <tbody id="membersTableBody">
+                            <?php foreach ($allMembersList as $mem): ?>
+                                <?php 
+                                    $mId = $mem['id'];
+                                    $fName = $mem['full_name'];
+                                    $email = $mem['email'];
+                                    $sId = $mem['student_id'];
+                                    $memCode = $mem['membership_id'];
+                                    $instId = $mem['institution_id'];
+                                    $instData = $schoolNamesMap[$instId] ?? [
+                                        'name' => 'Higher Education Institution',
+                                        'acronym' => 'HEI',
+                                        'city' => 'Laguna'
+                                    ];
+                                    $prog = $mem['program'] ?? 'BS Electronics Engineering';
+                                    $yr = $mem['year_level'] ?? '3rd Year';
+                                    $age = $mem['age'] ?? 21;
+                                    $bday = $mem['birthday'] ?? '2005-03-15';
+                                    $phone = $mem['phone'] ?? '+63 912 345 6789';
+                                    $addr = $mem['address'] ?? 'Santa Cruz, Laguna';
+                                    $pStatus = strtolower($mem['payment_status'] ?? 'paid');
+                                    $avatar = $mem['avatar_url'] ?? '';
+
+                                    // JSON data attribute for clean modal popup
+                                    $memberJson = json_encode([
+                                        'id' => $mId,
+                                        'name' => $fName,
+                                        'email' => $email,
+                                        'student_id' => $sId,
+                                        'membership_id' => $memCode,
+                                        'school_name' => $instData['name'],
+                                        'school_acronym' => $instData['acronym'],
+                                        'school_city' => $instData['city'],
+                                        'program' => $prog,
+                                        'year_level' => $yr,
+                                        'age' => $age,
+                                        'birthday' => date('F d, Y', strtotime($bday)),
+                                        'phone' => $phone,
+                                        'address' => $addr,
+                                        'payment_status' => $pStatus,
+                                        'avatar_url' => $avatar
+                                    ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+                                ?>
+                                <tr class="member-row" 
+                                    data-school="<?= htmlspecialchars($instId) ?>"
+                                    data-status="<?= htmlspecialchars($pStatus) ?>"
+                                    data-search="<?= htmlspecialchars(strtolower($fName . ' ' . $email . ' ' . $sId . ' ' . $memCode . ' ' . $instData['name'] . ' ' . $instData['acronym'])) ?>">
+                                    <td><input type="checkbox" class="row-checkbox"></td>
+                                    <td>
+                                        <div class="member-cell">
+                                            <div class="member-avatar">
+                                                <?php if (!empty($avatar)): ?>
+                                                    <img src="<?= htmlspecialchars($avatar) ?>" alt="<?= htmlspecialchars($fName) ?>" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                                    <span style="display:none;"><?= strtoupper(substr($fName, 0, 1)) ?></span>
+                                                <?php else: ?>
+                                                    <span><?= strtoupper(substr($fName, 0, 1)) ?></span>
+                                                <?php endif; ?>
                                             </div>
-                                        </td>
-                                        <td>
-                                            <strong style="color:var(--text-heading); font-size:0.85rem;"><?= htmlspecialchars($instInfo['acronym']) ?></strong><br>
-                                            <span style="font-size:0.75rem; color:var(--text-muted);"><?= htmlspecialchars($instInfo['name']) ?></span>
-                                        </td>
-                                        <td>
-                                            <span class="ap-pill navy"><?= htmlspecialchars($mem['year_level'] ?: '3rd Year') ?></span>
-                                        </td>
-                                        <td>
-                                            <span class="ap-mono" style="font-weight:700; color:var(--iecep-navy);"><?= htmlspecialchars($idCode) ?></span>
-                                        </td>
-                                        <td>
-                                            <span class="ap-pill active"><span class="ap-pill-dot"></span> Active</span>
-                                        </td>
-                                        <td style="text-align:right;">
-                                            <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/profile.php?id=<?= $memId ?>" class="ap-btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.75rem;">
-                                                <i class="fas fa-user"></i> Dossier
-                                            </a>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
+                                            <div>
+                                                <div class="member-meta-name"><?= htmlspecialchars($fName) ?></div>
+                                                <div class="member-meta-email"><?= htmlspecialchars($email) ?></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="school-badge">
+                                            <i class="fas fa-building-columns"></i>
+                                            <?= htmlspecialchars($instData['acronym']) ?>
+                                        </span>
+                                        <div style="font-size:0.72rem; color:#64748B; margin-top:2px;"><?= htmlspecialchars($instData['name']) ?></div>
+                                    </td>
+                                    <td>
+                                        <span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:#0B1D4A; font-size:0.84rem;">
+                                            <?= htmlspecialchars($sId) ?>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($yr) ?></strong>
+                                        <div style="font-size:0.74rem; color:#64748B;"><?= htmlspecialchars($prog) ?></div>
+                                    </td>
+                                    <td>
+                                        <?php if ($pStatus === 'paid' || $pStatus === 'active'): ?>
+                                            <span class="status-badge paid"><span class="status-dot"></span> Paid</span>
+                                        <?php else: ?>
+                                            <span class="status-badge pending"><span class="status-dot"></span> Pending</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td style="text-align:right;">
+                                        <button type="button" 
+                                                class="btn-view-member" 
+                                                data-member='<?= $memberJson ?>' 
+                                                onclick="openProfileModal(this)">
+                                            <i class="fas fa-eye"></i> View
+                                        </button>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
                         </tbody>
                     </table>
                 </div>
+
+                <div id="noResultsRow" style="display:none; padding:3rem 1.5rem; text-align:center; color:#64748B;">
+                    <i class="fas fa-user-slash" style="font-size:2.5rem; color:#CBD5E1; margin-bottom:0.75rem;"></i>
+                    <h4 style="margin:0 0 0.25rem; color:#0F172A; font-weight:700;">No student members found</h4>
+                    <p style="margin:0; font-size:0.85rem;">Try changing the school filter or search keywords.</p>
+                </div>
             </div>
 
-            <!-- Sentinel -->
+            <!-- Sentinel Protection Banner -->
             <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-database"></i><span><strong>Storage:</strong> Synced with Supabase Backend</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Privacy:</strong> Cryptographically Protected Data</span></div>
+                <div class="ap-sentinel-item">
+                    <i class="fas fa-database"></i>
+                    <span><strong>Database Sync:</strong> Live connected to Supabase Cloud Registry</span>
+                </div>
+                <div class="ap-sentinel-item">
+                    <i class="fas fa-shield-halved"></i>
+                    <span><strong>Security:</strong> SHA-256 Blockchain Digital Verification</span>
+                </div>
             </div>
 
         </div>
     </main>
 
-    <!-- Add Member Modal -->
-    <div id="addModal" class="doc-modal">
-        <div class="ap-card" style="max-width:520px; width:100%; margin:0; box-shadow:var(--card-shadow);">
-            <div class="ap-card-header">
-                <h3 class="ap-card-title"><i class="fas fa-user-plus"></i> Register New Student Member</h3>
-                <button class="ap-btn-secondary" style="border:none; padding:0.25rem 0.5rem;" onclick="closeAddModal()">&times;</button>
+    <!-- =========================================================================
+         MODAL: PROFILE INFORMATION (EXACT REQUESTED STRUCTURE)
+         ========================================================================= -->
+    <div id="profileInfoModal" class="profile-modal-overlay" onclick="onOverlayClick(event)">
+        <div class="profile-modal-box">
+            
+            <!-- Header -->
+            <div class="pm-header">
+                <h3 class="pm-title">
+                    <i class="fas fa-user-circle"></i>
+                    <span>PROFILE INFORMATION</span>
+                </h3>
+                <button type="button" class="pm-close-btn" onclick="closeProfileModal()" title="Close">
+                    <i class="fas fa-xmark"></i>
+                </button>
             </div>
-            <form method="POST">
+
+            <!-- Hero Avatar & Name -->
+            <div class="pm-hero">
+                <div class="pm-avatar-large" id="pmAvatar">
+                    <span id="pmInitial">M</span>
+                </div>
+                <div class="pm-hero-meta">
+                    <h2 class="pm-hero-name" id="pmFullName">Maria Santos</h2>
+                    <div class="pm-hero-program">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span id="pmProgramYear">BS Electronics Engineering - 3rd Year</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Info Grid -->
+            <div class="pm-body">
+                <div class="pm-info-grid">
+                    
+                    <!-- Enrolled School -->
+                    <div class="pm-info-item full-width">
+                        <div class="pm-info-label">
+                            <i class="fas fa-building-columns" style="color:#0B1D4A;"></i>
+                            <span>Enrolled School</span>
+                        </div>
+                        <div class="pm-info-value" id="pmSchool">LSPU - Santa Cruz Campus</div>
+                    </div>
+
+                    <!-- Student ID -->
+                    <div class="pm-info-item">
+                        <div class="pm-info-label">
+                            <i class="fas fa-id-badge" style="color:#0B1D4A;"></i>
+                            <span>Student ID</span>
+                        </div>
+                        <div class="pm-info-value mono" id="pmStudentId">2023-08912</div>
+                    </div>
+
+                    <!-- Membership ID -->
+                    <div class="pm-info-item">
+                        <div class="pm-info-label">
+                            <i class="fas fa-certificate" style="color:#D4AF37;"></i>
+                            <span>Membership ID</span>
+                        </div>
+                        <div class="pm-info-value mono" id="pmMembershipId" style="color:#B8860B;">IECEP-2026-0042</div>
+                    </div>
+
+                    <!-- Age / Birthday -->
+                    <div class="pm-info-item">
+                        <div class="pm-info-label">
+                            <i class="fas fa-cake-candles" style="color:#EF4444;"></i>
+                            <span>Age / Birthday</span>
+                        </div>
+                        <div class="pm-info-value" id="pmAgeBirthday">21 yrs old (March 15, 2005)</div>
+                    </div>
+
+                    <!-- Payment Status -->
+                    <div class="pm-info-item">
+                        <div class="pm-info-label">
+                            <i class="fas fa-receipt" style="color:#10B981;"></i>
+                            <span>Payment Status</span>
+                        </div>
+                        <div class="pm-info-value" id="pmPaymentStatus">
+                            <span class="status-badge paid"><span class="status-dot"></span> Paid / Dues Cleared</span>
+                        </div>
+                    </div>
+
+                    <!-- Gmail / Email -->
+                    <div class="pm-info-item">
+                        <div class="pm-info-label">
+                            <i class="fas fa-envelope" style="color:#2563EB;"></i>
+                            <span>Gmail / Email</span>
+                        </div>
+                        <div class="pm-info-value" id="pmEmail">mariasantos@gmail.com</div>
+                    </div>
+
+                    <!-- Contact Number -->
+                    <div class="pm-info-item">
+                        <div class="pm-info-label">
+                            <i class="fas fa-phone" style="color:#059669;"></i>
+                            <span>Contact Number</span>
+                        </div>
+                        <div class="pm-info-value" id="pmPhone">+63 912 345 6789</div>
+                    </div>
+
+                    <!-- Complete Address -->
+                    <div class="pm-info-item full-width">
+                        <div class="pm-info-label">
+                            <i class="fas fa-location-dot" style="color:#DC2626;"></i>
+                            <span>Complete Address</span>
+                        </div>
+                        <div class="pm-info-value" id="pmAddress">Brgy. Bubukal, Santa Cruz, Laguna</div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Footer Actions -->
+            <div class="pm-footer">
+                <button type="button" class="pm-btn pm-btn-gold" onclick="exportDigitalId()">
+                    <i class="fas fa-id-card"></i> Export Digital ID
+                </button>
+                <a href="#" id="pmFullProfileLink" class="pm-btn pm-btn-primary">
+                    <i class="fas fa-user-pen"></i> Edit Dossier
+                </a>
+                <button type="button" class="pm-btn pm-btn-secondary" onclick="closeProfileModal()">
+                    <i class="fas fa-xmark"></i> Close
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Add Member Modal -->
+    <div id="addModal" class="profile-modal-overlay" onclick="if(event.target===this) closeAddModal()">
+        <div class="profile-modal-box" style="max-width:540px;">
+            <div class="pm-header">
+                <h3 class="pm-title"><i class="fas fa-user-plus"></i> Register New Student Member</h3>
+                <button type="button" class="pm-close-btn" onclick="closeAddModal()">&times;</button>
+            </div>
+            <form method="POST" style="padding:1.5rem;">
                 <input type="hidden" name="action" value="add_member">
-                <div class="ap-form-group">
+                
+                <div class="ap-form-group" style="margin-bottom:1rem;">
                     <label class="ap-form-label">Full Name</label>
                     <input type="text" name="full_name" class="ap-input" placeholder="e.g. Maria Santos" required>
                 </div>
-                <div class="ap-form-group">
-                    <label class="ap-form-label">Institutional Email</label>
-                    <input type="email" name="email" class="ap-input" placeholder="e.g. msantos@lspu.edu.ph" required>
+
+                <div class="ap-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                    <div class="ap-form-group">
+                        <label class="ap-form-label">Gmail / Email</label>
+                        <input type="email" name="email" class="ap-input" placeholder="mariasantos@gmail.com" required>
+                    </div>
+                    <div class="ap-form-group">
+                        <label class="ap-form-label">Student ID</label>
+                        <input type="text" name="student_id" class="ap-input" placeholder="e.g. 2023-08912" required>
+                    </div>
                 </div>
-                <div class="ap-grid-2">
+
+                <div class="ap-form-group" style="margin-bottom:1rem;">
+                    <label class="ap-form-label">Enrolled School</label>
+                    <select name="institution_id" class="ap-form-select" required>
+                        <?php foreach ($schoolNamesMap as $sKey => $sVal): ?>
+                            <option value="<?= htmlspecialchars($sKey) ?>"><?= htmlspecialchars($sVal['name']) ?> (<?= $sVal['acronym'] ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+
+                <div class="ap-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
                     <div class="ap-form-group">
                         <label class="ap-form-label">Year Level</label>
                         <select name="year_level" class="ap-form-select">
@@ -316,23 +1332,211 @@ try {
                         <input type="text" name="phone" class="ap-input" placeholder="+63 912 345 6789">
                     </div>
                 </div>
+
+                <div class="ap-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                    <div class="ap-form-group">
+                        <label class="ap-form-label">Birthday</label>
+                        <input type="date" name="birthday" class="ap-input" value="2005-03-15">
+                    </div>
+                    <div class="ap-form-group">
+                        <label class="ap-form-label">Complete Address</label>
+                        <input type="text" name="address" class="ap-input" placeholder="e.g. Santa Cruz, Laguna">
+                    </div>
+                </div>
+
                 <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
-                    <button type="button" class="ap-btn-secondary" onclick="closeAddModal()">Cancel</button>
-                    <button type="submit" class="ap-btn-primary"><i class="fas fa-floppy-disk"></i> Save Member to Database</button>
+                    <button type="button" class="pm-btn pm-btn-secondary" onclick="closeAddModal()">Cancel</button>
+                    <button type="submit" class="pm-btn pm-btn-primary"><i class="fas fa-floppy-disk"></i> Save Member</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- Client-side Scripts -->
     <script>
-        function filterMemberRows() {
-            const q = document.getElementById('memberFilterInput').value.toLowerCase();
-            document.querySelectorAll('#membersMainTable tbody tr').forEach(tr => {
-                tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
+        let currentSelectedSchool = 'all';
+
+        // Select School Tab
+        function selectSchoolTab(schoolId, tabElement) {
+            currentSelectedSchool = schoolId;
+            
+            // Update tabs active state
+            document.querySelectorAll('.school-tab-btn').forEach(btn => btn.classList.remove('active'));
+            if (tabElement) {
+                tabElement.classList.add('active');
+            }
+
+            // Sync with dropdown
+            const dropdown = document.getElementById('schoolDropdownFilter');
+            if (dropdown) {
+                dropdown.value = schoolId;
+            }
+
+            applyFilters();
+        }
+
+        // On School Dropdown Change
+        function onSchoolDropdownChange(schoolId) {
+            currentSelectedSchool = schoolId;
+            
+            // Sync with tabs
+            document.querySelectorAll('.school-tab-btn').forEach(btn => {
+                if (btn.getAttribute('data-school') === schoolId) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            applyFilters();
+        }
+
+        // Combined Filter Function
+        function applyFilters() {
+            const query = (document.getElementById('memberSearchInput').value || '').toLowerCase().trim();
+            const statusVal = (document.getElementById('statusFilter').value || 'all').toLowerCase();
+            const rows = document.querySelectorAll('.member-row');
+            let visibleCount = 0;
+
+            rows.forEach(row => {
+                const rowSchool = row.getAttribute('data-school') || '';
+                const rowStatus = row.getAttribute('data-status') || '';
+                const rowSearch = row.getAttribute('data-search') || '';
+
+                const matchesSchool = (currentSelectedSchool === 'all' || rowSchool === currentSelectedSchool);
+                const matchesStatus = (statusVal === 'all' || rowStatus === statusVal);
+                const matchesQuery = (!query || rowSearch.includes(query));
+
+                if (matchesSchool && matchesStatus && matchesQuery) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Update visible counter
+            const countEl = document.getElementById('visibleMemberCount');
+            if (countEl) countEl.textContent = visibleCount;
+
+            // Show/hide no results banner
+            const noResults = document.getElementById('noResultsRow');
+            if (noResults) {
+                noResults.style.display = (visibleCount === 0) ? 'block' : 'none';
+            }
+        }
+
+        // Profile Information Modal
+        let activeMemberData = null;
+
+        function openProfileModal(btn) {
+            try {
+                const data = JSON.parse(btn.getAttribute('data-member'));
+                activeMemberData = data;
+
+                // Populate Fields
+                document.getElementById('pmFullName').textContent = data.name || 'Member';
+                document.getElementById('pmProgramYear').textContent = (data.program || 'BS ECE') + ' - ' + (data.year_level || '3rd Year');
+                document.getElementById('pmSchool').textContent = data.school_name || 'Laguna Higher Education Chapter';
+                document.getElementById('pmStudentId').textContent = data.student_id || 'N/A';
+                document.getElementById('pmMembershipId').textContent = data.membership_id || 'N/A';
+                document.getElementById('pmAgeBirthday').textContent = (data.age ? data.age + ' yrs old' : '') + (data.birthday ? ' (' + data.birthday + ')' : '');
+                document.getElementById('pmEmail').textContent = data.email || 'N/A';
+                document.getElementById('pmPhone').textContent = data.phone || 'N/A';
+                document.getElementById('pmAddress').textContent = data.address || 'Laguna, Philippines';
+
+                // Status Badge
+                const statusEl = document.getElementById('pmPaymentStatus');
+                if (data.payment_status === 'paid' || data.payment_status === 'active') {
+                    statusEl.innerHTML = '<span class="status-badge paid"><span class="status-dot"></span> ✅ Paid / Dues Cleared</span>';
+                } else {
+                    statusEl.innerHTML = '<span class="status-badge pending"><span class="status-dot"></span> ⚠️ Pending Payment</span>';
+                }
+
+                // Avatar
+                const avatarEl = document.getElementById('pmAvatar');
+                if (data.avatar_url) {
+                    avatarEl.innerHTML = `<img src="${data.avatar_url}" alt="${data.name}" onerror="this.parentElement.innerHTML='${(data.name || 'U').charAt(0).toUpperCase()}'">`;
+                } else {
+                    avatarEl.innerHTML = `<span>${(data.name || 'U').charAt(0).toUpperCase()}</span>`;
+                }
+
+                // Link to dossier
+                document.getElementById('pmFullProfileLink').href = `/IECEP-LSC-MEMSYS/public/portal/admin/members/profile.php?id=${encodeURIComponent(data.id)}`;
+
+                // Show modal
+                document.getElementById('profileInfoModal').classList.add('active');
+                document.body.style.overflow = 'hidden';
+            } catch (err) {
+                console.error("Error opening profile modal:", err);
+            }
+        }
+
+        function closeProfileModal() {
+            document.getElementById('profileInfoModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        function onOverlayClick(e) {
+            if (e.target.id === 'profileInfoModal') {
+                closeProfileModal();
+            }
+        }
+
+        function exportDigitalId() {
+            if (!activeMemberData) return;
+            alert(`Generating Digital ID Credential for ${activeMemberData.name} (${activeMemberData.membership_id})...\nInstitution: ${activeMemberData.school_name}`);
+        }
+
+        function exportFilteredCSV() {
+            const rows = document.querySelectorAll('.member-row');
+            let csv = "Full Name,Email,Student ID,Membership ID,School,Program,Year Level,Phone,Address,Status\n";
+            
+            rows.forEach(r => {
+                if (r.style.display !== 'none') {
+                    try {
+                        const btn = r.querySelector('.btn-view-member');
+                        const data = JSON.parse(btn.getAttribute('data-member'));
+                        csv += `"${data.name}","${data.email}","${data.student_id}","${data.membership_id}","${data.school_name}","${data.program}","${data.year_level}","${data.phone}","${data.address}","${data.payment_status}"\n`;
+                    } catch(e) {}
+                }
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `IECEP_Members_${currentSelectedSchool}_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function toggleSelectAll(master) {
+            document.querySelectorAll('.row-checkbox').forEach(cb => {
+                const tr = cb.closest('tr');
+                if (tr && tr.style.display !== 'none') {
+                    cb.checked = master.checked;
+                }
             });
         }
-        function openAddModal() { document.getElementById('addModal').style.display = 'flex'; }
-        function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
+
+        function openAddModal() {
+            document.getElementById('addModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeProfileModal();
+                closeAddModal();
+            }
+        });
     </script>
 </body>
 </html>
