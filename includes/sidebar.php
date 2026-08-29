@@ -508,28 +508,7 @@ if (!function_exists('isMenuItemActive')) {
     display: none !important;
 }
 
-#sidebar .logout-btn {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 8px !important;
-    padding: 8px 12px !important;
-    background: #FEF2F2 !important;
-    color: #DC2626 !important;
-    border: 1px solid #FEE2E2 !important;
-    text-decoration: none !important;
-    border-radius: 9px !important;
-    font-size: 0.82rem !important;
-    font-weight: 700 !important;
-    transition: var(--sb-transition) !important;
-}
 
-#sidebar .logout-btn:hover {
-    background: #FEE2E2 !important;
-    color: #991B1B !important;
-    border-color: #FCA5A5 !important;
-    transform: translateY(-1px) !important;
-}
 
 /* Mobile Toggle & Top Bar */
 .mobile-top-bar {
@@ -903,10 +882,6 @@ if (!function_exists('isMenuItemActive')) {
             <button type="button" id="install-btn" class="install-btn hidden">Install App</button>
             <div id="offline-status" class="offline-status hidden">Offline mode available</div>
         </div>
-        <a href="<?php echo $base_root_url; ?>/login.php?logout=true" class="logout-btn">
-            <i class="fas fa-arrow-right-from-bracket"></i>
-            <span>Log Out</span>
-        </a>
     </div>
 </aside>
 
