@@ -298,13 +298,38 @@ if (!empty($resubmitId)) {
 
         @media (max-width: 768px) {
             .step-indicator {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+                gap: 0.4rem;
+                padding: 0 0.5rem;
+            }
+
+            .step-item {
+                display: flex;
                 flex-direction: column;
-                gap: var(--space-2);
+                align-items: center;
+                gap: 0.25rem;
+            }
+
+            .step-number {
+                width: 32px;
+                height: 32px;
+                font-size: 0.85rem;
+            }
+
+            .step-item span {
+                font-size: 0.68rem;
+                text-align: center;
             }
 
             .step-line {
-                width: 2px;
-                height: 30px;
+                flex: 1;
+                max-width: 40px;
+                min-width: 12px;
+                height: 2px;
+                transform: none;
             }
 
             .verification-inputs input {

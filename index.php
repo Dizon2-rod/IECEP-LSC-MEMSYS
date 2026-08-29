@@ -373,9 +373,11 @@ try {
             .modal-content { margin: 1rem; max-width: calc(100% - 2rem); max-height: 90vh; border-radius: var(--radius-lg); }
             #affiliateModal .modal-content { margin: auto !important; max-width: 95% !important; }
             .modal-title { font-size: 1.5rem; margin-bottom: 1.5rem; }
-            .step-indicator { flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
-            .step-indicator-item { width: 100%; justify-content: center; }
-            .step-indicator-line { width: 2px; height: 20px; transform: rotate(90deg); }
+            .step-indicator { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 0.4rem; margin-bottom: 1.25rem; }
+            .step-indicator-item { width: auto; justify-content: center; flex-direction: column; align-items: center; }
+            .step-indicator-number { width: 32px; height: 32px; font-size: 0.85rem; }
+            .step-indicator-item span { font-size: 0.68rem; text-align: center; }
+            .step-indicator-line { flex: 1; max-width: 40px; min-width: 12px; height: 2px; transform: none; background: #e2e8f0; }
             .form-input, .form-textarea { font-size: 16px; }
             .verification-inputs { gap: 0.5rem; }
             .verification-inputs input { width: 40px; height: 45px; font-size: 1.25rem; }
@@ -1808,19 +1810,24 @@ try {
 
 @media (max-width: 768px) {
     #affiliateModal .modal-content { width: 95%; max-height: none; margin: auto; }
-    .modal-title { font-size: 1.25rem; margin: 1.5rem 1.5rem 1rem; }
+    .modal-title { font-size: 1.25rem; margin: 1.25rem 1.25rem 0.75rem; }
     .modal-close { top: 1rem; right: 1rem; width: 36px; height: 36px; }
-    .step-indicator { padding: 0 1.5rem 1.5rem; gap: 1rem; }
-    .step-indicator-number { width: 40px; height: 40px; font-size: 1rem; }
-    .step-indicator-item span { font-size: 0.75rem; }
-    .modal-section { margin: 0 1.5rem 1.5rem; padding: 1.5rem; }
+    .step-indicator { display: flex; flex-direction: row; align-items: center; justify-content: center; padding: 0 0.5rem 1rem; gap: 0.5rem; }
+    .step-indicator-number { width: 34px; height: 34px; font-size: 0.9rem; }
+    .step-indicator-item span { font-size: 0.7rem; text-align: center; }
+    .step-indicator-line { flex: 1; min-width: 15px; max-width: 50px; height: 2px; transform: none; background: #e2e8f0; }
+    .modal-section { margin: 0 1rem 1.25rem; padding: 1.25rem; }
     .code-input { width: 40px; height: 40px; font-size: 1rem; }
-    .btn { padding: 0.75rem 1.5rem; font-size: 0.95rem; min-width: 180px; }
+    .btn { padding: 0.75rem 1.25rem; font-size: 0.9rem; min-width: 160px; }
 }
 @media (max-width: 480px) {
-    #affiliateModal .modal-content { width: 98%; margin: auto; }
-    .modal-section { margin: 0 1rem 1rem; padding: 1rem; }
-    .code-input { width: 32px; height: 32px; font-size: 0.875rem; }
+    #affiliateModal .modal-content { width: 98%; margin: auto; padding: 1rem 0.5rem; }
+    .step-indicator { padding: 0 0.25rem 0.85rem; gap: 0.25rem; }
+    .step-indicator-number { width: 28px; height: 28px; font-size: 0.78rem; }
+    .step-indicator-item span { font-size: 0.62rem; max-width: 70px; line-height: 1.15; }
+    .step-indicator-line { min-width: 8px; max-width: 25px; height: 2px; transform: none; }
+    .modal-section { margin: 0 0.25rem 1rem; padding: 1rem 0.5rem; }
+    .code-input { width: 30px; height: 30px; font-size: 0.8rem; }
 }
 </style>
 
