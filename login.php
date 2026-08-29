@@ -287,7 +287,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - IECEP-LSC MEMSYS</title>
+    <title>Login — IECEP-LSC MEMSYS</title>
     <link rel="manifest" href="/IECEP-LSC-MEMSYS/public/manifest.json">
     <link rel="icon" type="image/png" sizes="192x192" href="/IECEP-LSC-MEMSYS/public/assets/icons/icon-192x192.png">
     <link rel="icon" type="image/png" sizes="48x48" href="/IECEP-LSC-MEMSYS/public/assets/icons/favicon.png">
@@ -297,286 +297,816 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta name="apple-mobile-web-app-title" content="IECEP - LSC MEMSYS">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Times+New+Roman:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cinzel:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #0B1D4A;
+            --primary-light: #162E6E;
+            --gold: #D4AF37;
+            --gold-light: #F3E5AB;
+            --gold-hover: #E5BE3E;
+            --text-dark: #0F172A;
+            --text-muted: #64748B;
+            --card-bg: rgba(255, 255, 255, 0.96);
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-            display: flex;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             min-height: 100vh;
-            background: url('public/assets/icons/hero.png') center/cover no-repeat fixed;
+            background: #0B1D4A url('public/assets/icons/hero.png') center/cover no-repeat fixed;
             position: relative;
+            color: #FFFFFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             overflow-x: hidden;
-            align-items: center;
-            justify-content: center;
+            padding: 1.5rem 1rem;
         }
-        .login-container { 
-            display: flex; 
-            width: 100%; 
-            max-width: 1400px;
-            min-height: 100vh; 
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto;
-            padding: 30px 20px;
-            gap: 2rem;
+
+        /* Ambient Layered Vignette Overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(7, 18, 46, 0.88) 0%, rgba(11, 29, 74, 0.92) 50%, rgba(20, 42, 107, 0.86) 100%),
+                        radial-gradient(circle at 15% 25%, rgba(212, 175, 55, 0.16), transparent 45%),
+                        radial-gradient(circle at 85% 75%, rgba(37, 99, 235, 0.18), transparent 50%);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            z-index: 0;
+            pointer-events: none;
         }
-        .login-left {
-            flex: 1.1; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: center;
-            align-items: center; 
-            padding: 20px 30px; 
-            color: white; 
-            text-align: center;
-            position: relative; 
+
+        /* Floating Top Left Return Button */
+        .btn-return-home {
+            position: fixed;
+            top: 1.25rem;
+            left: 1.25rem;
+            z-index: 10;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: #F8FAFC;
+            text-decoration: none;
+            padding: 0.5rem 0.9rem;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn-return-home:hover {
+            background: rgba(212, 175, 55, 0.22);
+            border-color: rgba(212, 175, 55, 0.5);
+            color: #FFFFFF;
+            transform: translateX(-3px);
+            box-shadow: 0 6px 20px rgba(212, 175, 55, 0.25);
+        }
+
+        .btn-return-home i {
+            font-size: 0.75rem;
+            color: #D4AF37;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-return-home:hover i {
+            transform: translateX(-2px);
+        }
+
+        /* Main Container */
+        .login-wrapper {
+            position: relative;
             z-index: 1;
-            gap: 1.5rem;
-            max-width: 720px;
+            width: 100%;
+            max-width: 1200px;
+            margin: auto;
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 3rem;
+            align-items: center;
         }
-        .logo-container { margin-bottom: 5px; }
-        .logo-container img {
-            width: 140px; 
-            height: 140px; 
+
+        /* Left Side: Institutional Brand Showcase */
+        .brand-showcase {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 1.75rem;
+            padding: 1rem 1.5rem;
+        }
+
+        .seal-glow-wrapper {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .seal-glow-wrapper::before {
+            content: '';
+            position: absolute;
+            inset: -10px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.35) 0%, transparent 70%);
+            border-radius: 50%;
+            filter: blur(12px);
+            animation: sealPulse 4s infinite ease-in-out;
+        }
+
+        @keyframes sealPulse {
+            0%, 100% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.1); opacity: 0.9; }
+        }
+
+        .seal-image {
+            width: 125px;
+            height: 125px;
             object-fit: contain;
-            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.35));
+            position: relative;
+            z-index: 1;
+            filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.45));
+            transition: transform 0.4s ease;
         }
-        .organization-title {
-            font-family: 'Times New Roman', Arial, serif;
-            font-size: 2.1rem; 
-            font-weight: 800; 
-            margin-bottom: 8px;
-            line-height: 1.25; 
-            letter-spacing: 0.5px; 
-            word-spacing: 2px;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+
+        .seal-image:hover {
+            transform: scale(1.05) rotate(2deg);
         }
-        .organization-subtitle {
+
+        .org-header-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+        }
+
+        .org-title {
             font-family: 'Times New Roman', Times, serif;
-            font-size: 1.5rem; 
-            font-weight: 700; 
-            margin-bottom: 0;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            font-size: 1.85rem;
+            font-weight: 800;
+            color: #FFFFFF;
+            letter-spacing: 0.02em;
+            line-height: 1.25;
+            text-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
         }
-        .tagline {
-            font-size: 1.65rem; 
-            font-family: 'Times New Roman', Times, serif;
-            font-style: italic;
-            margin-bottom: 0.5rem; 
-            line-height: 1.3;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+
+        .org-subtitle {
+            font-family: 'Cinzel', 'Times New Roman', serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #D4AF37;
+            letter-spacing: 0.08em;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
         }
-        .schools-row {
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            gap: 12px;
-            padding: 5px 0; 
-            flex-wrap: wrap;
-            max-width: 580px;
-            margin: 0 auto;
+
+        .org-tagline-box {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            backdrop-filter: blur(8px);
+            padding: 0.55rem 1.4rem;
+            border-radius: 50px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: #E2E8F0;
+            letter-spacing: 0.03em;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        .schools-row img {
-            width: 54px; 
-            height: 54px; 
-            object-fit: contain;
-            transition: transform 0.3s ease;
-            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); 
-            flex-shrink: 0;
+
+        .org-tagline-box i {
+            color: #D4AF37;
+            font-size: 0.8rem;
         }
-        .schools-row img:hover { transform: scale(1.12); }
-        .login-right { 
-            flex: 0.9; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            padding: 20px; 
+
+        /* Schools Squircle Grid */
+        .schools-section {
+            width: 100%;
             max-width: 520px;
         }
+
+        .schools-title {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #94A3B8;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 0.85rem;
+        }
+
+        .schools-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            justify-items: center;
+        }
+
+        .school-card-chip {
+            width: 100%;
+            height: 58px;
+            background: rgba(255, 255, 255, 0.09);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            backdrop-filter: blur(6px);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .school-card-chip:hover {
+            background: rgba(255, 255, 255, 0.18);
+            border-color: rgba(212, 175, 55, 0.6);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+        }
+
+        .school-card-chip img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+            transition: transform 0.25s ease;
+        }
+
+        .school-card-chip:hover img {
+            transform: scale(1.1);
+        }
+
+        /* Unified Gateway Indicator */
+        .portal-role-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.75);
+            background: rgba(11, 29, 74, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 0.35rem 0.85rem;
+            border-radius: 50px;
+        }
+
+        .portal-role-pill span {
+            color: #D4AF37;
+            font-weight: 700;
+        }
+
+        /* Right Side: Login Card */
+        .login-card-container {
+            width: 100%;
+            max-width: 440px;
+            margin: 0 auto;
+        }
+
         .login-card {
-            background: white; 
-            border-radius: 36px; 
-            padding: 42px 36px;
-            width: 100%; 
-            max-width: 480px; 
-            box-shadow: 0 25px 50px rgba(0,0,0,0.28);
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: 2.25rem 2rem;
+            color: var(--text-dark);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.4),
+                        0 0 0 1px rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+            animation: cardFadeIn 0.4s ease-out;
         }
-        .login-title {
-            font-size: 2.35rem; 
-            font-weight: 700; 
-            font-style: italic; 
-            color: #000;
-            margin-bottom: 30px; 
+
+        @keyframes cardFadeIn {
+            from { opacity: 0; transform: translateY(16px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #0B1D4A 0%, #D4AF37 50%, #0B1D4A 100%);
+        }
+
+        .card-header-block {
+            margin-bottom: 1.5rem;
+            text-align: left;
+        }
+
+        .card-title {
+            font-size: 1.65rem;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -0.02em;
+            margin-bottom: 0.3rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-subtitle {
+            font-size: 0.84rem;
+            color: var(--text-muted);
+            line-height: 1.45;
+        }
+
+        /* Error Alert */
+        .error-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.65rem;
+            background: #FEF2F2;
+            border: 1px solid #FECACA;
+            border-left: 4px solid #DC2626;
+            color: #991B1B;
+            padding: 0.75rem 0.9rem;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            margin-bottom: 1.25rem;
+            line-height: 1.4;
+            animation: shakeError 0.35s ease-in-out;
+        }
+
+        @keyframes shakeError {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+
+        .error-banner i {
+            color: #DC2626;
+            font-size: 0.95rem;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        /* Form Controls */
+        .form-group-field {
+            margin-bottom: 1.15rem;
+        }
+
+        .field-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #334155;
+            margin-bottom: 0.4rem;
+        }
+
+        .field-input-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .field-icon {
+            position: absolute;
+            left: 14px;
+            color: #94A3B8;
+            font-size: 0.92rem;
+            pointer-events: none;
+            transition: color 0.2s ease;
+        }
+
+        .field-input {
+            width: 100%;
+            padding: 0.75rem 2.6rem 0.75rem 2.6rem;
+            border: 1.5px solid #CBD5E1;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            color: #0F172A;
+            background: #F8FAFC;
+            transition: all 0.2s ease;
+        }
+
+        .field-input:focus {
+            outline: none;
+            border-color: #D4AF37;
+            background: #FFFFFF;
+            box-shadow: 0 0 0 3.5px rgba(212, 175, 55, 0.18);
+        }
+
+        .field-input-box:focus-within .field-icon {
+            color: #0B1D4A;
+        }
+
+        /* Password Toggle */
+        .password-toggle-btn {
+            position: absolute;
+            right: 12px;
+            background: transparent;
+            border: none;
+            color: #94A3B8;
+            cursor: pointer;
+            padding: 6px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .password-toggle-btn:hover {
+            color: #0B1D4A;
+            background: #F1F5F9;
+        }
+
+        /* Utilities row */
+        .form-row-utils {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 0.75rem 0 1.35rem;
+            font-size: 0.82rem;
+        }
+
+        .remember-checkbox-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            color: #475569;
+            cursor: pointer;
+            user-select: none;
+            font-weight: 500;
+        }
+
+        .remember-checkbox-label input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #0B1D4A;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .forgot-link {
+            color: #1E40AF;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s ease;
+        }
+
+        .forgot-link:hover {
+            color: #D4AF37;
+            text-decoration: underline;
+        }
+
+        /* Primary Submit Button */
+        .btn-submit-login {
+            width: 100%;
+            padding: 0.8rem 1.25rem;
+            background: linear-gradient(135deg, #0B1D4A 0%, #173277 100%);
+            color: #FFFFFF;
+            border: 1px solid rgba(212, 175, 55, 0.4);
+            border-radius: 12px;
+            font-size: 0.92rem;
+            font-weight: 700;
+            font-family: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 15px rgba(11, 29, 74, 0.25);
+            transition: all 0.25s ease;
+        }
+
+        .btn-submit-login:hover {
+            background: linear-gradient(135deg, #112861 0%, #1f4299 100%);
+            border-color: #D4AF37;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.35);
+        }
+
+        .btn-submit-login:active {
+            transform: translateY(0);
+        }
+
+        .btn-submit-login i {
+            font-size: 0.85rem;
+            color: #D4AF37;
+            transition: transform 0.2s ease;
+        }
+
+        .btn-submit-login:hover i {
+            transform: translateX(3px);
+        }
+
+        /* Card Footer Notes */
+        .card-footer-note {
+            margin-top: 1.25rem;
             text-align: center;
-        }
-        .form-group { margin-bottom: 20px; position: relative; }
-        .form-group label { display: block; margin-bottom: 7px; font-weight: 500; color: #333; font-size: 0.88rem; }
-        .input-wrapper { position: relative; }
-        .input-wrapper i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #999; font-size: 0.95rem; }
-        .form-group input {
-            width: 100%; padding: 14px 44px 14px 44px;
-            border: 2px solid #e2e8f0; border-radius: 12px;
-            font-size: 0.95rem; transition: all 0.3s; background: #f8fafc;
-        }
-        .form-group input:focus { outline: none; border-color: #0A2F6C; background: white; box-shadow: 0 0 0 3px rgba(10,47,108,0.1); }
-        #togglePassword { user-select: none; transition: color 0.2s ease; left: auto; }
-        #togglePassword:hover { color: #0A2F6C !important; }
-        .form-options { display: flex; justify-content: space-between; align-items: center; margin: 18px 0 22px; font-size: 0.88rem; }
-        .form-options label { display: flex; align-items: center; gap: 8px; color: #666; cursor: pointer; }
-        .form-options input[type="checkbox"] { width: auto; margin: 0; }
-        .form-options a { color: #0A2F6C; text-decoration: none; font-weight: 500; }
-        .form-options a:hover { color: #F5A623; }
-        .btn-login {
-            width: 100%; background: #0A2F6C; color: white; border: none;
-            padding: 15px; border-radius: 12px; font-size: 0.98rem; font-weight: 600;
-            cursor: pointer; transition: all 0.3s; margin-bottom: 18px;
-        }
-        .btn-login:hover { background: #333; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
-        .error-message {
-            background: #fee2e2; color: #dc2626; padding: 12px 16px; border-radius: 8px;
-            margin-bottom: 18px; font-size: 0.88rem; text-align: center; border-left: 4px solid #dc2626;
-        }
-        .btn-back-home {
-            display: inline-flex; align-items: center; gap: 8px; background: #f8fafc; color: #0A2F6C;
-            text-decoration: none; padding: 10px 20px; border-radius: 8px; font-size: 0.88rem; font-weight: 500;
-            border: 2px solid #e2e8f0; transition: all 0.3s ease;
-        }
-        .btn-back-home:hover { background: #0A2F6C; color: white; border-color: #0A2F6C; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(10,47,108,0.2); }
-
-        /* ── Large 2K / QHD Monitors (>=1600px) ── */
-        @media (min-width: 1600px) {
-            .login-container { max-width: 1500px; gap: 3.5rem; }
-            .login-left { gap: 2rem; }
-            .logo-container img { width: 160px; height: 160px; }
-            .organization-title { font-size: 2.35rem; }
-            .organization-subtitle { font-size: 1.65rem; }
-            .tagline { font-size: 1.85rem; }
-            .schools-row { gap: 16px; max-width: 640px; }
-            .schools-row img { width: 62px; height: 62px; }
-            .login-card { padding: 48px 42px; max-width: 500px; }
+            font-size: 0.75rem;
+            color: #94A3B8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
         }
 
-        /* ── Tablet & Small Laptops (992px - 1199px) ── */
+        .card-footer-note i {
+            color: #10B981;
+            font-size: 0.75rem;
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           Responsive Breakpoints (Desktop -> Tablet -> Mobile)
+           ═══════════════════════════════════════════════════════════ */
+        
+        /* Tablet Landscape (992px - 1199px) */
         @media (max-width: 1199px) and (min-width: 992px) {
-            .login-container { padding: 25px 15px; gap: 1rem; }
-            .login-left { padding: 15px; gap: 1.25rem; }
-            .logo-container img { width: 120px; height: 120px; }
-            .organization-title { font-size: 1.75rem; }
-            .organization-subtitle { font-size: 1.3rem; }
-            .tagline { font-size: 1.45rem; }
-            .schools-row { gap: 10px; max-width: 480px; }
-            .schools-row img { width: 48px; height: 48px; }
-            .login-card { padding: 36px 28px; }
+            .login-wrapper { gap: 2rem; }
+            .org-title { font-size: 1.6rem; }
+            .org-subtitle { font-size: 1.15rem; }
+            .seal-image { width: 105px; height: 105px; }
+            .schools-grid { gap: 0.5rem; }
+            .school-card-chip { height: 50px; }
         }
 
-        /* ── Tablet & Mobile (<=991px) ── */
+        /* Tablet Portrait & Large Phones (<= 991px) */
         @media (max-width: 991px) {
-            .login-container { flex-direction: column; min-height: 100vh; padding: 30px 15px; gap: 1.5rem; }
-            .login-left { padding: 10px; gap: 1.25rem; max-width: 100%; }
-            .logo-container img { width: 110px; height: 110px; }
-            .organization-title { font-size: 1.55rem; margin-bottom: 6px; }
-            .organization-subtitle { font-size: 1.2rem; }
-            .tagline { font-size: 1.35rem; }
-            .schools-row { gap: 10px; max-width: 460px; }
-            .schools-row img { width: 46px; height: 46px; }
-            .login-right { padding: 10px; width: 100%; max-width: 480px; }
-            .login-card { padding: 35px 25px; border-radius: 25px; }
-            .login-title { font-size: 2rem; margin-bottom: 25px; }
+            body { padding: 3.5rem 1rem 2rem; }
+            .login-wrapper {
+                grid-template-columns: 1fr;
+                gap: 1.75rem;
+                max-width: 480px;
+            }
+            .brand-showcase {
+                padding: 0.5rem 0;
+                gap: 1.25rem;
+            }
+            .seal-image { width: 90px; height: 90px; }
+            .org-title { font-size: 1.35rem; line-height: 1.3; }
+            .org-subtitle { font-size: 1.05rem; }
+            .org-tagline-box { font-size: 0.8rem; padding: 0.45rem 1rem; }
+            .schools-section { max-width: 440px; }
+            .schools-grid { gap: 0.45rem; }
+            .school-card-chip { height: 48px; }
+            .login-card {
+                padding: 1.75rem 1.5rem;
+                border-radius: 20px;
+            }
         }
 
-        /* ── Small Mobile Phones (<=480px) ── */
+        /* Mobile Screens (<= 480px) — Compact Ergonomic View */
         @media (max-width: 480px) {
-            .login-container { padding: 20px 10px; gap: 1rem; }
-            .login-left { padding: 5px; gap: 0.85rem; }
-            .logo-container img { width: 85px; height: 85px; }
-            .organization-title { font-size: 1.15rem; line-height: 1.3; }
-            .organization-subtitle { font-size: 0.95rem; }
-            .tagline { font-size: 1.1rem; }
-            .schools-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: 300px; justify-items: center; }
-            .schools-row img { width: 38px; height: 38px; }
-            .login-card { padding: 25px 16px; border-radius: 20px; }
-            .login-title { font-size: 1.65rem; margin-bottom: 20px; }
-            .form-options { flex-direction: column; align-items: flex-start; gap: 8px; }
+            body {
+                padding: 3rem 0.75rem 1.5rem;
+                align-items: flex-start;
+            }
+            .btn-return-home {
+                top: 0.75rem;
+                left: 0.75rem;
+                padding: 0.4rem 0.75rem;
+                font-size: 0.74rem;
+            }
+            .login-wrapper {
+                gap: 1.25rem;
+            }
+            .brand-showcase {
+                gap: 0.85rem;
+                padding: 0;
+            }
+            .seal-image { width: 75px; height: 75px; }
+            .org-title { font-size: 1.15rem; }
+            .org-subtitle { font-size: 0.92rem; }
+            .org-tagline-box { display: none; } /* Hide extra banner on tiny mobile to keep form visible */
+            .portal-role-pill { font-size: 0.68rem; padding: 0.25rem 0.65rem; }
+            
+            .login-card {
+                padding: 1.5rem 1.25rem;
+                border-radius: 16px;
+            }
+            .card-title { font-size: 1.35rem; margin-bottom: 0.2rem; }
+            .card-subtitle { font-size: 0.78rem; }
+            .field-label { font-size: 0.78rem; }
+            .field-input {
+                padding: 0.65rem 2.4rem 0.65rem 2.4rem;
+                font-size: 0.85rem;
+                border-radius: 10px;
+            }
+            .field-icon { font-size: 0.82rem; left: 12px; }
+            .password-toggle-btn { right: 8px; font-size: 0.82rem; }
+            .form-row-utils { font-size: 0.76rem; margin: 0.6rem 0 1.1rem; }
+            .btn-submit-login {
+                padding: 0.7rem 1rem;
+                font-size: 0.86rem;
+                border-radius: 10px;
+            }
+            .card-footer-note { font-size: 0.7rem; }
+            
+            .schools-title { font-size: 0.65rem; margin-bottom: 0.5rem; }
+            .schools-grid {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 0.35rem;
+            }
+            .school-card-chip {
+                height: 42px;
+                padding: 4px;
+                border-radius: 8px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-left">
-            <div>
-                <div class="logo-container">
-                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/iecep-logo.png" alt="IECEP-LSC Logo">
-                </div>
-                <h1 class="organization-title">INSTITUTE OF ELECTRONICS ENGINEERS OF THE PHILIPPINES</h1>
-                <h2 class="organization-subtitle">LAGUNA STUDENT CHAPTER</h2>
+
+    <!-- Back to Home Floating Pill -->
+    <a href="<?php echo BASE_URL; ?>/index.php" class="btn-return-home" title="Back to Portal Homepage">
+        <i class="fa-solid fa-arrow-left"></i>
+        <span>Back to Home</span>
+    </a>
+
+    <div class="login-wrapper">
+        
+        <!-- Left Side: Brand Showcase -->
+        <div class="brand-showcase">
+            
+            <!-- Seal & Organization Headers -->
+            <div class="seal-glow-wrapper">
+                <img src="<?php echo ASSETS_URL; ?>/icons/iecep-logo.png" alt="IECEP-LSC Official Seal" class="seal-image">
             </div>
-            <div style="width: 100%;">
-                <p class="tagline">One LSC. One IECEP.</p>
-                <div class="schools-row">
-                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/LETRAN.png" alt="Colegio de San Juan de Letrán">
-                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/LSPU-SCC.png" alt="LSPU - Santa Cruz Campus">
-                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/LSPU-SPCC.png" alt="LSPU - San Pablo City Campus">
-                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/MMCL.webp" alt="Malayan Colleges Laguna">
-                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/PUP-STA ROSA.png" alt="PUP - Santa Rosa Campus">
-                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/UC-PNC.png" alt="University of Calamba">
-                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/UPHSD.png" alt="UPHSD">
-                    <img src="<?php echo BASE_URL; ?>/public/assets/icons/UPHSL-BINAN.png" alt="UPHSL - Biñán">
+
+            <div class="org-header-group">
+                <h1 class="org-title">INSTITUTE OF ELECTRONICS ENGINEERS OF THE PHILIPPINES</h1>
+                <h2 class="org-subtitle">LAGUNA STUDENT CHAPTER</h2>
+            </div>
+
+            <div class="org-tagline-box">
+                <i class="fa-solid fa-bolt"></i>
+                <span>One LSC. One IECEP.</span>
+            </div>
+
+            <!-- Affiliated Laguna Chapters Grid -->
+            <div class="schools-section">
+                <div class="schools-title">Affiliated Student Chapters</div>
+                <div class="schools-grid">
+                    <div class="school-card-chip" title="Colegio de San Juan de Letran - Calamba">
+                        <img src="<?php echo ASSETS_URL; ?>/icons/LETRAN.png" alt="Letran Calamba" loading="lazy">
+                    </div>
+                    <div class="school-card-chip" title="LSPU - Santa Cruz Campus">
+                        <img src="<?php echo ASSETS_URL; ?>/icons/LSPU-SCC.png" alt="LSPU SCC" loading="lazy">
+                    </div>
+                    <div class="school-card-chip" title="LSPU - San Pablo City Campus">
+                        <img src="<?php echo ASSETS_URL; ?>/icons/LSPU-SPCC.png" alt="LSPU SPCC" loading="lazy">
+                    </div>
+                    <div class="school-card-chip" title="Malayan Colleges Laguna (Mapúa MCL)">
+                        <img src="<?php echo ASSETS_URL; ?>/icons/MMCL.webp" alt="Mapua MCL" loading="lazy">
+                    </div>
+                    <div class="school-card-chip" title="PUP - Santa Rosa Campus">
+                        <img src="<?php echo ASSETS_URL; ?>/icons/PUP-STA ROSA.png" alt="PUP Santa Rosa" loading="lazy">
+                    </div>
+                    <div class="school-card-chip" title="University of Cabuyao (PNC)">
+                        <img src="<?php echo ASSETS_URL; ?>/icons/UC-PNC.png" alt="Univ of Cabuyao" loading="lazy">
+                    </div>
+                    <div class="school-card-chip" title="UPHSD - Calamba Campus">
+                        <img src="<?php echo ASSETS_URL; ?>/icons/UPHSD.png" alt="UPHSD Calamba" loading="lazy">
+                    </div>
+                    <div class="school-card-chip" title="UPHSL - Biñan Campus">
+                        <img src="<?php echo ASSETS_URL; ?>/icons/UPHSL-BINAN.png" alt="UPHSL Biñan" loading="lazy">
+                    </div>
                 </div>
             </div>
+
+            <div class="portal-role-pill">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span>Role Gateway:</span> Admin • School Officers • Members
+            </div>
+
         </div>
-        <div class="login-right">
+
+        <!-- Right Side: Login Card -->
+        <div class="login-card-container">
             <div class="login-card">
-                <h2 class="login-title">Log In</h2>
-                <?php if ($error): ?>
-                    <div class="error-message"><?php echo htmlspecialchars($error); ?></div>
+                
+                <div class="card-header-block">
+                    <h2 class="card-title">
+                        <span>Portal Sign In</span>
+                    </h2>
+                    <p class="card-subtitle">Sign in to access your digital membership, accreditation records, and chapter dashboards.</p>
+                </div>
+
+                <?php if (!empty($error)): ?>
+                    <div class="error-banner" role="alert">
+                        <i class="fa-solid fa-circle-exclamation"></i>
+                        <div><?php echo htmlspecialchars($error); ?></div>
+                    </div>
                 <?php endif; ?>
-                <form method="POST" action="">
-                    <div class="form-group">
-                        <label for="email">Email Address</label>
-                        <div class="input-wrapper">
-                            <i class="fas fa-envelope"></i>
-                            <input type="email" id="email" name="email" value="<?php echo htmlspecialchars($email); ?>" required placeholder="Enter your email">
+
+                <form method="POST" action="" id="loginForm" novalidate>
+                    
+                    <!-- Email Field -->
+                    <div class="form-group-field">
+                        <label for="email" class="field-label">Email Address</label>
+                        <div class="field-input-box">
+                            <i class="fa-solid fa-envelope field-icon"></i>
+                            <input 
+                                type="email" 
+                                id="email" 
+                                name="email" 
+                                class="field-input" 
+                                value="<?php echo htmlspecialchars($email); ?>" 
+                                required 
+                                placeholder="name@institution.edu.ph"
+                                autocomplete="email"
+                                autocapitalize="none"
+                                inputmode="email"
+                            >
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label for="password">Password</label>
-                        <div class="input-wrapper" style="position: relative;">
-                            <i class="fas fa-lock"></i>
-                            <input type="password" id="password" name="password" required placeholder="Enter your password">
-                            <i class="fas fa-eye-slash" id="togglePassword" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #999; font-size: 1rem; pointer-events: auto;"></i>
+
+                    <!-- Password Field -->
+                    <div class="form-group-field">
+                        <div class="field-label">
+                            <label for="password">Password</label>
+                        </div>
+                        <div class="field-input-box">
+                            <i class="fa-solid fa-lock field-icon"></i>
+                            <input 
+                                type="password" 
+                                id="password" 
+                                name="password" 
+                                class="field-input" 
+                                required 
+                                placeholder="••••••••••••"
+                                autocomplete="current-password"
+                            >
+                            <button type="button" class="password-toggle-btn" id="togglePasswordBtn" aria-label="Toggle password visibility" tabindex="-1">
+                                <i class="fa-solid fa-eye-slash" id="togglePasswordIcon"></i>
+                            </button>
                         </div>
                     </div>
 
-                    <script>
-                        const passwordInput = document.getElementById('password');
-                        const togglePasswordBtn = document.getElementById('togglePassword');
-
-                        togglePasswordBtn.addEventListener('click', function() {
-                            if (passwordInput.type === 'password') {
-                                passwordInput.type = 'text';
-                                togglePasswordBtn.classList.remove('fa-eye-slash');
-                                togglePasswordBtn.classList.add('fa-eye');
-                            } else {
-                                passwordInput.type = 'password';
-                                togglePasswordBtn.classList.remove('fa-eye');
-                                togglePasswordBtn.classList.add('fa-eye-slash');
-                            }
-                        });
-                    </script>
-
-                    <div class="form-options">
-                        <label><input type="checkbox" name="remember"> Remember Me</label>
-                        <a href="<?php echo BASE_URL; ?>/public/forgot-password.php">Forgot Password?</a>
+                    <!-- Remember & Forgot Options -->
+                    <div class="form-row-utils">
+                        <label class="remember-checkbox-label">
+                            <input type="checkbox" name="remember" id="rememberMe">
+                            <span>Keep me signed in</span>
+                        </label>
+                        <a href="<?php echo BASE_URL; ?>/public/forgot-password.php" class="forgot-link">Forgot Password?</a>
                     </div>
-                    <button type="submit" class="btn-login">Log in</button>
-                    <div style="text-align: center; margin-bottom: 10px;">
-                        <a href="index.php" class="btn-back-home"><i class="fas fa-arrow-left"></i> Back to Homepage</a>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn-submit-login" id="submitLoginBtn">
+                        <span id="btnText">Sign In to Dashboard</span>
+                        <i class="fa-solid fa-arrow-right" id="btnIcon"></i>
+                    </button>
+
+                    <!-- Security Badge Note -->
+                    <div class="card-footer-note">
+                        <i class="fa-solid fa-shield-check"></i>
+                        <span>Protected by 256-bit Encrypted Session Security</span>
                     </div>
+
                 </form>
+
             </div>
         </div>
+
     </div>
+
+    <!-- Client-Side Scripts for Interactions -->
+    <script>
+        // Password Visibility Toggle
+        const passwordInput = document.getElementById('password');
+        const toggleBtn = document.getElementById('togglePasswordBtn');
+        const toggleIcon = document.getElementById('togglePasswordIcon');
+
+        if (toggleBtn && passwordInput) {
+            toggleBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const isPassword = passwordInput.type === 'password';
+                passwordInput.type = isPassword ? 'text' : 'password';
+                toggleIcon.classList.toggle('fa-eye-slash', !isPassword);
+                toggleIcon.classList.toggle('fa-eye', isPassword);
+            });
+        }
+
+        // Submitting state feedback
+        const loginForm = document.getElementById('loginForm');
+        const submitBtn = document.getElementById('submitLoginBtn');
+        const btnText = document.getElementById('btnText');
+        const btnIcon = document.getElementById('btnIcon');
+
+        if (loginForm && submitBtn) {
+            loginForm.addEventListener('submit', function() {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.85';
+                submitBtn.style.cursor = 'wait';
+                btnText.textContent = 'Authenticating...';
+                btnIcon.className = 'fa-solid fa-circle-notch fa-spin';
+            });
+        }
+    </script>
 </body>
 </html>
