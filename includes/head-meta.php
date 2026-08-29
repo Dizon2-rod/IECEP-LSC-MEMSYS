@@ -247,15 +247,11 @@ define('HEAD_META_INCLUDED', true);
     }
     .sidebar-toggle {
         display: none;
-        position: fixed;
-        top: 1rem;
-        left: 1rem;
-        z-index: 1001;
         background: var(--primary);
         color: white;
         border: none;
         border-radius: 8px;
-        padding: 0.75rem;
+        padding: 0.5rem;
         cursor: pointer;
     }
     

@@ -341,29 +341,12 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             gap: 1rem;
         }
 
-        .header-icon-circle {
-            width: 52px;
-            height: 52px;
-            border-radius: 14px;
-            background: #EFF6FF;
-            color: var(--color-navy);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.45rem;
-            border: 1px solid #DBEAFE;
-            flex-shrink: 0;
-        }
-
         .header-main-title {
-            margin: 0 0 0.2rem;
+            margin: 0 0 0.25rem;
             font-size: 1.4rem;
             font-weight: 800;
             color: var(--text-heading);
             letter-spacing: -0.01em;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
         }
 
         .header-subtitle {
@@ -512,19 +495,23 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             min-width: 280px;
             flex: 1;
             max-width: 440px;
+            display: flex;
+            align-items: center;
         }
-        .search-input-wrapper i {
+        .search-input-wrapper .search-icon {
             position: absolute;
-            left: 12px;
+            left: 14px;
             top: 50%;
             transform: translateY(-50%);
-            color: #94A3B8;
-            font-size: 0.9rem;
+            color: #64748B;
+            font-size: 0.95rem;
+            pointer-events: none;
+            z-index: 3;
         }
         .search-input-field {
             width: 100%;
             box-sizing: border-box;
-            padding: 0.6rem 0.85rem 0.6rem 2.3rem;
+            padding: 0.65rem 0.85rem 0.65rem 2.4rem;
             border: 1px solid #CBD5E1;
             border-radius: 8px;
             font-size: 0.85rem;
@@ -540,7 +527,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         .select-filter-box {
-            padding: 0.6rem 2rem 0.6rem 0.85rem;
+            padding: 0.65rem 2rem 0.65rem 0.85rem;
             border: 1px solid #CBD5E1;
             border-radius: 8px;
             font-size: 0.84rem;
@@ -609,7 +596,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .table-responsive-viewport {
             width: 100%;
             box-sizing: border-box;
-            overflow-x: hidden; /* No forced scroll bar */
+            overflow-x: hidden;
         }
 
         .roster-white-table {
@@ -792,12 +779,6 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             .header-title-box {
                 gap: 0.65rem;
             }
-            .header-icon-circle {
-                width: 40px;
-                height: 40px;
-                font-size: 1.15rem;
-                border-radius: 10px;
-            }
             .header-main-title {
                 font-size: 1.15rem;
             }
@@ -869,7 +850,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                 max-width: 100%;
             }
             .search-input-field {
-                padding: 0.5rem 0.75rem 0.5rem 2rem;
+                padding: 0.5rem 0.75rem 0.5rem 2.2rem;
                 font-size: 0.8rem;
             }
             .select-filter-box {
@@ -894,9 +875,6 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             }
             .table-card-heading {
                 font-size: 0.86rem;
-            }
-            .table-card-topbar div {
-                font-size: 0.72rem !important;
             }
             .roster-white-table {
                 table-layout: fixed;
@@ -1207,9 +1185,6 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             <!-- 1. Header Banner -->
             <div class="white-page-header">
                 <div class="header-title-box">
-                    <div class="header-icon-circle">
-                        <i class="fas fa-users-viewfinder"></i>
-                    </div>
                     <div>
                         <h1 class="header-main-title">
                             Member Directory
@@ -1286,7 +1261,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             <div class="white-controls-card">
                 <div class="filter-controls-left">
                     <div class="search-input-wrapper">
-                        <i class="fas fa-magnifying-glass"></i>
+                        <i class="fas fa-search search-icon"></i>
                         <input type="text" id="memberSearchInput" class="search-input-field" placeholder="Search by name, email, student ID..." onkeyup="applyFilters()">
                     </div>
                     
@@ -1327,9 +1302,6 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                         <i class="fas fa-address-book" style="color:var(--color-navy);"></i>
                         <span>Student Member Ledger</span>
                     </h3>
-                    <div style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">
-                        Click <span style="background:var(--color-navy); color:#FFFFFF; padding:2px 7px; border-radius:4px; font-size:0.72rem; font-weight:800;">👁️ View</span> to inspect profile info
-                    </div>
                 </div>
 
                 <div class="table-responsive-viewport">
@@ -1464,12 +1436,6 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                         </tbody>
                     </table>
                 </div>
-            </div>
-
-            <!-- Sentinel Info -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-database"></i><span><strong>Database Sync:</strong> Connected directly to Supabase Cloud Engine</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Cryptographic Ledger:</strong> SHA-256 Verified Member Credentials</span></div>
             </div>
 
         </div>

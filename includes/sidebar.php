@@ -663,24 +663,32 @@ if (!function_exists('isMenuItemActive')) {
 }
 
 .sidebar-toggle {
-    background: var(--sb-navy);
-    color: #FFFFFF;
-    border: none;
-    border-radius: 9px;
-    width: 38px;
-    height: 38px;
-    font-size: 1rem;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(11, 29, 74, 0.25);
-    transition: var(--sb-transition);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    background: var(--sb-navy) !important;
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 9px !important;
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    font-size: 1rem !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 8px rgba(11, 29, 74, 0.25) !important;
+    transition: var(--sb-transition) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    flex-shrink: 0 !important;
+    z-index: 10 !important;
 }
 
 .sidebar-toggle:hover {
-    background: var(--sb-navy-hover);
-    transform: scale(1.03);
+    background: var(--sb-navy-hover) !important;
+    transform: scale(1.03) !important;
 }
 
 .sidebar-close-btn {
