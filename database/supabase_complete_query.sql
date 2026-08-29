@@ -389,43 +389,30 @@ ON CONFLICT (email) DO UPDATE SET
     role = EXCLUDED.role,
     institution_id = EXCLUDED.institution_id;
 
+-- SEED DATA: OFFICIAL MEMBERS (Real Member Roster)
 INSERT INTO members (
     id, membership_id, full_name, first_name, last_name, email,
     phone, institution_id, course, year_level, student_number,
     membership_type, status, payment_status, digital_id_hash
 )
 VALUES
-    -- 1. Colegio de San Juan de Letran - Calamba (ECELSS)
-    ('50000000-0000-0000-0000-000000000001', 'IECEP-2026-0501', 'Alyssa Reyes', 'Alyssa', 'Reyes', 'alyssa.reyes@letran-calamba.edu.ph', '09215550001', 'b2c3d4e5-f6a7-8901-bcde-f12345678901', 'BS Electronics Engineering', '4th Year', '2022-05001', 'student', 'active', 'paid', 'a1b2c3d4e5f60501'),
-    ('50000000-0000-0000-0000-000000000002', 'IECEP-2026-0502', 'Gabriel Santos', 'Gabriel', 'Santos', 'gabriel.santos@letran-calamba.edu.ph', '09215550002', 'b2c3d4e5-f6a7-8901-bcde-f12345678901', 'BS Electronics Engineering', '2nd Year', '2024-05002', 'student', 'active', 'paid', 'a1b2c3d4e5f60502'),
-
-    -- 2. LSPU - San Pablo City Campus (AFECE)
-    ('20000000-0000-0000-0000-000000000001', 'IECEP-2026-0201', 'Patricia Reyes', 'Patricia', 'Reyes', 'patricia.spcc@lspu.edu.ph', '09182220001', '3c6f8a12-9844-48f6-b11c-99d9b626e5a1', 'BS Electronics Engineering', '1st Year', '2025-02001', 'student', 'active', 'paid', 'a1b2c3d4e5f60201'),
-    ('20000000-0000-0000-0000-000000000002', 'IECEP-2026-0202', 'Angelo Bautista', 'Angelo', 'Bautista', 'angelo.spcc@lspu.edu.ph', '09182220002', '3c6f8a12-9844-48f6-b11c-99d9b626e5a1', 'BS Electronics Engineering', '3rd Year', '2023-02002', 'student', 'active', 'paid', 'a1b2c3d4e5f60202'),
-
-    -- 3. Mapúa Malayan Colleges Laguna (IECEP - MMCL)
-    ('30000000-0000-0000-0000-000000000001', 'IECEP-2026-0301', 'Kyla Ramos', 'Kyla', 'Ramos', 'kyla.ramos@mmcl.edu.ph', '09193330001', '7d8e9f01-1234-4567-89ab-cdef01234567', 'BS Electronics Engineering', '2nd Year', '2024-03001', 'student', 'active', 'paid', 'a1b2c3d4e5f60301'),
-    ('30000000-0000-0000-0000-000000000002', 'IECEP-2026-0302', 'Justin Tan', 'Justin', 'Tan', 'justin.tan@mmcl.edu.ph', '09193330002', '7d8e9f01-1234-4567-89ab-cdef01234567', 'BS Electronics Engineering', '4th Year', '2022-03002', 'student', 'active', 'paid', 'a1b2c3d4e5f60302'),
-
-    -- 4. University of Cabuyao / Pamantasan ng Cabuyao (OECES / PnC)
-    ('40000000-0000-0000-0000-000000000001', 'IECEP-2026-0401', 'Christian Flores', 'Christian', 'Flores', 'christian.pnc@gmail.com', '09204440001', '4d5e6f7a-8b9c-0123-def4-567890123456', 'BS Electronics Engineering', '1st Year', '2025-04001', 'student', 'active', 'paid', 'a1b2c3d4e5f60401'),
-    ('40000000-0000-0000-0000-000000000002', 'IECEP-2026-0402', 'Erika Mae Ramos', 'Erika Mae', 'Ramos', 'erika.pnc@gmail.com', '09204440002', '4d5e6f7a-8b9c-0123-def4-567890123456', 'BS Electronics Engineering', '3rd Year', '2023-04002', 'student', 'active', 'paid', 'a1b2c3d4e5f60402'),
-
-    -- 5. PUP - Santa Rosa Campus (AECES)
-    ('60000000-0000-0000-0000-000000000001', 'IECEP-2026-0601', 'John Paul Castro', 'John Paul', 'Castro', 'jp.castro@pup.edu.ph', '09226660001', 'c3d4e5f6-a7b8-9012-cdef-123456789012', 'BS Electronics Engineering', '2nd Year', '2024-06001', 'student', 'active', 'paid', 'a1b2c3d4e5f60601'),
-    ('60000000-0000-0000-0000-000000000002', 'IECEP-2026-0602', 'Nicole Mendoza', 'Nicole', 'Mendoza', 'nicole.castro@pup.edu.ph', '09226660002', 'c3d4e5f6-a7b8-9012-cdef-123456789012', 'BS Electronics Engineering', '4th Year', '2022-06002', 'student', 'active', 'paid', 'a1b2c3d4e5f60602'),
-
-    -- 6. UPHSL – Biñan Campus (PIECES)
-    ('70000000-0000-0000-0000-000000000001', 'IECEP-2026-0701', 'Joshua Garcia', 'Joshua', 'Garcia', 'joshua.uphsl@gmail.com', '09237770001', 'e5f6a7b8-c9d0-1234-ef12-345678901234', 'BS Electronics Engineering', '3rd Year', '2023-07001', 'student', 'active', 'paid', 'a1b2c3d4e5f60701'),
-
-    -- 7. UPHSD - Calamba Campus (ECESS - UPHSD)
-    ('80000000-0000-0000-0000-000000000001', 'IECEP-2026-0801', 'Marielle Cruz', 'Marielle', 'Cruz', 'marielle.uphsd@gmail.com', '09248880001', 'd4e5f6a7-b8c9-0123-def1-234567890123', 'BS Electronics Engineering', '1st Year', '2025-08001', 'student', 'active', 'paid', 'a1b2c3d4e5f60801'),
-
-    -- 8. LSPU - Santa Cruz Campus (ECESS - LSPU SCC)
-    ('10000000-0000-0000-0000-000000000001', 'IECEP-2026-0101', 'Juan Dela Cruz', 'Juan', 'Dela Cruz', 'juan.scc1@lspu.edu.ph', '09171110001', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'BS Electronics Engineering', '1st Year', '2025-01001', 'student', 'active', 'paid', 'a1b2c3d4e5f60101'),
-    ('10000000-0000-0000-0000-000000000002', 'IECEP-2026-0102', 'Maria Santos', 'Maria', 'Santos', 'maria.scc2@lspu.edu.ph', '09171110002', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'BS Electronics Engineering', '2nd Year', '2024-01002', 'student', 'active', 'paid', 'a1b2c3d4e5f60102'),
-    ('10000000-0000-0000-0000-000000000003', 'IECEP-2026-0103', 'Rashed Dizon', 'Rashed', 'Dizon', 'rasheddizon7@gmail.com', '09191234567', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'BS Electronics Engineering', '3rd Year', '2022-00123', 'student', 'active', 'paid', 'a1b2c3d4e5f60103'),
-    ('10000000-0000-0000-0000-000000000004', 'IECEP-2026-0104', 'Carlo Mendoza', 'Carlo', 'Mendoza', 'carlo.scc4@lspu.edu.ph', '09171110004', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'BS Electronics Engineering', '4th Year', '2022-01004', 'student', 'active', 'paid', 'a1b2c3d4e5f60104')
+    (
+        '10000000-0000-0000-0000-000000000003',
+        'IECEP-2026-0001',
+        'Rashed Dizon',
+        'Rashed',
+        'Dizon',
+        'rasheddizon7@gmail.com',
+        '09191234567',
+        '1fe48809-8ac6-4428-a6f1-3025cc47f5bb',
+        'BS Electronics Engineering',
+        '3rd Year',
+        '2022-00123',
+        'student',
+        'active',
+        'paid',
+        'a1b2c3d4e5f60103'
+    )
 ON CONFLICT (email) DO UPDATE SET
     full_name = EXCLUDED.full_name,
     membership_id = EXCLUDED.membership_id,
@@ -435,33 +422,8 @@ ON CONFLICT (email) DO UPDATE SET
     student_number = EXCLUDED.student_number;
 
 INSERT INTO member_id_counter (year, last_number)
-VALUES (2026, 14)
+VALUES (2026, 1)
 ON CONFLICT (year) DO UPDATE SET last_number = GREATEST(member_id_counter.last_number, EXCLUDED.last_number);
-
--- SEED DATA: INITIAL ATTENDANCE & BLOCKCHAIN LOG
-INSERT INTO event_attendees (event_id, member_id, status, check_in_time)
-SELECT 
-    '2f2f99ce-98e1-49f6-8949-760687189aa6'::uuid, 
-    m.id, 
-    'attended', 
-    NOW() - INTERVAL '30 minutes'
-FROM members m
-WHERE m.email IN ('juan.scc1@lspu.edu.ph', 'rasheddizon7@gmail.com', 'juan.delacruz@student.lspu.edu.ph')
-ON CONFLICT (event_id, member_id) DO NOTHING;
-
-INSERT INTO blockchain_records (block_index, entity_type, entity_id, transaction_hash, record_hash, data_json, confirmed)
-SELECT 
-    1, 
-    'event_attendance', 
-    m.id, 
-    'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 
-    'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f01234', 
-    '{"event": "IECEP-LSC Regional Technical Summit 2026", "student": "Juan Dela Cruz", "membership_id": "IECEP-2026-0101"}', 
-    true
-FROM members m
-WHERE m.email IN ('juan.scc1@lspu.edu.ph', 'rasheddizon7@gmail.com', 'juan.delacruz@student.lspu.edu.ph')
-LIMIT 1
-ON CONFLICT (id) DO NOTHING;
 
 -- SEED DATA: SYSTEM SETTINGS & FEES
 INSERT INTO fee_brackets (bracket_name, min_members, max_members, fee, is_active)
