@@ -5,7 +5,7 @@ $current_page = 'attendance';
 require_once __DIR__ . '/../auth_check.php';
 require_role(['school_officer', 'admin', 'super_admin']);
 
-$pageTitle = 'Event Attendance & Live QR Check-In';
+$pageTitle = 'Event Attendance & Live QR Check-In / Check-Out';
 $user = get_user_info();
 $userId = $user['id'] ?? null;
 $institutionId = $_SESSION['institution_id'] ?? $user['institution_id'] ?? null;
@@ -68,6 +68,9 @@ if ($supabase && $institutionId) {
 
 // Fetch Attendance records for the selected event
 $attendances = [];
+$checkedInCount = 0;
+$checkedOutCount = 0;
+
 if ($supabase && !empty($selectedEventId)) {
     try {
         $allAtt = $supabase->select('event_attendees', [
@@ -81,7 +84,19 @@ if ($supabase && !empty($selectedEventId)) {
                     $mem = $memMap[$mId];
                     $att['member_name'] = $mem['full_name'] ?? 'Student Member';
                     $att['student_number'] = $mem['student_number'] ?? 'N/A';
-                    $att['membership_id'] = $mem['membership_id'] ?? 'Pending';
+                    $att['membership_id'] = $mem['membership_id'] ?? 'Pending ID';
+                    
+                    if (!empty($att['check_in_time'])) $checkedInCount++;
+                    if (!empty($att['check_out_time'])) $checkedOutCount++;
+                    
+                    // Compute duration
+                    if (!empty($att['check_in_time']) && !empty($att['check_out_time'])) {
+                        $diffSecs = max(0, strtotime($att['check_out_time']) - strtotime($att['check_in_time']));
+                        $h = floor($diffSecs / 3600);
+                        $m = floor(($diffSecs % 3600) / 60);
+                        $att['duration_str'] = ($h > 0 ? "{$h}h " : "") . "{$m}m";
+                    }
+                    
                     $attendances[] = $att;
                 }
             }
@@ -95,7 +110,7 @@ if ($supabase && !empty($selectedEventId)) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
-    <meta name="description" content="Live 30-second rolling dynamic QR attendance scanner and event check-in ledger.">
+    <meta name="description" content="Live QR attendance scanner supporting Check-In (Time-In) and Check-Out (Time-Out) for IECEP-LSC.">
     <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -200,7 +215,6 @@ if ($supabase && !empty($selectedEventId)) {
         .btn-primary-navy:hover {
             background: var(--color-navy-hover);
             transform: translateY(-1px);
-            color: #FDE047 !important;
         }
 
         .btn-emerald {
@@ -224,7 +238,28 @@ if ($supabase && !empty($selectedEventId)) {
             transform: translateY(-1px);
         }
 
-        /* 4 KPI Grid (2x2 on Mobile, 4 columns on Desktop) */
+        .btn-rose {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.45rem 0.95rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-decoration: none;
+            background: var(--color-rose);
+            border: 1px solid var(--color-rose);
+            color: #FFFFFF !important;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(225, 29, 72, 0.2);
+            transition: all 0.18s ease;
+        }
+        .btn-rose:hover {
+            background: #BE123C;
+            transform: translateY(-1px);
+        }
+
+        /* 4 KPI Grid */
         .dash-kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -254,8 +289,8 @@ if ($supabase && !empty($selectedEventId)) {
         }
         .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
         .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.rose { background: #FFF1F2; color: #E11D48; border: 1px solid #FECDD3; }
         .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
-        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
 
         .kpi-val {
             font-size: 1.25rem;
@@ -363,6 +398,35 @@ if ($supabase && !empty($selectedEventId)) {
             overflow-y: auto;
         }
 
+        .mode-toggle-group {
+            display: inline-flex;
+            background: #F1F5F9;
+            padding: 3px;
+            border-radius: 8px;
+            gap: 2px;
+        }
+        .mode-toggle-btn {
+            border: none;
+            background: transparent;
+            font-size: 0.76rem;
+            font-weight: 700;
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            color: #64748B;
+            transition: all 0.18s ease;
+        }
+        .mode-toggle-btn.active-in {
+            background: #059669;
+            color: #FFFFFF;
+            box-shadow: 0 1px 3px rgba(5, 150, 105, 0.3);
+        }
+        .mode-toggle-btn.active-out {
+            background: #E11D48;
+            color: #FFFFFF;
+            box-shadow: 0 1px 3px rgba(225, 29, 72, 0.3);
+        }
+
         .scan-feedback-box {
             padding: 1rem;
             border-radius: 10px;
@@ -384,26 +448,11 @@ if ($supabase && !empty($selectedEventId)) {
             display: block;
         }
 
-        .progress-bar-container {
-            width: 100%;
-            height: 6px;
-            background: #E2E8F0;
-            border-radius: 3px;
-            overflow: hidden;
-            margin-top: 0.75rem;
-        }
-        .progress-bar-fill {
-            height: 100%;
-            background: var(--color-emerald);
-            transition: width 1s linear;
-        }
-
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(-5px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Mobile specific layout: Clean 2x2 grid */
         @media (max-width: 1024px) {
             .main-content { margin-left: 0; padding: 0.85rem; }
             .dash-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.5rem; }
@@ -431,19 +480,22 @@ if ($supabase && !empty($selectedEventId)) {
                     <div>
                         <h1 class="dash-header-title">
                             <i class="fas fa-qrcode" style="color:var(--color-navy);"></i>
-                            Dynamic QR Attendance Desk
+                            Member ID Attendance & Check-In / Check-Out
                         </h1>
                         <p class="dash-header-sub">
-                            Live 30-second rolling QR attendance scanning for <strong><?= htmlspecialchars($schoolName) ?></strong> delegates.
+                            Scan official IECEP-LSC ID card QR codes for <strong><?= htmlspecialchars($schoolName) ?></strong> delegates.
                         </p>
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
-                    <button type="button" class="btn-emerald" onclick="openOfficerScanner()">
-                        <i class="fas fa-camera"></i> Scan Student QR Code
+                    <button type="button" class="btn-emerald" onclick="openScannerWithMode('check_in')">
+                        <i class="fas fa-right-to-bracket"></i> Scan Check-In (Time-In)
+                    </button>
+                    <button type="button" class="btn-rose" onclick="openScannerWithMode('check_out')">
+                        <i class="fas fa-right-from-bracket"></i> Scan Check-Out (Time-Out)
                     </button>
                     <button type="button" class="btn-primary-navy" onclick="openLiveQrModal()">
-                        <i class="fas fa-satellite-dish" style="color:#FDE047;"></i> Generate Attendance QR (30s)
+                        <i class="fas fa-satellite-dish" style="color:#FDE047;"></i> Live Event QR
                     </button>
                     <button type="button" id="btnExportAtt" class="btn-white">
                         <i class="fas fa-file-excel" style="color:var(--color-emerald);"></i> Export Excel
@@ -454,18 +506,26 @@ if ($supabase && !empty($selectedEventId)) {
             <!-- 2. KPI Grid (2x2 on mobile, 4 columns on desktop) -->
             <div class="dash-kpi-grid">
                 <div class="dash-kpi-card">
-                    <div class="kpi-icon-pill navy"><i class="fas fa-clipboard-check"></i></div>
+                    <div class="kpi-icon-pill emerald"><i class="fas fa-user-check"></i></div>
                     <div>
-                        <div class="kpi-val" id="kpiTotalAtt"><?= count($attendances) ?></div>
-                        <div class="kpi-lbl">Event Attendees Logged</div>
+                        <div class="kpi-val" id="kpiCheckIn"><?= $checkedInCount ?></div>
+                        <div class="kpi-lbl">Checked-In (Time-In)</div>
                     </div>
                 </div>
 
                 <div class="dash-kpi-card">
-                    <div class="kpi-icon-pill emerald"><i class="fas fa-user-check"></i></div>
+                    <div class="kpi-icon-pill rose"><i class="fas fa-clock-rotate-left"></i></div>
+                    <div>
+                        <div class="kpi-val" id="kpiCheckOut"><?= $checkedOutCount ?></div>
+                        <div class="kpi-lbl">Checked-Out (Time-Out)</div>
+                    </div>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy"><i class="fas fa-users-viewfinder"></i></div>
                     <div>
                         <div class="kpi-val"><?= count($chapterMembers) ?></div>
-                        <div class="kpi-lbl">Chapter Enrolled Delegates</div>
+                        <div class="kpi-lbl">Total Chapter Delegates</div>
                     </div>
                 </div>
 
@@ -474,14 +534,6 @@ if ($supabase && !empty($selectedEventId)) {
                     <div>
                         <div class="kpi-val"><?= count($eventsList) ?></div>
                         <div class="kpi-lbl">Scheduled Events</div>
-                    </div>
-                </div>
-
-                <div class="dash-kpi-card">
-                    <div class="kpi-icon-pill amber"><i class="fas fa-rotate"></i></div>
-                    <div>
-                        <div class="kpi-val">30s</div>
-                        <div class="kpi-lbl">Rolling Token Expiry</div>
                     </div>
                 </div>
             </div>
@@ -505,14 +557,14 @@ if ($supabase && !empty($selectedEventId)) {
                     </form>
                 </div>
                 <div style="font-size:0.75rem; font-weight:700; color:#64748B;" id="attCountBadge">
-                    Showing <?= count($attendances) ?> check-ins
+                    Showing <?= count($attendances) ?> attendance records
                 </div>
             </div>
 
             <!-- 4. Real Attendance Table -->
             <div class="ap-card">
                 <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-list-check"></i> Delegate Check-In Ledger</h3>
+                    <h3 class="ap-card-title"><i class="fas fa-list-check"></i> Delegate Check-In / Check-Out Ledger</h3>
                     <span class="ap-pill active"><span class="ap-pill-dot"></span> Real Database Records</span>
                 </div>
                 <div style="overflow-x:auto;">
@@ -522,22 +574,24 @@ if ($supabase && !empty($selectedEventId)) {
                                 <th>Delegate Student Particulars</th>
                                 <th>Student Number</th>
                                 <th>Membership ID</th>
-                                <th>Check-In Timestamp</th>
+                                <th>Time-In (Check-In)</th>
+                                <th>Time-Out (Check-Out)</th>
+                                <th>Session Duration</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
                         <tbody id="attTableBody">
                             <?php if (empty($attendances)): ?>
                                 <tr id="noRecordsRow">
-                                    <td colspan="5" style="text-align:center; padding:2.5rem; color:#64748B;">
-                                        <i class="fas fa-qrcode" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
+                                    <td colspan="7" style="text-align:center; padding:2.5rem; color:#64748B;">
+                                        <i class="fas fa-id-card" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
                                         <strong style="color:#0F172A; font-size:0.92rem;">No Attendance Records Scanned Yet for This Event</strong>
-                                        <p style="margin:0.25rem 0 0; font-size:0.78rem;">Click "Scan Student QR Code" or "Generate Attendance QR" to begin live check-in.</p>
+                                        <p style="margin:0.25rem 0 0; font-size:0.78rem;">Click "Scan Check-In" or "Scan Check-Out" to scan the student's ID card.</p>
                                     </td>
                                 </tr>
                             <?php else: ?>
                                 <?php foreach ($attendances as $a): ?>
-                                    <tr>
+                                    <tr id="row-<?= htmlspecialchars($a['member_id']) ?>">
                                         <td>
                                             <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($a['member_name'] ?? 'Delegate') ?></strong>
                                         </td>
@@ -547,10 +601,22 @@ if ($supabase && !empty($selectedEventId)) {
                                         <td style="font-family:'JetBrains Mono', monospace; font-size:0.76rem; color:var(--color-navy); font-weight:700;">
                                             <?= htmlspecialchars($a['membership_id'] ?? 'Verified') ?>
                                         </td>
-                                        <td style="color:#64748B; font-size:0.75rem; white-space:nowrap;">
-                                            <?= !empty($a['check_in_time']) ? date('M d, Y h:i A', strtotime($a['check_in_time'])) : 'Recent' ?>
+                                        <td style="color:#059669; font-weight:600; font-size:0.75rem; white-space:nowrap;">
+                                            <?= !empty($a['check_in_time']) ? date('M d, Y h:i A', strtotime($a['check_in_time'])) : '—' ?>
                                         </td>
-                                        <td><span class="ap-pill active"><span class="ap-pill-dot"></span> Present</span></td>
+                                        <td style="color:#E11D48; font-weight:600; font-size:0.75rem; white-space:nowrap;">
+                                            <?= !empty($a['check_out_time']) ? date('M d, Y h:i A', strtotime($a['check_out_time'])) : '<span style="color:#94A3B8;">Pending</span>' ?>
+                                        </td>
+                                        <td style="font-family:'JetBrains Mono', monospace; font-size:0.75rem; color:#475569;">
+                                            <?= htmlspecialchars($a['duration_str'] ?? 'Active') ?>
+                                        </td>
+                                        <td>
+                                            <?php if (!empty($a['check_out_time'])): ?>
+                                                <span class="ap-pill" style="background:#F1F5F9; color:#475569;"><i class="fas fa-flag-checkered me-1"></i> Completed</span>
+                                            <?php else: ?>
+                                                <span class="ap-pill active"><span class="ap-pill-dot"></span> Present</span>
+                                            <?php endif; ?>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -562,16 +628,28 @@ if ($supabase && !empty($selectedEventId)) {
         </div>
     </main>
 
-    <!-- Modal 1: Live Officer Camera Scanner (Scan Student QR) -->
+    <!-- Modal 1: Live Officer Camera Scanner (Scan ID QR) -->
     <div id="officerScannerModal" class="doc-modal">
         <div class="modal-inner-box">
             <div class="ap-card-header" style="background:var(--color-navy); color:#FFFFFF;">
-                <h3 class="ap-card-title" style="color:#FFFFFF;"><i class="fas fa-camera"></i> Scan Student Dynamic QR Code</h3>
+                <h3 class="ap-card-title" style="color:#FFFFFF;" id="scannerModalTitle">
+                    <i class="fas fa-camera"></i> Scan Student Member ID Card
+                </h3>
                 <button class="btn-white" style="border:none; padding:0.25rem 0.5rem; background:transparent; color:#FFFFFF;" onclick="closeOfficerScanner()">&times;</button>
             </div>
             <div style="padding:1.25rem; text-align:center;">
-                <p style="font-size:0.8rem; color:#64748B; margin:0 0 1rem;">Point camera at the student's 30s rotating Digital ID QR code:</p>
-                
+                <!-- Scan Mode Toggle inside Modal -->
+                <div style="margin-bottom:1rem; display:flex; justify-content:center;">
+                    <div class="mode-toggle-group">
+                        <button type="button" id="btnModeCheckIn" class="mode-toggle-btn active-in" onclick="setScanMode('check_in')">
+                            <i class="fas fa-right-to-bracket me-1"></i> Check-In (Time-In)
+                        </button>
+                        <button type="button" id="btnModeCheckOut" class="mode-toggle-btn" onclick="setScanMode('check_out')">
+                            <i class="fas fa-right-from-bracket me-1"></i> Check-Out (Time-Out)
+                        </button>
+                    </div>
+                </div>
+
                 <div id="officerReader" style="width:100%; max-width:340px; margin:0 auto; border-radius:10px; overflow:hidden; background:#000;"></div>
                 
                 <!-- Feedback Notification Alert Box -->
@@ -588,12 +666,12 @@ if ($supabase && !empty($selectedEventId)) {
     <div id="liveQrModal" class="doc-modal">
         <div class="modal-inner-box">
             <div class="ap-card-header" style="background:var(--color-navy); color:#FFFFFF;">
-                <h3 class="ap-card-title" style="color:#FFFFFF;"><i class="fas fa-qrcode"></i> Live 30s Event Attendance QR</h3>
+                <h3 class="ap-card-title" style="color:#FFFFFF;"><i class="fas fa-qrcode"></i> Live Event Attendance QR</h3>
                 <button class="btn-white" style="border:none; padding:0.25rem 0.5rem; background:transparent; color:#FFFFFF;" onclick="closeLiveQrModal()">&times;</button>
             </div>
             <div style="padding:1.5rem; text-align:center;">
                 <div style="font-size:0.84rem; font-weight:800; color:#0F172A; margin-bottom:0.25rem;">
-                    Students Scan to Check-In (Present)
+                    Students Scan with Phone Camera
                 </div>
                 <div style="font-size:0.75rem; color:#64748B; margin-bottom:1rem;" id="liveQrEventTitle">
                     Loading Event...
@@ -603,8 +681,8 @@ if ($supabase && !empty($selectedEventId)) {
                     <div id="liveQrContainer"></div>
                 </div>
 
-                <div class="progress-bar-container">
-                    <div id="qrProgressBar" class="progress-bar-fill" style="width:100%;"></div>
+                <div class="progress-bar-container" style="width:100%; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden; margin-top:0.75rem;">
+                    <div id="qrProgressBar" style="height:100%; background:var(--color-emerald); transition:width 1s linear; width:100%;"></div>
                 </div>
 
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.65rem; font-size:0.74rem; font-weight:700; color:#64748B;">
@@ -619,9 +697,28 @@ if ($supabase && !empty($selectedEventId)) {
         let html5Scanner = null;
         let qrTimerInterval = null;
         let qrSecondsRemaining = 30;
+        let activeScanMode = 'check_in'; // 'check_in' or 'check_out'
         const currentEventId = <?= json_encode($selectedEventId) ?>;
 
-        // --- OFFICER SCANNER (Scan Student QR) ---
+        function setScanMode(mode) {
+            activeScanMode = mode;
+            const btnIn = document.getElementById('btnModeCheckIn');
+            const btnOut = document.getElementById('btnModeCheckOut');
+
+            if (mode === 'check_in') {
+                btnIn.className = 'mode-toggle-btn active-in';
+                btnOut.className = 'mode-toggle-btn';
+            } else {
+                btnIn.className = 'mode-toggle-btn';
+                btnOut.className = 'mode-toggle-btn active-out';
+            }
+        }
+
+        function openScannerWithMode(mode) {
+            setScanMode(mode);
+            openOfficerScanner();
+        }
+
         function openOfficerScanner() {
             document.getElementById('scanFeedbackBox').className = 'scan-feedback-box';
             document.getElementById('scanFeedbackBox').style.display = 'none';
@@ -658,49 +755,75 @@ if ($supabase && !empty($selectedEventId)) {
                     body: JSON.stringify({
                         action: 'officer_scan_student',
                         event_id: currentEventId,
-                        student_qr: decodedText
+                        student_qr: decodedText,
+                        scan_mode: activeScanMode
                     })
                 });
 
                 const res = await response.json();
 
                 if (res.success && !res.already_recorded) {
-                    // First time scan: Present!
                     feedback.className = 'scan-feedback-box success';
                     fbIcon.innerHTML = '<i class="fas fa-circle-check" style="color:#059669;"></i>';
-                    fbTitle.textContent = "Attendance Verified (Present)";
+                    fbTitle.textContent = (activeScanMode === 'check_in') ? "Check-In Verified (Time-In)" : "Check-Out Recorded (Time-Out)";
                     fbDetail.textContent = res.message;
                     feedback.style.display = 'block';
 
-                    // Dynamically prepend row to table
-                    if (res.student) {
+                    // Update UI table and counters
+                    const st = res.student;
+                    if (st) {
                         const noRec = document.getElementById('noRecordsRow');
                         if (noRec) noRec.remove();
 
                         const tbody = document.getElementById('attTableBody');
-                        const tr = document.createElement('tr');
-                        tr.style.backgroundColor = '#ECFDF5';
-                        tr.innerHTML = `
-                            <td><strong style="color:#0F172A; font-size:0.84rem;">${res.student.full_name}</strong></td>
-                            <td style="font-family:'JetBrains Mono', monospace; font-size:0.76rem; color:#334155;">${res.student.student_number}</td>
-                            <td style="font-family:'JetBrains Mono', monospace; font-size:0.76rem; color:var(--color-navy); font-weight:700;">${res.student.membership_id}</td>
-                            <td style="color:#64748B; font-size:0.75rem; white-space:nowrap;">Just now</td>
-                            <td><span class="ap-pill active"><span class="ap-pill-dot"></span> Present</span></td>
-                        `;
-                        tbody.insertBefore(tr, tbody.firstChild);
+                        let existingRow = document.getElementById(`row-${st.id}`);
 
-                        const totalEl = document.getElementById('kpiTotalAtt');
-                        if (totalEl) totalEl.textContent = parseInt(totalEl.textContent || 0) + 1;
+                        const formattedIn = st.check_in_time ? new Date(st.check_in_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '—';
+                        const formattedOut = st.check_out_time ? new Date(st.check_out_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '<span style="color:#94A3B8;">Pending</span>';
+                        const duration = st.duration || (st.check_out_time ? 'Completed' : 'Active');
+                        const statusPill = st.check_out_time ? '<span class="ap-pill" style="background:#F1F5F9; color:#475569;"><i class="fas fa-flag-checkered me-1"></i> Completed</span>' : '<span class="ap-pill active"><span class="ap-pill-dot"></span> Present</span>';
+
+                        if (existingRow) {
+                            existingRow.innerHTML = `
+                                <td><strong style="color:#0F172A; font-size:0.84rem;">${st.full_name}</strong></td>
+                                <td style="font-family:'JetBrains Mono', monospace; font-size:0.76rem; color:#334155;">${st.student_number}</td>
+                                <td style="font-family:'JetBrains Mono', monospace; font-size:0.76rem; color:var(--color-navy); font-weight:700;">${st.membership_id}</td>
+                                <td style="color:#059669; font-weight:600; font-size:0.75rem; white-space:nowrap;">${formattedIn}</td>
+                                <td style="color:#E11D48; font-weight:600; font-size:0.75rem; white-space:nowrap;">${formattedOut}</td>
+                                <td style="font-family:'JetBrains Mono', monospace; font-size:0.75rem; color:#475569;">${duration}</td>
+                                <td>${statusPill}</td>
+                            `;
+                        } else {
+                            const tr = document.createElement('tr');
+                            tr.id = `row-${st.id}`;
+                            tr.style.backgroundColor = '#ECFDF5';
+                            tr.innerHTML = `
+                                <td><strong style="color:#0F172A; font-size:0.84rem;">${st.full_name}</strong></td>
+                                <td style="font-family:'JetBrains Mono', monospace; font-size:0.76rem; color:#334155;">${st.student_number}</td>
+                                <td style="font-family:'JetBrains Mono', monospace; font-size:0.76rem; color:var(--color-navy); font-weight:700;">${st.membership_id}</td>
+                                <td style="color:#059669; font-weight:600; font-size:0.75rem; white-space:nowrap;">${formattedIn}</td>
+                                <td style="color:#E11D48; font-weight:600; font-size:0.75rem; white-space:nowrap;">${formattedOut}</td>
+                                <td style="font-family:'JetBrains Mono', monospace; font-size:0.75rem; color:#475569;">${duration}</td>
+                                <td>${statusPill}</td>
+                            `;
+                            tbody.insertBefore(tr, tbody.firstChild);
+                        }
+
+                        if (activeScanMode === 'check_in') {
+                            const cinEl = document.getElementById('kpiCheckIn');
+                            if (cinEl) cinEl.textContent = parseInt(cinEl.textContent || 0) + 1;
+                        } else {
+                            const coutEl = document.getElementById('kpiCheckOut');
+                            if (coutEl) coutEl.textContent = parseInt(coutEl.textContent || 0) + 1;
+                        }
                     }
-                } else if (res.already_recorded) {
-                    // Second time scan: Failed duplicate!
+                } else if (res.already_recorded || res.not_checked_in) {
                     feedback.className = 'scan-feedback-box warning';
                     fbIcon.innerHTML = '<i class="fas fa-triangle-exclamation" style="color:#DC2626;"></i>';
-                    fbTitle.textContent = "Check-In Already Recorded";
+                    fbTitle.textContent = res.not_checked_in ? "Check-In Required First" : "Already Recorded";
                     fbDetail.textContent = res.message;
                     feedback.style.display = 'block';
                 } else {
-                    // Invalid/Expired
                     feedback.className = 'scan-feedback-box warning';
                     fbIcon.innerHTML = '<i class="fas fa-times-circle" style="color:#DC2626;"></i>';
                     fbTitle.textContent = "Scan Failed";
@@ -719,11 +842,10 @@ if ($supabase && !empty($selectedEventId)) {
         }
 
         function onOfficerScanError(err) {
-            // Scanning in progress
+            // Scanning continuously
         }
 
         // --- GENERATE EVENT 30s ROLLING QR ---
-        let qrCodeInstance = null;
         function openLiveQrModal() {
             document.getElementById('liveQrModal').classList.add('active');
             const selectEl = document.getElementById('eventSelectDropdown');
@@ -818,7 +940,7 @@ if ($supabase && !empty($selectedEventId)) {
         document.getElementById('btnExportAtt').addEventListener('click', function() {
             const table = document.getElementById('attTable');
             const wb = XLSX.utils.table_to_book(table, {sheet: "Attendance Ledger"});
-            XLSX.writeFile(wb, "Event_Attendance_<?= date('Ymd') ?>.xlsx");
+            XLSX.writeFile(wb, "Event_Attendance_Ledger_<?= date('Ymd') ?>.xlsx");
         });
     </script>
 </body>

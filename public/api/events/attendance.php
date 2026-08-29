@@ -55,7 +55,7 @@ if ($method === 'GET' && $action === 'generate_event_qr') {
 }
 
 // -------------------------------------------------------------
-// 2. Generate 30-Second Dynamic Rolling Token for an Individual Member
+// 2. Generate Member Unique / Dynamic Token
 // -------------------------------------------------------------
 if ($method === 'GET' && $action === 'generate_member_qr') {
     $memberId = trim($_GET['member_id'] ?? '');
@@ -89,58 +89,40 @@ if ($method === 'GET' && $action === 'generate_member_qr') {
 }
 
 // -------------------------------------------------------------
-// 3. Officer Scanning Student Dynamic 30-Second QR Code
+// 3. Officer Scanning Student Official ID QR (Check-In & Check-Out)
 // -------------------------------------------------------------
 if ($method === 'POST' && $action === 'officer_scan_student') {
     $eventId = trim($_POST['event_id'] ?? '');
     $studentQr = trim($_POST['student_qr'] ?? ($_POST['token'] ?? ''));
+    $scanMode = strtolower(trim($_POST['scan_mode'] ?? 'check_in')); // 'check_in' or 'check_out'
 
     if (empty($eventId) || empty($studentQr)) {
         http_response_code(400);
-        echo json_encode(['success' => false, 'message' => 'Event ID and Student QR data are required.']);
+        echo json_encode(['success' => false, 'message' => 'Event ID and Student ID QR data are required.']);
         exit;
     }
 
     try {
-        // Parse student QR payload
+        // Parse student QR payload (handles JSON, MEMSYS-ID:xxx, URLs, raw Membership IDs)
         $memberId = '';
         $scannedToken = '';
-        $scannedWindow = 0;
 
         if (str_starts_with($studentQr, '{')) {
             $parsed = json_decode($studentQr, true);
             $memberId = $parsed['member_id'] ?? ($parsed['id'] ?? ($parsed['membership_id'] ?? ''));
             $scannedToken = $parsed['token'] ?? '';
-            $scannedWindow = intval($parsed['window'] ?? 0);
+        } elseif (str_starts_with($studentQr, 'MEMSYS-ID:')) {
+            $memberId = substr($studentQr, 10);
         } else {
             $memberId = $studentQr;
         }
 
-        // If a 30s token is present, validate rolling HMAC
-        if (!empty($scannedToken) && !empty($memberId)) {
-            $currentTime = time();
-            $currentWindow = floor($currentTime / 30);
-            $prevWindow = $currentWindow - 1;
-            $nextWindow = $currentWindow + 1;
-
-            $validCurrent = hash_hmac('sha256', "MEMBER:{$memberId}:{$currentWindow}", $secretKey);
-            $validPrev = hash_hmac('sha256', "MEMBER:{$memberId}:{$prevWindow}", $secretKey);
-            $validNext = hash_hmac('sha256', "MEMBER:{$memberId}:{$nextWindow}", $secretKey);
-
-            $isValid = (
-                hash_equals($validCurrent, $scannedToken) ||
-                hash_equals($validPrev, $scannedToken) ||
-                hash_equals($validNext, $scannedToken)
-            );
-
-            if (!$isValid) {
-                echo json_encode([
-                    'success' => false,
-                    'expired' => true,
-                    'message' => '❌ QR Code has expired (30-second rotation). Ask student to display their fresh live QR code.'
-                ]);
-                exit;
-            }
+        // Clean up URL if encoded
+        if (filter_var($memberId, FILTER_VALIDATE_URL)) {
+            $parts = parse_url($memberId);
+            parse_str($parts['query'] ?? '', $query);
+            if (!empty($query['id'])) $memberId = $query['id'];
+            elseif (!empty($query['member_id'])) $memberId = $query['member_id'];
         }
 
         // Find member in database
@@ -166,7 +148,7 @@ if ($method === 'POST' && $action === 'officer_scan_student') {
         if (!$memberRecord) {
             echo json_encode([
                 'success' => false,
-                'message' => '❌ Member record not found in database for the scanned QR.'
+                'message' => "❌ Member record not found for ID '{$memberId}'. Please verify student directory."
             ]);
             exit;
         }
@@ -174,69 +156,141 @@ if ($method === 'POST' && $action === 'officer_scan_student') {
         $realMemberId = $memberRecord['id'];
         $studentName = $memberRecord['full_name'] ?? 'Student Member';
         $studentNumber = $memberRecord['student_number'] ?? 'N/A';
-        $membershipId = $memberRecord['membership_id'] ?? 'Pending';
-        $institutionId = $memberRecord['institution_id'] ?? null;
+        $membershipId = $memberRecord['membership_id'] ?? 'Pending ID';
 
         // Fetch Event Details
         $eventData = $supabase->select('events', ['id' => 'eq.' . $eventId]);
         $event = (is_array($eventData) && !empty($eventData)) ? $eventData[0] : null;
         $eventTitle = $event['title'] ?? 'Chapter Event';
 
-        // Check for duplicate attendance (Second scan fails!)
+        // Check existing attendance record
         $existing = $supabase->select('event_attendees', [
             'event_id' => 'eq.' . $eventId,
             'member_id' => 'eq.' . $realMemberId
         ]);
 
-        if (is_array($existing) && !empty($existing)) {
-            $prevCheckIn = $existing[0]['check_in_time'] ?? date('c');
-            $formattedPrev = date('M d, Y h:i A', strtotime($prevCheckIn));
+        $attendeeRow = (is_array($existing) && !empty($existing)) ? $existing[0] : null;
+        $timestamp = date('c');
+
+        // ----------------- MODE: CHECK-IN -----------------
+        if ($scanMode === 'check_in') {
+            if ($attendeeRow && !empty($attendeeRow['check_in_time'])) {
+                $prevCheckIn = date('M d, Y h:i A', strtotime($attendeeRow['check_in_time']));
+                echo json_encode([
+                    'success' => false,
+                    'already_recorded' => true,
+                    'scan_mode' => 'check_in',
+                    'message' => "⚠️ Already Checked In! {$studentName} has already checked in at {$prevCheckIn}.",
+                    'student' => [
+                        'id' => $realMemberId,
+                        'full_name' => $studentName,
+                        'student_number' => $studentNumber,
+                        'membership_id' => $membershipId,
+                        'check_in_time' => $attendeeRow['check_in_time'],
+                        'check_out_time' => $attendeeRow['check_out_time'] ?? null,
+                        'event_title' => $eventTitle
+                    ]
+                ]);
+                exit;
+            }
+
+            // Insert new check-in record
+            $attId = bin2hex(random_bytes(16));
+            $supabase->insert('event_attendees', [[
+                'id' => $attId,
+                'event_id' => $eventId,
+                'member_id' => $realMemberId,
+                'status' => 'attended',
+                'check_in_time' => $timestamp,
+                'created_at' => $timestamp
+            ]]);
+
             echo json_encode([
-                'success' => false,
-                'already_recorded' => true,
-                'message' => "⚠️ Check-in already exists! {$studentName} has already checked in at {$formattedPrev}.",
+                'success' => true,
+                'already_recorded' => false,
+                'scan_mode' => 'check_in',
+                'message' => "✅ Check-In Verified! {$studentName} is marked PRESENT.",
                 'student' => [
                     'id' => $realMemberId,
                     'full_name' => $studentName,
                     'student_number' => $studentNumber,
                     'membership_id' => $membershipId,
-                    'check_in_time' => $prevCheckIn,
+                    'check_in_time' => $timestamp,
+                    'check_out_time' => null,
                     'event_title' => $eventTitle
                 ]
             ]);
             exit;
         }
 
-        // Insert new check-in record
-        $timestamp = date('c');
-        $attId = bin2hex(random_bytes(16));
+        // ----------------- MODE: CHECK-OUT -----------------
+        if ($scanMode === 'check_out') {
+            if (!$attendeeRow || empty($attendeeRow['check_in_time'])) {
+                echo json_encode([
+                    'success' => false,
+                    'not_checked_in' => true,
+                    'scan_mode' => 'check_out',
+                    'message' => "⚠️ Cannot Check Out! {$studentName} has NOT checked in for this event yet."
+                ]);
+                exit;
+            }
 
-        $supabase->insert('event_attendees', [[
-            'id' => $attId,
-            'event_id' => $eventId,
-            'member_id' => $realMemberId,
-            'status' => 'present',
-            'check_in_time' => $timestamp,
-            'created_at' => $timestamp
-        ]]);
+            if (!empty($attendeeRow['check_out_time'])) {
+                $prevCheckOut = date('M d, Y h:i A', strtotime($attendeeRow['check_out_time']));
+                echo json_encode([
+                    'success' => false,
+                    'already_recorded' => true,
+                    'scan_mode' => 'check_out',
+                    'message' => "⚠️ Already Checked Out! {$studentName} already checked out at {$prevCheckOut}.",
+                    'student' => [
+                        'id' => $realMemberId,
+                        'full_name' => $studentName,
+                        'student_number' => $studentNumber,
+                        'membership_id' => $membershipId,
+                        'check_in_time' => $attendeeRow['check_in_time'],
+                        'check_out_time' => $attendeeRow['check_out_time'],
+                        'event_title' => $eventTitle
+                    ]
+                ]);
+                exit;
+            }
 
-        echo json_encode([
-            'success' => true,
-            'already_recorded' => false,
-            'message' => "✅ Attendance Verified! {$studentName} is marked PRESENT.",
-            'student' => [
-                'id' => $realMemberId,
-                'full_name' => $studentName,
-                'student_number' => $studentNumber,
-                'membership_id' => $membershipId,
-                'check_in_time' => $timestamp,
-                'event_title' => $eventTitle
-            ]
-        ]);
-        exit;
+            // Update with check_out_time
+            $checkInTimestamp = strtotime($attendeeRow['check_in_time']);
+            $checkOutTimestamp = strtotime($timestamp);
+            $diffSeconds = max(0, $checkOutTimestamp - $checkInTimestamp);
+            $hours = floor($diffSeconds / 3600);
+            $minutes = floor(($diffSeconds % 3600) / 60);
+            $durationStr = ($hours > 0 ? "{$hours}h " : "") . "{$minutes}m";
+
+            $supabase->update('event_attendees', [
+                'check_out_time' => $timestamp,
+                'status' => 'attended'
+            ], $attendeeRow['id']);
+
+            echo json_encode([
+                'success' => true,
+                'already_recorded' => false,
+                'scan_mode' => 'check_out',
+                'message' => "🏁 Check-Out Recorded! {$studentName} checked out (Duration: {$durationStr}).",
+                'duration' => $durationStr,
+                'student' => [
+                    'id' => $realMemberId,
+                    'full_name' => $studentName,
+                    'student_number' => $studentNumber,
+                    'membership_id' => $membershipId,
+                    'check_in_time' => $attendeeRow['check_in_time'],
+                    'check_out_time' => $timestamp,
+                    'duration' => $durationStr,
+                    'event_title' => $eventTitle
+                ]
+            ]);
+            exit;
+        }
+
     } catch (Exception $e) {
         http_response_code(500);
-        echo json_encode(['success' => false, 'message' => 'Check-in error: ' . $e->getMessage()]);
+        echo json_encode(['success' => false, 'message' => 'Attendance error: ' . $e->getMessage()]);
         exit;
     }
 }
