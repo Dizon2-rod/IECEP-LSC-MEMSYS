@@ -99,34 +99,53 @@ $avatar_url = $_SESSION['avatar_url'] ??
               $user['avatar_url'] ?? 
               '';
 
-// If avatar is not in session, attempt fetching from Supabase user_profiles (production UUIDs only)
-if (empty($avatar_url) && !empty($userId) && is_string($userId) && strpos($userId, 'local-') === false) {
+// If avatar is not in session, attempt fetching from Supabase user_profiles or members
+if (empty($avatar_url)) {
     try {
         if (function_exists('getSupabaseClient')) {
             $sb = getSupabaseClient();
             if ($sb && is_object($sb)) {
-                $profs = $sb->select('user_profiles', [
-                    'select' => 'avatar_url, profile_photo, full_name',
-                    'user_id' => 'eq.' . $userId,
-                    'limit' => 1
-                ]);
-                if (is_array($profs) && !empty($profs[0])) {
-                    if (!empty($profs[0]['avatar_url'])) {
-                        $avatar_url = $profs[0]['avatar_url'];
-                        $_SESSION['avatar_url'] = $avatar_url;
-                    } elseif (!empty($profs[0]['profile_photo'])) {
-                        $avatar_url = $profs[0]['profile_photo'];
+                if (!empty($user_email)) {
+                    $mRes = $sb->select('members', ['email' => 'eq.' . strtolower(trim($user_email))]);
+                    if (is_array($mRes) && !empty($mRes[0]['avatar_url'])) {
+                        $avatar_url = $mRes[0]['avatar_url'];
                         $_SESSION['avatar_url'] = $avatar_url;
                     }
-                    if (empty($_SESSION['full_name']) && !empty($profs[0]['full_name'])) {
-                        $user_name = $profs[0]['full_name'];
-                        $_SESSION['full_name'] = $user_name;
+                }
+                if (empty($avatar_url) && !empty($userId) && is_string($userId) && strpos($userId, 'local-') === false) {
+                    $profs = $sb->select('user_profiles', [
+                        'select' => 'avatar_url, profile_photo, full_name',
+                        'user_id' => 'eq.' . $userId,
+                        'limit' => 1
+                    ]);
+                    if (is_array($profs) && !empty($profs[0])) {
+                        if (!empty($profs[0]['avatar_url'])) {
+                            $avatar_url = $profs[0]['avatar_url'];
+                            $_SESSION['avatar_url'] = $avatar_url;
+                        } elseif (!empty($profs[0]['profile_photo'])) {
+                            $avatar_url = $profs[0]['profile_photo'];
+                            $_SESSION['avatar_url'] = $avatar_url;
+                        }
                     }
                 }
             }
         }
     } catch (\Throwable $e) {
         // Silently continue
+    }
+}
+
+// Disk file fallback for avatar
+if (empty($avatar_url) && !empty($user_email)) {
+    $cleanUid = !empty($userId) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $userId) : md5(strtolower(trim($user_email)));
+    $emailFile = __DIR__ . '/../public/uploads/avatars/avatar_' . md5(strtolower(trim($user_email))) . '.jpg';
+    $uidFile = __DIR__ . '/../public/uploads/avatars/avatar_' . $cleanUid . '.jpg';
+    if (file_exists($emailFile)) {
+        $avatar_url = '/IECEP-LSC-MEMSYS/public/uploads/avatars/avatar_' . md5(strtolower(trim($user_email))) . '.jpg';
+        $_SESSION['avatar_url'] = $avatar_url;
+    } elseif (file_exists($uidFile)) {
+        $avatar_url = '/IECEP-LSC-MEMSYS/public/uploads/avatars/avatar_' . $cleanUid . '.jpg';
+        $_SESSION['avatar_url'] = $avatar_url;
     }
 }
 

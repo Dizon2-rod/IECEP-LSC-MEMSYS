@@ -11,7 +11,7 @@ $pageTitle = 'Account & Profile Settings';
 
 $user = get_user_info();
 $userId = $user['id'] ?? null;
-$userEmail = $user['email'] ?? '';
+$userEmail = strtolower(trim($user['email'] ?? ''));
 $displayName = $user['full_name'] ?? $user['name'] ?? $userEmail;
 
 $supabase = getSupabaseClient();
@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
         $cleanUid = !empty($userId) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $userId) : md5($userEmail);
 
-        // 1. Process Base64 Data URL (Lightweight compressed from client canvas)
+        // 1. Process Base64 Data URL (Highest reliability across all devices & file sizes)
         if (!empty($avatarDataUrl) && strpos($avatarDataUrl, 'data:image') === 0) {
             $fileName = 'avatar_' . $cleanUid . '.jpg';
             $targetPath = $uploadDir . $fileName;
@@ -46,17 +46,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $parts = explode(',', $avatarDataUrl, 2);
             if (count($parts) === 2) {
                 $binary = base64_decode($parts[1]);
-                if ($binary !== false && file_put_contents($targetPath, $binary)) {
-                    $uploadedAvatarUrl = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $fileName . '?v=' . time();
-                } else {
-                    $uploadedAvatarUrl = $avatarDataUrl;
+                if ($binary !== false) {
+                    @file_put_contents($targetPath, $binary);
+                    // Also save by email hash
+                    @file_put_contents($uploadDir . 'avatar_' . md5($userEmail) . '.jpg', $binary);
                 }
-            } else {
-                $uploadedAvatarUrl = $avatarDataUrl;
             }
+            // Use the data URL or local URL for instant rendering
+            $uploadedAvatarUrl = $avatarDataUrl;
         }
 
-        // 2. Direct file upload handling if Base64 was not provided
+        // 2. Direct file upload fallback if Base64 was empty
         if (empty($uploadedAvatarUrl) && isset($_FILES['avatar_file']) && $_FILES['avatar_file']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['avatar_file'];
             $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
@@ -68,7 +68,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $targetPath = $uploadDir . $fileName;
 
                 if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-                    $uploadedAvatarUrl = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $fileName . '?v=' . time();
+                    $fileData = file_get_contents($targetPath);
+                    if ($fileData !== false) {
+                        $uploadedAvatarUrl = 'data:image/' . $ext . ';base64,' . base64_encode($fileData);
+                    } else {
+                        $uploadedAvatarUrl = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $fileName;
+                    }
                 }
             }
         }
@@ -192,10 +197,12 @@ if ($supabase) {
         // Check if there is a disk avatar file for this user
         $cleanUid = !empty($userId) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $userId) : md5($userEmail);
         if (empty($member['avatar_url']) && !empty($cleanUid)) {
-            $globMatches = glob(__DIR__ . '/../../../public/uploads/avatars/avatar_' . $cleanUid . '.*');
-            if (!empty($globMatches)) {
-                $latestAvatarFile = basename(end($globMatches));
-                $member['avatar_url'] = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $latestAvatarFile . '?v=' . filemtime(end($globMatches));
+            $emailFile = __DIR__ . '/../../../public/uploads/avatars/avatar_' . md5($userEmail) . '.jpg';
+            $uidFile = __DIR__ . '/../../../public/uploads/avatars/avatar_' . $cleanUid . '.jpg';
+            if (file_exists($emailFile)) {
+                $member['avatar_url'] = '/IECEP-LSC-MEMSYS/public/uploads/avatars/avatar_' . md5($userEmail) . '.jpg?v=' . filemtime($emailFile);
+            } elseif (file_exists($uidFile)) {
+                $member['avatar_url'] = '/IECEP-LSC-MEMSYS/public/uploads/avatars/avatar_' . $cleanUid . '.jpg?v=' . filemtime($uidFile);
             }
         }
 
@@ -577,7 +584,7 @@ $currentAvatarUrl = $uploadedAvatarUrl ?: ($member['avatar_url'] ?? ($_SESSION['
             <div>
                 <!-- TAB 1: Personal Info (Editable Form with Photo Upload) -->
                 <div id="tab_personal" class="tab-pane-content">
-                    <form method="POST" action="" enctype="multipart/form-data" id="profileUpdateForm">
+                    <form method="POST" action="" enctype="multipart/form-data" id="profileUpdateForm" onsubmit="return handleProfileFormSubmit(event)">
                         <input type="hidden" name="action" value="update_profile">
                         <input type="hidden" name="avatar_data_url" id="avatarDataUrlInput">
                         
@@ -692,7 +699,7 @@ $currentAvatarUrl = $uploadedAvatarUrl ?: ($member['avatar_url'] ?? ($_SESSION['
                             <!-- Bottom Action Bar -->
                             <div style="padding:1.25rem 1.5rem; background:#F8FAFC; border-top:1px solid var(--border-color); display:flex; justify-content:flex-end; gap:0.6rem;">
                                 <button type="reset" class="btn-white">Cancel</button>
-                                <button type="submit" class="btn-primary-navy">
+                                <button type="submit" id="saveProfileBtn" class="btn-primary-navy">
                                     <i class="fas fa-floppy-disk me-1"></i> Save Changes
                                 </button>
                             </div>
@@ -918,91 +925,100 @@ $currentAvatarUrl = $uploadedAvatarUrl ?: ($member['avatar_url'] ?? ($_SESSION['
             if (btnElement) btnElement.classList.add('active');
         }
 
-        // Automatic image compression via HTML5 Canvas (Max 400x400, lightweight ~35KB)
+        // Instant FileReader + Canvas Resizing
         function previewSelectedAvatar(e) {
             const file = e.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
             reader.onload = function(evt) {
+                const rawDataUrl = evt.target.result;
+
+                // 1. Immediately populate input and UI (Zero latency)
+                const dataInput = document.getElementById('avatarDataUrlInput');
+                if (dataInput) dataInput.value = rawDataUrl;
+
+                try { localStorage.setItem(userEmailKey, rawDataUrl); } catch(err){}
+                updateAvatarElements(rawDataUrl);
+
+                // 2. Perform canvas downscaling for lightweight server transmission
                 const img = new Image();
                 img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    const maxDim = 400;
-                    let width = img.width;
-                    let height = img.height;
+                    try {
+                        const canvas = document.createElement('canvas');
+                        const maxDim = 360;
+                        let width = img.width;
+                        let height = img.height;
 
-                    if (width > height) {
-                        if (width > maxDim) {
-                            height = Math.round(height * (maxDim / width));
-                            width = maxDim;
+                        if (width > height) {
+                            if (width > maxDim) {
+                                height = Math.round(height * (maxDim / width));
+                                width = maxDim;
+                            }
+                        } else {
+                            if (height > maxDim) {
+                                width = Math.round(width * (maxDim / height));
+                                height = maxDim;
+                            }
                         }
-                    } else {
-                        if (height > maxDim) {
-                            width = Math.round(width * (maxDim / height));
-                            height = maxDim;
-                        }
-                    }
 
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
 
-                    const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
-
-                    // Populate hidden input
-                    const dataInput = document.getElementById('avatarDataUrlInput');
-                    if (dataInput) dataInput.value = compressedDataUrl;
-
-                    // Cache in browser
-                    try { localStorage.setItem(userEmailKey, compressedDataUrl); } catch(err){}
-
-                    // Update Top Hero Avatar
-                    const heroPrev = document.getElementById('heroAvatarPreview');
-                    const heroIcon = document.getElementById('heroAvatarIcon');
-                    if (heroPrev) {
-                        heroPrev.src = compressedDataUrl;
-                        heroPrev.style.display = 'block';
-                    }
-                    if (heroIcon) heroIcon.style.display = 'none';
-
-                    // Update Row Avatar
-                    const rowPrev = document.getElementById('rowAvatarPreview');
-                    const rowIcon = document.getElementById('rowAvatarIcon');
-                    if (rowPrev) {
-                        rowPrev.src = compressedDataUrl;
-                        rowPrev.style.display = 'block';
-                    }
-                    if (rowIcon) rowIcon.style.display = 'none';
+                        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                        if (dataInput) dataInput.value = compressedDataUrl;
+                        try { localStorage.setItem(userEmailKey, compressedDataUrl); } catch(err){}
+                        updateAvatarElements(compressedDataUrl);
+                    } catch (canvasErr) {}
                 };
-                img.src = evt.target.result;
+                img.src = rawDataUrl;
             };
             reader.readAsDataURL(file);
         }
 
+        function updateAvatarElements(url) {
+            if (!url) return;
+            const heroPrev = document.getElementById('heroAvatarPreview');
+            const heroIcon = document.getElementById('heroAvatarIcon');
+            if (heroPrev) {
+                heroPrev.src = url;
+                heroPrev.style.display = 'block';
+            }
+            if (heroIcon) heroIcon.style.display = 'none';
+
+            const rowPrev = document.getElementById('rowAvatarPreview');
+            const rowIcon = document.getElementById('rowAvatarIcon');
+            if (rowPrev) {
+                rowPrev.src = url;
+                rowPrev.style.display = 'block';
+            }
+            if (rowIcon) rowIcon.style.display = 'none';
+        }
+
+        function handleProfileFormSubmit(e) {
+            const btn = document.getElementById('saveProfileBtn');
+            if (btn) {
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Saving...';
+            }
+            return true;
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const serverAvatar = <?= json_encode($currentAvatarUrl) ?>;
-            if (!serverAvatar) {
+            if (serverAvatar) {
+                updateAvatarElements(serverAvatar);
+                try { localStorage.setItem(userEmailKey, serverAvatar); } catch(e){}
+            } else {
                 try {
                     const cached = localStorage.getItem(userEmailKey);
                     if (cached) {
-                        const heroPrev = document.getElementById('heroAvatarPreview');
-                        const heroIcon = document.getElementById('heroAvatarIcon');
-                        if (heroPrev) { heroPrev.src = cached; heroPrev.style.display = 'block'; }
-                        if (heroIcon) heroIcon.style.display = 'none';
-
-                        const rowPrev = document.getElementById('rowAvatarPreview');
-                        const rowIcon = document.getElementById('rowAvatarIcon');
-                        if (rowPrev) { rowPrev.src = cached; rowPrev.style.display = 'block'; }
-                        if (rowIcon) rowIcon.style.display = 'none';
-                        
+                        updateAvatarElements(cached);
                         const dataInput = document.getElementById('avatarDataUrlInput');
                         if (dataInput && !dataInput.value) dataInput.value = cached;
                     }
                 } catch(e){}
-            } else {
-                try { localStorage.setItem(userEmailKey, serverAvatar); } catch(e){}
             }
         });
     </script>
