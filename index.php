@@ -168,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if (is_array($existing) && isset($existing[0]) && is_array($existing[0])) {
                 $status = $existing[0]['status'] ?? '';
                 if (in_array($status, ['pending', 'under_review'])) {
-                    $message = 'This email is already associated with an active affiliation application (Status: Under Review). Please check your application status or contact the Secretariat.';
+                    $message = 'This email is already associated with an active affiliation application (Status: Under Review). Please check your application status or contact the IECEP - LSC.';
                     ob_end_clean();
                     echo json_encode(['success' => false, 'message' => $message, 'resubmit_available' => true]);
                     exit;
@@ -1593,7 +1593,7 @@ try {
                     <span class="step-badge-number">Step 03</span>
                 </div>
                 <h3 class="affiliate-step-title">Committee Evaluation</h3>
-                <p class="affiliate-step-desc">The IECEP-LSC Secretariat verifies student counts, validates constitution compliance, and approves accreditation standing within 2–3 working days.</p>
+                <p class="affiliate-step-desc">The IECEP-LSC verifies student counts, validates constitution compliance, and approves accreditation standing within 2–3 working days.</p>
             </div>
 
             <div class="affiliate-step-card">
@@ -1613,7 +1613,7 @@ try {
     <div class="contact-container">
         <div class="contact-content">
             <h2 style="font-family: 'Times New Roman', Arial, serif;">Get In Touch</h2>
-            <p>Have questions about chapter accreditation or need assistance with your affiliation kit? Reach out to the IECEP-LSC Secretariat.</p>
+            <p>Have questions about chapter accreditation or need assistance with your affiliation kit? Reach out to the IECEP-LSC.</p>
             
             <div class="contact-info-pills">
                 <a href="https://mail.google.com/mail/?view=cm&fs=1&to=ieceplsc24@gmail.com" target="_blank" rel="noopener noreferrer" class="contact-info-pill" title="Send Email via Gmail">
@@ -1655,7 +1655,7 @@ try {
                 </div>
                 <div class="form-group">
                     <label for="contact-message" class="form-label">Your Message</label>
-                    <textarea id="contact-message" name="message" class="form-textarea" placeholder="How can the Secretariat assist your chapter?" required></textarea>
+                    <textarea id="contact-message" name="message" class="form-textarea" placeholder="How can the IECEP-LSC assist your chapter?" required></textarea>
                 </div>
                 <button type="submit" class="form-submit">
                     <i class="fa-solid fa-paper-plane me-1"></i> Send Message
