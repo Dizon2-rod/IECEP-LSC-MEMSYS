@@ -305,6 +305,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
     <?php include dirname(__DIR__, 4) . '/includes/head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     
     <style>
         /* =========================================================================
@@ -1348,11 +1349,17 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                     </div>
                 </div>
                 <div class="header-btn-group">
+                    <button type="button" class="btn-white" onclick="downloadOfficialExcelTemplate()">
+                        <i class="fas fa-file-excel" style="color:#107C41;"></i> Excel Template (.xlsx)
+                    </button>
                     <button type="button" class="btn-white" onclick="exportFilteredCSV()">
-                        <i class="fas fa-file-export"></i> Export CSV
+                        <i class="fas fa-file-export" style="color:#059669;"></i> Export CSV
                     </button>
                     <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="btn-white">
                         <i class="fas fa-file-excel" style="color:#107C41;"></i> Chapter Directory Submissions
+                    </a>
+                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/institutions/list.php" class="btn-white">
+                        <i class="fas fa-university" style="color:var(--color-navy);"></i> Chapter Affiliations
                     </a>
                     <button type="button" class="btn-primary-navy" onclick="openAddModal()">
                         <i class="fas fa-user-plus" style="color:#FDE047;"></i> Add New Member
@@ -2153,6 +2160,52 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         function closeAddModal() {
             document.getElementById('addModal').classList.remove('active');
             document.body.style.overflow = '';
+        }
+
+        function downloadOfficialExcelTemplate() {
+            const headers = [
+                "Student ID",
+                "Full Name",
+                "Email Address",
+                "School / Chapter",
+                "Degree Program",
+                "Year Level",
+                "Contact Number",
+                "Home Address",
+                "Birthday (YYYY-MM-DD)",
+                "Payment Status (Paid/Pending)"
+            ];
+
+            const sampleRows = [
+                headers,
+                ["2023-08912", "Maria Santos", "mariasantos@gmail.com", "Laguna State Polytechnic University - Santa Cruz Campus (LSPU - SCC)", "BS Electronics Engineering", "3rd Year", "+63 912 345 6789", "Santa Cruz, Laguna", "2003-05-14", "Paid"],
+                ["2022-04192", "Juan Dela Cruz", "jdelacruz@gmail.com", "De La Salle University - Laguna Campus (DLSU - Laguna)", "BS Electronics Engineering", "4th Year", "+63 917 892 3411", "Biñan, Laguna", "2002-11-20", "Paid"],
+                ["2023-10892", "Carlos Ramos", "cmramos@mcl.edu.ph", "Mapúa Malayan Colleges Laguna (MMCL)", "BS Electronics Engineering", "3rd Year", "+63 915 771 2233", "Cabuyao, Laguna", "2003-08-09", "Paid"]
+            ];
+
+            if (typeof XLSX !== 'undefined') {
+                const ws = XLSX.utils.aoa_to_sheet(sampleRows);
+                ws['!cols'] = [
+                    { wch: 15 }, { wch: 22 }, { wch: 26 }, { wch: 45 },
+                    { wch: 30 }, { wch: 12 }, { wch: 18 }, { wch: 25 },
+                    { wch: 20 }, { wch: 18 }
+                ];
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Member Roster");
+                XLSX.writeFile(wb, "IECEP_LSC_Official_Member_Roster_Template.xlsx");
+            } else {
+                let csvContent = "";
+                sampleRows.forEach(row => {
+                    csvContent += row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\r\n";
+                });
+                const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "IECEP_LSC_Official_Member_Roster_Template.csv";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
         }
 
         document.addEventListener('keydown', function(e) {

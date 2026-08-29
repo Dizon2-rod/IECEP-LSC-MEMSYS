@@ -295,6 +295,12 @@ try {
                     <p class="ap-page-subtitle">Review submitted chapter affiliation packets, inspect attached Excel student rosters, and grant official IECEP-LSC accreditation.</p>
                 </div>
                 <div class="ap-header-actions">
+                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php" class="ap-btn-secondary">
+                        <i class="fas fa-users" style="color:var(--color-navy);"></i> Member Directory
+                    </a>
+                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="ap-btn-secondary">
+                        <i class="fas fa-file-excel" style="color:#107C41;"></i> Chapter Directory Submissions
+                    </a>
                     <button class="ap-btn-primary" onclick="openCharterModal()">
                         <i class="fas fa-plus"></i> Charter New Institution
                     </button>

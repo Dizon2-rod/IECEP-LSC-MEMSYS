@@ -815,17 +815,48 @@ try {
 
     <script>
         document.getElementById('btnDownloadTemplate').addEventListener('click', function() {
+            const headers = [
+                "Student ID",
+                "Full Name",
+                "Email Address",
+                "School / Chapter",
+                "Degree Program",
+                "Year Level",
+                "Contact Number",
+                "Home Address",
+                "Birthday (YYYY-MM-DD)",
+                "Payment Status (Paid/Pending)"
+            ];
+
+            const sampleRows = [
+                headers,
+                ["2023-08912", "Maria Santos", "mariasantos@gmail.com", "Laguna State Polytechnic University - Santa Cruz Campus (LSPU - SCC)", "BS Electronics Engineering", "3rd Year", "+63 912 345 6789", "Santa Cruz, Laguna", "2003-05-14", "Paid"],
+                ["2022-04192", "Juan Dela Cruz", "jdelacruz@gmail.com", "De La Salle University - Laguna Campus (DLSU - Laguna)", "BS Electronics Engineering", "4th Year", "+63 917 892 3411", "Biñan, Laguna", "2002-11-20", "Paid"],
+                ["2023-10892", "Carlos Ramos", "cmramos@mcl.edu.ph", "Mapúa Malayan Colleges Laguna (MMCL)", "BS Electronics Engineering", "3rd Year", "+63 915 771 2233", "Cabuyao, Laguna", "2003-08-09", "Paid"]
+            ];
+
             if (typeof XLSX !== 'undefined') {
-                const sampleRows = [
-                    ["full_name", "email", "student_id", "school", "program", "year_level", "phone", "address"],
-                    ["Maria Santos", "mariasantos@gmail.com", "2023-08912", "LSPU", "BS Electronics Engineering", "3rd Year", "+63 912 345 6789", "Santa Cruz Laguna"],
-                    ["Juan Dela Cruz", "jdelacruz@gmail.com", "2022-04192", "DLSU", "BS Electronics Engineering", "4th Year", "+63 917 892 3411", "Biñan Laguna"],
-                    ["Carlos Ramos", "cmramos@mcl.edu.ph", "2023-10892", "MMCL", "BS Electronics Engineering", "3rd Year", "+63 915 771 2233", "Cabuyao Laguna"]
-                ];
                 const ws = XLSX.utils.aoa_to_sheet(sampleRows);
+                ws['!cols'] = [
+                    { wch: 15 }, { wch: 22 }, { wch: 26 }, { wch: 45 },
+                    { wch: 30 }, { wch: 12 }, { wch: 18 }, { wch: 25 },
+                    { wch: 20 }, { wch: 18 }
+                ];
                 const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, "Members Roster");
+                XLSX.utils.book_append_sheet(wb, ws, "Member Roster");
                 XLSX.writeFile(wb, "IECEP_LSC_Official_Member_Roster_Template.xlsx");
+            } else {
+                let csvContent = "";
+                sampleRows.forEach(row => {
+                    csvContent += row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\r\n";
+                });
+                const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = "IECEP_LSC_Official_Member_Roster_Template.csv";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             }
         });
 
