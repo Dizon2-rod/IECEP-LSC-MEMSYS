@@ -58,9 +58,75 @@ if (strpos($current_script, '/portal/admin') !== false || strpos($current_script
     }
 }
 
-$user_name = $user['user_metadata']['full_name'] ?? $_SESSION['user_name'] ?? $user['name'] ?? $user['email'] ?? 'User';
-$user_email = $user['email'] ?? $_SESSION['user_email'] ?? '';
-$avatar_url = $user['user_metadata']['avatar_url'] ?? '';
+// Retrieve user info from all possible session and cookie sources
+$sessionUser = $_SESSION['user'] ?? [];
+$userId = $_SESSION['user_id'] ?? $sessionUser['id'] ?? $sessionUser['user_metadata']['sub'] ?? null;
+
+// User Email
+$user_email = $_SESSION['email'] ?? 
+              $sessionUser['email'] ?? 
+              $_SESSION['user_email'] ?? 
+              $user['email'] ?? 
+              ($_COOKIE['remember_email'] ?? '');
+
+// User Display Name
+$user_name = $_SESSION['full_name'] ?? 
+             $sessionUser['name'] ?? 
+             $sessionUser['full_name'] ?? 
+             $sessionUser['user_metadata']['full_name'] ?? 
+             $_SESSION['user_name'] ?? 
+             $user['name'] ?? 
+             $user['user_metadata']['full_name'] ?? 
+             '';
+
+if (empty($user_name) && !empty($user_email)) {
+    $emailParts = explode('@', $user_email);
+    $user_name = ucwords(str_replace(['.', '_', '-'], ' ', $emailParts[0]));
+}
+
+if (empty($user_name)) {
+    $user_name = ($role === 'admin' || $role === 'super_admin') ? 'IECEP-LSC Administrator' : 'Portal User';
+}
+
+// User Avatar Image
+$avatar_url = $_SESSION['avatar_url'] ?? 
+              $sessionUser['avatar_url'] ?? 
+              $sessionUser['user_metadata']['avatar_url'] ?? 
+              $sessionUser['profile_image'] ?? 
+              $sessionUser['photo_url'] ?? 
+              $_SESSION['profile_photo'] ?? 
+              $user['user_metadata']['avatar_url'] ?? 
+              $user['avatar_url'] ?? 
+              '';
+
+// If avatar is not in session, attempt fetching from Supabase user_profiles
+if (empty($avatar_url) && !empty($userId)) {
+    try {
+        if (function_exists('getSupabaseClient')) {
+            $sb = getSupabaseClient();
+            if ($sb) {
+                $profs = $sb->select('user_profiles', [
+                    'select' => 'avatar_url, profile_photo, full_name',
+                    'user_id' => 'eq.' . $userId,
+                    'limit' => 1
+                ]);
+                if (!empty($profs[0]['avatar_url'])) {
+                    $avatar_url = $profs[0]['avatar_url'];
+                    $_SESSION['avatar_url'] = $avatar_url;
+                } elseif (!empty($profs[0]['profile_photo'])) {
+                    $avatar_url = $profs[0]['profile_photo'];
+                    $_SESSION['avatar_url'] = $avatar_url;
+                }
+                if (empty($_SESSION['full_name']) && !empty($profs[0]['full_name'])) {
+                    $user_name = $profs[0]['full_name'];
+                    $_SESSION['full_name'] = $user_name;
+                }
+            }
+        }
+    } catch (Exception $e) {
+        // Silently continue
+    }
+}
 
 // Get role configuration
 $roleConfig = getRoleConfig($role);
@@ -129,23 +195,26 @@ if (!function_exists('isMenuItemActive')) {
     width: var(--sb-width);
     background: var(--sb-bg);
     color: var(--sb-text);
-    height: 100vh;
-    height: 100dvh;
-    max-height: 100dvh;
-    position: fixed;
-    left: 0;
-    top: 0;
-    bottom: 0;
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    max-height: 100% !important;
+    max-height: 100dvh !important;
     overflow: hidden !important;
     z-index: 1000;
     display: flex !important;
     flex-direction: column !important;
+    justify-content: space-between !important;
     transform: translateX(0);
     transition: var(--sb-transition);
     box-shadow: 4px 0 20px rgba(0, 0, 0, 0.04);
     border-right: 1px solid var(--sb-border);
     font-family: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
+    box-sizing: border-box !important;
 }
 
 #sidebar::-webkit-scrollbar {
@@ -269,12 +338,12 @@ if (!function_exists('isMenuItemActive')) {
 
 /* Nav Menu (Independently scrollable middle section) */
 #sidebar .sidebar-nav {
-    flex: 1 1 0% !important;
+    flex: 1 1 auto !important;
     min-height: 0 !important;
     overflow-y: auto !important;
     overscroll-behavior: contain !important;
     -webkit-overflow-scrolling: touch !important;
-    padding: 10px 10px 15px !important;
+    padding: 8px 10px 12px !important;
 }
 
 #sidebar .nav-menu {
@@ -414,14 +483,17 @@ if (!function_exists('isMenuItemActive')) {
 /* Footer & Profile (Permanently pinned at bottom) */
 #sidebar .sidebar-footer {
     flex-shrink: 0 !important;
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    margin-top: auto !important;
+    padding: 8px 10px !important;
+    padding-bottom: max(10px, env(safe-area-inset-bottom, 10px)) !important;
     border-top: 1px solid var(--sb-border) !important;
     background: #FFFFFF !important;
-    z-index: 10 !important;
+    z-index: 20 !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
+    gap: 6px !important;
     box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.04) !important;
+    box-sizing: border-box !important;
 }
 
 #sidebar .user-info {
@@ -432,11 +504,13 @@ if (!function_exists('isMenuItemActive')) {
     background: #F8FAFC !important;
     border-radius: 9px !important;
     border: 1px solid var(--sb-border) !important;
+    min-height: 48px !important;
+    box-sizing: border-box !important;
 }
 
 #sidebar .user-avatar {
-    width: 34px !important;
-    height: 34px !important;
+    width: 36px !important;
+    height: 36px !important;
     border-radius: 50% !important;
     background: linear-gradient(135deg, #0B1D4A 0%, #1E3A8A 100%) !important;
     color: #FDE047 !important;
@@ -444,9 +518,10 @@ if (!function_exists('isMenuItemActive')) {
     align-items: center !important;
     justify-content: center !important;
     font-weight: 800 !important;
-    font-size: 0.85rem !important;
+    font-size: 0.9rem !important;
     border: 2px solid rgba(212, 175, 55, 0.4) !important;
     flex-shrink: 0 !important;
+    overflow: hidden !important;
 }
 
 #sidebar .user-avatar img {
@@ -454,12 +529,16 @@ if (!function_exists('isMenuItemActive')) {
     height: 100% !important;
     border-radius: 50% !important;
     object-fit: cover !important;
+    display: block !important;
 }
 
 #sidebar .user-details {
-    flex: 1 !important;
+    flex: 1 1 0% !important;
     min-width: 0 !important;
     overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
 }
 
 #sidebar .user-name {
@@ -656,17 +735,25 @@ if (!function_exists('isMenuItemActive')) {
     }
 
     #sidebar {
-        width: 280px;
-        max-width: 85vw;
-        transform: translateX(-100%);
-        z-index: 1100;
-        box-shadow: none;
-        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+        width: 280px !important;
+        max-width: 85vw !important;
+        position: fixed !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        height: 100% !important;
+        height: 100dvh !important;
+        max-height: 100% !important;
+        max-height: 100dvh !important;
+        transform: translateX(-100%) !important;
+        z-index: 1100 !important;
+        box-shadow: none !important;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease !important;
     }
 
     #sidebar.open {
-        transform: translateX(0);
-        box-shadow: 12px 0 45px rgba(11, 29, 74, 0.28);
+        transform: translateX(0) !important;
+        box-shadow: 12px 0 45px rgba(11, 29, 74, 0.28) !important;
     }
 
     .main-content {
@@ -864,15 +951,16 @@ if (!function_exists('isMenuItemActive')) {
     <div class="sidebar-footer">
         <div class="user-info">
             <div class="user-avatar">
-                <?php if ($avatar_url): ?>
-                    <img src="<?php echo htmlspecialchars($avatar_url); ?>" alt="User Avatar">
+                <?php if (!empty($avatar_url)): ?>
+                    <img src="<?php echo htmlspecialchars($avatar_url); ?>" alt="<?php echo htmlspecialchars($user_name); ?>" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <span style="display:none;"><?php echo strtoupper(substr($user_name ?: ($user_email ?: 'A'), 0, 1)); ?></span>
                 <?php else: ?>
-                    <?php echo strtoupper(substr($user_name, 0, 1)); ?>
+                    <span><?php echo strtoupper(substr($user_name ?: ($user_email ?: 'A'), 0, 1)); ?></span>
                 <?php endif; ?>
             </div>
             <div class="user-details">
-                <div class="user-name"><?php echo htmlspecialchars($user_name); ?></div>
-                <div class="user-email"><?php echo htmlspecialchars($user_email); ?></div>
+                <div class="user-name" title="<?php echo htmlspecialchars($user_name); ?>"><?php echo htmlspecialchars($user_name); ?></div>
+                <div class="user-email" title="<?php echo htmlspecialchars($user_email); ?>"><?php echo htmlspecialchars($user_email); ?></div>
             </div>
             <a href="<?php echo $base_root_url; ?>/login.php?logout=true" class="user-quick-logout" title="Sign Out" aria-label="Sign Out">
                 <i class="fas fa-arrow-right-from-bracket"></i>
