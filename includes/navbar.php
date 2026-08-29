@@ -11,9 +11,8 @@ $affiliatedSchools = [];
 if ($supabaseClient) {
     try {
         $affiliatedSchools = $supabaseClient->select('institutions', [
-            'name' => 'name',
-            'facebook_url' => 'facebook_url',
-            'status' => 'eq.active'
+            'status' => 'eq.active',
+            'order' => 'name.asc'
         ]);
     } catch (Exception $e) {
         $affiliatedSchools = [];

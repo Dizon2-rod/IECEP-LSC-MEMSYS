@@ -106,30 +106,33 @@ if ($supabase) {
         $supabase->setServiceRoleKey($supabaseConfig['service_role_key']);
     }
 
-    $approvedSchools = safeSelect($supabase, 'affiliated_schools');
-    if (!empty($approvedSchools)) {
-        foreach ($approvedSchools as $school) {
-            if (($school['status'] ?? null) === 'active') {
-                $schoolName = $school['name'] ?? '';
-                $matchingStatic = null;
-                foreach ($staticSchools as $staticSchool) {
-                    if (strcasecmp($staticSchool['name'], $schoolName) === 0 || strpos($schoolName, $staticSchool['short_name'] ?? '~~~') !== false) {
-                        $matchingStatic = $staticSchool;
-                        break;
-                    }
+    $dbInstitutions = safeSelect($supabase, 'institutions');
+    if (!empty($dbInstitutions)) {
+        foreach ($dbInstitutions as $inst) {
+            $instName = $inst['name'] ?? '';
+            $matchingStatic = null;
+            foreach ($staticSchools as $staticSchool) {
+                if (
+                    strcasecmp($staticSchool['name'], $instName) === 0 || 
+                    strpos($instName, $staticSchool['short_name'] ?? '~~~') !== false || 
+                    (!empty($inst['acronym']) && strcasecmp($staticSchool['short_name'], $inst['acronym']) === 0)
+                ) {
+                    $matchingStatic = $staticSchool;
+                    break;
                 }
-                $affiliatedSchools[] = [
-                    'name'          => $schoolName,
-                    'org_name'      => $matchingStatic['org_name'] ?? 'Official IECEP-LSC Student Chapter',
-                    'short_name'    => $matchingStatic['short_name'] ?? '',
-                    'logo'          => $school['logo'] ?? ($matchingStatic['logo'] ?? '/IECEP-LSC-MEMSYS/public/assets/icons/default-school.png'),
-                    'location'      => $school['location'] ?? ($matchingStatic['location'] ?? 'Laguna, Philippines'),
-                    'email'         => $school['email'] ?? ($matchingStatic['email'] ?? ''),
-                    'facebook_url'  => $school['facebook_url'] ?? ($matchingStatic['facebook_url'] ?? ''),
-                    'status'        => 'active',
-                    'source'        => 'affiliated_schools',
-                ];
             }
+            $affiliatedSchools[] = [
+                'name'          => $instName,
+                'org_name'      => $matchingStatic['org_name'] ?? 'Official IECEP-LSC Student Chapter',
+                'short_name'    => $inst['acronym'] ?? ($matchingStatic['short_name'] ?? ''),
+                'logo'          => $inst['logo_url'] ?? ($matchingStatic['logo'] ?? '/IECEP-LSC-MEMSYS/public/assets/icons/default-school.png'),
+                'location'      => $inst['address'] ?? ($matchingStatic['location'] ?? (($inst['city'] ?? 'Laguna') . ', Philippines')),
+                'email'         => $inst['contact_email'] ?? $inst['email'] ?? ($matchingStatic['email'] ?? ''),
+                'facebook_url'  => $inst['facebook_url'] ?? ($matchingStatic['facebook_url'] ?? ''),
+                'status'        => $inst['status'] ?? 'active',
+                'compliance'    => $inst['compliance_status'] ?? 'compliant',
+                'source'        => 'institutions',
+            ];
         }
     }
 

@@ -16,33 +16,30 @@ $supabase = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 $member = [];
 try {
-    $memberData = $supabase->select('members', [
-        'user_id' => 'eq.' . ($user['id'] ?? '')
-    ]);
-    $member = $memberData[0] ?? [];
+    if (!empty($user['email'])) {
+        $memberData = $supabase->select('members', [
+            'email' => 'eq.' . $user['email']
+        ]);
+        if (!empty($memberData) && isset($memberData[0])) {
+            $member = $memberData[0];
+        }
+    }
+    if (empty($member) && !empty($user['id'])) {
+        $memberData = $supabase->select('members', [
+            'user_id' => 'eq.' . $user['id']
+        ]);
+        if (!empty($memberData) && isset($memberData[0])) {
+            $member = $memberData[0];
+        }
+    }
 } catch (Exception $e) {
     $member = [];
-}
-
-if (empty($member)) {
-    try {
-        $allMembers = $supabase->select('members', [], 'id', 'DESC');
-        foreach ($allMembers as $m) {
-            if (($m['email'] ?? '') === $user['email']) {
-                $member = $m;
-                break;
-            }
-        }
-    } catch (Exception $e) {
-        $member = [];
-    }
 }
 
 $events = [];
 try {
     $events = $supabase->select('events', [
-        'is_public' => 'eq.true',
-        'start_date' => 'gte.' . date('c'),
+        'status' => 'eq.published',
         'order' => 'start_date.asc',
         'limit' => '5'
     ]);

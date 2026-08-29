@@ -37,9 +37,19 @@ try {
     }
 } catch (Exception $e) {
     $member = [];
-}
-
 $realMemberId = $member['id'] ?? $member_id;
+
+$schoolName = 'Laguna State Polytechnic University - Santa Cruz Campus';
+if (!empty($member['institution_id'])) {
+    try {
+        $inst = $supabase->select('institutions', ['id' => 'eq.' . $member['institution_id']]);
+        if (!empty($inst) && isset($inst[0]['name'])) {
+            $schoolName = $inst[0]['name'];
+        }
+    } catch (Exception $e) {}
+} elseif (!empty($member['school_affiliate'])) {
+    $schoolName = $member['school_affiliate'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -182,8 +192,9 @@ $realMemberId = $member['id'] ?? $member_id;
                             <?= htmlspecialchars($member['full_name'] ?? ($user['name'] ?? 'Student Member')) ?>
                         </div>
                         <div class="member-details">
-                            <p style="margin:2px 0;"><strong><?= htmlspecialchars($member['school_affiliate'] ?? 'Affiliated Chapter') ?></strong></p>
-                            <p style="margin:2px 0; font-family:monospace; font-weight:700; color:#D4AF37; font-size:14px;"><?= htmlspecialchars($member['membership_id'] ?? 'IECEP-2026-MEM') ?></p>
+                            <p style="margin:2px 0;"><strong><?= htmlspecialchars($schoolName) ?></strong></p>
+                            <p style="margin:2px 0; font-size:12px; opacity:0.9;"><?= htmlspecialchars(($member['course'] ?? 'BS Electronics Engineering') . ' • ' . ($member['year_level'] ?? '3rd Year')) ?></p>
+                            <p style="margin:4px 0 2px; font-family:monospace; font-weight:700; color:#D4AF37; font-size:14px;"><?= htmlspecialchars($member['membership_id'] ?? 'IECEP-2026-0001') ?></p>
                             <span class="badge bg-success" style="font-size:11px; padding:4px 10px; margin-top:4px;">
                                 <i class="fas fa-check-circle me-1"></i> Verified & Active
                             </span>

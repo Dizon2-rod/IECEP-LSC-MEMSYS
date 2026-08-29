@@ -106,16 +106,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         } else {
                             $profiles = $supabaseService->select('user_profiles', ['user_id' => 'eq.' . $user['id']]);
                             if (empty($profiles)) {
-                                error_log("Login: legacy users table found for email=$email but no matching user_profiles row for user_id={$user['id']}. Falling back to Supabase Auth.");
-                                $authFallback = true;
+                                $profiles = $supabaseService->select('user_profiles', ['email' => 'eq.' . $email]);
+                            }
+                            if (empty($profiles)) {
+                                $profile = [
+                                    'role' => $user['role'] ?? 'member',
+                                    'institution_id' => null,
+                                    'full_name' => $user['full_name'] ?? ''
+                                ];
                             } else {
                                 $profile = $profiles[0];
-                                $loginSuccess = true;
-                                $mustChangePassword = !empty($user['must_change_password']);
-                                $userId = $user['id'];
-                                $userEmail = $user['email'];
-                                $fullName = $user['full_name'] ?? '';
                             }
+                            $loginSuccess = true;
+                            $mustChangePassword = !empty($user['must_change_password']);
+                            $userId = $user['id'];
+                            $userEmail = $user['email'];
+                            $fullName = !empty($user['full_name']) ? $user['full_name'] : ($profile['full_name'] ?? '');
                         }
                     } else {
                         error_log("Password verification: FAILED for email=" . $email);
@@ -142,17 +148,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $fullName = $authUser['user_metadata']['full_name'] ?? $authUser['full_name'] ?? '';
 
                         $profiles = $supabaseService->select('user_profiles', ['user_id' => 'eq.' . $userId]);
+                        if (empty($profiles)) {
+                            $profiles = $supabaseService->select('user_profiles', ['email' => 'eq.' . $userEmail]);
+                        }
                         error_log("Login: Supabase auth user_id=$userId profile query result=" . json_encode($profiles));
 
                         if (!empty($profiles) && is_array($profiles)) {
                             $profile = $profiles[0];
                             $loginSuccess = true;
-                            // Check force_password_change from profile, or must_change_password from user metadata
                             $mustChangePassword = !empty($profile['force_password_change']) || 
                                                 !empty($authUser['user_metadata']['must_change_password']);
                         } else {
-                            error_log("Login: Supabase auth succeeded but no user_profiles row for user_id=$userId");
-                            $error = 'Your account has not been fully configured. Please contact the administrator.';
+                            $profile = [
+                                'role' => $authUser['user_metadata']['role'] ?? 'member',
+                                'institution_id' => null,
+                                'full_name' => $fullName
+                            ];
+                            $loginSuccess = true;
                         }
                     } else {
                         error_log('Login: Supabase authSignIn returned no user object for email=' . $email . ' response=' . json_encode($authResult));
