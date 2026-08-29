@@ -27,10 +27,34 @@ if (!function_exists('buildSidebarLink')) {
 
 // Get user info
 $user = isset($_SESSION['user']) ? $_SESSION['user'] : [];
-$role = $_SESSION['role'] ?? 
-         $user['role'] ?? 
-         $user['user_metadata']['role'] ?? 
-         'school_officer';
+$raw_role = $_SESSION['role'] ?? 
+            $user['role'] ?? 
+            $user['user_metadata']['role'] ?? 
+            '';
+
+// Standardize / normalize role
+$normalized_role = strtolower(trim((string)$raw_role));
+if (in_array($normalized_role, ['super_admin', 'superadmin', 'eb_president'])) {
+    $role = 'super_admin';
+} elseif (in_array($normalized_role, ['admin', 'administrator', 'admin_officer'])) {
+    $role = 'admin';
+} elseif (in_array($normalized_role, ['school_officer', 'officer', 'school_admin', 'school'])) {
+    $role = 'school_officer';
+} elseif (in_array($normalized_role, ['member', 'student', 'student_member', 'user'])) {
+    $role = 'member';
+} else {
+    // If not detected from session, attempt detection based on script path
+    $current_script = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
+    if (strpos($current_script, '/portal/admin') !== false) {
+        $role = 'admin';
+    } elseif (strpos($current_script, '/portal/school-officer') !== false) {
+        $role = 'school_officer';
+    } elseif (strpos($current_script, '/portal/member') !== false) {
+        $role = 'member';
+    } else {
+        $role = 'school_officer';
+    }
+}
 
 $user_name = $user['user_metadata']['full_name'] ?? $_SESSION['user_name'] ?? $user['name'] ?? $user['email'] ?? 'User';
 $user_email = $user['email'] ?? $_SESSION['user_email'] ?? '';
@@ -49,15 +73,15 @@ $menu_config = [
     'items' => $roleConfig['nav_items'] ?? []
 ];
 
-// Unified Portal Title Mapping
-$portal_names = [
-    'super_admin' => 'Admin Portal',
-    'admin' => 'Admin Portal',
-    'school_officer' => 'School Officer Portal',
-    'member' => 'Member Portal'
+// Unified Portal Badges & Titles
+$portal_badges = [
+    'super_admin'    => 'Super Admin',
+    'admin'          => 'Admin Portal',
+    'school_officer' => 'School Officer',
+    'member'         => 'Student Member'
 ];
 
-$portal_title = $portal_names[$role] ?? ($roleConfig['title'] ?? 'Admin Portal');
+$portal_title = $portal_badges[$role] ?? ($roleConfig['role_display'] ?? 'Portal');
 
 if (!function_exists('isMenuItemActive')) {
     function isMenuItemActive($item_url) {
