@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/../bootstrap.php';
 
-$db = $GLOBALS['supabaseClient'] ?? null;
+$db = getSupabaseClient();
 
 // Get financial data (publicly accessible, no sensitive info)
 $currentYear = date('Y');

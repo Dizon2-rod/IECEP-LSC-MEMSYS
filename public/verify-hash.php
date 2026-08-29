@@ -1,8 +1,8 @@
 <?php
-require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/../bootstrap.php';
 
-require_once __DIR__ . '/includes/supabase.php';
-require_once __DIR__ . '/src/lib/BlockchainService.php';
+require_once __DIR__ . '/../includes/supabase.php';
+require_once __DIR__ . '/../src/lib/BlockchainService.php';
 
 use App\Lib\Supabase;
 use App\Lib\BlockchainService;

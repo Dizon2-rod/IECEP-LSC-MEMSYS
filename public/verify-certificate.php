@@ -1,11 +1,10 @@
 <?php
-require_once __DIR__ . '/bootstrap.php';
-require_once __DIR__ . '/autoload.php';
+require_once __DIR__ . '/../bootstrap.php';
 
 $certificateNumber = $_GET['cert'] ?? '';
 $hash = $_GET['hash'] ?? '';
 
-$supabaseConfig = require __DIR__ . '/includes/supabase.php';
+$supabaseConfig = require __DIR__ . '/../includes/supabase.php';
 $supabase = new \App\Lib\SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
 $blockchain = new \App\Lib\BlockchainService($supabase);
 

@@ -1,5 +1,6 @@
 <?php
-require_once __DIR__ . '/includes/paths.php';
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../includes/paths.php';
 use App\Lib\SupabaseClient;
 
 $verificationResult = null;

@@ -1,9 +1,9 @@
 <?php
-require_once __DIR__ . '/includes/auth_check.php';
+require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../includes/auth_check.php';
 
 // Check if user has 2FA enabled
-require_once __DIR__ . '/includes/supabase.php';
-require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/../includes/supabase.php';
 
 $supabase = new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 

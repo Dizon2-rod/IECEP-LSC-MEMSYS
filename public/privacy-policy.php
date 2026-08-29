@@ -1,75 +1,116 @@
 <?php
-require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/../bootstrap.php';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy - IECEP-LSC MEMSYS</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
-    <link rel="stylesheet" href="/css/design-tokens.css">
+    <title>Privacy Policy — IECEP-LSC MEMSYS</title>
+    <?php include __DIR__ . '/../includes/head-meta.php'; ?>
     <style>
         :root {
-            --primary-color: #0B1D4A;
-            --secondary-color: #C49A00;
+            --primary: #0B1D4A;
+            --accent: #D4AF37;
         }
-        
         body {
-            background-color: #f8fafc;
+            background-color: #F8FAFC;
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
         }
-        
+        .policy-wrapper {
+            padding: 2.5rem 1rem 4rem;
+            max-width: 920px;
+            margin: 0 auto;
+        }
         .policy-container {
-            background: white;
-            border-radius: 12px;
-            padding: 3rem;
-            margin: 2rem auto;
-            max-width: 900px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: #FFFFFF;
+            border-radius: 16px;
+            padding: 3rem 2.5rem;
+            border: 1px solid #E2E8F0;
+            box-shadow: 0 4px 20px rgba(11, 29, 74, 0.05);
         }
-        
+        @media (max-width: 640px) {
+            .policy-wrapper {
+                padding: 1.5rem 0.75rem 3rem;
+            }
+            .policy-container {
+                padding: 1.75rem 1.25rem;
+                border-radius: 12px;
+            }
+        }
         .policy-header {
             text-align: center;
-            margin-bottom: 3rem;
-            padding-bottom: 2rem;
-            border-bottom: 2px solid var(--secondary-color);
+            margin-bottom: 2.5rem;
+            padding-bottom: 1.75rem;
+            border-bottom: 2px solid #D4AF37;
         }
-        
+        .policy-header h1 {
+            font-family: 'Times New Roman', Arial, serif;
+            font-size: 2.2rem;
+            font-weight: 800;
+            color: #0B1D4A;
+            margin: 0 0 0.5rem;
+        }
+        @media (max-width: 640px) {
+            .policy-header h1 {
+                font-size: 1.5rem;
+            }
+        }
+        .policy-header p {
+            color: #64748B;
+            font-size: 0.95rem;
+            margin: 0;
+            line-height: 1.5;
+        }
         .policy-section {
             margin-bottom: 2rem;
         }
-        
         .policy-section h3 {
-            color: var(--primary-color);
-            margin-bottom: 1rem;
+            color: #0B1D4A;
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin: 0 0 0.75rem;
         }
-        
+        .policy-section p {
+            color: #475569;
+            font-size: 0.92rem;
+            line-height: 1.65;
+            margin: 0 0 0.75rem;
+        }
         .policy-section ul {
             padding-left: 1.5rem;
+            margin: 0 0 0.75rem;
         }
-        
         .policy-section li {
-            margin-bottom: 0.5rem;
+            color: #475569;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 0.4rem;
         }
-        
+        .policy-section li strong {
+            color: #0F172A;
+        }
         .effective-date {
             text-align: center;
-            color: #64748b;
-            font-style: italic;
-            margin-top: 2rem;
-            padding-top: 1rem;
-            border-top: 1px solid #e5e7eb;
+            color: #64748B;
+            font-size: 0.85rem;
+            margin-top: 2.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid #E2E8F0;
         }
     </style>
 </head>
 <body>
-    <?php include __DIR__ . '/includes/header.php'; ?>
+    <?php include __DIR__ . '/../includes/navbar.php'; ?>
     
-    <div class="container">
+    <div class="policy-wrapper">
         <div class="policy-container">
             <div class="policy-header">
                 <h1>Privacy Policy</h1>
-                <p class="text-muted">Institute of Electronics Engineers of the Philippines – Laguna State Chapter<br>Membership Management System</p>
+                <p>Institute of Electronics Engineers of the Philippines – Laguna Student Chapter<br>Membership Management System (MEMSYS)</p>
             </div>
             
             <div class="policy-section">
@@ -83,7 +124,7 @@ require_once __DIR__ . '/includes/config.php';
                 <ul>
                     <li><strong>Personal Information:</strong> Full name, date of birth, contact details (email, phone number), address</li>
                     <li><strong>Professional Information:</strong> Student/employee ID, institution affiliation, position/title, membership details</li>
-                    <li><strong>Academic Information:</strong> Course/program, year level, academic performance (if applicable)</li>
+                    <li><strong>Academic Information:</strong> Course/program, year level, academic standing</li>
                     <li><strong>Financial Information:</strong> Payment records, transaction history, fee bracket classification</li>
                     <li><strong>Event Participation:</strong> Event attendance records, compliance scores, participation rates</li>
                     <li><strong>System Usage:</strong> Login history, IP address, device information, session data</li>
@@ -98,108 +139,83 @@ require_once __DIR__ . '/includes/config.php';
                     <li><strong>Compliance Monitoring:</strong> Tracking participation rates and compliance with IECEP-LSC Constitution</li>
                     <li><strong>Event Management:</strong> Managing event registrations, attendance, and certifications</li>
                     <li><strong>Financial Operations:</strong> Processing payments, generating invoices, and financial reporting</li>
-                    <li><strong>Communication:</strong> Sending notifications, announcements, and relevant updates</li>
-                    <li><strong>Blockchain Verification:</strong> Recording immutable audit trails for transparency and accountability</li>
-                    <li><strong>System Security:</strong> Preventing fraud, ensuring data integrity, and maintaining system security</li>
+                    <li><strong>Communication:</strong> Sending announcements, newsletters, and official correspondence</li>
+                    <li><strong>System Security:</strong> Authenticating users and protecting system integrity</li>
                 </ul>
             </div>
             
             <div class="policy-section">
-                <h3>4. Data Sharing and Disclosure</h3>
-                <p>We may share your personal information with:</p>
+                <h3>4. Legal Basis for Processing</h3>
+                <p>We process your personal information based on:</p>
                 <ul>
-                    <li><strong>IECEP-LSC Officers:</strong> Authorized officers for membership verification and compliance monitoring</li>
-                    <li><strong>Institution Representatives:</strong> School officers for institutional compliance tracking</li>
-                    <li><strong>Registration Committee:</strong> For affiliation application review and approval</li>
-                    <li><strong>Treasurer:</strong> For financial transaction processing and fee management</li>
-                    <li><strong>Authorized Third Parties:</strong> Service providers (email services, payment processors) under strict confidentiality agreements</li>
-                    <li><strong>Legal Authorities:</strong> When required by law or court order</li>
-                </ul>
-                <p>We do not sell, rent, or trade your personal information with third parties for marketing purposes.</p>
-            </div>
-            
-            <div class="policy-section">
-                <h3>5. Data Security</h3>
-                <p>We implement appropriate security measures to protect your information:</p>
-                <ul>
-                    <li><strong>Encryption:</strong> Data is encrypted in transit and at rest</li>
-                    <li><strong>Blockchain Logging:</strong> Critical actions are recorded on an immutable blockchain for audit trails</li>
-                    <li><strong>Access Controls:</strong> Role-based access restrictions limit data access to authorized personnel</li>
-                    <li><strong>Secure Authentication:</strong> Multi-factor authentication and secure password policies</li>
-                    <li><strong>Regular Audits:</strong> Periodic security audits and vulnerability assessments</li>
+                    <li><strong>Consent:</strong> Your explicit consent when registering for an account or submitting affiliation documents</li>
+                    <li><strong>Contractual Obligation:</strong> Fulfilling our commitments as a professional student organization</li>
+                    <li><strong>Legitimate Interest:</strong> Operating, maintaining, and improving our services</li>
+                    <li><strong>Legal Compliance:</strong> Meeting statutory requirements under Philippine law</li>
                 </ul>
             </div>
             
             <div class="policy-section">
-                <h3>6. Your Rights Under RA 10173</h3>
-                <p>Under the Data Privacy Act, you have the right to:</p>
+                <h3>5. Data Sharing and Disclosure</h3>
+                <p>We do not sell your personal information. We may share your information with:</p>
                 <ul>
-                    <li><strong>Right to Access:</strong> Request access to your personal information we hold</li>
-                    <li><strong>Right to Correct:</strong> Request correction of inaccurate or incomplete information</li>
-                    <li><strong>Right to Erasure:</strong> Request deletion of your information (subject to legal and operational requirements)</li>
-                    <li><strong>Right to Object:</strong> Object to processing of your information for certain purposes</li>
-                    <li><strong>Right to File a Complaint:</strong> File a complaint with the National Privacy Commission</li>
-                    <li><strong>Right to Data Portability:</strong> Request a copy of your information in a structured format</li>
+                    <li><strong>Affiliated Institutions:</strong> School officers and advisers for institutional member verification</li>
+                    <li><strong>IECEP National:</strong> For national membership synchronization and reporting</li>
+                    <li><strong>Service Providers:</strong> Cloud infrastructure (Supabase, Railway) under strict data protection agreements</li>
+                    <li><strong>Legal Authorities:</strong> When required by law, subpoena, or legal process</li>
                 </ul>
-                <p>To exercise these rights, contact our Data Protection Officer at privacy@iecep-lsc.org</p>
+            </div>
+            
+            <div class="policy-section">
+                <h3>6. Data Security</h3>
+                <p>We implement technical and organizational security measures to protect your data:</p>
+                <ul>
+                    <li>TLS/HTTPS encryption for all data in transit</li>
+                    <li>AES-256 encryption for sensitive data at rest</li>
+                    <li>Role-Based Access Control (RBAC) restricting data access to authorized personnel only</li>
+                    <li>Regular security audits and automated vulnerability monitoring</li>
+                    <li>Secure tokenized authentication and bcrypt password hashing</li>
+                </ul>
             </div>
             
             <div class="policy-section">
                 <h3>7. Data Retention</h3>
-                <p>We retain your personal information for as long as necessary for the purposes outlined in this policy, or as required by law. Specifically:</p>
+                <p>We retain personal information for as long as necessary to fulfill the purposes outlined in this policy or as required by applicable laws:</p>
                 <ul>
-                    <li><strong>Active Members:</strong> Information retained while membership is active</li>
-                    <li><strong>Former Members:</strong> Basic information retained for 7 years after membership expiration</li>
-                    <li><strong>Financial Records:</strong> Retained for 10 years as required by tax laws</li>
-                    <li><strong>Blockchain Records:</strong> Immutable records retained indefinitely for audit purposes</li>
-                    <li><strong>System Logs:</strong> Retained for 1 year for security monitoring</li>
+                    <li><strong>Active Members:</strong> Maintained throughout active membership duration</li>
+                    <li><strong>Inactive/Alumni:</strong> Retained for historical academic record verification</li>
+                    <li><strong>Financial Records:</strong> Retained for 5 years in compliance with auditing standards</li>
                 </ul>
             </div>
             
             <div class="policy-section">
-                <h3>8. Cookies and Tracking</h3>
-                <p>We use cookies and similar technologies to:</p>
+                <h3>8. Your Rights</h3>
+                <p>Under the Data Privacy Act of 2012, you have the right to:</p>
                 <ul>
-                    <li>Maintain your session and authentication state</li>
-                    <li>Remember your preferences and settings</li>
-                    <li>Analyze system usage and improve performance</li>
-                    <li>Provide personalized content and notifications</li>
-                </ul>
-                <p>You can manage cookie preferences through your browser settings.</p>
-            </div>
-            
-            <div class="policy-section">
-                <h3>9. Children's Privacy</h3>
-                <p>Our services are intended for use by individuals 18 years and older. We do not knowingly collect personal information from minors. If we discover that we have collected information from a minor, we will take steps to delete it.</p>
-            </div>
-            
-            <div class="policy-section">
-                <h3>10. Changes to This Policy</h3>
-                <p>We may update this Privacy Policy from time to time. We will notify you of significant changes by:</p>
-                <ul>
-                    <li>Posting the updated policy on our website</li>
-                    <li>Sending email notifications to registered members</li>
-                    <li>Displaying prominent notices within the system</li>
+                    <li><strong>Be Informed:</strong> Know how your personal data is collected and processed</li>
+                    <li><strong>Access:</strong> Request a copy of your personal information</li>
+                    <li><strong>Rectification:</strong> Request correction of inaccurate or outdated data</li>
+                    <li><strong>Erasure/Blocking:</strong> Request deletion of data subject to statutory limits</li>
+                    <li><strong>Data Portability:</strong> Obtain your data in an electronic format</li>
                 </ul>
             </div>
             
             <div class="policy-section">
-                <h3>11. Contact Information</h3>
+                <h3>9. Contact Information</h3>
                 <p>If you have questions about this Privacy Policy or our data practices, please contact:</p>
                 <ul>
-                    <li><strong>Data Protection Officer:</strong> privacy@iecep-lsc.org</li>
-                    <li><strong>IECEP-LSC Office:</strong> info@iecep-lsc.org</li>
-                    <li><strong>National Privacy Commission:</strong> info@npc.gov.ph</li>
+                    <li><strong>Official Email:</strong> ieceplsc24@gmail.com</li>
+                    <li><strong>Facebook Page:</strong> facebook.com/IECEPLSC</li>
+                    <li><strong>Organization:</strong> IECEP Laguna Student Chapter</li>
                 </ul>
             </div>
             
             <div class="effective-date">
-                <p>This Privacy Policy is effective as of January 1, 2026.</p>
-                <p>Last updated: January 1, 2026</p>
+                <p>This Privacy Policy is effective as of January 1, 2026. Last updated: August 2026.</p>
             </div>
         </div>
     </div>
     
-    <?php include __DIR__ . '/includes/footer.php'; ?>
+    <?php include __DIR__ . '/../includes/footer-new.php'; ?>
 </body>
 </html>
