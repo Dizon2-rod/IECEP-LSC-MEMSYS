@@ -154,7 +154,7 @@ $hasDigitalId = !empty($digitalIdUrl);
 </head>
 <body>
     <div class="dashboard-container">
-        <?php require_once __DIR__ . '/../../includes/sidebar.php'; ?>
+        <?php require_once __DIR__ . '/../../../includes/sidebar.php'; ?>
         
         <main class="main-content">
             <div class="container py-5">

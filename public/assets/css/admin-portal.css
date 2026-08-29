@@ -483,6 +483,8 @@ body {
     flex: 1;
     min-width: 220px;
     max-width: 420px;
+    display: flex;
+    align-items: center;
 }
 
 .ap-search-wrapper i {
@@ -491,8 +493,9 @@ body {
     top: 50%;
     transform: translateY(-50%);
     color: var(--text-muted);
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     pointer-events: none;
+    z-index: 2;
 }
 
 .ap-search-input {
@@ -500,7 +503,7 @@ body {
     background: var(--bg-subtle);
     border: 1px solid var(--border-light);
     border-radius: 50px;
-    padding: 0.6rem 1rem 0.6rem 2.5rem;
+    padding: 0.6rem 1rem 0.6rem 2.85rem !important;
     color: var(--text-primary);
     font-size: 0.85rem;
     font-family: 'DM Sans', sans-serif;

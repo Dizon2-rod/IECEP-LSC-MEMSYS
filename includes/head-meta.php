@@ -599,8 +599,60 @@ define('HEAD_META_INCLUDED', true);
         color: var(--accent);
     }
 
-    /* Mobile Responsiveness */
-    @media (max-width: 575.98px) {
+    /* =========================================================
+       UNIVERSAL DEVICE-ADAPTIVE RESPONSIVENESS (ALL PORTAL PAGES)
+       ========================================================= */
+    html, body {
+        overflow-x: hidden !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        box-sizing: border-box;
+    }
+
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+
+    .main-content {
+        width: 100%;
+        max-width: 100vw;
+        box-sizing: border-box;
+        overflow-x: hidden;
+    }
+
+    /* Universal Responsive Tables */
+    .table-responsive, .table-container, .roster-table-wrapper, .ap-table-container {
+        width: 100% !important;
+        max-width: 100% !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        box-sizing: border-box;
+    }
+
+    /* Universal Responsive Forms */
+    input, select, textarea, button {
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Mobile Responsiveness (Phones <= 767.98px) */
+    @media (max-width: 767.98px) {
+        .main-content {
+            margin-left: 0 !important;
+            padding: 0.85rem 0.5rem 2rem !important;
+            width: 100% !important;
+            max-width: 100vw !important;
+        }
+
+        .container {
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
+
+        .ap-scope {
+            padding: 0.65rem 0.4rem 2rem !important;
+        }
+
         .hero { padding: 80px 1rem 3rem; }
         .hero-tagline { font-size: 1.25rem; }
         .hero-title { font-size: 2rem; word-spacing: 0.5rem; }
@@ -618,61 +670,76 @@ define('HEAD_META_INCLUDED', true);
         .modal-content { margin: 1rem; max-width: calc(100% - 2rem); }
         .footer-grid { gap: 2rem; }
         
-        /* Sidebar Mobile */
-        .sidebar-toggle {
-            display: block;
-        }
-        .sidebar {
-            transform: translateX(-100%);
-        }
-        .sidebar.active {
-            transform: translateX(0);
-        }
-        .main-content {
-            margin-left: 0;
+        /* Grid Utilities on Mobile */
+        .grid-responsive, .grid-2, .grid-3 {
+            grid-template-columns: 1fr !important;
+            gap: 0.75rem !important;
         }
         
         /* Forms Mobile */
         .contact-container { grid-template-columns: 1fr; }
-        .form-input, .form-textarea { font-size: 16px; } /* Prevent zoom on iOS */
+        .form-input, .form-textarea, .ap-input, .ap-form-select { 
+            font-size: 16px; /* Prevent iOS zoom */
+        }
         
         /* Header Mobile */
         .header-container {
-            padding: 1rem;
+            padding: 0.75rem 1rem;
         }
         .logo-img {
-            width: 40px;
-            height: 40px;
+            width: 34px;
+            height: 34px;
         }
         .logo span {
-            font-size: 1rem;
+            font-size: 0.95rem;
+        }
+    }
+
+    /* Small Phones (<= 480px) */
+    @media (max-width: 480px) {
+        .main-content {
+            padding: 0.65rem 0.35rem 1.75rem !important;
+        }
+        .ap-scope {
+            padding: 0.5rem 0.25rem 1.5rem !important;
+        }
+        .btn, button {
+            font-size: 0.78rem !important;
         }
     }
     
-    @media (min-width: 576px) and (max-width: 767.98px) {
-        .hero { padding: 90px 1.5rem 4rem; }
-        .hero-tagline { font-size: 1.5rem; }
-        .hero-title { font-size: 2.5rem; }
-        .schools-grid img { width: 70px; height: 70px; }
-        .verification-inputs input { width: 40px; height: 45px; font-size: 1.25rem; }
-    }
-    
+    /* Tablets (768px - 991.98px) */
     @media (min-width: 768px) and (max-width: 991.98px) {
+        .main-content {
+            margin-left: 0 !important;
+            padding: 1.25rem 1rem 3rem !important;
+        }
         .hero { padding: 100px 2rem 5rem; }
         .hero-tagline { font-size: 1.75rem; }
         .hero-title { font-size: 2.75rem; }
         .schools-grid img { width: 75px; height: 75px; }
         .dropdown-menu { min-width: 220px; }
+        .grid-3 { grid-template-columns: repeat(2, 1fr) !important; }
     }
     
+    /* Desktops (992px - 1199.98px) */
     @media (min-width: 992px) and (max-width: 1199.98px) {
+        .main-content {
+            margin-left: var(--sidebar-width, 260px) !important;
+            padding: 1.75rem 1.5rem 3rem !important;
+        }
         .hero { padding: 110px 2rem 6rem; }
         .hero-tagline { font-size: 2rem; }
         .hero-title { font-size: 3rem; }
         .schools-grid img { width: 80px; height: 80px; }
     }
     
+    /* Large Monitors (1200px+) */
     @media (min-width: 1200px) {
+        .main-content {
+            margin-left: var(--sidebar-width, 260px) !important;
+            padding: 2rem 2.25rem 3.5rem !important;
+        }
         .hero { padding: 140px 2rem 6rem; }
         .hero-tagline { font-size: 2.5rem; }
         .hero-title { font-size: 3.5rem; }
