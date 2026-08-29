@@ -1861,130 +1861,6 @@ try {
                 </div>
             </div>
 
-            <!-- Toolkit Info Panel (Compact & Modal-Optimized) -->
-            <div id="modal-toolkit-panel" class="affiliate-toolkit-card">
-                <div class="affiliate-toolkit-grid">
-                    <!-- Left: Checklist & HEI Brackets -->
-                    <div>
-                        <h3 class="toolkit-checklist-title">
-                            <i class="fa-solid fa-list-check text-gold"></i> Required Affiliation Documents
-                        </h3>
-                        <p class="toolkit-checklist-subtitle">
-                            Per Art. IV Sec. 3 of the IECEP National Constitution &amp; By-Laws, please prepare the following for upload:
-                        </p>
-                        <div class="checklist-items-grid">
-                            <div class="checklist-item">
-                                <i class="fa-solid fa-file-signature text-gold"></i>
-                                <div>
-                                    <strong>Letter of Intent (LOI)</strong>
-                                    <div class="item-sub">Signed by Chapter President</div>
-                                </div>
-                            </div>
-                            <div class="checklist-item">
-                                <i class="fa-solid fa-building-columns text-gold"></i>
-                                <div>
-                                    <strong>Endorsement Letter</strong>
-                                    <div class="item-sub">Signed by Dean / Dept. Chair</div>
-                                </div>
-                            </div>
-                            <div class="checklist-item">
-                                <i class="fa-solid fa-scale-balanced text-gold"></i>
-                                <div>
-                                    <strong>Constitution &amp; By-Laws</strong>
-                                    <div class="item-sub">Ratified local chapter copy</div>
-                                </div>
-                            </div>
-                            <div class="checklist-item">
-                                <i class="fa-solid fa-users-gear text-gold"></i>
-                                <div>
-                                    <strong>Officers List with CVs</strong>
-                                    <div class="item-sub">Executive board roster</div>
-                                </div>
-                            </div>
-                            <div class="checklist-item">
-                                <i class="fa-solid fa-sitemap text-gold"></i>
-                                <div>
-                                    <strong>Organizational Chart</strong>
-                                    <div class="item-sub">Departmental structure</div>
-                                </div>
-                            </div>
-                            <div class="checklist-item">
-                                <i class="fa-solid fa-file-excel text-gold"></i>
-                                <div>
-                                    <strong>Member Directory (Excel)</strong>
-                                    <div class="item-sub">4 sheets (1st to 4th Year)</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Section 1. HEI Affiliation Fee Brackets (BR No. 021-2024) -->
-                        <div class="hei-brackets-container">
-                            <div style="font-size:0.75rem; font-weight:700; color:#D4AF37; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.25rem;">
-                                <i class="fa-solid fa-building-columns text-gold me-1"></i> Section 1. HEI Institutional Fee
-                            </div>
-                            <p style="font-size:0.74rem; color:rgba(255,255,255,0.72); margin-bottom:0.5rem; line-height:1.35;">
-                                In accordance with Board Resolution No. 021-2024, affiliation fees follow student member count:
-                            </p>
-                            <div class="hei-brackets-grid">
-                                <div class="hei-bracket-box">
-                                    <div class="hei-bracket-range">1–50 Members</div>
-                                    <div class="hei-bracket-fee">₱1,500</div>
-                                </div>
-                                <div class="hei-bracket-box">
-                                    <div class="hei-bracket-range">51–100 Members</div>
-                                    <div class="hei-bracket-fee">₱2,000</div>
-                                </div>
-                                <div class="hei-bracket-box">
-                                    <div class="hei-bracket-range">101–150 Members</div>
-                                    <div class="hei-bracket-fee">₱2,500</div>
-                                </div>
-                                <div class="hei-bracket-box">
-                                    <div class="hei-bracket-range">151+ Members</div>
-                                    <div class="hei-bracket-fee">₱3,000</div>
-                                </div>
-                            </div>
-                            <div class="operational-fee-note">
-                                <i class="fa-solid fa-circle-info text-gold" style="font-size:0.9rem; flex-shrink:0;"></i>
-                                <span>Plus <strong>₱800.00</strong> operational &amp; activity fee collected upon renewal for chapter initiatives.</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Right: Section 2. Individual Membership Fees -->
-                    <div class="toolkit-action-box">
-                        <div>
-                            <div style="font-size:0.75rem; font-weight:700; color:#D4AF37; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.25rem;">
-                                <i class="fa-solid fa-users text-gold me-1"></i> Section 2. Member Dues
-                            </div>
-                            <h4 style="font-size:1.05rem; font-weight:700; color:#fff; margin-bottom:0.25rem;">
-                                Individual Student Dues
-                            </h4>
-                            <p style="font-size:0.74rem; color:rgba(255,255,255,0.72); margin-bottom:0.65rem; line-height:1.35;">
-                                Individual student renewal occurs simultaneously with organizational affiliation:
-                            </p>
-                            <div class="fee-rate-box">
-                                <span class="fee-rate-label">Returning (Old) Members</span>
-                                <span class="fee-rate-val">₱200.00</span>
-                            </div>
-                            <div class="fee-rate-box">
-                                <span class="fee-rate-label">New Student Members</span>
-                                <span class="fee-rate-val">₱250.00</span>
-                            </div>
-                            <div class="fee-rate-box">
-                                <span class="fee-rate-label">Honorary Members</span>
-                                <span class="fee-rate-val">₱300.00</span>
-                            </div>
-                            <div style="font-size:0.72rem; color:rgba(255,255,255,0.68); margin:0.4rem 0 0.85rem; line-height:1.35;">
-                                <i class="fa-solid fa-id-card text-gold me-1"></i> Includes official ID &amp; full access to IECEP-LSC activities.
-                            </div>
-                        </div>
-                        <button type="button" class="btn btn-primary btn-affiliate-trigger" style="width:100%; padding:0.65rem 1rem; font-size:0.88rem; font-weight:700; border-radius:50px; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
-                            <i class="fa-solid fa-paper-plane"></i> Start Application Below
-                        </button>
-                    </div>
-                </div>
-            </div>
-
             <!-- Step 1: Email Verification -->
             <div id="modal-email-verification-step">
                 <div class="modal-section">
@@ -2071,20 +1947,134 @@ try {
                             <input type="tel" id="modal-contact-phone" name="contact_phone" placeholder="09XXXXXXXXX" pattern="09[0-9]{9}">
                         </div>
                     </div>
+                </div>
 
-                    <div class="document-requirements">
-                        <h5><i class="fas fa-file-alt" style="margin-right:0.5rem;"></i>Required Documents</h5>
-                        <p><strong>Please prepare the following before proceeding:</strong></p>
-                        <ul>
-                            <li>Letter of Intent (PDF only)</li>
-                            <li>Endorsement Letter (PDF only)</li>
-                            <li>Constitution and By-Laws (PDF only)</li>
-                            <li>List of Officers with CVs (PDF only)</li>
-                            <li>Organizational Chart (PDF only)</li>
-                            <li>Member Directory (CSV or Excel — must have a "Status" column)</li>
-                        </ul>
+                <!-- Toolkit Info Panel in Step 2 -->
+                <div id="modal-toolkit-panel" class="affiliate-toolkit-card" style="margin: 0 0 1.5rem;">
+                    <div class="affiliate-toolkit-grid">
+                        <!-- Left: Checklist & HEI Brackets -->
+                        <div>
+                            <h3 class="toolkit-checklist-title">
+                                <i class="fa-solid fa-list-check text-gold"></i> Required Affiliation Documents
+                            </h3>
+                            <p class="toolkit-checklist-subtitle">
+                                Per Art. IV Sec. 3 of the IECEP National Constitution &amp; By-Laws, please prepare the following for upload:
+                            </p>
+                            <div class="checklist-items-grid">
+                                <div class="checklist-item">
+                                    <i class="fa-solid fa-file-signature text-gold"></i>
+                                    <div>
+                                        <strong>Letter of Intent (LOI)</strong>
+                                        <div class="item-sub">Signed by Chapter President</div>
+                                    </div>
+                                </div>
+                                <div class="checklist-item">
+                                    <i class="fa-solid fa-building-columns text-gold"></i>
+                                    <div>
+                                        <strong>Endorsement Letter</strong>
+                                        <div class="item-sub">Signed by Dean / Dept. Chair</div>
+                                    </div>
+                                </div>
+                                <div class="checklist-item">
+                                    <i class="fa-solid fa-scale-balanced text-gold"></i>
+                                    <div>
+                                        <strong>Constitution &amp; By-Laws</strong>
+                                        <div class="item-sub">Ratified local chapter copy</div>
+                                    </div>
+                                </div>
+                                <div class="checklist-item">
+                                    <i class="fa-solid fa-users-gear text-gold"></i>
+                                    <div>
+                                        <strong>Officers List with CVs</strong>
+                                        <div class="item-sub">Executive board roster</div>
+                                    </div>
+                                </div>
+                                <div class="checklist-item">
+                                    <i class="fa-solid fa-sitemap text-gold"></i>
+                                    <div>
+                                        <strong>Organizational Chart</strong>
+                                        <div class="item-sub">Departmental structure</div>
+                                    </div>
+                                </div>
+                                <div class="checklist-item">
+                                    <i class="fa-solid fa-file-excel text-gold"></i>
+                                    <div>
+                                        <strong>Member Directory (Excel)</strong>
+                                        <div class="item-sub">4 sheets (1st to 4th Year)</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 1. HEI Affiliation Fee Brackets (BR No. 021-2024) -->
+                            <div class="hei-brackets-container">
+                                <div style="font-size:0.75rem; font-weight:700; color:#D4AF37; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.25rem;">
+                                    <i class="fa-solid fa-building-columns text-gold me-1"></i> Section 1. HEI Institutional Fee
+                                </div>
+                                <p style="font-size:0.74rem; color:rgba(255,255,255,0.72); margin-bottom:0.5rem; line-height:1.35;">
+                                    In accordance with Board Resolution No. 021-2024, affiliation fees follow student member count:
+                                </p>
+                                <div class="hei-brackets-grid">
+                                    <div class="hei-bracket-box">
+                                        <div class="hei-bracket-range">1–50 Members</div>
+                                        <div class="hei-bracket-fee">₱1,500</div>
+                                    </div>
+                                    <div class="hei-bracket-box">
+                                        <div class="hei-bracket-range">51–100 Members</div>
+                                        <div class="hei-bracket-fee">₱2,000</div>
+                                    </div>
+                                    <div class="hei-bracket-box">
+                                        <div class="hei-bracket-range">101–150 Members</div>
+                                        <div class="hei-bracket-fee">₱2,500</div>
+                                    </div>
+                                    <div class="hei-bracket-box">
+                                        <div class="hei-bracket-range">151+ Members</div>
+                                        <div class="hei-bracket-fee">₱3,000</div>
+                                    </div>
+                                </div>
+                                <div class="operational-fee-note">
+                                    <i class="fa-solid fa-circle-info text-gold" style="font-size:0.9rem; flex-shrink:0;"></i>
+                                    <span>Plus <strong>₱800.00</strong> operational &amp; activity fee collected upon renewal for chapter initiatives.</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right: Section 2. Individual Membership Fees -->
+                        <div class="toolkit-action-box">
+                            <div>
+                                <div style="font-size:0.75rem; font-weight:700; color:#D4AF37; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.25rem;">
+                                    <i class="fa-solid fa-users text-gold me-1"></i> Section 2. Member Dues
+                                </div>
+                                <h4 style="font-size:1.05rem; font-weight:700; color:#fff; margin-bottom:0.25rem;">
+                                    Individual Student Dues
+                                </h4>
+                                <p style="font-size:0.74rem; color:rgba(255,255,255,0.72); margin-bottom:0.65rem; line-height:1.35;">
+                                    Individual student renewal occurs simultaneously with organizational affiliation:
+                                </p>
+                                <div class="fee-rate-box">
+                                    <span class="fee-rate-label">Returning (Old) Members</span>
+                                    <span class="fee-rate-val">₱200.00</span>
+                                </div>
+                                <div class="fee-rate-box">
+                                    <span class="fee-rate-label">New Student Members</span>
+                                    <span class="fee-rate-val">₱250.00</span>
+                                </div>
+                                <div class="fee-rate-box">
+                                    <span class="fee-rate-label">Honorary Members</span>
+                                    <span class="fee-rate-val">₱300.00</span>
+                                </div>
+                                <div style="font-size:0.72rem; color:rgba(255,255,255,0.68); margin:0.4rem 0 0.85rem; line-height:1.35;">
+                                    <i class="fa-solid fa-id-card text-gold me-1"></i> Includes official ID &amp; full access to IECEP-LSC activities.
+                                </div>
+                            </div>
+                            <button type="button" onclick="document.getElementById('modal-document-upload-section').scrollIntoView({behavior:'smooth', block:'start'})" class="btn btn-primary" style="width:100%; padding:0.65rem 1rem; font-size:0.88rem; font-weight:700; border-radius:50px; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
+                                <i class="fa-solid fa-cloud-arrow-up"></i> Upload Documents Below
+                            </button>
+                        </div>
                     </div>
+                </div>
 
+                <div class="modal-section">
+                    <h4><i class="fas fa-file-arrow-up" style="color:#C49A00;margin-right:0.5rem;"></i>Upload Documents</h4>
                     <div id="modal-document-upload-section" style="display:none;">
                         <div class="form-grid">
                             <?php foreach ([
@@ -2664,8 +2654,6 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('modal-step1').classList.replace('active', 'completed') || document.getElementById('modal-step1').classList.add('completed');
         document.getElementById('modal-step2').classList.add('active');
         document.getElementById('modal-email-verification-step').style.display = 'none';
-        const toolkitPanel = document.getElementById('modal-toolkit-panel');
-        if (toolkitPanel) toolkitPanel.style.display = 'none';
         const formStep = document.getElementById('modal-application-form-step');
         formStep.style.display = 'block';
         formStep.classList.add('active');
