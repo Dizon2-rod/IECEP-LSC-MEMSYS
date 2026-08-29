@@ -19,6 +19,14 @@ $role = $user['role'] ?? 'member';
 if ($role === 'admin' || $role === 'super_admin') {
     header('Location: ' . PORTAL_URL . '/admin/dashboard.php');
     exit;
+} elseif ($role === 'school_officer' || $role === 'officer' || $role === 'school_admin') {
+    header('Location: ' . PORTAL_URL . '/school-officer/dashboard.php');
+    exit;
+} elseif ($role === 'member' || $role === 'student') {
+    if (file_exists(__DIR__ . '/member/dashboard.php')) {
+        header('Location: ' . PORTAL_URL . '/member/dashboard.php');
+        exit;
+    }
 }
 
 // Get role configuration

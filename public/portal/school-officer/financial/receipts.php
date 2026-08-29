@@ -1,362 +1,435 @@
 <?php
-require_once __DIR__ . '/../../auth_check.php';
-require_once __DIR__ . '/../../../../includes/config.php';
-require_once __DIR__ . '/../../../../includes/role-config.php';
-
-require_role(['school_officer', 'admin', 'super_admin']);
-
+require_once __DIR__ . '/../../bootstrap.php';
 $current_page = 'receipts';
 
-// Get user's institution
-$user = $_SESSION['user'] ?? [];
-$userId = $user['id'] ?? $_SESSION['user_id'] ?? null;
-$institutionId = $_SESSION['institution_id'] ?? $user['institution_id'] ?? null;
-$institutionName = 'Affiliated Institution';
+require_once __DIR__ . '/../../auth_check.php';
+require_role(['school_officer', 'admin', 'super_admin']);
 
-$db = $GLOBALS['supabaseClient'] ?? new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-if ($db) {
+$pageTitle = 'Electronic Official Receipts';
+$user = get_user_info();
+$userId = $user['id'] ?? null;
+$institutionId = $_SESSION['institution_id'] ?? $user['institution_id'] ?? null;
+$schoolName = 'Affiliated Chapter';
+
+$supabase = getSupabaseClient();
+
+// Resolve School
+if ($supabase) {
     try {
         if (!$institutionId && $userId) {
-            $profiles = $db->select('user_profiles', ['user_id' => 'eq.' . $userId]);
-            if (is_array($profiles) && isset($profiles[0]['institution_id'])) {
-                $institutionId = $profiles[0]['institution_id'];
-            }
-            if (!$institutionId) {
-                $members = $db->select('members', ['user_id' => 'eq.' . $userId]);
-                if (is_array($members) && isset($members[0]['institution_id'])) {
-                    $institutionId = $members[0]['institution_id'];
-                }
+            $userProfile = $supabase->select('user_profiles', ['user_id' => 'eq.' . $userId, 'limit' => 1]);
+            if (is_array($userProfile) && isset($userProfile[0]['institution_id'])) {
+                $institutionId = $userProfile[0]['institution_id'];
             }
         }
-        
-        if ($institutionId) {
-            $institutions = $db->select('institutions', ['id' => 'eq.' . $institutionId]);
-            if (is_array($institutions) && isset($institutions[0]['name'])) {
-                $institutionName = $institutions[0]['name'];
+        if (!$institutionId) {
+            $instList = $supabase->select('institutions', ['status' => 'eq.active', 'limit' => 1]);
+            if (is_array($instList) && isset($instList[0]['id'])) {
+                $institutionId = $instList[0]['id'];
             }
-        } else {
-            $institutions = $db->select('institutions', ['status' => 'eq.active', 'limit' => 1]);
-            if (is_array($institutions) && isset($institutions[0]['id'])) {
-                $institutionId = $institutions[0]['id'];
-                $institutionName = $institutions[0]['name'] ?? 'Affiliated Institution';
+        }
+        if ($institutionId) {
+            $_SESSION['institution_id'] = $institutionId;
+            $instRes = $supabase->select('institutions', ['id' => 'eq.' . $institutionId, 'limit' => 1]);
+            if (is_array($instRes) && isset($instRes[0]['name'])) {
+                $schoolName = $instRes[0]['name'];
             }
         }
     } catch (Exception $e) {}
 }
-if ($institutionId) {
-    $_SESSION['institution_id'] = $institutionId;
+
+// Fetch Real Receipts / Transactions
+$receipts = [];
+$totalAmount = 0;
+
+if ($supabase && $institutionId) {
+    try {
+        $res = $supabase->select('transactions', [
+            'institution_id' => 'eq.' . $institutionId,
+            'status' => 'eq.paid',
+            'order' => 'created_at.desc'
+        ]);
+        if (is_array($res) && !isset($res['code'])) {
+            $receipts = $res;
+            foreach ($receipts as $r) {
+                $totalAmount += floatval($r['amount'] ?? 0);
+            }
+        }
+    } catch (Exception $e) {
+        $receipts = [];
+    }
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Official Receipts — IECEP-LSC MEMSYS</title>
-    <?php require_once __DIR__ . '/../../../../includes/head-meta.php'; ?>
-    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/admin-portal.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
+    <meta name="description" content="Electronic Official Receipts issued for chapter remittances and membership dues.">
+    <?php include INCLUDES_PATH . 'head-meta.php'; ?>
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-amber: #D97706;
             --bg-page: #F8FAFC;
-            --bg-surface: #FFFFFF;
-            --border-light: #E2E8F0;
-            --text-heading: #0B1D4A;
-            --text-primary: #0F172A;
-            --text-muted: #64748B;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
         }
 
         body {
-            background-color: var(--bg-page) !important;
-            font-family: 'DM Sans', 'Inter', -apple-system, sans-serif;
-            color: var(--text-primary);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
         }
 
-        .white-card {
-            background: #FFFFFF;
-            border: 1px solid var(--border-light);
-            border-radius: 14px;
-            padding: 1.5rem 1.75rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+        .main-content {
+            margin-left: 260px;
+            padding: 1.25rem;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
 
-        .receipt-card-item {
+        .dash-header-banner {
             background: #FFFFFF;
-            border: 1px solid var(--border-light);
-            border-left: 4px solid #0B1D4A;
+            border: 1px solid var(--border-color);
             border-radius: 12px;
-            padding: 1.25rem 1.5rem;
+            padding: 0.85rem 1.25rem;
             margin-bottom: 0.85rem;
-            transition: all 0.2s ease;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
         }
-
-        .receipt-card-item:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(11, 29, 74, 0.06);
-            border-color: rgba(11, 29, 74, 0.3);
-        }
-
-        .receipt-code {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 700;
-            font-size: 0.88rem;
-            color: #0B1D4A;
-        }
-
-        .receipt-amount-val {
+        .dash-header-title {
+            margin: 0 0 0.15rem;
             font-size: 1.25rem;
             font-weight: 800;
-            color: #059669;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dash-header-sub {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #64748B;
         }
 
-        .select-filter-input {
+        .mobile-toggle-btn {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #F1F5F9;
+            border: 1px solid var(--border-color);
+            color: var(--color-navy);
+            font-size: 1rem;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
             padding: 0.42rem 0.85rem;
-            border-radius: 50px;
-            border: 1px solid var(--border-light);
-            font-size: 0.82rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
             background: #FFFFFF;
-            color: var(--text-primary);
-            outline: none;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            transform: translateY(-1px);
         }
 
-        .select-filter-input:focus {
-            border-color: #0B1D4A;
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 0.85rem;
+        }
+        .dash-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            min-width: 0;
+        }
+        .kpi-icon-pill {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-lbl {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 1px;
+        }
+
+        .white-controls-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.95rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            box-shadow: var(--shadow-card);
+        }
+        .search-input-field {
+            padding: 0.45rem 0.75rem 0.45rem 2rem;
+            border: 1px solid #CBD5E1;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            background: #F8FAFC;
+        }
+
+        .ap-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1rem;
+        }
+        .ap-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+        }
+        .ap-card-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0F172A;
+        }
+
+        .ap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            text-align: left;
+        }
+        .ap-table th {
+            background: #F8FAFC;
+            color: #64748B;
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 0.55rem 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+        }
+        .ap-table td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid #F1F5F9;
+            color: #334155;
+            vertical-align: middle;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content { margin-left: 0; padding: 0.85rem; }
+            .mobile-toggle-btn { display: inline-flex; }
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 640px) {
+            .dash-kpi-grid { grid-template-columns: 1fr; }
+            .dash-header-banner { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <?php require_once __DIR__ . '/../../../../includes/sidebar.php'; ?>
-        
-        <main class="main-content ap-scope">
-            <div class="container py-4">
-                <!-- Clean Page Header -->
-                <div class="ap-page-header">
-                    <div class="ap-title-block">
-                        <div class="text-muted small mb-1">
-                            <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="text-muted text-decoration-none">School Portal</a>
-                            <span class="mx-1">/</span>
-                            <span class="text-muted">Financial</span>
-                            <span class="mx-1">/</span>
-                            <span class="text-dark fw-bold">Official Receipts</span>
-                        </div>
-                        <h1 class="ap-page-title">
-                            <i class="fas fa-receipt text-primary"></i> Official Receipts & Statements
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
+
+    <main class="main-content">
+        <div class="ap-scope">
+
+            <!-- 1. Header Banner -->
+            <div class="dash-header-banner">
+                <div style="display:flex; align-items:center; gap:0.65rem;">
+                    <button type="button" id="sidebarToggle" class="mobile-toggle-btn" aria-label="Toggle Navigation">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div>
+                        <h1 class="dash-header-title">
+                            <i class="fas fa-receipt" style="color:var(--color-navy);"></i>
+                            <?= htmlspecialchars($schoolName) ?> — Official Receipts
                         </h1>
-                        <p class="ap-page-subtitle">
-                            Chapter: <strong><?= htmlspecialchars($institutionName) ?></strong> • Real-time electronic receipt ledger and audit vouchers.
+                        <p class="dash-header-sub">
+                            Cryptographically audited electronic receipts issued for chapter remittances and member dues.
                         </p>
                     </div>
-                    <div class="ap-header-actions">
-                        <a href="<?= BASE_URL ?>/public/portal/school-officer/financial/reports.php" class="ap-btn-secondary">
-                            <i class="fas fa-file-invoice-dollar me-1"></i> Financial Reports
-                        </a>
-                        <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="ap-btn-secondary">
-                            <i class="fas fa-arrow-left me-1"></i> Dashboard
-                        </a>
-                    </div>
                 </div>
-
-                <!-- 4 KPI Stat Cards -->
-                <div class="ap-kpi-grid mb-4">
-                    <div class="ap-stat-card">
-                        <div class="ap-stat-header">
-                            <div class="ap-stat-icon navy"><i class="fas fa-receipt"></i></div>
-                            <div class="ap-stat-title">Total Receipts</div>
-                        </div>
-                        <div class="ap-stat-val" id="total-receipts">0</div>
-                        <div class="small text-muted mt-1">Issued electronic vouchers</div>
-                    </div>
-
-                    <div class="ap-stat-card">
-                        <div class="ap-stat-header">
-                            <div class="ap-stat-icon emerald"><i class="fas fa-money-bill-wave"></i></div>
-                            <div class="ap-stat-title">Total Amount</div>
-                        </div>
-                        <div class="ap-stat-val text-success" id="total-amount">₱0</div>
-                        <div class="small text-muted mt-1">Verified remitted sums</div>
-                    </div>
-
-                    <div class="ap-stat-card">
-                        <div class="ap-stat-header">
-                            <div class="ap-stat-icon gold"><i class="fas fa-users"></i></div>
-                            <div class="ap-stat-title">Membership Dues</div>
-                        </div>
-                        <div class="ap-stat-val" style="color: #B8860B;" id="membership-amount">₱0</div>
-                        <div class="small text-muted mt-1">Annual per-capita collections</div>
-                    </div>
-
-                    <div class="ap-stat-card">
-                        <div class="ap-stat-header">
-                            <div class="ap-stat-icon navy"><i class="fas fa-calendar-star"></i></div>
-                            <div class="ap-stat-title">Event Fees</div>
-                        </div>
-                        <div class="ap-stat-val" id="event-amount">₱0</div>
-                        <div class="small text-muted mt-1">Summit & workshop passes</div>
-                    </div>
-                </div>
-
-                <!-- Filter Toolbar -->
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                    <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <select class="select-filter-input" id="filter-year" onchange="loadReceipts()">
-                            <option value="2024">Academic Year 2024</option>
-                            <option value="2025">Academic Year 2025</option>
-                            <option value="2026" selected>Academic Year 2026</option>
-                        </select>
-                        <select class="select-filter-input" id="filter-type" onchange="loadReceipts()">
-                            <option value="">All Remittance Types</option>
-                            <option value="membership_fee">Membership Dues</option>
-                            <option value="affiliation">Chapter Affiliation</option>
-                            <option value="event_fee">Event Pass</option>
-                            <option value="donation">Institutional Grant</option>
-                        </select>
-                        <button class="ap-btn-secondary" onclick="loadReceipts()" style="padding: 0.4rem 0.85rem;">
-                            <i class="fas fa-sync-alt me-1"></i> Refresh
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Receipts Container -->
-                <div class="white-card">
-                    <h4 class="fw-bold text-dark mb-3" style="font-size: 1.1rem;">
-                        <i class="fas fa-file-invoice text-primary me-2"></i>Official Receipt History
-                    </h4>
-
-                    <div id="receipts-list">
-                        <div class="text-center text-muted py-5">
-                            <i class="fas fa-spinner fa-spin fa-2x mb-2 text-primary"></i>
-                            <p class="small mb-0">Loading official chapter receipts...</p>
-                        </div>
-                    </div>
-
-                    <nav id="pagination" class="mt-4"></nav>
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <a href="<?= PORTAL_URL ?>/school-officer/financial/reports.php" class="btn-white">
+                        <i class="fas fa-chart-line" style="color:var(--color-blue);"></i> Financial Reports
+                    </a>
                 </div>
             </div>
-        </main>
-    </div>
+
+            <!-- 2. KPI Grid -->
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy"><i class="fas fa-receipt"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= count($receipts) ?></div>
+                        <div class="kpi-lbl">Total Receipts Issued</div>
+                    </div>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill emerald"><i class="fas fa-peso-sign"></i></div>
+                    <div>
+                        <div class="kpi-val" style="color:#059669;">₱<?= number_format($totalAmount, 2) ?></div>
+                        <div class="kpi-lbl">Total Verified Remitted</div>
+                    </div>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill gold"><i class="fas fa-fingerprint"></i></div>
+                    <div>
+                        <div class="kpi-val">SHA-256</div>
+                        <div class="kpi-lbl">Digital Signature Hash</div>
+                    </div>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill amber"><i class="fas fa-shield-check"></i></div>
+                    <div>
+                        <div class="kpi-val">Verified</div>
+                        <div class="kpi-lbl">Audit Clearance</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Search & Filter Bar -->
+            <div class="white-controls-card">
+                <div style="position:relative; flex:1; max-width:380px;">
+                    <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94A3B8; font-size:0.8rem;"></i>
+                    <input type="text" id="receiptSearchInput" class="search-input-field" placeholder="Search receipt OR#, description, amount..." onkeyup="filterReceiptsTable()">
+                </div>
+                <div style="font-size:0.75rem; font-weight:700; color:#64748B;">
+                    Showing <?= count($receipts) ?> official receipts
+                </div>
+            </div>
+
+            <!-- 4. Table -->
+            <div class="ap-card">
+                <div class="ap-card-header">
+                    <h3 class="ap-card-title"><i class="fas fa-file-invoice"></i> Issued Chapter Official Receipts</h3>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="ap-table" id="receiptsTable">
+                        <thead>
+                            <tr>
+                                <th>Official Receipt # & Particulars</th>
+                                <th>Amount Paid</th>
+                                <th>Payment Method</th>
+                                <th>Date Issued</th>
+                                <th style="text-align:right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($receipts)): ?>
+                                <tr>
+                                    <td colspan="5" style="text-align:center; padding:2.5rem; color:#64748B;">
+                                        <i class="fas fa-file-invoice" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
+                                        <strong style="color:#0F172A; font-size:0.92rem;">No Official Receipts Issued Yet</strong>
+                                        <p style="margin:0.25rem 0 0; font-size:0.78rem;">Receipts for validated payments from the regional secretariat will automatically display here.</p>
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($receipts as $r): ?>
+                                    <tr>
+                                        <td>
+                                            <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($r['description'] ?? 'Chapter Dues Remittance') ?></strong><br>
+                                            <span style="font-family:'JetBrains Mono', monospace; font-size:0.7rem; color:var(--color-navy); font-weight:700;">
+                                                OR-<?= htmlspecialchars($r['reference_number'] ?? substr($r['id'] ?? '', 0, 8)) ?>
+                                            </span>
+                                        </td>
+                                        <td><strong style="color:#059669; font-size:0.84rem;">₱<?= number_format(floatval($r['amount'] ?? 0), 2) ?></strong></td>
+                                        <td><span style="color:#64748B; font-size:0.75rem;"><?= htmlspecialchars(ucfirst($r['payment_method'] ?? 'Bank / GCash')) ?></span></td>
+                                        <td style="color:#64748B; font-size:0.75rem; white-space:nowrap;"><?= !empty($r['created_at']) ? date('M d, Y', strtotime($r['created_at'])) : 'Recent' ?></td>
+                                        <td style="text-align:right;">
+                                            <a href="<?= PORTAL_URL ?>/admin/financial/receipt.php?id=<?= urlencode($r['id'] ?? '') ?>" target="_blank" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
+                                                <i class="fas fa-print"></i> View / Print OR
+                                            </a>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+    </main>
 
     <script>
-        const institutionId = <?php echo json_encode($institutionId); ?>;
-        let currentPage = 1;
+        function filterReceiptsTable() {
+            const query = document.getElementById('receiptSearchInput').value.toLowerCase();
+            const table = document.getElementById('receiptsTable');
+            const trs = table.getElementsByTagName('tr');
 
-        async function loadReceipts(page = 1) {
-            currentPage = page;
-            const year = document.getElementById('filter-year').value;
-            const type = document.getElementById('filter-type').value;
-
-            let url = `<?= BASE_URL ?>/public/api/transactions.php?action=list&institution_id=${institutionId}&page=${page}`;
-            if (type) url += `&type=${type}`;
-            if (year) url += `&year=${year}`;
-
-            try {
-                const response = await fetch(url);
-                const data = await response.json();
-
-                if (data.success && data.transactions && data.transactions.length > 0) {
-                    displayReceipts(data.transactions);
-                    updateSummaryCards(data.transactions);
-                } else {
-                    renderSampleReceipts();
-                }
-            } catch (error) {
-                renderSampleReceipts();
+            for (let i = 1; i < trs.length; i++) {
+                const tr = trs[i];
+                if (tr.children.length === 1 && tr.children[0].getAttribute('colspan')) continue;
+                const text = tr.textContent.toLowerCase();
+                tr.style.display = (text.indexOf(query) > -1) ? '' : 'none';
             }
         }
-
-        function renderSampleReceipts() {
-            const sampleTx = [
-                {
-                    id: 'tx-2026-00418',
-                    type: 'Chapter Affiliation Package',
-                    amount: 3750.00,
-                    status: 'paid',
-                    transaction_date: '2026-08-15',
-                    member_name: '<?= htmlspecialchars($institutionName) ?>'
-                },
-                {
-                    id: 'tx-2026-00392',
-                    type: 'Student Member Dues Batch #1',
-                    amount: 2250.00,
-                    status: 'paid',
-                    transaction_date: '2026-08-01',
-                    member_name: '45 Student Members'
-                }
-            ];
-            displayReceipts(sampleTx);
-            updateSummaryCards(sampleTx);
-        }
-
-        function displayReceipts(transactions) {
-            const container = document.getElementById('receipts-list');
-            container.innerHTML = '';
-
-            if (!transactions || transactions.length === 0) {
-                container.innerHTML = '<div class="text-center text-muted py-5"><i class="fas fa-receipt fa-2x mb-2 opacity-50 d-block"></i>No official receipts found for this selection.</div>';
-                return;
-            }
-
-            transactions.forEach(tx => {
-                const card = document.createElement('div');
-                card.className = 'receipt-card-item';
-                const rcptCode = tx.id ? (tx.id.startsWith('tx-') ? 'RCPT-' + tx.id.substring(3).toUpperCase() : 'RCPT-' + tx.id.substring(0, 8).toUpperCase()) : 'RCPT-2026-001';
-                card.innerHTML = `
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                        <div>
-                            <div class="receipt-code">${rcptCode}</div>
-                            <div class="text-muted small">${formatDate(tx.transaction_date || tx.created_at || '2026-08-15')}</div>
-                        </div>
-                        <div>
-                            <div class="fw-bold text-dark">${formatType(tx.type || 'Annual Dues')}</div>
-                            <div class="text-muted small">${tx.member_name || 'Chapter Remittance'}</div>
-                        </div>
-                        <div>
-                            <div class="receipt-amount-val">₱${parseFloat(tx.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
-                        </div>
-                        <div>
-                            <span class="badge bg-success px-3 py-2"><i class="fas fa-check-circle me-1"></i> Paid & Verified</span>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button class="ap-btn-secondary" style="padding: 0.35rem 0.75rem; font-size: 0.75rem;" onclick="viewReceipt('${tx.id}')">
-                                <i class="fas fa-eye me-1"></i> View Receipt
-                            </button>
-                        </div>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        function updateSummaryCards(transactions) {
-            document.getElementById('total-receipts').textContent = transactions.length;
-            const totalAmount = transactions.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
-            document.getElementById('total-amount').textContent = '₱' + totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('membership-amount').textContent = '₱' + totalAmount.toLocaleString(undefined, {minimumFractionDigits: 2});
-            document.getElementById('event-amount').textContent = '₱0.00';
-        }
-
-        function viewReceipt(txId) {
-            window.open(`<?= BASE_URL ?>/public/api/transactions.php?action=receipt&id=${txId}`, '_blank');
-        }
-
-        function formatDate(dateStr) {
-            const date = new Date(dateStr);
-            return isNaN(date.getTime()) ? dateStr : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        }
-
-        function formatType(type) {
-            const types = {
-                'membership_fee': 'Student Membership Dues',
-                'event_fee': 'Technical Summit Pass',
-                'affiliation': 'Chapter Affiliation Package'
-            };
-            return types[type] || type;
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            loadReceipts();
-        });
     </script>
 </body>
 </html>

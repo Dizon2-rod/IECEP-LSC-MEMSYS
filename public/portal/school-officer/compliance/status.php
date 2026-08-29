@@ -1,278 +1,432 @@
 <?php
-if (!isset($current_page)) { $current_page = 'compliance'; }
 require_once __DIR__ . '/../../bootstrap.php';
-require_once __DIR__ . '/../../auth_check.php';
-require_once __DIR__ . '/../../../../includes/config.php';
-require_once __DIR__ . '/../../../../includes/role-config.php';
+$current_page = 'compliance';
 
+require_once __DIR__ . '/../../auth_check.php';
 require_role(['school_officer', 'admin', 'super_admin']);
 
-$user = $_SESSION['user'] ?? [];
-$userId = $user['id'] ?? $_SESSION['user_id'] ?? null;
+$pageTitle = 'Chapter Compliance & Accreditation';
+$user = get_user_info();
+$userId = $user['id'] ?? null;
 $institutionId = $_SESSION['institution_id'] ?? $user['institution_id'] ?? null;
-$schoolName = 'Affiliated School Chapter';
+$schoolName = 'Affiliated Chapter';
 
-$db = $GLOBALS['supabaseClient'] ?? new \App\Lib\SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-if ($db && $institutionId) {
+$supabase = getSupabaseClient();
+
+// Resolve School
+if ($supabase) {
     try {
-        $institutions = $db->select('institutions', ['id' => 'eq.' . $institutionId]);
-        if (is_array($institutions) && isset($institutions[0]['name'])) {
-            $schoolName = $institutions[0]['name'];
+        if (!$institutionId && $userId) {
+            $userProfile = $supabase->select('user_profiles', ['user_id' => 'eq.' . $userId, 'limit' => 1]);
+            if (is_array($userProfile) && isset($userProfile[0]['institution_id'])) {
+                $institutionId = $userProfile[0]['institution_id'];
+            }
+        }
+        if (!$institutionId) {
+            $instList = $supabase->select('institutions', ['status' => 'eq.active', 'limit' => 1]);
+            if (is_array($instList) && isset($instList[0]['id'])) {
+                $institutionId = $instList[0]['id'];
+            }
+        }
+        if ($institutionId) {
+            $_SESSION['institution_id'] = $institutionId;
+            $instRes = $supabase->select('institutions', ['id' => 'eq.' . $institutionId, 'limit' => 1]);
+            if (is_array($instRes) && isset($instRes[0]['name'])) {
+                $schoolName = $instRes[0]['name'];
+            }
         }
     } catch (Exception $e) {}
 }
+
+// Fetch real metrics
+$memberCount = 0;
+$totalPaid = 0;
+if ($supabase && $institutionId) {
+    try {
+        $mems = $supabase->select('members', ['institution_id' => 'eq.' . $institutionId]);
+        if (is_array($mems)) $memberCount = count($mems);
+        
+        $txs = $supabase->select('transactions', [
+            'institution_id' => 'eq.' . $institutionId,
+            'status' => 'eq.paid'
+        ]);
+        if (is_array($txs)) {
+            foreach ($txs as $t) $totalPaid += floatval($t['amount'] ?? 0);
+        }
+    } catch (Exception $e) {}
+}
+
+$hasRoster = ($memberCount > 0);
+$hasPaid = ($totalPaid > 0);
+$isCompliant = $hasRoster && $hasPaid;
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chapter Compliance Status — IECEP-LSC MEMSYS</title>
-    <?php require_once __DIR__ . '/../../../../includes/head-meta.php'; ?>
-    <link rel="stylesheet" href="<?= BASE_URL ?>/public/assets/css/admin-portal.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
+    <meta name="description" content="Chapter accreditation, documentary prerequisites, and compliance scorecard.">
+    <?php include INCLUDES_PATH . 'head-meta.php'; ?>
+    <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-amber: #D97706;
             --bg-page: #F8FAFC;
-            --bg-surface: #FFFFFF;
-            --border-light: #E2E8F0;
-            --text-heading: #0B1D4A;
-            --text-primary: #0F172A;
-            --text-muted: #64748B;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
         }
 
         body {
-            background-color: var(--bg-page) !important;
-            font-family: 'DM Sans', 'Inter', -apple-system, sans-serif;
-            color: var(--text-primary);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
         }
 
-        .compliance-hero-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.45rem;
-            padding: 0.45rem 1rem;
-            border-radius: 50px;
-            background: rgba(5, 150, 105, 0.1);
-            color: #059669;
-            font-weight: 700;
-            font-size: 0.85rem;
-            border: 1px solid rgba(5, 150, 105, 0.25);
+        .main-content {
+            margin-left: 260px;
+            padding: 1.25rem;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
 
-        .checklist-card {
+        .dash-header-banner {
             background: #FFFFFF;
-            border: 1px solid var(--border-light);
-            border-radius: 14px;
-            padding: 1.5rem 1.75rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
-        }
-
-        .milestone-item {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 0.85rem;
             display: flex;
-            align-items: flex-start;
-            gap: 1rem;
-            padding: 1rem 0;
-            border-bottom: 1px solid var(--border-light);
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
         }
-
-        .milestone-item:last-child {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-
-        .milestone-icon {
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
+        .dash-header-title {
+            margin: 0 0 0.15rem;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
             display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dash-header-sub {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #64748B;
+        }
+
+        .mobile-toggle-btn {
+            display: none;
             align-items: center;
             justify-content: center;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #F1F5F9;
+            border: 1px solid var(--border-color);
+            color: var(--color-navy);
             font-size: 1rem;
+            cursor: pointer;
             flex-shrink: 0;
         }
 
-        .milestone-icon.completed {
-            background: rgba(5, 150, 105, 0.12);
-            color: #059669;
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            transform: translateY(-1px);
         }
 
-        .milestone-icon.in-progress {
-            background: rgba(217, 119, 6, 0.12);
-            color: #D97706;
+        .btn-primary-navy {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.95rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-decoration: none;
+            background: var(--color-navy);
+            border: 1px solid var(--color-navy);
+            color: #FFFFFF !important;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(11, 29, 74, 0.15);
+            transition: all 0.18s ease;
+        }
+        .btn-primary-navy:hover {
+            background: var(--color-navy-hover);
+            transform: translateY(-1px);
+            color: #FDE047 !important;
+        }
+
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 0.85rem;
+        }
+        .dash-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            min-width: 0;
+        }
+        .kpi-icon-pill {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-lbl {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 1px;
+        }
+
+        .ap-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1rem;
+        }
+        .ap-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+        }
+        .ap-card-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0F172A;
+        }
+
+        .compliance-step-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            gap: 1rem;
+        }
+        .compliance-step-row:last-child {
+            border-bottom: none;
+        }
+
+        @media (max-width: 1024px) {
+            .main-content { margin-left: 0; padding: 0.85rem; }
+            .mobile-toggle-btn { display: inline-flex; }
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 640px) {
+            .dash-kpi-grid { grid-template-columns: 1fr; }
+            .dash-header-banner { flex-direction: column; align-items: flex-start; }
+            .compliance-step-row { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <?php require_once __DIR__ . '/../../../../includes/sidebar.php'; ?>
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
-        <main class="main-content ap-scope">
-            <div class="container py-4">
-                <!-- Clean Page Header -->
-                <div class="ap-page-header">
-                    <div class="ap-title-block">
-                        <div class="text-muted small mb-1">
-                            <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="text-muted text-decoration-none">School Portal</a>
-                            <span class="mx-1">/</span>
-                            <span class="text-dark fw-bold">Compliance</span>
-                        </div>
-                        <h1 class="ap-page-title">
-                            <i class="fas fa-shield-alt text-success"></i> Chapter Accreditation & Compliance
+    <main class="main-content">
+        <div class="ap-scope">
+
+            <!-- 1. Header Banner -->
+            <div class="dash-header-banner">
+                <div style="display:flex; align-items:center; gap:0.65rem;">
+                    <button type="button" id="sidebarToggle" class="mobile-toggle-btn" aria-label="Toggle Navigation">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div>
+                        <h1 class="dash-header-title">
+                            <i class="fas fa-shield-halved" style="color:var(--color-navy);"></i>
+                            <?= htmlspecialchars($schoolName) ?> — Compliance Scorecard
                         </h1>
-                        <p class="ap-page-subtitle">
-                            Institutional Standing: <strong><?= htmlspecialchars($schoolName) ?></strong> • AY <?= date('Y') ?>–<?= date('Y') + 1 ?>
+                        <p class="dash-header-sub">
+                            Academic Year 2026–2027 chapter accreditation status, requirements checklist, and clearance proofs.
                         </p>
                     </div>
-                    <div class="ap-header-actions">
-                        <span class="compliance-hero-badge">
-                            <i class="fas fa-check-circle"></i> Chapter in Good Standing
-                        </span>
-                        <a href="<?= BASE_URL ?>/public/portal/school-officer/dashboard.php" class="ap-btn-secondary">
-                            <i class="fas fa-arrow-left me-1"></i> Dashboard
-                        </a>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <a href="<?= PORTAL_URL ?>/school-officer/documents/list.php" class="btn-white">
+                        <i class="fas fa-file-arrow-up" style="color:var(--color-blue);"></i> Submit Documents
+                    </a>
+                    <a href="<?= PORTAL_URL ?>/school-officer/members/upload.php" class="btn-primary-navy">
+                        <i class="fas fa-cloud-arrow-up" style="color:#FDE047;"></i> Update Roster
+                    </a>
+                </div>
+            </div>
+
+            <!-- 2. KPI Grid -->
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill <?= $isCompliant ? 'emerald' : 'amber' ?>">
+                        <i class="fas fa-certificate"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-val" style="color:<?= $isCompliant ? '#059669' : '#D97706' ?>;">
+                            <?= $isCompliant ? 'Compliant' : 'In Progress' ?>
+                        </div>
+                        <div class="kpi-lbl">Standing Status</div>
                     </div>
                 </div>
 
-                <!-- 3 KPI Stat Cards -->
-                <div class="ap-kpi-grid-3 mb-4">
-                    <div class="ap-stat-card">
-                        <div class="ap-stat-header">
-                            <div class="ap-stat-icon emerald"><i class="fas fa-chart-pie"></i></div>
-                            <div class="ap-stat-title">Overall Compliance</div>
-                        </div>
-                        <div class="ap-stat-val text-success">100%</div>
-                        <div class="small text-muted mt-1">Full chapter accreditation</div>
-                    </div>
-
-                    <div class="ap-stat-card">
-                        <div class="ap-stat-header">
-                            <div class="ap-stat-icon navy"><i class="fas fa-user-check"></i></div>
-                            <div class="ap-stat-title">Member Engagement</div>
-                        </div>
-                        <div class="ap-stat-val">68.5%</div>
-                        <div class="small text-muted mt-1">Accreditation threshold: 40.0%</div>
-                    </div>
-
-                    <div class="ap-stat-card">
-                        <div class="ap-stat-header">
-                            <div class="ap-stat-icon gold"><i class="fas fa-calendar-check"></i></div>
-                            <div class="ap-stat-title">Hosted Activities</div>
-                        </div>
-                        <div class="ap-stat-val" style="color: #B8860B;">3 Events</div>
-                        <div class="small text-muted mt-1">Minimum requirement: 1 event</div>
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy"><i class="fas fa-users"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $memberCount ?></div>
+                        <div class="kpi-lbl">Roster Members Enrolled</div>
                     </div>
                 </div>
 
-                <!-- Accreditation Checklist Table Card -->
-                <div class="checklist-card mb-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h4 class="fw-bold text-dark mb-0" style="font-size: 1.1rem;">
-                            <i class="fas fa-tasks text-primary me-2"></i>Accreditation Matrix & Requirements
-                        </h4>
-                        <span class="badge bg-light text-muted border">IECEP National CBL Art. IV</span>
-                    </div>
-
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle mb-0">
-                            <thead>
-                                <tr style="background: #F8FAFC; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;">
-                                    <th class="py-3">Requirement & Metric</th>
-                                    <th class="py-3">Threshold</th>
-                                    <th class="py-3">Current Assessment</th>
-                                    <th class="py-3 text-center">Standing</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        <div class="fw-bold text-dark">Member Participation Rate</div>
-                                        <small class="text-muted">Minimum active engagement in regional conferences, seminars, and technical summits</small>
-                                    </td>
-                                    <td class="fw-semibold">40.00%</td>
-                                    <td class="fw-bold text-success">68.50%</td>
-                                    <td class="text-center">
-                                        <span class="badge bg-success px-3 py-2">
-                                            <i class="fas fa-check me-1"></i> Passed
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="fw-bold text-dark">Required Chapter-Hosted Events</div>
-                                        <small class="text-muted">Minimum campus-level academic, career orientation, or technical workshops per AY</small>
-                                    </td>
-                                    <td class="fw-semibold">1 Event</td>
-                                    <td class="fw-bold text-dark">3 Events Hosted</td>
-                                    <td class="text-center">
-                                        <span class="badge bg-success px-3 py-2">
-                                            <i class="fas fa-check me-1"></i> Passed
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="fw-bold text-dark">Affiliation Document Endorsement Kit</div>
-                                        <small class="text-muted">Dean Endorsement, Letter of Intent, Constitution & Bylaws, Officers Directory with CVs</small>
-                                    </td>
-                                    <td class="fw-semibold">100% Submission</td>
-                                    <td class="fw-bold text-dark">100% Verified</td>
-                                    <td class="text-center">
-                                        <span class="badge bg-success px-3 py-2">
-                                            <i class="fas fa-shield-alt me-1"></i> Verified
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <div class="fw-bold text-dark">Annual Institutional Dues Remittance</div>
-                                        <small class="text-muted">Chapter affiliation and student member operational per-capita dues settlement</small>
-                                    </td>
-                                    <td class="fw-semibold">Full Settlement</td>
-                                    <td class="fw-bold text-success">Settled & Audited</td>
-                                    <td class="text-center">
-                                        <span class="badge bg-success px-3 py-2">
-                                            <i class="fas fa-receipt me-1"></i> Remitted
-                                        </span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill gold"><i class="fas fa-peso-sign"></i></div>
+                    <div>
+                        <div class="kpi-val" style="color:#B45309;">₱<?= number_format($totalPaid, 2) ?></div>
+                        <div class="kpi-lbl">Dues Remitted to Regional</div>
                     </div>
                 </div>
 
-                <!-- Accreditation Milestones Card -->
-                <div class="checklist-card">
-                    <h4 class="fw-bold text-dark mb-3" style="font-size: 1.1rem;">
-                        <i class="fas fa-flag-checkered text-warning me-2"></i>Accreditation Timeline & Milestones
-                    </h4>
-
-                    <div class="milestone-item">
-                        <div class="milestone-icon completed"><i class="fas fa-check"></i></div>
-                        <div>
-                            <div class="fw-bold text-dark">Official Endorsement & Constitution Approved</div>
-                            <div class="text-muted small">Dean endorsement letter and approved chapter bylaws indexed in regional archives.</div>
-                        </div>
-                    </div>
-
-                    <div class="milestone-item">
-                        <div class="milestone-icon completed"><i class="fas fa-check"></i></div>
-                        <div>
-                            <div class="fw-bold text-dark">Student Member Directory Synchronized</div>
-                            <div class="text-muted small">1st to 4th year student roster validated and active in the central cryptographic registry.</div>
-                        </div>
-                    </div>
-
-                    <div class="milestone-item">
-                        <div class="milestone-icon completed"><i class="fas fa-check"></i></div>
-                        <div>
-                            <div class="fw-bold text-dark">Digital IDs Generated & Distributed</div>
-                            <div class="text-muted small">Real-time dynamic membership credentials generated with QR code verification.</div>
-                        </div>
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill amber"><i class="fas fa-calendar-alt"></i></div>
+                    <div>
+                        <div class="kpi-val">AY 2026</div>
+                        <div class="kpi-lbl">Active Term</div>
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
+
+            <!-- 3. Compliance Milestone Checklist -->
+            <div class="ap-card">
+                <div class="ap-card-header">
+                    <h3 class="ap-card-title"><i class="fas fa-tasks"></i> Chapter Accreditation Prerequisites (AY 2026–2027)</h3>
+                </div>
+                <div>
+                    
+                    <div class="compliance-step-row">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <div class="kpi-icon-pill emerald"><i class="fas fa-check"></i></div>
+                            <div>
+                                <strong style="font-size:0.84rem; color:#0F172A; display:block;">1. Institutional Chapter Affiliation Recognition</strong>
+                                <span style="font-size:0.74rem; color:#64748B;">Official Letter of Intent (LOI) and Dean / Department Endorsement Letter on file.</span>
+                            </div>
+                        </div>
+                        <span class="ap-pill active"><span class="ap-pill-dot"></span> Completed</span>
+                    </div>
+
+                    <div class="compliance-step-row">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <div class="kpi-icon-pill <?= $hasRoster ? 'emerald' : 'amber' ?>">
+                                <i class="fas <?= $hasRoster ? 'fa-check' : 'fa-clock' ?>"></i>
+                            </div>
+                            <div>
+                                <strong style="font-size:0.84rem; color:#0F172A; display:block;">2. Official Student Membership Masterlist</strong>
+                                <span style="font-size:0.74rem; color:#64748B;">Batch submission of enrolled ECE student members (Current: <?= $memberCount ?> registered).</span>
+                            </div>
+                        </div>
+                        <?php if ($hasRoster): ?>
+                            <span class="ap-pill active"><span class="ap-pill-dot"></span> Submitted</span>
+                        <?php else: ?>
+                            <a href="<?= PORTAL_URL ?>/school-officer/members/upload.php" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.6rem;">Upload Roster</a>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="compliance-step-row">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <div class="kpi-icon-pill <?= $hasPaid ? 'emerald' : 'amber' ?>">
+                                <i class="fas <?= $hasPaid ? 'fa-check' : 'fa-clock' ?>"></i>
+                            </div>
+                            <div>
+                                <strong style="font-size:0.84rem; color:#0F172A; display:block;">3. Per-Capita Chapter Dues Remittance</strong>
+                                <span style="font-size:0.74rem; color:#64748B;">Regional per-member share (₱50.00/student) and official payment verification.</span>
+                            </div>
+                        </div>
+                        <?php if ($hasPaid): ?>
+                            <span class="ap-pill active"><span class="ap-pill-dot"></span> Remitted</span>
+                        <?php else: ?>
+                            <a href="<?= PORTAL_URL ?>/school-officer/financial/reports.php" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.6rem;">View Ledger</a>
+                        <?php endif; ?>
+                    </div>
+
+                    <div class="compliance-step-row">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <div class="kpi-icon-pill emerald"><i class="fas fa-check"></i></div>
+                            <div>
+                                <strong style="font-size:0.84rem; color:#0F172A; display:block;">4. Chapter Constitution & By-Laws (CBL)</strong>
+                                <span style="font-size:0.74rem; color:#64748B;">Adopted chapter bylaws aligned with IECEP National and Laguna Section policies.</span>
+                            </div>
+                        </div>
+                        <span class="ap-pill active"><span class="ap-pill-dot"></span> Verified</span>
+                    </div>
+
+                    <div class="compliance-step-row">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <div class="kpi-icon-pill gold"><i class="fas fa-certificate"></i></div>
+                            <div>
+                                <strong style="font-size:0.84rem; color:#0F172A; display:block;">5. Regional Digital Certificate of Good Standing</strong>
+                                <span style="font-size:0.74rem; color:#64748B;">Cryptographically verified accreditation token issued by the Executive Board.</span>
+                            </div>
+                        </div>
+                        <span class="ap-pill blue">Issued for AY 2026</span>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
 </body>
 </html>
