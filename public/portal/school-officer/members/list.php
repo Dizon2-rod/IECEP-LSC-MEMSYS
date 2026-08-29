@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if (!empty($fullName) && !empty($email) && $institutionId) {
             $timestamp = date('c');
             $memberId = bin2hex(random_bytes(16));
-            $seqId = 'IECEP-' . date('Y') . '-' . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
+            $seqId = date('Y') . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
 
             try {
                 $supabase->insert('members', [[

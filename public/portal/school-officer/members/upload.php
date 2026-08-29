@@ -67,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['roster_file']) && $_
 
                     if (!empty($fullName)) {
                         $rowCount++;
-                        $seqId = 'IECEP-' . date('Y') . '-' . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                        $seqId = date('Y') . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
                         $membersToInsert[] = [
                             'id' => bin2hex(random_bytes(16)),
                             'institution_id' => $institutionId,

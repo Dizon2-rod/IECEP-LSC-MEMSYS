@@ -35,9 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $memId = bin2hex(random_bytes(16));
             
             // Get count for sequential membership ID
-            $existing = $supabase ? $supabase->select('members', ['select' => 'id']) : [];
-            $count = is_array($existing) ? count($existing) + 1 : 1;
-            $memCode = 'IECEP-2026-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+            $memCode = date('Y') . str_pad($count, 4, '0', STR_PAD_LEFT);
             $hash = hash('sha256', $memId . $fullName . $email . $timestamp);
 
             try {
@@ -231,7 +229,7 @@ try {
                         'full_name' => $m['full_name'] ?? 'Student Member',
                         'email' => $email,
                         'student_id' => !empty($m['student_number']) ? $m['student_number'] : (!empty($m['student_id']) ? $m['student_id'] : ($m['membership_id'] ?? 'N/A')),
-                        'membership_id' => $m['membership_id'] ?: ('IECEP-' . strtoupper(substr(md5($email), 0, 8))),
+                        'membership_id' => $m['membership_id'] ?: (date('Y') . str_pad(abs(crc32($email)) % 10000, 4, '0', STR_PAD_LEFT)),
                         'institution_id' => $m['institution_id'] ?? '',
                         'program' => !empty($m['course']) ? $m['course'] : (!empty($m['program']) ? $m['program'] : 'BS Electronics Engineering'),
                         'year_level' => !empty($m['year_level']) ? $m['year_level'] : '3rd Year',
@@ -270,7 +268,7 @@ try {
                         'full_name' => $imp['name'] ?? 'Student Member',
                         'email' => $email,
                         'student_id' => $imp['existing_id'] ?: ($imp['student_id'] ?: 'N/A'),
-                        'membership_id' => $imp['membership_id'] ?: ('IECEP-' . strtoupper(substr(md5($email), 0, 8))),
+                        'membership_id' => $imp['membership_id'] ?: (date('Y') . str_pad(abs(crc32($email)) % 10000, 4, '0', STR_PAD_LEFT)),
                         'institution_id' => $instId,
                         'program' => $imp['program'] ?: 'BS Electronics Engineering',
                         'year_level' => $imp['sheet_name'] ?: ($imp['year_level'] ?: '3rd Year'),

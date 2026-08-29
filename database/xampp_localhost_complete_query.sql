@@ -371,7 +371,7 @@ INSERT INTO `members` (
 VALUES
     (
         '10000000-0000-0000-0000-000000000003',
-        'IECEP-2026-0001',
+        '20260001',
         'Rashed Dizon',
         'Rashed',
         'Dizon',

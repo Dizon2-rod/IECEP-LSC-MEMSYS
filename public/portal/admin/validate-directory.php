@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $count = 1;
                 foreach ($mems as $m) {
                     if (empty($m['membership_id'])) {
-                        $newId = 'IECEP-2026-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+                        $newId = date('Y') . str_pad($count, 4, '0', STR_PAD_LEFT);
                         $supabase->update('members', ['membership_id' => $newId], $m['id']);
                         $count++;
                     }

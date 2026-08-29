@@ -80,7 +80,7 @@ VALUES (
     '10000000-0000-0000-0000-000000000003',
     'Rashed Dizon',
     'rasheddizon7@gmail.com',
-    'IECEP-2026-0103',
+    '20260001',
     '1fe48809-8ac6-4428-a6f1-3025cc47f5bb',
     '3rd Year',
     'BS Electronics Engineering',

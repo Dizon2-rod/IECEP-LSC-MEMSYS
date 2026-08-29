@@ -224,7 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_FILES['excel_file']) || is
                         if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL) && !empty($name)) {
                             $baseCount++;
                             $memId = bin2hex(random_bytes(16));
-                            $membershipId = 'IECEP-2026-' . str_pad($baseCount, 4, '0', STR_PAD_LEFT);
+                            $membershipId = date('Y') . str_pad($baseCount, 4, '0', STR_PAD_LEFT);
                             $hash = hash('sha256', $memId . $name . $email . $timestamp);
 
                             try {

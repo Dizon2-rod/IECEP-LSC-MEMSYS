@@ -45,7 +45,7 @@ if ($supabase) {
     }
 }
 
-$membershipId = $member['membership_id'] ?? 'IECEP-2026-0001';
+$membershipId = $member['membership_id'] ?? '20260001';
 $courseName = !empty($member['course']) ? $member['course'] : 'BS Electronics Engineering';
 $yearLevel = !empty($member['year_level']) ? $member['year_level'] : '3rd Year';
 $studentNumber = !empty($member['student_number']) ? $member['student_number'] : ($member['student_id'] ?? '2023-01048');

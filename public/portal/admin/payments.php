@@ -16,11 +16,11 @@ if (!in_array($_SESSION['role'] ?? '', $allowed_roles)) {
 
 // Demo data
 $recentPayments = [
-    ['id'=>'PAY-001','member'=>'Alex Johnson','institution'=>'LSPU Santa Cruz','amount'=>950,'type'=>'Membership Fee','status'=>'paid','date'=>date('Y-m-d',strtotime('-2 days')),'ref'=>'IECEP-2026-0041'],
-    ['id'=>'PAY-002','member'=>'David Kim','institution'=>'Mapúa Malayan Colleges','amount'=>950,'type'=>'Membership Fee','status'=>'paid','date'=>date('Y-m-d',strtotime('-3 days')),'ref'=>'IECEP-2026-0042'],
-    ['id'=>'PAY-003','member'=>'Emma Wilson','institution'=>'Colegio de San Juan de Letran','amount'=>950,'type'=>'Membership Fee','status'=>'pending','date'=>date('Y-m-d',strtotime('-1 day')),'ref'=>'IECEP-2026-0043'],
-    ['id'=>'PAY-004','member'=>'Kenji Tan','institution'=>'UPH - Dr. Jose G. Tamayo','amount'=>500,'type'=>'Event Fee','status'=>'paid','date'=>date('Y-m-d',strtotime('-5 days')),'ref'=>'IECEP-2026-0044'],
-    ['id'=>'PAY-005','member'=>'Mira Stone','institution'=>'Regional Executive Council','amount'=>950,'type'=>'Membership Fee','status'=>'paid','date'=>date('Y-m-d',strtotime('-1 day')),'ref'=>'IECEP-2026-0001'],
+    ['id'=>'PAY-001','member'=>'Alex Johnson','institution'=>'LSPU Santa Cruz','amount'=>950,'type'=>'Membership Fee','status'=>'paid','date'=>date('Y-m-d',strtotime('-2 days')),'ref'=>'20260041'],
+    ['id'=>'PAY-002','member'=>'David Kim','institution'=>'Mapúa Malayan Colleges','amount'=>950,'type'=>'Membership Fee','status'=>'paid','date'=>date('Y-m-d',strtotime('-3 days')),'ref'=>'20260042'],
+    ['id'=>'PAY-003','member'=>'Emma Wilson','institution'=>'Colegio de San Juan de Letran','amount'=>950,'type'=>'Membership Fee','status'=>'pending','date'=>date('Y-m-d',strtotime('-1 day')),'ref'=>'20260043'],
+    ['id'=>'PAY-004','member'=>'Kenji Tan','institution'=>'UPH - Dr. Jose G. Tamayo','amount'=>500,'type'=>'Event Fee','status'=>'paid','date'=>date('Y-m-d',strtotime('-5 days')),'ref'=>'20260044'],
+    ['id'=>'PAY-005','member'=>'Mira Stone','institution'=>'Regional Executive Council','amount'=>950,'type'=>'Membership Fee','status'=>'paid','date'=>date('Y-m-d',strtotime('-1 day')),'ref'=>'20260001'],
 ];
 $totalCollections = 125000;
 $pendingAmount = 12400;

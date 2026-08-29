@@ -157,7 +157,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 if (!empty($sEmail) && filter_var($sEmail, FILTER_VALIDATE_EMAIL) && !empty($name)) {
                                     $baseCount++;
                                     $memId = bin2hex(random_bytes(16));
-                                    $membershipId = 'IECEP-2026-' . str_pad($baseCount, 4, '0', STR_PAD_LEFT);
+                                    $membershipId = date('Y') . str_pad($baseCount, 4, '0', STR_PAD_LEFT);
                                     $hash = hash('sha256', $memId . $name . $sEmail . $timestamp);
 
                                     $supabase->insert('members', [[
