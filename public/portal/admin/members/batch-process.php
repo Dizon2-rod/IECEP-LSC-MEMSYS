@@ -952,73 +952,7 @@ try {
                             </tr>
                         </thead>
                         <tbody id="previewTableBody"></tbody>
-                    </table>
-                </div>
             </div>
-
-            <!-- 5. CSV Specification Guidance -->
-            <div class="schema-guidance-card">
-                <h4 style="margin:0 0 0.4rem; color:var(--text-heading); font-weight:800; font-size:0.9rem; display:flex; align-items:center; gap:0.4rem;">
-                    <i class="fas fa-code" style="color:var(--color-navy);"></i> Supported CSV Header Columns
-                </h4>
-                <p style="font-size:0.8rem; color:var(--text-muted); margin-bottom:0.6rem;">
-                    Ensure your spreadsheet header matches the recognized column names:
-                </p>
-                <div>
-                    <span class="schema-pill-tag required">full_name *</span>
-                    <span class="schema-pill-tag required">email *</span>
-                    <span class="schema-pill-tag">student_id</span>
-                    <span class="schema-pill-tag">school (e.g. LSPU, DLSU, MMCL, CSJL, UPLB, SPCBA)</span>
-                    <span class="schema-pill-tag">program (e.g. BS ECE)</span>
-                    <span class="schema-pill-tag">year_level (e.g. 3rd Year)</span>
-                    <span class="schema-pill-tag">phone</span>
-                    <span class="schema-pill-tag">address</span>
-                </div>
-            </div>
-
-            <!-- 6. Recent Ingestion Batches Ledger -->
-            <?php if (!empty($recentBatches)): ?>
-                <div class="history-card">
-                    <div class="preview-header-bar">
-                        <h3 style="margin:0; font-size:0.92rem; font-weight:800; color:var(--text-heading); display:flex; align-items:center; gap:0.45rem;">
-                            <i class="fas fa-history" style="color:var(--color-navy);"></i>
-                            <span>Recent Ingestion Batches</span>
-                        </h3>
-                    </div>
-                    <div class="table-responsive-viewport">
-                        <table class="preview-table">
-                            <thead>
-                                <tr>
-                                    <th>File Name</th>
-                                    <th>Processed Date</th>
-                                    <th>Valid Rows</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($recentBatches as $b): ?>
-                                    <tr>
-                                        <td>
-                                            <strong style="color:var(--text-heading);"><?= htmlspecialchars($b['file_name'] ?? 'roster.csv') ?></strong>
-                                        </td>
-                                        <td style="font-size:0.78rem; color:var(--text-muted);">
-                                            <?= !empty($b['uploaded_at']) ? date('M d, Y h:i A', strtotime($b['uploaded_at'])) : 'Recent' ?>
-                                        </td>
-                                        <td>
-                                            <span style="font-weight:700; color:var(--color-navy);"><?= intval($b['valid_rows'] ?? 0) ?></span> rows
-                                        </td>
-                                        <td>
-                                            <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:9999px; background:#ECFDF5; color:#065F46; font-size:0.7rem; font-weight:700; border:1px solid #A7F3D0;">
-                                                <span style="width:4px; height:4px; border-radius:50%; background:#059669;"></span> <?= ucfirst($b['status'] ?? 'Completed') ?>
-                                            </span>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            <?php endif; ?>
 
         </div>
     </main>
