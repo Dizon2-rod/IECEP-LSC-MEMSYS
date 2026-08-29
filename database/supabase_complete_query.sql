@@ -453,7 +453,7 @@ INSERT INTO blockchain_records (block_index, entity_type, entity_id, transaction
 SELECT 
     1, 
     'event_attendance', 
-    m.id::text, 
+    m.id, 
     'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 
     'a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f01234', 
     '{"event": "IECEP-LSC Regional Technical Summit 2026", "student": "Juan Dela Cruz", "membership_id": "IECEP-2026-0101"}', 
