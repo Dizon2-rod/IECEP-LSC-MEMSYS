@@ -26,6 +26,10 @@ if ((isset($_GET['logout']) && $_GET['logout'] === 'true') || (isset($_POST['log
     $user_id = $_SESSION['user_id'] ?? null;
     log_audit('logout', 'users', $user_id, null, null);
     
+    if (function_exists('clearRememberMeCookie')) {
+        clearRememberMeCookie(false);
+    }
+    
     $_SESSION = [];
     session_unset();
     session_destroy();
@@ -35,7 +39,7 @@ if ((isset($_GET['logout']) && $_GET['logout'] === 'true') || (isset($_POST['log
     exit;
 }
 
-// Redirect to dashboard if already logged in
+// Redirect to dashboard if already logged in (or restored via Remember Me)
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     if (!isset($_SESSION['user'])) {
         session_unset();
@@ -59,23 +63,6 @@ $error = '';
 $email = $_POST['email'] ?? ($_COOKIE['remember_email'] ?? '');
 $rememberChecked = isset($_POST['remember']) ? !empty($_POST['remember']) : !empty($_COOKIE['remember_email']);
 
-if (!function_exists('persistRememberMe')) {
-    function persistRememberMe($userEmail, $remember) {
-        $isSecure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') || (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
-        if ($remember) {
-            $expire = time() + (30 * 86400); // 30 days
-            setcookie('remember_email', $userEmail, $expire, '/', '', $isSecure, true);
-            if (session_id()) {
-                $params = session_get_cookie_params();
-                setcookie(session_name(), session_id(), $expire, $params['path'], $params['domain'], $isSecure, $params['httponly']);
-            }
-        } else {
-            if (isset($_COOKIE['remember_email'])) {
-                setcookie('remember_email', '', time() - 86400, '/');
-            }
-        }
-    }
-}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = strtolower(trim($_POST['email'] ?? ''));
@@ -203,7 +190,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 log_audit('login', 'users', $userId, null, ['email' => $userEmail, 'role' => $profile['role'] ?? 'member']);
 
                 // Persist remember me preference
-                persistRememberMe($userEmail, !empty($_POST['remember']));
+                if (!empty($_POST['remember'])) {
+                    setRememberMeCookie($_SESSION['user']);
+                } else {
+                    clearRememberMeCookie(false);
+                }
 
                 if (!empty($mustChangePassword)) {
                     $_SESSION['require_password_change'] = true;
@@ -245,7 +236,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     ];
 
                     // Persist remember me preference
-                    persistRememberMe($email, !empty($_POST['remember']));
+                    if (!empty($_POST['remember'])) {
+                        setRememberMeCookie($_SESSION['user']);
+                    } else {
+                        clearRememberMeCookie(false);
+                    }
 
                     $redirectMap = [
                         'admin'          => PORTAL_URL . '/admin/dashboard.php',

@@ -14,10 +14,12 @@ require_once dirname(dirname(__DIR__)) . '/includes/paths.php';
  * require_role - Check if current user has required role
  * @param array $allowed_roles - Array of allowed role strings
  * @param bool $redirect - Whether to redirect unauthorized users (default: true)
- * @return bool - True if authorized, false otherwise
- */
 function require_role($allowed_roles, $redirect = true) {
-    // Check if user is logged in
+    // Check if user is logged in (attempt session restoration via Remember Me token)
+    if (!isset($_SESSION['user']) && function_exists('restoreRememberMeSession')) {
+        restoreRememberMeSession();
+    }
+
     $user = $_SESSION['user'] ?? [];
     $user_role = $_SESSION['role'] ?? $user['role'] ?? $user['user_metadata']['role'] ?? null;
 

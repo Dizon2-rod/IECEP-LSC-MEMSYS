@@ -292,5 +292,12 @@ function current_user_role() {
     return $_SESSION['role'] ?? null;
 }
 
+// ============================================================================
+// 13. REMEMBER ME / PERSISTENT SESSION RESTORATION
+// ============================================================================
+require_once PROJECT_ROOT . '/includes/remember-me.php';
+restoreRememberMeSession();
+
 // Bootstrap complete
 error_log('[Bootstrap] IECEP-LSC MEMSYS bootstrap initialized successfully');
+

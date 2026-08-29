@@ -8,7 +8,10 @@ require_once __DIR__ . '/includes/config.php';
 $_SESSION = [];
 session_unset();
 session_destroy();
-session_write_close();
+// Clear Remember Me auth token
+if (function_exists('clearRememberMeCookie')) {
+    clearRememberMeCookie(false);
+}
 
 // Clear session cookie
 if (ini_get("session.use_cookies")) {
