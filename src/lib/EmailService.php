@@ -1281,4 +1281,136 @@ class EmailService
             return false;
         }
     }
+
+    /**
+     * Send Affiliation Revision Request to applicant with selected file replacement instructions
+     */
+    public function sendAffiliationRevisionRequest(string $toEmail, string $institutionName, string $contactPerson, array $requestedFiles, string $instructions, string $revisionUrl): bool
+    {
+        try {
+            $mail = $this->createMailer();
+            $mail->addAddress($toEmail, $contactPerson ?: $institutionName);
+            $mail->Subject = "Action Required: Revisions Requested for {$institutionName} Affiliation Application";
+
+            $fileListHtml = '';
+            foreach ($requestedFiles as $fKey => $fLabel) {
+                $fileListHtml .= "<li style='margin-bottom:6px;'><strong>" . htmlspecialchars($fLabel) . "</strong></li>";
+            }
+
+            $instructionsHtml = !empty($instructions) ? "<div style='background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:14px 18px;margin:18px 0;'><strong style='color:#92400E;display:block;margin-bottom:4px;'>📌 Secretariat Notes & Instructions:</strong><p style='margin:0;color:#78350F;font-size:14px;line-height:1.5;'>" . nl2br(htmlspecialchars($instructions)) . "</p></div>" : "";
+
+            $mail->Body = "
+                <div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:600px;margin:0 auto;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);'>
+                    <div style='background:#0B1D4A;padding:24px;text-align:center;'>
+                        <h2 style='color:#FFFFFF;margin:0;font-size:20px;font-weight:700;'>IECEP Laguna Student Chapter</h2>
+                        <p style='color:#D4AF37;margin:4px 0 0;font-size:13px;font-weight:600;'>Institutional Affiliation Review Notice</p>
+                    </div>
+                    <div style='padding:28px 24px;color:#334155;font-size:15px;line-height:1.6;'>
+                        <p style='margin-top:0;'>Dear <strong>" . htmlspecialchars($contactPerson ?: 'School Chapter Representative') . "</strong>,</p>
+                        <p>Thank you for submitting the Chapter Affiliation Application for <strong>" . htmlspecialchars($institutionName) . "</strong>.</p>
+                        <p>Upon evaluation by the IECEP-LSC Registration Committee, some document(s) require your attention, correction, or updated re-upload:</p>
+                        
+                        <div style='background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:16px 20px;margin:18px 0;'>
+                            <strong style='color:#0F172A;font-size:14px;'>Documents Requiring Replacement / Update:</strong>
+                            <ul style='margin:10px 0 0;padding-left:20px;color:#0B1D4A;'>
+                                {$fileListHtml}
+                            </ul>
+                        </div>
+
+                        {$instructionsHtml}
+
+                        <p>Please click the button below to open your secure revision link and re-upload only the requested replacement file(s):</p>
+
+                        <div style='text-align:center;margin:28px 0;'>
+                            <a href='{$revisionUrl}' style='display:inline-block;padding:14px 32px;background:#0B1D4A;color:#FFFFFF;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;box-shadow:0 4px 12px rgba(11,29,74,0.2);'>
+                                📂 Re-Upload Corrected Documents
+                            </a>
+                        </div>
+
+                        <p style='font-size:13px;color:#64748B;text-align:center;'>Or copy and paste this link into your browser:<br><a href='{$revisionUrl}' style='color:#2563EB;word-break:break-all;'>{$revisionUrl}</a></p>
+                        
+                        <hr style='border:none;border-top:1px solid #E2E8F0;margin:24px 0;'>
+                        <p style='font-size:12px;color:#94A3B8;margin-bottom:0;'>Once resubmitted, the committee will re-evaluate your application for accreditation and membership provisioning.</p>
+                    </div>
+                </div>";
+
+            return $mail->send();
+        } catch (\Throwable $e) {
+            error_log("Email error (send affiliation revision): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Send Affiliation Rejection / Decline Notice to applicant
+     */
+    public function sendAffiliationRejectionNotice(string $toEmail, string $institutionName, string $contactPerson, string $reason): bool
+    {
+        try {
+            $mail = $this->createMailer();
+            $mail->addAddress($toEmail, $contactPerson ?: $institutionName);
+            $mail->Subject = "Update on {$institutionName} Affiliation Application - IECEP-LSC";
+
+            $mail->Body = "
+                <div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:600px;margin:0 auto;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;'>
+                    <div style='background:#0B1D4A;padding:24px;text-align:center;'>
+                        <h2 style='color:#FFFFFF;margin:0;font-size:20px;'>IECEP Laguna Student Chapter</h2>
+                        <p style='color:#D4AF37;margin:4px 0 0;font-size:13px;'>Affiliation Application Status</p>
+                    </div>
+                    <div style='padding:28px 24px;color:#334155;font-size:15px;line-height:1.6;'>
+                        <p>Dear <strong>" . htmlspecialchars($contactPerson ?: 'School Representative') . "</strong>,</p>
+                        <p>Thank you for your interest in affiliating <strong>" . htmlspecialchars($institutionName) . "</strong> with IECEP Laguna Student Chapter.</p>
+                        <p>After review by the Secretariat, we regret to inform you that your application cannot be approved at this time due to the following reason:</p>
+                        
+                        <div style='background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:16px 20px;margin:18px 0;color:#991B1B;'>
+                            <strong>Reason / Notes:</strong><br>
+                            " . nl2br(htmlspecialchars($reason ?: 'Incomplete credentials or ineligible academic term.')) . "
+                        </div>
+
+                        <p>If you believe this is in error or wish to re-apply, please contact the secretariat at <a href='mailto:lspuscc.adminece@gmail.com' style='color:#2563EB;'>lspuscc.adminece@gmail.com</a>.</p>
+                    </div>
+                </div>";
+
+            return $mail->send();
+        } catch (\Throwable $e) {
+            error_log("Email error (send affiliation rejection): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Send Confirmation to applicant when they resubmit revised files
+     */
+    public function sendAffiliationRevisionResubmitted(string $toEmail, string $institutionName, string $contactPerson): bool
+    {
+        try {
+            $mail = $this->createMailer();
+            $mail->addAddress($toEmail, $contactPerson ?: $institutionName);
+            $mail->Subject = "Revised Documents Received: {$institutionName} Affiliation Application";
+
+            $mail->Body = "
+                <div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:600px;margin:0 auto;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;'>
+                    <div style='background:#0B1D4A;padding:24px;text-align:center;'>
+                        <h2 style='color:#FFFFFF;margin:0;font-size:20px;'>IECEP Laguna Student Chapter</h2>
+                        <p style='color:#D4AF37;margin:4px 0 0;font-size:13px;'>Affiliation Resubmission Acknowledged</p>
+                    </div>
+                    <div style='padding:28px 24px;color:#334155;font-size:15px;line-height:1.6;'>
+                        <p>Dear <strong>" . htmlspecialchars($contactPerson ?: 'School Representative') . "</strong>,</p>
+                        <p>We have successfully received your updated and replacement documents for <strong>" . htmlspecialchars($institutionName) . "</strong>.</p>
+                        <p>Your application status is now updated to <strong>Resubmitted / Under Re-Evaluation</strong>. The Registration Committee will review your updated submission shortly.</p>
+                        
+                        <div style='background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:14px 18px;margin:18px 0;color:#065F46;'>
+                            <i class='fas fa-check-circle'></i> <strong>Status:</strong> Documents received and queued for committee review.
+                        </div>
+
+                        <p>You will receive another update as soon as the final accreditation is granted.</p>
+                    </div>
+                </div>";
+
+            return $mail->send();
+        } catch (\Throwable $e) {
+            error_log("Email error (send affiliation resubmission): " . $e->getMessage());
+            return false;
+        }
+    }
 }

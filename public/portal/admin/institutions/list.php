@@ -13,7 +13,7 @@ $supabase = getSupabaseClient();
 $feedbackMsg = '';
 $feedbackType = 'success';
 
-// Handle POST actions: Approve or Reject Affiliation
+// Handle POST actions: Approve, Request Revision, or Reject
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
     $appId = $_POST['application_id'] ?? '';
@@ -129,7 +129,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         if (count($memberRows) > 1) {
                             $headerRow = array_map('strtolower', array_map('trim', array_shift($memberRows)));
                             
-                            // Detect column indices
                             $idxStudentId = -1; $idxName = -1; $idxEmail = -1; $idxProg = -1; $idxYear = -1;
                             foreach ($headerRow as $hIdx => $hText) {
                                 if (strpos($hText, 'student') !== false || strpos($hText, 'id') !== false) $idxStudentId = $hIdx;
@@ -139,7 +138,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 if (strpos($hText, 'year') !== false || strpos($hText, 'level') !== false) $idxYear = $hIdx;
                             }
 
-                            // Fallbacks if header matching didn't catch
                             if ($idxEmail === -1) $idxEmail = 2;
                             if ($idxName === -1) $idxName = 1;
                             if ($idxStudentId === -1) $idxStudentId = 0;
@@ -152,7 +150,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 $year = trim((string)($row[$idxYear] ?? '3rd Year'));
                                 $memberTempPass = 'MEM-' . rand(1000, 9999) . '-' . substr(strtoupper(bin2hex(random_bytes(2))), 0, 4);
 
-                                // If values were swapped (e.g. name in col 0 and email in col 1)
                                 if (filter_var($name, FILTER_VALIDATE_EMAIL) && !filter_var($sEmail, FILTER_VALIDATE_EMAIL)) {
                                     $tmp = $name; $name = $sEmail; $sEmail = $tmp;
                                 }
@@ -235,23 +232,102 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 'created_at' => $timestamp
             ]]);
 
-            $feedbackMsg = "🎉 Successfully Approved Affiliation for '{$instName}'! School Officer account created and {$ingestedCount} student members ingested into Member Directory.";
+            $feedbackMsg = "🎉 Successfully Approved Affiliation for '{$instName}'! Chapter active, School Officer created, and {$ingestedCount} student members ingested.";
             $feedbackType = 'success';
         } catch (Exception $e) {
             error_log("Approval error: " . $e->getMessage());
             $feedbackMsg = "Affiliation approved for '{$instName}'.";
             $feedbackType = 'success';
         }
+    } elseif ($action === 'request_revision') {
+        try {
+            $selectedFiles = $_POST['requested_files'] ?? [];
+            $instructions = trim($_POST['instructions'] ?? '');
+            
+            $fileLabelMap = [
+                'letter_of_intent' => 'Letter of Intent',
+                'endorsement_letter' => 'Endorsement Letter (Dean/Chair)',
+                'constitution_by_laws' => 'Chapter Constitution & By-Laws',
+                'officers_cvs' => 'Officers Curriculum Vitae (CVs)',
+                'organizational_chart' => 'Organizational Chart',
+                'member_directory' => 'Member Directory Spreadsheet (.xlsx/.csv)'
+            ];
+            
+            $fileListForEmail = [];
+            foreach ($selectedFiles as $fKey) {
+                if (isset($fileLabelMap[$fKey])) {
+                    $fileListForEmail[$fKey] = $fileLabelMap[$fKey];
+                }
+            }
+            if (empty($fileListForEmail)) {
+                $fileListForEmail = $fileLabelMap;
+            }
+            
+            if ($appId) {
+                $supabase->update('pending_affiliations', [
+                    'status' => 'requires_revision',
+                    'notes' => $instructions ?: 'Please update the requested documents.',
+                    'revision_files' => implode(',', array_keys($fileListForEmail)),
+                    'updated_at' => date('c')
+                ], $appId);
+                
+                // Fetch application info for email delivery
+                $appRes = $supabase->select('pending_affiliations', ['id' => 'eq.' . $appId]);
+                if (!empty($appRes)) {
+                    $appRow = $appRes[0];
+                    $applicantEmail = $appRow['contact_email'] ?? $appRow['email'] ?? $email;
+                    $applicantName = $appRow['contact_person'] ?? $contactPerson;
+                    $applicantSchool = $appRow['institution_name'] ?? $instName;
+                    
+                    require_once __DIR__ . '/../../../src/lib/EmailService.php';
+                    $emailService = new \App\Lib\EmailService();
+                    $revisionUrl = BASE_URL . '/public/revise-affiliation.php?id=' . urlencode($appId);
+                    
+                    if ($applicantEmail) {
+                        $emailService->sendAffiliationRevisionRequest(
+                            $applicantEmail,
+                            $applicantSchool,
+                            $applicantName,
+                            $fileListForEmail,
+                            $instructions,
+                            $revisionUrl
+                        );
+                    }
+                }
+            }
+            
+            $feedbackMsg = "📩 Revision Request successfully sent to {$email}! The applicant has received the link in their Gmail to re-upload the requested file(s).";
+            $feedbackType = 'info';
+        } catch (Exception $e) {
+            error_log("Revision request error: " . $e->getMessage());
+            $feedbackMsg = "Error sending revision request: " . $e->getMessage();
+            $feedbackType = 'warning';
+        }
     } elseif ($action === 'reject_charter') {
         try {
+            $reason = trim($_POST['notes'] ?? 'Application requirements not met.');
             if ($appId) {
                 $supabase->update('pending_affiliations', [
                     'status' => 'rejected',
-                    'notes' => $notes ?: 'Deficient required documents.',
+                    'notes' => $reason,
                     'updated_at' => date('c')
                 ], $appId);
+                
+                $appRes = $supabase->select('pending_affiliations', ['id' => 'eq.' . $appId]);
+                if (!empty($appRes)) {
+                    $appRow = $appRes[0];
+                    $applicantEmail = $appRow['contact_email'] ?? $appRow['email'] ?? $email;
+                    $applicantName = $appRow['contact_person'] ?? $contactPerson;
+                    $applicantSchool = $appRow['institution_name'] ?? $instName;
+                    
+                    require_once __DIR__ . '/../../../src/lib/EmailService.php';
+                    $emailService = new \App\Lib\EmailService();
+                    if ($applicantEmail) {
+                        $emailService->sendAffiliationRejectionNotice($applicantEmail, $applicantSchool, $applicantName, $reason);
+                    }
+                }
             }
-            $feedbackMsg = "Application flagged as declined / requires revision.";
+            $feedbackMsg = "Application declined and notice sent to applicant.";
             $feedbackType = 'warning';
         } catch (Exception $e) {
             error_log("Reject error: " . $e->getMessage());
@@ -382,6 +458,44 @@ try {
             align-items: center;
             gap: 0.5rem;
         }
+
+        /* Checklist styles for Request Revision */
+        .revision-check-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin: 0.75rem 0 1rem;
+            max-height: 220px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .revision-check-item {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            padding: 0.6rem 0.85rem;
+            border: 1px solid #E2E8F0;
+            border-radius: 6px;
+            background: #F8FAFC;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .revision-check-item:hover {
+            background: #EFF6FF;
+            border-color: #93C5FD;
+        }
+        .revision-check-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #0B1D4A;
+            cursor: pointer;
+        }
+        .revision-check-label {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #1E293B;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -483,14 +597,15 @@ try {
                                 <th>Contact Officer</th>
                                 <th>Requirements Packet</th>
                                 <th>Student Roster</th>
+                                <th>Application Status</th>
                                 <th>Submitted Date</th>
-                                <th style="text-align:right;">Admin Decision</th>
+                                <th style="text-align:right;">3-Way Admin Decision</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($pendingApps)): ?>
                                 <tr>
-                                    <td colspan="6" style="text-align:center; padding:2.5rem; color:var(--text-muted);">
+                                    <td colspan="7" style="text-align:center; padding:2.5rem; color:var(--text-muted);">
                                         <i class="fas fa-check-circle" style="font-size:2.2rem; color:#10B981; margin-bottom:0.5rem; display:block;"></i>
                                         <strong style="color:var(--text-heading); font-size:0.95rem;">Queue is Clear — No Pending Affiliations</strong>
                                         <p style="margin:0.25rem 0 0; font-size:0.78rem;">All incoming affiliation applications submitted via the public form on the homepage will immediately land here for review & approval.</p>
@@ -507,6 +622,8 @@ try {
                                         if (!empty($app['officers_cvs'])) $docsCount++;
                                         if (!empty($app['organizational_chart'])) $docsCount++;
                                         if (!empty($app['member_directory'])) $docsCount++;
+
+                                        $st = strtolower($app['status'] ?? 'pending');
                                     ?>
                                     <tr>
                                         <td>
@@ -535,11 +652,27 @@ try {
                                                 <span style="font-size:0.72rem; color:var(--text-muted);">Standard Roster</span>
                                             <?php endif; ?>
                                         </td>
+                                        <td>
+                                            <?php if ($st === 'resubmitted'): ?>
+                                                <span class="ap-pill" style="background:#EFF6FF; color:#2563EB; border:1px solid #DBEAFE; font-weight:800;">
+                                                    <i class="fas fa-rotate"></i> Resubmitted
+                                                </span>
+                                            <?php elseif ($st === 'requires_revision'): ?>
+                                                <span class="ap-pill pending">
+                                                    <i class="fas fa-pen-to-square"></i> Revision Requested
+                                                </span>
+                                            <?php else: ?>
+                                                <span class="ap-pill pending">
+                                                    <span class="ap-pill-dot"></span> Pending Review
+                                                </span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td style="font-size:0.78rem; color:var(--text-muted);">
                                             <?= !empty($app['created_at']) ? date('M d, Y', strtotime($app['created_at'])) : 'Recent' ?>
                                         </td>
                                         <td style="text-align:right;">
-                                            <div style="display:flex; justify-content:flex-end; gap:0.4rem;">
+                                            <div style="display:flex; justify-content:flex-end; gap:0.35rem; flex-wrap:wrap;">
+                                                <!-- 1. APPROVE -->
                                                 <form method="POST" style="display:inline;" onsubmit="return confirm('Approve this affiliation? This will automatically create the School Officer account and ingest all attached student members into the Member Directory.');">
                                                     <input type="hidden" name="action" value="approve_charter">
                                                     <input type="hidden" name="application_id" value="<?= htmlspecialchars($app['id']) ?>">
@@ -547,12 +680,19 @@ try {
                                                     <input type="hidden" name="email" value="<?= htmlspecialchars($app['contact_email'] ?? $app['email']) ?>">
                                                     <input type="hidden" name="contact_person" value="<?= htmlspecialchars($app['contact_person']) ?>">
                                                     <input type="hidden" name="contact_phone" value="<?= htmlspecialchars($app['contact_phone']) ?>">
-                                                    <button type="submit" class="ap-btn-primary" style="padding:0.35rem 0.85rem; font-size:0.78rem; background:#059669; border-color:#059669;">
-                                                        <i class="fas fa-check"></i> Approve & Ingest Members
+                                                    <button type="submit" class="ap-btn-primary" style="padding:0.32rem 0.75rem; font-size:0.75rem; background:#059669; border-color:#059669;" title="Approve Affiliation & Provision Accounts">
+                                                        <i class="fas fa-check"></i> Approve
                                                     </button>
                                                 </form>
-                                                <button type="button" class="ap-btn-secondary" style="padding:0.35rem 0.65rem; font-size:0.78rem; color:#DC2626;" onclick="openDeclineModal('<?= htmlspecialchars($app['id']) ?>', '<?= htmlspecialchars($app['institution_name'] ?? 'Institution') ?>')">
-                                                    <i class="fas fa-times"></i> Decline
+
+                                                <!-- 2. REQUEST TO EDIT / REVISION -->
+                                                <button type="button" class="ap-btn-secondary" style="padding:0.32rem 0.75rem; font-size:0.75rem; color:#B45309; border-color:#FDE68A; background:#FEF9C3;" onclick='openRevisionModal(<?= $appJson ?>)' title="Request Specific File Revisions via Gmail">
+                                                    <i class="fas fa-pen-to-square"></i> Request Edit
+                                                </button>
+
+                                                <!-- 3. REJECT / DECLINE -->
+                                                <button type="button" class="ap-btn-secondary" style="padding:0.32rem 0.65rem; font-size:0.75rem; color:#DC2626;" onclick="openDeclineModal('<?= htmlspecialchars($app['id']) ?>', '<?= htmlspecialchars($app['institution_name'] ?? 'Institution') ?>', '<?= htmlspecialchars($app['contact_email'] ?? $app['email'] ?? '') ?>', '<?= htmlspecialchars($app['contact_person'] ?? '') ?>')" title="Decline Application">
+                                                    <i class="fas fa-times"></i> Reject
                                                 </button>
                                             </div>
                                         </td>
@@ -690,7 +830,72 @@ try {
         </div>
     </div>
 
-    <!-- 2. Decline / Request Revision Modal -->
+    <!-- 2. Request Revision / Edit Modal (Pumili ng files na papalitan) -->
+    <div id="revisionModal" class="doc-modal">
+        <div class="ap-card" style="max-width:580px; width:100%; margin:0; box-shadow:var(--card-shadow);">
+            <div class="ap-card-header" style="background:#FEFCE8;">
+                <h3 class="ap-card-title" style="color:#854D0E;"><i class="fas fa-pen-to-square"></i> Request Document Revision / Correction</h3>
+                <button class="ap-btn-secondary" style="border:none; padding:0.25rem 0.5rem;" onclick="closeRevisionModal()">&times;</button>
+            </div>
+            <form method="POST" style="padding:1.25rem;">
+                <input type="hidden" name="action" value="request_revision">
+                <input type="hidden" id="revAppId" name="application_id" value="">
+                <input type="hidden" id="revInstName" name="institution_name" value="">
+                <input type="hidden" id="revEmail" name="email" value="">
+                <input type="hidden" id="revContactPerson" name="contact_person" value="">
+
+                <p style="font-size:0.85rem; color:#1E293B; margin:0 0 0.5rem;">
+                    Select the specific file(s) that <strong id="revSchoolNameDisplay"></strong> needs to correct/re-upload:
+                </p>
+
+                <!-- Checkbox List of Files -->
+                <div class="revision-check-list">
+                    <label class="revision-check-item">
+                        <input type="checkbox" name="requested_files[]" value="letter_of_intent">
+                        <span class="revision-check-label"><i class="fas fa-file-lines" style="color:var(--color-navy); margin-right:4px;"></i> 1. Letter of Intent</span>
+                    </label>
+                    <label class="revision-check-item">
+                        <input type="checkbox" name="requested_files[]" value="endorsement_letter">
+                        <span class="revision-check-label"><i class="fas fa-certificate" style="color:var(--color-navy); margin-right:4px;"></i> 2. Endorsement Letter (Dean/Chair)</span>
+                    </label>
+                    <label class="revision-check-item">
+                        <input type="checkbox" name="requested_files[]" value="constitution_by_laws">
+                        <span class="revision-check-label"><i class="fas fa-scale-balanced" style="color:var(--color-navy); margin-right:4px;"></i> 3. Constitution & By-Laws</span>
+                    </label>
+                    <label class="revision-check-item">
+                        <input type="checkbox" name="requested_files[]" value="officers_cvs">
+                        <span class="revision-check-label"><i class="fas fa-user-tie" style="color:var(--color-navy); margin-right:4px;"></i> 4. Officers Curriculum Vitae (CVs)</span>
+                    </label>
+                    <label class="revision-check-item">
+                        <input type="checkbox" name="requested_files[]" value="organizational_chart">
+                        <span class="revision-check-label"><i class="fas fa-sitemap" style="color:var(--color-navy); margin-right:4px;"></i> 5. Organizational Chart</span>
+                    </label>
+                    <label class="revision-check-item">
+                        <input type="checkbox" name="requested_files[]" value="member_directory">
+                        <span class="revision-check-label"><i class="fas fa-file-excel" style="color:#107C41; margin-right:4px;"></i> 6. Member Directory Spreadsheet (.xlsx / .csv)</span>
+                    </label>
+                </div>
+
+                <div class="ap-form-group">
+                    <label class="ap-form-label">Specific Correction Notes & Instructions for Applicant</label>
+                    <textarea name="instructions" class="ap-input" rows="3" placeholder="e.g. Please secure the Dean's official signature on the endorsement letter and update columns 2-4 in the student roster." required></textarea>
+                </div>
+
+                <div style="font-size:0.75rem; color:#64748B; background:#F1F5F9; padding:0.5rem 0.75rem; border-radius:6px; margin-bottom:1rem;">
+                    <i class="fas fa-paper-plane" style="color:#2563EB;"></i> A direct secure re-upload link will be sent to the applicant's Gmail address (<span id="revEmailDisplay" style="font-weight:700;"></span>).
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                    <button type="button" class="ap-btn-secondary" onclick="closeRevisionModal()">Cancel</button>
+                    <button type="submit" class="ap-btn-primary" style="background:#D97706; border-color:#D97706;">
+                        <i class="fas fa-paper-plane"></i> Send Revision Request via Gmail
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 3. Decline / Reject Modal -->
     <div id="declineModal" class="doc-modal">
         <div class="ap-card" style="max-width:480px; width:100%; margin:0; box-shadow:var(--card-shadow);">
             <div class="ap-card-header">
@@ -700,22 +905,26 @@ try {
             <form method="POST" style="padding:1rem;">
                 <input type="hidden" name="action" value="reject_charter">
                 <input type="hidden" id="declineAppId" name="application_id" value="">
+                <input type="hidden" id="declineEmail" name="email" value="">
+                <input type="hidden" id="declineContactPerson" name="contact_person" value="">
+                <input type="hidden" id="declineInstName" name="institution_name" value="">
+
                 <p style="font-size:0.85rem; color:var(--text-body); margin:0 0 1rem;">
                     State the deficiency or reason for declining <strong id="declineSchoolName"></strong>:
                 </p>
                 <div class="ap-form-group">
                     <label class="ap-form-label">Notes / Deficiencies for Applicant</label>
-                    <textarea name="notes" class="ap-input" rows="3" placeholder="e.g. Incomplete endorsement letter or missing student signatures."></textarea>
+                    <textarea name="notes" class="ap-input" rows="3" placeholder="e.g. Ineligible academic program or missing administrative endorsement."></textarea>
                 </div>
                 <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.25rem;">
                     <button type="button" class="ap-btn-secondary" onclick="closeDeclineModal()">Cancel</button>
-                    <button type="submit" class="ap-btn-primary" style="background:#DC2626; border-color:#DC2626;">Confirm Decline</button>
+                    <button type="submit" class="ap-btn-primary" style="background:#DC2626; border-color:#DC2626;">Confirm Decline & Notify</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- 3. Charter Institution Modal -->
+    <!-- 4. Charter Institution Modal -->
     <div id="charterModal" class="doc-modal">
         <div class="ap-card" style="max-width:560px; width:100%; margin:0; box-shadow:var(--card-shadow);">
             <div class="ap-card-header">
@@ -779,9 +988,31 @@ try {
             document.getElementById('charterModal').classList.remove('active');
         }
 
-        function openDeclineModal(appId, schoolName) {
+        function openRevisionModal(app) {
+            document.getElementById('revAppId').value = app.id || '';
+            document.getElementById('revInstName').value = app.institution_name || '';
+            const email = app.contact_email || app.email || '';
+            document.getElementById('revEmail').value = email;
+            document.getElementById('revEmailDisplay').textContent = email;
+            document.getElementById('revContactPerson').value = app.contact_person || '';
+            document.getElementById('revSchoolNameDisplay').textContent = app.institution_name || 'the school';
+            
+            // Uncheck all checkboxes by default
+            const checkboxes = document.querySelectorAll('#revisionModal input[type="checkbox"]');
+            checkboxes.forEach(cb => cb.checked = false);
+
+            document.getElementById('revisionModal').classList.add('active');
+        }
+        function closeRevisionModal() {
+            document.getElementById('revisionModal').classList.remove('active');
+        }
+
+        function openDeclineModal(appId, schoolName, email, contactPerson) {
             document.getElementById('declineAppId').value = appId;
             document.getElementById('declineSchoolName').textContent = schoolName;
+            document.getElementById('declineEmail').value = email;
+            document.getElementById('declineContactPerson').value = contactPerson;
+            document.getElementById('declineInstName').value = schoolName;
             document.getElementById('declineModal').classList.add('active');
         }
         function closeDeclineModal() {
