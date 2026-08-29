@@ -303,12 +303,28 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             --shadow-modal: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
         }
 
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            width: 100%;
+            max-width: 100vw;
+        }
+
         body {
             font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
             background-color: var(--bg-page);
             color: var(--text-body);
-            margin: 0;
-            padding: 0;
+        }
+
+        .main-content {
+            box-sizing: border-box;
+            width: 100%;
+            max-width: 100vw;
             overflow-x: hidden;
         }
 
@@ -318,6 +334,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             margin: 0 auto;
             box-sizing: border-box;
             width: 100%;
+            overflow-x: hidden;
         }
 
         /* 1. Header Banner */
@@ -333,6 +350,8 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             flex-wrap: wrap;
             gap: 1.25rem;
             box-shadow: var(--shadow-card);
+            box-sizing: border-box;
+            width: 100%;
         }
 
         .header-title-box {
@@ -419,6 +438,8 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             grid-template-columns: repeat(4, 1fr);
             gap: 1rem;
             margin-bottom: 1.5rem;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .kpi-card {
@@ -432,6 +453,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             box-shadow: var(--shadow-card);
             transition: all 0.2s ease;
             min-width: 0;
+            box-sizing: border-box;
         }
         .kpi-card:hover {
             border-color: var(--border-hover);
@@ -480,6 +502,8 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             flex-wrap: wrap;
             gap: 1rem;
             box-shadow: var(--shadow-card);
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .filter-controls-left {
@@ -503,7 +527,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             left: 14px;
             top: 50%;
             transform: translateY(-50%);
-            color: #64748B;
+            color: #94A3B8;
             font-size: 0.95rem;
             pointer-events: none;
             z-index: 3;
@@ -511,10 +535,10 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .search-input-field {
             width: 100%;
             box-sizing: border-box;
-            padding: 0.65rem 0.85rem 0.65rem 2.4rem;
+            padding: 0.65rem 0.85rem 0.65rem 2.85rem !important; /* Generous left padding so icon never covers text */
             border: 1px solid #CBD5E1;
             border-radius: 8px;
-            font-size: 0.85rem;
+            font-size: 0.86rem;
             font-family: inherit;
             outline: none;
             transition: all 0.2s ease;
@@ -569,6 +593,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             box-shadow: var(--shadow-card);
             margin-bottom: 1.75rem;
             width: 100%;
+            max-width: 100%;
             box-sizing: border-box;
         }
 
@@ -581,6 +606,8 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             background: #FAFAFA;
             flex-wrap: wrap;
             gap: 0.75rem;
+            box-sizing: border-box;
+            width: 100%;
         }
 
         .table-card-heading {
@@ -595,16 +622,19 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
 
         .table-responsive-viewport {
             width: 100%;
+            max-width: 100%;
             box-sizing: border-box;
             overflow-x: hidden;
         }
 
         .roster-white-table {
-            width: 100%;
+            width: 100% !important;
+            max-width: 100% !important;
             border-collapse: separate;
             border-spacing: 0;
             font-size: 0.875rem;
             table-layout: auto;
+            box-sizing: border-box;
         }
 
         .roster-white-table th {
@@ -627,6 +657,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             color: var(--text-body);
             vertical-align: middle;
             transition: background 0.15s ease;
+            box-sizing: border-box;
         }
 
         .roster-white-table tbody tr:hover td {
@@ -768,192 +799,218 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
            ========================================================================= */
         @media (max-width: 768px) {
             .white-theme-wrap {
-                padding: 0.6rem;
+                padding: 0.5rem !important;
+                width: 100% !important;
+                max-width: 100vw !important;
+                overflow-x: hidden !important;
             }
             .white-page-header {
-                padding: 1rem;
-                gap: 0.85rem;
-                border-radius: 12px;
-                margin-bottom: 0.85rem;
+                padding: 0.9rem !important;
+                gap: 0.75rem !important;
+                border-radius: 12px !important;
+                margin-bottom: 0.75rem !important;
             }
             .header-title-box {
-                gap: 0.65rem;
+                gap: 0.5rem !important;
             }
             .header-main-title {
-                font-size: 1.15rem;
+                font-size: 1.1rem !important;
             }
             .header-subtitle {
-                font-size: 0.78rem;
+                font-size: 0.76rem !important;
             }
             .header-btn-group {
-                width: 100%;
-                display: flex;
-                flex-direction: row;
-                gap: 0.4rem;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                padding-bottom: 2px;
+                width: 100% !important;
+                display: flex !important;
+                flex-direction: row !important;
+                gap: 0.4rem !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                padding-bottom: 2px !important;
             }
             .btn-white, .btn-primary-navy {
-                padding: 0.45rem 0.75rem;
-                font-size: 0.76rem;
-                flex-shrink: 0;
+                padding: 0.42rem 0.7rem !important;
+                font-size: 0.74rem !important;
+                flex-shrink: 0 !important;
             }
 
             /* Left-to-Right 4 KPI cards in a single row on Mobile */
             .white-kpi-grid {
                 grid-template-columns: repeat(4, 1fr) !important;
-                gap: 0.35rem !important;
-                margin-bottom: 0.85rem !important;
+                gap: 0.25rem !important;
+                margin-bottom: 0.75rem !important;
+                width: 100% !important;
             }
             .kpi-card {
-                padding: 0.45rem 0.25rem !important;
-                gap: 0.3rem !important;
+                padding: 0.4rem 0.2rem !important;
+                gap: 0.25rem !important;
                 flex-direction: column !important;
                 align-items: center !important;
                 text-align: center !important;
-                border-radius: 10px !important;
+                border-radius: 8px !important;
                 box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
             }
             .kpi-icon-pill {
-                width: 26px !important;
-                height: 26px !important;
-                font-size: 0.8rem !important;
+                width: 24px !important;
+                height: 24px !important;
+                font-size: 0.75rem !important;
                 border-radius: 6px !important;
             }
             .kpi-number {
-                font-size: 0.98rem !important;
+                font-size: 0.92rem !important;
                 line-height: 1 !important;
             }
             .kpi-label {
-                font-size: 0.58rem !important;
+                font-size: 0.54rem !important;
                 line-height: 1.1 !important;
                 margin-top: 1px !important;
             }
 
             /* Filter Controls on Mobile */
             .white-controls-card {
-                padding: 0.75rem;
-                flex-direction: column;
-                align-items: stretch;
-                gap: 0.5rem;
-                border-radius: 12px;
-                margin-bottom: 0.85rem;
+                padding: 0.65rem !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 0.5rem !important;
+                border-radius: 12px !important;
+                margin-bottom: 0.75rem !important;
+                width: 100% !important;
             }
             .filter-controls-left {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 0.5rem;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 0.5rem !important;
+                width: 100% !important;
             }
             .search-input-wrapper {
-                min-width: 100%;
-                max-width: 100%;
+                min-width: 100% !important;
+                max-width: 100% !important;
+                width: 100% !important;
+            }
+            .search-input-wrapper .search-icon {
+                left: 12px !important;
+                font-size: 0.85rem !important;
             }
             .search-input-field {
-                padding: 0.5rem 0.75rem 0.5rem 2.2rem;
-                font-size: 0.8rem;
+                padding: 0.5rem 0.75rem 0.5rem 2.85rem !important; /* Plenty of padding so text never touches the icon */
+                font-size: 0.78rem !important;
+                width: 100% !important;
             }
             .select-filter-box {
-                width: 100%;
-                padding: 0.5rem 1.75rem 0.5rem 0.75rem;
-                font-size: 0.8rem;
+                width: 100% !important;
+                padding: 0.5rem 1.75rem 0.5rem 0.75rem !important;
+                font-size: 0.78rem !important;
             }
             .filter-controls-right {
-                justify-content: space-between;
+                justify-content: space-between !important;
+                width: 100% !important;
             }
             .showing-counter-badge {
-                font-size: 0.76rem;
+                font-size: 0.74rem !important;
             }
 
-            /* Compact Mobile Table Layout (NO HORIZONTAL SCROLL) */
+            /* Compact Mobile Table Layout (100% FITTED - ZERO HORIZONTAL SCROLL) */
             .white-table-card {
-                border-radius: 12px;
-                margin-bottom: 1rem;
+                border-radius: 12px !important;
+                margin-bottom: 0.85rem !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow: hidden !important;
             }
             .table-card-topbar {
-                padding: 0.75rem 0.9rem;
+                padding: 0.65rem 0.75rem !important;
             }
             .table-card-heading {
-                font-size: 0.86rem;
+                font-size: 0.82rem !important;
+            }
+            .table-responsive-viewport {
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow-x: hidden !important;
             }
             .roster-white-table {
-                table-layout: fixed;
+                table-layout: fixed !important;
                 width: 100% !important;
-                min-width: 0 !important;
+                max-width: 100% !important;
+                border-collapse: collapse !important;
             }
             .roster-white-table th {
-                padding: 0.55rem 0.4rem;
-                font-size: 0.64rem;
+                padding: 0.45rem 0.3rem !important;
+                font-size: 0.62rem !important;
             }
             .roster-white-table td {
-                padding: 0.55rem 0.4rem;
-                font-size: 0.74rem;
+                padding: 0.45rem 0.3rem !important;
+                font-size: 0.72rem !important;
             }
 
-            /* Column Sizing for Mobile View */
+            /* Column Sizing for Compact Mobile Screen (Total = 100%) */
             .col-checkbox {
-                width: 22px !important;
-                padding-left: 0.4rem !important;
-                padding-right: 0.2rem !important;
+                width: 24px !important;
+                padding-left: 0.25rem !important;
+                padding-right: 0.15rem !important;
+                text-align: center !important;
             }
             .col-member {
-                width: 44% !important;
+                width: auto !important;
             }
             .col-school {
-                width: 26% !important;
+                width: 72px !important;
             }
             .col-status {
-                width: 16% !important;
+                width: 60px !important;
+                text-align: center !important;
             }
             .col-actions {
-                width: 14% !important;
-                text-align: right !important;
-                padding-right: 0.4rem !important;
+                width: 36px !important;
+                text-align: center !important;
+                padding-right: 0.25rem !important;
             }
 
-            /* Hide verbose columns on compact mobile view */
+            /* Hide non-essential columns on compact mobile view */
             .col-student-id, .col-program {
                 display: none !important;
             }
 
             .member-info-cell {
-                gap: 0.35rem;
+                gap: 0.3rem !important;
+                min-width: 0 !important;
             }
             .member-avatar-thumb {
-                width: 26px;
-                height: 26px;
-                font-size: 0.7rem;
+                width: 24px !important;
+                height: 24px !important;
+                font-size: 0.68rem !important;
             }
             .member-name-text {
-                font-size: 0.75rem;
+                font-size: 0.72rem !important;
+                line-height: 1.2 !important;
             }
             .member-email-text {
-                font-size: 0.64rem;
+                font-size: 0.62rem !important;
             }
             .school-tag-badge {
-                font-size: 0.64rem;
-                padding: 1px 4px;
+                font-size: 0.62rem !important;
+                padding: 1px 3px !important;
             }
             .school-tag-badge i {
-                display: none;
+                display: none !important;
             }
             .school-sub-text {
-                display: none;
+                display: none !important;
             }
             .pill-status {
-                font-size: 0.62rem;
-                padding: 1px 5px;
+                font-size: 0.58rem !important;
+                padding: 1px 4px !important;
             }
             .pill-status-dot {
-                width: 4px;
-                height: 4px;
+                width: 3px !important;
+                height: 3px !important;
             }
             .btn-row-action {
-                padding: 0.25rem 0.45rem;
-                font-size: 0.68rem;
+                padding: 0.22rem 0.4rem !important;
+                font-size: 0.68rem !important;
             }
             .btn-row-action .btn-action-text {
-                display: none;
+                display: none !important;
             }
         }
 
@@ -1320,13 +1377,13 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                         <tbody id="membersTableBody">
                             <?php if (empty($allMembersList)): ?>
                                 <tr id="emptyDbRow">
-                                    <td colspan="7" style="text-align:center; padding:3.5rem 1rem; color:#64748B;">
-                                        <i class="fas fa-folder-open" style="font-size:2.5rem; color:#CBD5E1; margin-bottom:0.75rem; display:block;"></i>
-                                        <h4 style="margin:0 0 0.35rem; color:#0F172A; font-weight:800; font-size:1.05rem;">No Member Directories Submitted Yet</h4>
-                                        <p style="margin:0 0 1rem; font-size:0.84rem; color:#64748B;">
-                                            There are currently no member records in the database. Use <strong>"Bulk CSV Import"</strong> or wait for affiliated school chapters to submit rosters.
+                                    <td colspan="7" style="text-align:center; padding:2.5rem 0.75rem; color:#64748B; word-break:break-word;">
+                                        <i class="fas fa-folder-open" style="font-size:2.2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
+                                        <h4 style="margin:0 0 0.3rem; color:#0F172A; font-weight:800; font-size:1rem;">No Member Directories Submitted Yet</h4>
+                                        <p style="margin:0 0 0.85rem; font-size:0.8rem; color:#64748B; line-height:1.35;">
+                                            There are currently no member records in the database. Use <strong>"Bulk CSV Import"</strong> or wait for school rosters.
                                         </p>
-                                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="btn-primary-navy" style="font-size:0.82rem; padding:0.5rem 1rem;">
+                                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="btn-primary-navy" style="font-size:0.8rem; padding:0.45rem 0.9rem; display:inline-flex; max-width:100%;">
                                             <i class="fas fa-file-import"></i> Upload Member Directory CSV
                                         </a>
                                     </td>
