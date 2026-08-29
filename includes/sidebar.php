@@ -32,27 +32,29 @@ $raw_role = $_SESSION['role'] ??
             $user['user_metadata']['role'] ?? 
             '';
 
-// Standardize / normalize role
-$normalized_role = strtolower(trim((string)$raw_role));
-if (in_array($normalized_role, ['super_admin', 'superadmin', 'eb_president'])) {
-    $role = 'super_admin';
-} elseif (in_array($normalized_role, ['admin', 'administrator', 'admin_officer'])) {
+// Standardize / normalize role strictly based on current portal section to guarantee 100% UI consistency
+$current_script = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? $_SERVER['PHP_SELF'] ?? '');
+
+if (strpos($current_script, '/portal/admin') !== false || strpos($current_script, '/admin/') !== false) {
     $role = 'admin';
-} elseif (in_array($normalized_role, ['school_officer', 'officer', 'school_admin', 'school'])) {
+} elseif (strpos($current_script, '/portal/school-officer') !== false || strpos($current_script, '/school-officer/') !== false) {
     $role = 'school_officer';
-} elseif (in_array($normalized_role, ['member', 'student', 'student_member', 'user'])) {
+} elseif (strpos($current_script, '/portal/member') !== false || strpos($current_script, '/member/') !== false) {
     $role = 'member';
 } else {
-    // If not detected from session, attempt detection based on script path
-    $current_script = str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '');
-    if (strpos($current_script, '/portal/admin') !== false) {
+    $raw_role = $_SESSION['role'] ?? 
+                $user['role'] ?? 
+                $user['user_metadata']['role'] ?? 
+                '';
+    $normalized_role = strtolower(trim((string)$raw_role));
+    if (in_array($normalized_role, ['super_admin', 'superadmin', 'eb_president', 'admin', 'administrator', 'admin_officer'])) {
         $role = 'admin';
-    } elseif (strpos($current_script, '/portal/school-officer') !== false) {
+    } elseif (in_array($normalized_role, ['school_officer', 'officer', 'school_admin', 'school'])) {
         $role = 'school_officer';
-    } elseif (strpos($current_script, '/portal/member') !== false) {
+    } elseif (in_array($normalized_role, ['member', 'student', 'student_member', 'user'])) {
         $role = 'member';
     } else {
-        $role = 'school_officer';
+        $role = 'admin';
     }
 }
 
