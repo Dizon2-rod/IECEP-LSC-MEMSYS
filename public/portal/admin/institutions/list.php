@@ -472,7 +472,7 @@ try {
                                             </span>
                                         </td>
                                         <td style="text-align:right;">
-                                            <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php" class="ap-btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.75rem;">
+                                            <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php?school=<?= urlencode($inst['id']) ?>" class="ap-btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.75rem;">
                                                 <i class="fas fa-users"></i> View Members
                                             </a>
                                         </td>

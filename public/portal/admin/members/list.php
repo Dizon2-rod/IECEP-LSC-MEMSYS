@@ -124,6 +124,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $feedbackType = 'success';
             }
         }
+    } elseif ($_POST['action'] === 'delete_member') {
+        $targetId = $_POST['member_id'] ?? '';
+        if ($targetId && $supabase) {
+            try {
+                $supabase->delete('members', $targetId);
+                $supabase->delete('user_profiles', $targetId);
+                $feedbackMsg = "Member record deleted successfully.";
+                $feedbackType = 'warning';
+            } catch (\Throwable $e) {
+                $feedbackMsg = "Error deleting member.";
+                $feedbackType = 'danger';
+            }
+        }
+    } elseif ($_POST['action'] === 'resend_credentials') {
+        $targetEmail = trim($_POST['email'] ?? '');
+        $targetName = trim($_POST['full_name'] ?? 'Member');
+        $targetMemId = trim($_POST['membership_id'] ?? 'IECEP-2026-LSC');
+        $targetSchool = trim($_POST['school_name'] ?? 'Affiliated Chapter');
+        $tempPass = 'MEM-' . rand(1000, 9999) . '-' . substr(strtoupper(bin2hex(random_bytes(2))), 0, 4);
+
+        if ($targetEmail) {
+            require_once __DIR__ . '/../../../../src/lib/EmailService.php';
+            $emailService = new \App\Lib\EmailService();
+            try {
+                $emailService->sendMemberWelcomeEmail($targetEmail, $targetName, $targetMemId, $tempPass, $targetSchool);
+                $feedbackMsg = "🎉 Login credentials and Membership ID resent to {$targetEmail}!";
+                $feedbackType = 'success';
+            } catch (\Throwable $emEx) {
+                $feedbackMsg = "Failed to send credentials: " . $emEx->getMessage();
+                $feedbackType = 'danger';
+            }
+        }
     }
 }
 
@@ -1638,12 +1670,29 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
 
             <!-- Footer Actions -->
             <div class="modal-footer-bar">
+                <form method="POST" style="display:inline;" onsubmit="return confirm('Send login credentials and Membership ID to this student\'s Gmail?');">
+                    <input type="hidden" name="action" value="resend_credentials">
+                    <input type="hidden" name="email" id="pmResendEmail" value="">
+                    <input type="hidden" name="full_name" id="pmResendName" value="">
+                    <input type="hidden" name="membership_id" id="pmResendMemId" value="">
+                    <input type="hidden" name="school_name" id="pmResendSchool" value="">
+                    <button type="submit" class="btn-white" style="color:var(--color-blue);">
+                        <i class="fas fa-paper-plane"></i> Send Gmail Credentials
+                    </button>
+                </form>
                 <button type="button" class="btn-white" onclick="exportDigitalId()">
                     <i class="fas fa-id-card" style="color:#B45309;"></i> Export Digital ID
                 </button>
                 <button type="button" class="btn-primary-navy" onclick="openEditModal()">
                     <i class="fas fa-pen-to-square"></i> Edit Details
                 </button>
+                <form method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to permanently delete this student member?');">
+                    <input type="hidden" name="action" value="delete_member">
+                    <input type="hidden" name="member_id" id="pmDeleteId" value="">
+                    <button type="submit" class="btn-white" style="color:#DC2626;">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </form>
                 <button type="button" class="btn-white" onclick="closeProfileModal()">
                     <i class="fas fa-xmark"></i> Close
                 </button>
@@ -1950,6 +1999,18 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                     avatarEl.innerHTML = `<span>${(data.name || 'U').charAt(0).toUpperCase()}</span>`;
                 }
 
+                // Resend and Delete Form Inputs
+                const rEmail = document.getElementById('pmResendEmail');
+                if (rEmail) rEmail.value = data.email || '';
+                const rName = document.getElementById('pmResendName');
+                if (rName) rName.value = data.name || '';
+                const rMemId = document.getElementById('pmResendMemId');
+                if (rMemId) rMemId.value = data.membership_id || '';
+                const rSchool = document.getElementById('pmResendSchool');
+                if (rSchool) rSchool.value = data.school_name || '';
+                const dId = document.getElementById('pmDeleteId');
+                if (dId) dId.value = data.id || '';
+
                 // Show modal
                 document.getElementById('profileInfoModal').classList.add('active');
                 document.body.style.overflow = 'hidden';
@@ -2064,6 +2125,18 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                 closeDigitalIdModal();
                 closeEditModal();
                 closeAddModal();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const schoolParam = urlParams.get('school');
+            if (schoolParam) {
+                const schoolSelect = document.getElementById('schoolDropdownFilter');
+                if (schoolSelect) {
+                    schoolSelect.value = schoolParam;
+                    onSchoolDropdownChange(schoolParam);
+                }
             }
         });
     </script>
