@@ -75,7 +75,7 @@ body {
    3. Page Scope Wrapper
    ========================================================= */
 .ap-scope {
-    padding: 1.75rem 2rem 3rem;
+    padding: 0.85rem 1.25rem 2rem;
     background: transparent;
     min-height: 100vh;
 }
@@ -87,46 +87,47 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 1.75rem;
-    padding-bottom: 1.25rem;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.65rem;
     border-bottom: 1px solid var(--border-light);
     flex-wrap: wrap;
-    gap: 1.25rem;
+    gap: 0.75rem;
 }
 
 .ap-title-block {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    gap: 0.15rem;
 }
 
 .ap-page-title {
-    font-family: 'Times New Roman', Georgia, serif;
-    font-size: 1.75rem;
-    font-weight: 700;
+    font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    font-size: 1.25rem;
+    font-weight: 800;
     color: var(--text-heading);
     margin: 0;
     letter-spacing: -0.01em;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.5rem;
 }
 
 .ap-page-title i {
-    color: var(--iecep-gold);
-    font-size: 1.45rem;
+    color: var(--color-navy);
+    font-size: 1.15rem;
 }
 
 .ap-page-subtitle {
-    font-size: 0.87rem;
+    font-size: 0.8rem;
     color: var(--text-muted);
     margin: 0;
+    line-height: 1.35;
 }
 
 .ap-header-actions {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
 }
 
@@ -236,22 +237,22 @@ body {
 .ap-kpi-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 1.15rem;
-    margin-bottom: 1.5rem;
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
 }
 
 .ap-kpi-grid-3 {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1.15rem;
-    margin-bottom: 1.5rem;
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
 }
 
 .ap-stat-card {
     background: var(--bg-surface);
     border: 1px solid var(--border-light);
-    border-radius: 16px;
-    padding: 1.35rem 1.25rem 1.15rem;
+    border-radius: 10px;
+    padding: 0.65rem 0.85rem;
     position: relative;
     transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
     box-shadow: var(--card-shadow);
@@ -262,31 +263,31 @@ body {
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0;
-    height: 3.5px;
+    height: 3px;
     background: linear-gradient(90deg, #0B1D4A, #D4AF37);
 }
 
 .ap-stat-card:hover {
     border-color: var(--border-gold);
-    transform: translateY(-2px);
+    transform: translateY(-1px);
     box-shadow: var(--card-shadow-hover);
 }
 
 .ap-stat-header {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    margin-bottom: 0.85rem;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
 }
 
 .ap-stat-icon {
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.15rem;
+    font-size: 0.95rem;
     flex-shrink: 0;
 }
 
@@ -299,29 +300,29 @@ body {
 .ap-stat-icon.rose { background: var(--accent-rose-bg); color: var(--accent-rose); }
 
 .ap-stat-label {
-    font-size: 0.72rem;
+    font-size: 0.65rem;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
     font-weight: 700;
 }
 
 .ap-stat-sublabel {
-    font-size: 0.88rem;
+    font-size: 0.78rem;
     font-weight: 600;
     color: var(--text-primary);
 }
 
 .ap-stat-value {
-    font-size: 1.85rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -0.01em;
     color: var(--text-heading);
-    font-family: 'Times New Roman', Georgia, serif;
+    line-height: 1.15;
 }
 
 .ap-stat-footer {
-    font-size: 0.74rem;
+    font-size: 0.7rem;
     color: var(--text-muted);
     margin-top: 0.3rem;
 }

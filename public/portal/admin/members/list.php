@@ -329,7 +329,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         .white-theme-wrap {
-            padding: 1.5rem 2rem;
+            padding: 0.85rem 1.25rem;
             max-width: 1560px;
             margin: 0 auto;
             box-sizing: border-box;
@@ -341,14 +341,14 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .white-page-header {
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
-            border-radius: 16px;
-            padding: 1.25rem 1.5rem;
-            margin-bottom: 1.25rem;
+            border-radius: 12px;
+            padding: 0.75rem 1.15rem;
+            margin-bottom: 0.75rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
-            gap: 1rem;
+            gap: 0.75rem;
             box-shadow: var(--shadow-card);
             box-sizing: border-box;
             width: 100%;
@@ -361,8 +361,8 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         .header-main-title {
-            margin: 0 0 0.2rem;
-            font-size: 1.35rem;
+            margin: 0 0 0.15rem;
+            font-size: 1.2rem;
             font-weight: 800;
             color: var(--text-heading);
             letter-spacing: -0.01em;
@@ -370,15 +370,15 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
 
         .header-subtitle {
             margin: 0;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: var(--text-muted);
-            line-height: 1.4;
+            line-height: 1.3;
         }
 
         .header-btn-group {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.45rem;
             flex-wrap: wrap;
         }
 
@@ -386,10 +386,10 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .btn-white {
             display: inline-flex;
             align-items: center;
-            gap: 0.45rem;
-            padding: 0.55rem 1rem;
-            border-radius: 8px;
-            font-size: 0.82rem;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
             font-weight: 700;
             text-decoration: none;
             background: #FFFFFF;
@@ -410,17 +410,17 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .btn-primary-navy {
             display: inline-flex;
             align-items: center;
-            gap: 0.45rem;
-            padding: 0.55rem 1.15rem;
-            border-radius: 8px;
-            font-size: 0.82rem;
+            gap: 0.4rem;
+            padding: 0.42rem 0.95rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
             font-weight: 800;
             text-decoration: none;
             background: var(--color-navy);
             border: 1px solid var(--color-navy);
             color: #FFFFFF;
             cursor: pointer;
-            box-shadow: 0 3px 10px rgba(11, 29, 74, 0.15);
+            box-shadow: 0 2px 8px rgba(11, 29, 74, 0.15);
             transition: all 0.18s ease;
             white-space: nowrap;
         }
@@ -429,15 +429,15 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             border-color: var(--color-navy-hover);
             color: #FDE047;
             transform: translateY(-1px);
-            box-shadow: 0 5px 14px rgba(11, 29, 74, 0.22);
+            box-shadow: 0 4px 12px rgba(11, 29, 74, 0.22);
         }
 
         /* 2. KPI Cards Grid - Left-to-Right layout on Desktop AND Mobile */
         .white-kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 0.85rem;
-            margin-bottom: 1.25rem;
+            gap: 0.65rem;
+            margin-bottom: 0.75rem;
             width: 100%;
             box-sizing: border-box;
         }
@@ -445,11 +445,11 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .kpi-card {
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
-            border-radius: 12px;
-            padding: 1rem 1.15rem;
+            border-radius: 10px;
+            padding: 0.55rem 0.85rem;
             display: flex;
             align-items: center;
-            gap: 1rem;
+            gap: 0.75rem;
             box-shadow: var(--shadow-card);
             transition: all 0.2s ease;
             min-width: 0;
@@ -458,17 +458,17 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .kpi-card:hover {
             border-color: var(--border-hover);
             box-shadow: var(--shadow-elevated);
-            transform: translateY(-2px);
+            transform: translateY(-1px);
         }
 
         .kpi-icon-pill {
-            width: 44px;
-            height: 44px;
-            border-radius: 10px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.2rem;
+            font-size: 1rem;
             flex-shrink: 0;
         }
         .kpi-icon-pill.blue { background: #EFF6FF; color: #2563EB; border: 1px solid #DBEAFE; }
@@ -477,68 +477,73 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .kpi-icon-pill.purple { background: #F5F3FF; color: #7C3AED; border: 1px solid #DDD6FE; }
 
         .kpi-number {
-            font-size: 1.4rem;
+            font-size: 1.15rem;
             font-weight: 800;
             color: var(--text-heading);
             line-height: 1.1;
         }
         .kpi-label {
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             font-weight: 600;
             color: var(--text-muted);
-            margin-top: 2px;
+            margin-top: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        /* 3. Filter & Search Controls Bar */
+        /* 3. Filter & Search Controls Bar - Compact Single Row on Desktop */
         .white-controls-card {
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
-            border-radius: 12px;
-            padding: 0.85rem 1.15rem;
-            margin-bottom: 1.15rem;
+            border-radius: 10px;
+            padding: 0.45rem 0.85rem;
+            margin-bottom: 0.75rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 0.75rem;
+            gap: 0.55rem;
             box-shadow: var(--shadow-card);
             width: 100%;
             box-sizing: border-box;
+            flex-wrap: nowrap;
         }
 
         .filter-controls-left {
             display: flex;
             align-items: center;
-            gap: 0.65rem;
+            gap: 0.5rem;
             flex: 1;
-            flex-wrap: wrap;
+            min-width: 0;
+            flex-wrap: nowrap;
         }
 
         .search-input-wrapper {
             position: relative;
-            min-width: 260px;
-            flex: 1;
-            max-width: 440px;
+            flex: 1 1 240px;
+            min-width: 180px;
+            max-width: 340px;
             display: flex;
             align-items: center;
         }
         .search-input-wrapper .search-icon {
             position: absolute;
-            left: 14px;
+            left: 11px;
             top: 50%;
             transform: translateY(-50%);
             color: #94A3B8;
-            font-size: 0.95rem;
+            font-size: 0.82rem;
             pointer-events: none;
             z-index: 3;
         }
         .search-input-field {
             width: 100%;
+            height: 35px;
             box-sizing: border-box;
-            padding: 0.6rem 0.85rem 0.6rem 2.85rem !important; /* Generous left padding so icon never covers text */
+            padding: 0.25rem 0.65rem 0.25rem 2.25rem !important;
             border: 1px solid #CBD5E1;
-            border-radius: 8px;
-            font-size: 0.84rem;
+            border-radius: 6px;
+            font-size: 0.78rem;
             font-family: inherit;
             outline: none;
             transition: all 0.2s ease;
@@ -551,18 +556,22 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         .select-filter-box {
-            padding: 0.6rem 1.85rem 0.6rem 0.8rem;
+            height: 35px;
+            padding: 0.25rem 1.6rem 0.25rem 0.65rem;
             border: 1px solid #CBD5E1;
-            border-radius: 8px;
-            font-size: 0.82rem;
+            border-radius: 6px;
+            font-size: 0.78rem;
             font-weight: 600;
             font-family: inherit;
             color: var(--text-body);
-            background: #FFFFFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748B'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") no-repeat right 0.6rem center/14px;
+            background: #FFFFFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748B'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") no-repeat right 0.45rem center/12px;
             appearance: none;
             outline: none;
             cursor: pointer;
             transition: border-color 0.2s ease;
+            flex: 0 1 auto;
+            max-width: 190px;
+            white-space: nowrap;
         }
         .select-filter-box:focus {
             border-color: var(--color-navy);
@@ -571,11 +580,12 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .filter-controls-right {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 0.5rem;
+            flex-shrink: 0;
         }
 
         .showing-counter-badge {
-            font-size: 0.82rem;
+            font-size: 0.76rem;
             font-weight: 700;
             color: var(--text-muted);
             white-space: nowrap;
@@ -588,10 +598,10 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .white-table-card {
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
-            border-radius: 14px;
+            border-radius: 10px;
             overflow: hidden;
             box-shadow: var(--shadow-card);
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             width: 100%;
             max-width: 100%;
             box-sizing: border-box;
