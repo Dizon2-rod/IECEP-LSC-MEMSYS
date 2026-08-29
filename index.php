@@ -838,159 +838,181 @@ try {
             align-items: center;
         }
 
-        /* ── Affiliation Toolkit & Fee Hub ── */
+        /* ── Affiliation Toolkit & Fee Hub (Compact Modal-Friendly Design) ── */
         .affiliate-toolkit-card {
-            background: linear-gradient(135deg, #0B1D4A 0%, #142a6b 100%);
-            border-radius: 20px;
-            padding: 2rem 1.75rem;
+            background: linear-gradient(145deg, #0B1D4A 0%, #0F172A 100%);
+            border: 1px solid rgba(212, 175, 55, 0.25);
+            border-radius: 14px;
+            padding: 1.25rem;
             color: #fff;
-            box-shadow: 0 16px 40px rgba(11, 29, 74, 0.22);
-            max-width: 1200px;
-            margin: 0 auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            max-width: 100%;
+            margin: 0 0 1.25rem 0;
             position: relative;
+            box-sizing: border-box;
             overflow: hidden;
-        }
-        .affiliate-toolkit-card::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -20%;
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, rgba(212, 175, 55, 0.12) 0%, transparent 70%);
-            pointer-events: none;
         }
         .affiliate-toolkit-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 1.75rem;
+            gap: 1.25rem;
             position: relative;
             z-index: 2;
+            width: 100%;
+            box-sizing: border-box;
         }
         @media (min-width: 992px) {
-            .affiliate-toolkit-grid { grid-template-columns: 1.2fr 0.8fr; }
+            .affiliate-toolkit-grid { grid-template-columns: 1.15fr 0.85fr; }
         }
         .toolkit-checklist-title {
-            font-size: 1.25rem;
+            font-size: 1rem;
             font-weight: 700;
             color: #fff;
-            margin-bottom: 0.35rem;
+            margin-bottom: 0.25rem;
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.45rem;
+            line-height: 1.3;
         }
         .toolkit-checklist-subtitle {
-            color: rgba(255, 255, 255, 0.75);
-            font-size: 0.85rem;
-            margin-bottom: 1.15rem;
-            line-height: 1.45;
+            color: rgba(255, 255, 255, 0.72);
+            font-size: 0.78rem;
+            margin-bottom: 0.75rem;
+            line-height: 1.4;
         }
         .checklist-items-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 0.65rem;
+            gap: 0.45rem;
         }
-        @media (min-width: 640px) {
+        @media (min-width: 520px) {
             .checklist-items-grid { grid-template-columns: repeat(2, 1fr); }
         }
         .checklist-item {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 10px;
-            padding: 0.65rem 0.85rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            border-radius: 8px;
+            padding: 0.45rem 0.6rem;
             display: flex;
-            align-items: flex-start;
-            gap: 0.65rem;
-            font-size: 0.82rem;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.78rem;
             color: #f8fafc;
-            backdrop-filter: blur(4px);
-            transition: background 0.2s ease;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
         }
         .checklist-item:hover {
-            background: rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(212, 175, 55, 0.3);
         }
         .checklist-item i {
             color: #D4AF37;
-            font-size: 0.95rem;
-            margin-top: 0.15rem;
+            font-size: 0.85rem;
             flex-shrink: 0;
+            width: 14px;
+            text-align: center;
+        }
+        .checklist-item strong {
+            display: block;
+            font-size: 0.76rem;
+            line-height: 1.25;
+            color: #F8FAFC;
+        }
+        .checklist-item .item-sub {
+            font-size: 0.68rem;
+            color: rgba(255, 255, 255, 0.65);
+            margin-top: 1px;
+            line-height: 1.2;
         }
         .toolkit-action-box {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(212, 175, 55, 0.3);
-            border-radius: 16px;
-            padding: 1.5rem 1.35rem;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(212, 175, 55, 0.22);
+            border-radius: 12px;
+            padding: 1rem 0.95rem;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            backdrop-filter: blur(10px);
+            box-sizing: border-box;
         }
         .fee-rate-box {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0.6rem 0.85rem;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            margin-bottom: 0.55rem;
+            padding: 0.45rem 0.65rem;
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 6px;
+            margin-bottom: 0.4rem;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
         .fee-rate-label {
-            font-size: 0.82rem;
-            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.76rem;
+            color: rgba(255, 255, 255, 0.85);
         }
         .fee-rate-val {
             font-weight: 700;
-            font-size: 1.05rem;
+            font-size: 0.88rem;
             color: #D4AF37;
         }
         .hei-brackets-container {
-            margin-top: 1.25rem;
-            padding-top: 1.15rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            margin-top: 0.85rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
         }
         .hei-brackets-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 0.55rem;
-            margin-bottom: 0.75rem;
+            gap: 0.4rem;
+            margin-bottom: 0.55rem;
         }
-        @media (min-width: 640px) {
+        @media (min-width: 520px) {
             .hei-brackets-grid { grid-template-columns: repeat(4, 1fr); }
         }
         .hei-bracket-box {
-            background: rgba(255, 255, 255, 0.07);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 8px;
-            padding: 0.55rem 0.45rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            border-radius: 6px;
+            padding: 0.4rem 0.25rem;
             text-align: center;
-            backdrop-filter: blur(4px);
-            transition: background 0.2s ease, border-color 0.2s ease;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
         }
         .hei-bracket-box:hover {
-            background: rgba(255, 255, 255, 0.14);
-            border-color: rgba(212, 175, 55, 0.4);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(212, 175, 55, 0.35);
         }
         .hei-bracket-range {
-            font-size: 0.72rem;
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 0.15rem;
+            font-size: 0.68rem;
+            color: rgba(255, 255, 255, 0.75);
+            margin-bottom: 0.1rem;
+            line-height: 1.2;
         }
         .hei-bracket-fee {
             font-weight: 700;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             color: #D4AF37;
         }
         .operational-fee-note {
-            background: rgba(212, 175, 55, 0.12);
-            border: 1px solid rgba(212, 175, 55, 0.25);
-            border-radius: 8px;
-            padding: 0.55rem 0.75rem;
-            font-size: 0.78rem;
-            color: #fef08a;
+            background: rgba(212, 175, 55, 0.09);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 6px;
+            padding: 0.4rem 0.6rem;
+            font-size: 0.72rem;
+            color: #FEF08A;
             display: flex;
             align-items: center;
-            gap: 0.45rem;
-            line-height: 1.4;
+            gap: 0.4rem;
+            line-height: 1.35;
+        }
+        @media (max-width: 640px) {
+            .affiliate-toolkit-card {
+                padding: 0.85rem 0.75rem;
+            }
+            .toolkit-checklist-title {
+                font-size: 0.92rem;
+            }
+            .toolkit-action-box {
+                padding: 0.75rem 0.65rem;
+            }
         }
 
         /* ── Contact Section Enhancements ── */
@@ -1832,69 +1854,69 @@ try {
                 </div>
             </div>
 
-            <!-- Toolkit Info Panel (moved from index section) -->
-            <div id="modal-toolkit-panel" class="affiliate-toolkit-card" style="margin:0 0 1.5rem; border-radius:16px;">
+            <!-- Toolkit Info Panel (Compact & Modal-Optimized) -->
+            <div id="modal-toolkit-panel" class="affiliate-toolkit-card">
                 <div class="affiliate-toolkit-grid">
-                    <!-- Left: Checklist -->
+                    <!-- Left: Checklist & HEI Brackets -->
                     <div>
                         <h3 class="toolkit-checklist-title">
                             <i class="fa-solid fa-list-check text-gold"></i> Required Affiliation Documents
                         </h3>
                         <p class="toolkit-checklist-subtitle">
-                            Per Article IV Section 3 of the IECEP National Constitution &amp; By-Laws, please prepare the following for upload:
+                            Per Art. IV Sec. 3 of the IECEP National Constitution &amp; By-Laws, please prepare the following for upload:
                         </p>
                         <div class="checklist-items-grid">
                             <div class="checklist-item">
                                 <i class="fa-solid fa-file-signature text-gold"></i>
                                 <div>
                                     <strong>Letter of Intent (LOI)</strong>
-                                    <div style="font-size:0.78rem; opacity:0.8;">Signed by Chapter President</div>
+                                    <div class="item-sub">Signed by Chapter President</div>
                                 </div>
                             </div>
                             <div class="checklist-item">
                                 <i class="fa-solid fa-building-columns text-gold"></i>
                                 <div>
                                     <strong>Endorsement Letter</strong>
-                                    <div style="font-size:0.78rem; opacity:0.8;">Signed by Dean / Dept. Chair</div>
+                                    <div class="item-sub">Signed by Dean / Dept. Chair</div>
                                 </div>
                             </div>
                             <div class="checklist-item">
                                 <i class="fa-solid fa-scale-balanced text-gold"></i>
                                 <div>
                                     <strong>Constitution &amp; By-Laws</strong>
-                                    <div style="font-size:0.78rem; opacity:0.8;">Ratified local chapter copy</div>
+                                    <div class="item-sub">Ratified local chapter copy</div>
                                 </div>
                             </div>
                             <div class="checklist-item">
                                 <i class="fa-solid fa-users-gear text-gold"></i>
                                 <div>
                                     <strong>Officers List with CVs</strong>
-                                    <div style="font-size:0.78rem; opacity:0.8;">Complete executive board roster</div>
+                                    <div class="item-sub">Executive board roster</div>
                                 </div>
                             </div>
                             <div class="checklist-item">
                                 <i class="fa-solid fa-sitemap text-gold"></i>
                                 <div>
                                     <strong>Organizational Chart</strong>
-                                    <div style="font-size:0.78rem; opacity:0.8;">Departmental hierarchy structure</div>
+                                    <div class="item-sub">Departmental structure</div>
                                 </div>
                             </div>
                             <div class="checklist-item">
                                 <i class="fa-solid fa-file-excel text-gold"></i>
                                 <div>
                                     <strong>Member Directory (Excel)</strong>
-                                    <div style="font-size:0.78rem; opacity:0.8;">4 sheets (1st to 4th Year levels)</div>
+                                    <div class="item-sub">4 sheets (1st to 4th Year)</div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Section 1. HEI Affiliation Fee Brackets (BR No. 021-2024) -->
                         <div class="hei-brackets-container">
-                            <div style="font-size:0.8rem; font-weight:700; color:#D4AF37; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.35rem;">
-                                <i class="fa-solid fa-building-columns text-gold me-1"></i> Section 1. HEI Institutional Affiliation Fee
+                            <div style="font-size:0.75rem; font-weight:700; color:#D4AF37; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.25rem;">
+                                <i class="fa-solid fa-building-columns text-gold me-1"></i> Section 1. HEI Institutional Fee
                             </div>
-                            <p style="font-size:0.82rem; color:rgba(255,255,255,0.78); margin-bottom:0.75rem; line-height:1.45;">
-                                In accordance with Board Resolution No. 021-2024 (Amendment of Institutional Membership Fees for HEIs), affiliation fees follow student membership count:
+                            <p style="font-size:0.74rem; color:rgba(255,255,255,0.72); margin-bottom:0.5rem; line-height:1.35;">
+                                In accordance with Board Resolution No. 021-2024, affiliation fees follow student member count:
                             </p>
                             <div class="hei-brackets-grid">
                                 <div class="hei-bracket-box">
@@ -1915,8 +1937,8 @@ try {
                                 </div>
                             </div>
                             <div class="operational-fee-note">
-                                <i class="fa-solid fa-circle-info text-gold" style="font-size:1.1rem; flex-shrink:0;"></i>
-                                <span>Plus <strong>₱800.00</strong> operational and activity fee collected upon renewal to support local student chapter programs and initiatives.</span>
+                                <i class="fa-solid fa-circle-info text-gold" style="font-size:0.9rem; flex-shrink:0;"></i>
+                                <span>Plus <strong>₱800.00</strong> operational &amp; activity fee collected upon renewal for chapter initiatives.</span>
                             </div>
                         </div>
                     </div>
@@ -1924,14 +1946,14 @@ try {
                     <!-- Right: Section 2. Individual Membership Fees -->
                     <div class="toolkit-action-box">
                         <div>
-                            <div style="font-size:0.8rem; font-weight:700; color:#D4AF37; text-transform:uppercase; letter-spacing:0.08em; margin-bottom:0.4rem;">
-                                <i class="fa-solid fa-users text-gold me-1"></i> Section 2. Individual Membership Fee
+                            <div style="font-size:0.75rem; font-weight:700; color:#D4AF37; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.25rem;">
+                                <i class="fa-solid fa-users text-gold me-1"></i> Section 2. Member Dues
                             </div>
-                            <h4 style="font-size:1.35rem; font-weight:700; color:#fff; margin-bottom:0.4rem;">
-                                Student Member Dues
+                            <h4 style="font-size:1.05rem; font-weight:700; color:#fff; margin-bottom:0.25rem;">
+                                Individual Student Dues
                             </h4>
-                            <p style="font-size:0.82rem; color:rgba(255,255,255,0.78); margin-bottom:1rem; line-height:1.45;">
-                                The renewal of individual student memberships shall occur simultaneously with the organizational affiliation:
+                            <p style="font-size:0.74rem; color:rgba(255,255,255,0.72); margin-bottom:0.65rem; line-height:1.35;">
+                                Individual student renewal occurs simultaneously with organizational affiliation:
                             </p>
                             <div class="fee-rate-box">
                                 <span class="fee-rate-label">Returning (Old) Members</span>
@@ -1945,12 +1967,12 @@ try {
                                 <span class="fee-rate-label">Honorary Members</span>
                                 <span class="fee-rate-val">₱300.00</span>
                             </div>
-                            <div style="font-size:0.8rem; color:rgba(255,255,255,0.75); margin-bottom:1.5rem; line-height:1.45;">
-                                <i class="fa-solid fa-id-card text-gold me-1"></i> Each member shall receive an official ID and access to all IECEP-LSC-sanctioned activities upon payment.
+                            <div style="font-size:0.72rem; color:rgba(255,255,255,0.68); margin:0.4rem 0 0.85rem; line-height:1.35;">
+                                <i class="fa-solid fa-id-card text-gold me-1"></i> Includes official ID &amp; full access to IECEP-LSC activities.
                             </div>
                         </div>
-                        <button type="button" class="btn btn-primary btn-affiliate-trigger" style="width:100%; padding:0.95rem; font-size:1rem; font-weight:700;">
-                            <i class="fa-solid fa-paper-plane me-2"></i> Start Affiliation Application
+                        <button type="button" class="btn btn-primary btn-affiliate-trigger" style="width:100%; padding:0.65rem 1rem; font-size:0.88rem; font-weight:700; border-radius:50px; display:flex; align-items:center; justify-content:center; gap:0.4rem;">
+                            <i class="fa-solid fa-paper-plane"></i> Start Application Below
                         </button>
                     </div>
                 </div>
