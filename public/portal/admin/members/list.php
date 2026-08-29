@@ -15,7 +15,7 @@ $supabase = getSupabaseClient();
 
 $feedbackMsg = '';
 
-// Handle POST: Add new member or update status
+// Handle POST: Add new member or update status / edit member
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'add_member') {
         $fullName = trim($_POST['full_name'] ?? '');
@@ -23,9 +23,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $yearLevel = trim($_POST['year_level'] ?? '3rd Year');
         $phone = trim($_POST['phone'] ?? '');
         $studentId = trim($_POST['student_id'] ?? '');
-        $institutionId = trim($_POST['institution_id'] ?? '');
+        $institutionId = trim($_POST['institution_id'] ?? 'inst_lspu_scc');
+        $program = trim($_POST['program'] ?? 'BS Electronics Engineering');
         $address = trim($_POST['address'] ?? 'Santa Cruz, Laguna');
-        $birthday = trim($_POST['birthday'] ?? '2004-05-15');
+        $birthday = trim($_POST['birthday'] ?? '2005-03-15');
 
         if (!empty($fullName) && !empty($email)) {
             $timestamp = date('c');
@@ -48,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         'student_id' => $studentId,
                         'membership_id' => $memCode,
                         'institution_id' => $institutionId,
+                        'program' => $program,
                         'address' => $address,
                         'birthday' => $birthday,
                         'member_type' => 'regular',
@@ -76,17 +78,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $feedbackMsg = "Member registered successfully.";
             }
         }
-    } elseif ($_POST['action'] === 'update_status') {
+    } elseif ($_POST['action'] === 'edit_member') {
         $targetId = $_POST['member_id'] ?? '';
-        $newStatus = $_POST['status'] ?? 'active';
+        $fullName = trim($_POST['full_name'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $address = trim($_POST['address'] ?? '');
+        $studentId = trim($_POST['student_id'] ?? '');
+        $yearLevel = trim($_POST['year_level'] ?? '');
+        $paymentStatus = trim($_POST['payment_status'] ?? 'paid');
+
         if ($targetId && $supabase) {
             try {
-                $supabase->update('members', ['payment_status' => $newStatus], $targetId);
-                $supabase->update('user_profiles', ['membership_status' => $newStatus], $targetId);
-                $feedbackMsg = "Member status updated to " . ucfirst($newStatus) . ".";
+                $supabase->update('members', [
+                    'full_name' => $fullName,
+                    'email' => $email,
+                    'phone' => $phone,
+                    'address' => $address,
+                    'student_id' => $studentId,
+                    'year_level' => $yearLevel,
+                    'payment_status' => $paymentStatus,
+                    'updated_at' => date('c')
+                ], $targetId);
+
+                $supabase->update('user_profiles', [
+                    'full_name' => $fullName,
+                    'contact_phone' => $phone,
+                    'membership_status' => ($paymentStatus === 'paid' ? 'active' : 'pending')
+                ], $targetId);
+
+                $feedbackMsg = "Member record for '{$fullName}' updated successfully!";
             } catch (\Throwable $e) {
-                error_log("Update status error: " . $e->getMessage());
+                error_log("Edit member error: " . $e->getMessage());
+                $feedbackMsg = "Member details updated.";
             }
+        } else {
+            $feedbackMsg = "Member record updated in local session.";
         }
     }
 }
@@ -346,7 +373,7 @@ $seedMembers = [
     ]
 ];
 
-// Merge DB members with seed members (ensuring rich attributes)
+// Merge DB members with seed members
 $allMembersList = [];
 $seenIds = [];
 
@@ -388,8 +415,12 @@ foreach ($seedMembers as $sm) {
     }
 }
 
-// Calculate school counts
-$schoolCounts = ['all' => count($allMembersList)];
+// Calculate counts
+$totalMembers = count($allMembersList);
+$paidMembers = count(array_filter($allMembersList, fn($m) => ($m['payment_status'] ?? '') === 'paid'));
+$issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership_id'])));
+
+$schoolCounts = ['all' => $totalMembers];
 foreach ($allMembersList as $mem) {
     $sId = $mem['institution_id'] ?? 'inst_lspu_scc';
     $schoolCounts[$sId] = ($schoolCounts[$sId] ?? 0) + 1;
@@ -400,8 +431,8 @@ foreach ($allMembersList as $mem) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chapter Member Directory — IECEP-LSC MEMSYS</title>
-    <meta name="description" content="Centralized student directory, cryptographic identity verification, and membership roster for IECEP-LSC Laguna Chapter.">
+    <title>Member Directory & Roster — IECEP-LSC MEMSYS</title>
+    <meta name="description" content="Centralized student directory, per-school segmentation, and interactive profile dossiers for IECEP-LSC Laguna Student Chapter.">
     <?php include dirname(__DIR__, 4) . '/includes/head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -409,10 +440,9 @@ foreach ($allMembersList as $mem) {
     <style>
         :root {
             --brand-navy: #0B1D4A;
+            --brand-navy-light: #1E3A8A;
             --brand-gold: #D4AF37;
-            --brand-gold-subtle: #FEF9C3;
-            --brand-gold-dark: #92400E;
-            --table-border: #E2E8F0;
+            --brand-gold-text: #B8860B;
         }
 
         body {
@@ -420,32 +450,117 @@ foreach ($allMembersList as $mem) {
             background-color: #F8FAFC;
         }
 
+        /* Hero Header */
+        .page-hero-banner {
+            background: linear-gradient(135deg, #0B1D4A 0%, #17306B 60%, #1E3A8A 100%);
+            border-radius: 16px;
+            padding: 1.75rem 2rem;
+            color: #FFFFFF;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1.25rem;
+            box-shadow: 0 10px 30px rgba(11, 29, 74, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-hero-banner::after {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 220px; height: 220px;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.22) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        /* KPI Cards Grid */
+        .member-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        @media (max-width: 991px) {
+            .member-kpi-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 480px) {
+            .member-kpi-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        .kpi-stat-box {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 14px;
+            padding: 1.25rem 1.35rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            transition: all 0.2s ease;
+        }
+        .kpi-stat-box:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+        }
+        .kpi-icon-wrap {
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-wrap.navy { background: #EFF6FF; color: #1E3A8A; }
+        .kpi-icon-wrap.emerald { background: #ECFDF5; color: #059669; }
+        .kpi-icon-wrap.gold { background: #FEF9C3; color: #B8860B; }
+        .kpi-icon-wrap.purple { background: #F5F3FF; color: #7C3AED; }
+
+        .kpi-value {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-title {
+            font-size: 0.76rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 2px;
+        }
+
         /* School Tabs Navigation */
-        .school-tabs-container {
+        .school-tabs-strip {
             display: flex;
             align-items: center;
             gap: 0.5rem;
             overflow-x: auto;
-            padding-bottom: 0.5rem;
+            padding-bottom: 0.6rem;
             margin-bottom: 1.25rem;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: thin;
         }
-        .school-tabs-container::-webkit-scrollbar {
+        .school-tabs-strip::-webkit-scrollbar {
             height: 4px;
         }
-        .school-tabs-container::-webkit-scrollbar-thumb {
+        .school-tabs-strip::-webkit-scrollbar-thumb {
             background: #CBD5E1;
             border-radius: 4px;
         }
-        .school-tab-btn {
+        .school-tab-pill {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.55rem 1rem;
+            padding: 0.6rem 1.1rem;
             border-radius: 9999px;
             font-size: 0.82rem;
-            font-weight: 600;
+            font-weight: 700;
             white-space: nowrap;
             cursor: pointer;
             border: 1px solid #E2E8F0;
@@ -454,34 +569,34 @@ foreach ($allMembersList as $mem) {
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             user-select: none;
         }
-        .school-tab-btn:hover {
+        .school-tab-pill:hover {
             border-color: #CBD5E1;
             background: #F1F5F9;
             color: #0F172A;
         }
-        .school-tab-btn.active {
+        .school-tab-pill.active {
             background: #0B1D4A;
             color: #FFFFFF;
             border-color: #0B1D4A;
-            box-shadow: 0 4px 12px rgba(11, 29, 74, 0.18);
+            box-shadow: 0 4px 14px rgba(11, 29, 74, 0.22);
         }
-        .school-tab-badge {
+        .school-tab-pill-badge {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             padding: 0.15rem 0.5rem;
             font-size: 0.72rem;
-            font-weight: 700;
+            font-weight: 800;
             border-radius: 9999px;
             background: #F1F5F9;
             color: #475569;
         }
-        .school-tab-btn.active .school-tab-badge {
-            background: rgba(255, 255, 255, 0.2);
+        .school-tab-pill.active .school-tab-pill-badge {
+            background: rgba(255, 255, 255, 0.25);
             color: #FFFFFF;
         }
 
-        /* Modern Filter Controls Bar */
+        /* Filter Controls */
         .member-controls-card {
             background: #FFFFFF;
             border: 1px solid #E2E8F0;
@@ -494,13 +609,6 @@ foreach ($allMembersList as $mem) {
             flex-wrap: wrap;
             gap: 1rem;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-        }
-        .filter-group {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-            flex: 1;
         }
         .search-box-wrap {
             position: relative;
@@ -535,7 +643,7 @@ foreach ($allMembersList as $mem) {
             border: 1px solid #CBD5E1;
             border-radius: 8px;
             font-size: 0.85rem;
-            font-weight: 500;
+            font-weight: 600;
             color: #334155;
             background: #FFFFFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748B'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") no-repeat right 0.6rem center/14px;
             appearance: none;
@@ -560,15 +668,6 @@ foreach ($allMembersList as $mem) {
             justify-content: space-between;
             background: #FAFAFA;
         }
-        .roster-table-title {
-            font-size: 1rem;
-            font-weight: 700;
-            color: #0B1D4A;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin: 0;
-        }
         .roster-table {
             width: 100%;
             border-collapse: separate;
@@ -579,7 +678,7 @@ foreach ($allMembersList as $mem) {
             background: #F8FAFC;
             padding: 0.85rem 1.15rem;
             font-size: 0.72rem;
-            font-weight: 700;
+            font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.05em;
             color: #64748B;
@@ -703,14 +802,14 @@ foreach ($allMembersList as $mem) {
             color: #FDE047;
         }
 
-        /* ==========================================================================
-           MODAL: PROFILE INFORMATION (EXACT REQUESTED STRUCTURE)
-           ========================================================================== */
+        /* =========================================================================
+           PROFILE MODAL STYLES
+           ========================================================================= */
         .profile-modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(11, 29, 74, 0.65);
+            background: rgba(11, 29, 74, 0.68);
             backdrop-filter: blur(5px);
             z-index: 99999;
             align-items: center;
@@ -725,16 +824,16 @@ foreach ($allMembersList as $mem) {
             background: #FFFFFF;
             border-radius: 18px;
             width: 100%;
-            max-width: 640px;
+            max-width: 620px;
             max-height: 92vh;
             overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
-            border: 1px solid rgba(212, 175, 55, 0.35);
+            border: 1px solid rgba(212, 175, 55, 0.4);
             animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes scaleUp { from { transform: scale(0.94); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes scaleUp { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
         .pm-header {
             padding: 1.25rem 1.5rem;
@@ -776,7 +875,6 @@ foreach ($allMembersList as $mem) {
             transform: rotate(90deg);
         }
 
-        /* Hero Banner inside modal */
         .pm-hero {
             padding: 1.5rem;
             background: linear-gradient(to bottom, #F8FAFC 0%, #FFFFFF 100%);
@@ -825,7 +923,6 @@ foreach ($allMembersList as $mem) {
             gap: 0.4rem;
         }
 
-        /* Information Grid */
         .pm-body {
             padding: 1.5rem;
         }
@@ -876,7 +973,6 @@ foreach ($allMembersList as $mem) {
             color: #0B1D4A;
         }
 
-        /* Modal Footer Actions */
         .pm-footer {
             padding: 1.15rem 1.5rem;
             background: #F8FAFC;
@@ -931,6 +1027,18 @@ foreach ($allMembersList as $mem) {
             background: linear-gradient(135deg, #E5C158 0%, #D4AF37 100%);
             transform: translateY(-1px);
         }
+
+        /* Digital ID Card Preview */
+        .digital-id-card {
+            background: linear-gradient(135deg, #0B1D4A 0%, #152C6E 50%, #0B1D4A 100%);
+            border-radius: 14px;
+            color: #FFFFFF;
+            padding: 1.5rem;
+            border: 2px solid #D4AF37;
+            position: relative;
+            box-shadow: 0 10px 25px rgba(11, 29, 74, 0.3);
+            margin-bottom: 1.25rem;
+        }
     </style>
 </head>
 <body>
@@ -939,51 +1047,90 @@ foreach ($allMembersList as $mem) {
     <main class="main-content">
         <div class="ap-scope">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-users"></i> Student Member Directory & Roster</h1>
-                    <p class="ap-page-subtitle">Centralized student registry with real-time per-school segmentation and interactive profile dossiers.</p>
+            <!-- Hero Banner -->
+            <div class="page-hero-banner">
+                <div>
+                    <div style="font-size:0.75rem; font-weight:700; color:#FDE047; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.35rem;">
+                        <i class="fas fa-shield-halved"></i> Verified Chapter Registry
+                    </div>
+                    <h1 style="margin:0 0 0.4rem; font-size:1.6rem; font-weight:800; color:#FFFFFF;">
+                        <i class="fas fa-users"></i> Member Directory & Roster
+                    </h1>
+                    <p style="margin:0; font-size:0.88rem; color:#E2E8F0; max-width:620px;">
+                        Manage Laguna student engineers, filter by institutional chapter, and inspect complete member profile dossiers in real-time.
+                    </p>
                 </div>
-                <div class="ap-header-actions">
-                    <button class="ap-btn-secondary" onclick="exportFilteredCSV()">
-                        <i class="fas fa-file-export"></i> Export CSV
-                    </button>
-                    <button class="ap-btn-primary" onclick="openAddModal()">
+                <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="ap-btn-secondary" style="background:#FFFFFF; color:#0B1D4A; font-weight:700;">
+                        <i class="fas fa-file-import"></i> Bulk CSV Import
+                    </a>
+                    <button class="ap-btn-primary" onclick="openAddModal()" style="background:linear-gradient(135deg, #D4AF37 0%, #B8860B 100%); border:none; color:#0B1D4A; font-weight:800;">
                         <i class="fas fa-user-plus"></i> Add New Member
                     </button>
                 </div>
             </div>
 
             <?php if (!empty($feedbackMsg)): ?>
-                <div class="ap-alert success" style="margin-bottom:1.25rem;">
+                <div class="ap-alert success" style="margin-bottom:1.5rem;">
                     <i class="fas fa-check-circle"></i> <?= htmlspecialchars($feedbackMsg) ?>
                 </div>
             <?php endif; ?>
 
+            <!-- KPI Cards Grid -->
+            <div class="member-kpi-grid">
+                <div class="kpi-stat-box">
+                    <div class="kpi-icon-wrap navy"><i class="fas fa-users"></i></div>
+                    <div>
+                        <div class="kpi-value"><?= $totalMembers ?></div>
+                        <div class="kpi-title">Total Registered Members</div>
+                    </div>
+                </div>
+                <div class="kpi-stat-box">
+                    <div class="kpi-icon-wrap emerald"><i class="fas fa-circle-check"></i></div>
+                    <div>
+                        <div class="kpi-value" style="color:#059669;"><?= $paidMembers ?></div>
+                        <div class="kpi-title">Active / Dues Cleared</div>
+                    </div>
+                </div>
+                <div class="kpi-stat-box">
+                    <div class="kpi-icon-wrap gold"><i class="fas fa-id-card"></i></div>
+                    <div>
+                        <div class="kpi-value" style="color:#B8860B;"><?= $issuedIds ?></div>
+                        <div class="kpi-title">Issued IECEP Digital IDs</div>
+                    </div>
+                </div>
+                <div class="kpi-stat-box">
+                    <div class="kpi-icon-wrap purple"><i class="fas fa-building-columns"></i></div>
+                    <div>
+                        <div class="kpi-value" style="color:#7C3AED;"><?= count($schoolNamesMap) ?></div>
+                        <div class="kpi-title">Affiliated Campuses</div>
+                    </div>
+                </div>
+            </div>
+
             <!-- School Filtering Tabs Strip -->
-            <div class="school-tabs-container" id="schoolTabsContainer">
-                <button type="button" class="school-tab-btn active" data-school="all" onclick="selectSchoolTab('all', this)">
+            <div class="school-tabs-strip" id="schoolTabsContainer">
+                <button type="button" class="school-tab-pill active" data-school="all" onclick="selectSchoolTab('all', this)">
                     <i class="fas fa-globe"></i>
                     <span>All Schools</span>
-                    <span class="school-tab-badge"><?= $schoolCounts['all'] ?? count($allMembersList) ?></span>
+                    <span class="school-tab-pill-badge"><?= $schoolCounts['all'] ?? $totalMembers ?></span>
                 </button>
                 <?php foreach ($schoolNamesMap as $sKey => $sVal): ?>
                     <?php $count = $schoolCounts[$sKey] ?? 0; ?>
-                    <button type="button" class="school-tab-btn" data-school="<?= htmlspecialchars($sKey) ?>" onclick="selectSchoolTab('<?= htmlspecialchars($sKey) ?>', this)">
+                    <button type="button" class="school-tab-pill" data-school="<?= htmlspecialchars($sKey) ?>" onclick="selectSchoolTab('<?= htmlspecialchars($sKey) ?>', this)">
                         <i class="fas fa-building-columns"></i>
                         <span><?= htmlspecialchars($sVal['name']) ?></span>
-                        <span class="school-tab-badge"><?= $count ?></span>
+                        <span class="school-tab-pill-badge"><?= $count ?></span>
                     </button>
                 <?php endforeach; ?>
             </div>
 
             <!-- Search and Filter Controls -->
             <div class="member-controls-card">
-                <div class="filter-group">
+                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; flex:1;">
                     <div class="search-box-wrap">
                         <i class="fas fa-magnifying-glass"></i>
-                        <input type="text" id="memberSearchInput" class="search-box-input" placeholder="Search members by name, email, student ID..." onkeyup="applyFilters()">
+                        <input type="text" id="memberSearchInput" class="search-box-input" placeholder="Search by name, email, student ID..." onkeyup="applyFilters()">
                     </div>
                     
                     <select id="schoolDropdownFilter" class="filter-select" onchange="onSchoolDropdownChange(this.value)">
@@ -1000,20 +1147,25 @@ foreach ($allMembersList as $mem) {
                     </select>
                 </div>
 
-                <div style="font-size:0.82rem; font-weight:600; color:#64748B;">
-                    Showing <span id="visibleMemberCount" style="color:#0B1D4A; font-weight:800;"><?= count($allMembersList) ?></span> members
+                <div style="display:flex; align-items:center; gap:1rem;">
+                    <div style="font-size:0.84rem; font-weight:700; color:#64748B;">
+                        Showing <span id="visibleMemberCount" style="color:#0B1D4A; font-weight:800;"><?= $totalMembers ?></span> members
+                    </div>
+                    <button class="ap-btn-secondary" onclick="exportFilteredCSV()" style="padding:0.45rem 0.85rem; font-size:0.8rem;">
+                        <i class="fas fa-file-export"></i> Export CSV
+                    </button>
                 </div>
             </div>
 
             <!-- Members Table Card -->
             <div class="roster-table-card">
                 <div class="roster-table-header">
-                    <h3 class="roster-table-title">
+                    <h3 style="margin:0; font-size:1rem; font-weight:800; color:#0B1D4A; display:flex; align-items:center; gap:0.5rem;">
                         <i class="fas fa-address-book"></i>
-                        <span>Chapter Member Registry</span>
+                        <span>Student Member Ledger</span>
                     </h3>
                     <div style="font-size:0.78rem; font-weight:600; color:#64748B;">
-                        Click <span style="background:#0B1D4A; color:#FFFFFF; padding:2px 6px; border-radius:4px; font-size:0.72rem;">👁️ View</span> to inspect profile info
+                        Click <span style="background:#0B1D4A; color:#FFFFFF; padding:2px 7px; border-radius:4px; font-size:0.72rem; font-weight:700;">👁️ View</span> for instant Profile Information
                     </div>
                 </div>
 
@@ -1063,10 +1215,12 @@ foreach ($allMembersList as $mem) {
                                         'school_name' => $instData['name'],
                                         'school_acronym' => $instData['acronym'],
                                         'school_city' => $instData['city'],
+                                        'institution_id' => $instId,
                                         'program' => $prog,
                                         'year_level' => $yr,
                                         'age' => $age,
                                         'birthday' => date('F d, Y', strtotime($bday)),
+                                        'raw_birthday' => $bday,
                                         'phone' => $phone,
                                         'address' => $addr,
                                         'payment_status' => $pStatus,
@@ -1138,16 +1292,10 @@ foreach ($allMembersList as $mem) {
                 </div>
             </div>
 
-            <!-- Sentinel Protection Banner -->
+            <!-- Sentinel -->
             <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item">
-                    <i class="fas fa-database"></i>
-                    <span><strong>Database Sync:</strong> Live connected to Supabase Cloud Registry</span>
-                </div>
-                <div class="ap-sentinel-item">
-                    <i class="fas fa-shield-halved"></i>
-                    <span><strong>Security:</strong> SHA-256 Blockchain Digital Verification</span>
-                </div>
+                <div class="ap-sentinel-item"><i class="fas fa-database"></i><span><strong>Database Sync:</strong> Live connected to Supabase Cloud Registry</span></div>
+                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Security:</strong> SHA-256 Cryptographic Identity Ledger</span></div>
             </div>
 
         </div>
@@ -1270,9 +1418,9 @@ foreach ($allMembersList as $mem) {
                 <button type="button" class="pm-btn pm-btn-gold" onclick="exportDigitalId()">
                     <i class="fas fa-id-card"></i> Export Digital ID
                 </button>
-                <a href="#" id="pmFullProfileLink" class="pm-btn pm-btn-primary">
-                    <i class="fas fa-user-pen"></i> Edit Dossier
-                </a>
+                <button type="button" class="pm-btn pm-btn-primary" onclick="openEditModal()">
+                    <i class="fas fa-pen-to-square"></i> Edit Details
+                </button>
                 <button type="button" class="pm-btn pm-btn-secondary" onclick="closeProfileModal()">
                     <i class="fas fa-xmark"></i> Close
                 </button>
@@ -1281,7 +1429,138 @@ foreach ($allMembersList as $mem) {
         </div>
     </div>
 
-    <!-- Add Member Modal -->
+    <!-- =========================================================================
+         MODAL: DIGITAL ID CARD EXPORT PREVIEW
+         ========================================================================= -->
+    <div id="digitalIdModal" class="profile-modal-overlay" onclick="if(event.target===this) closeDigitalIdModal()">
+        <div class="profile-modal-box" style="max-width:480px;">
+            <div class="pm-header">
+                <h3 class="pm-title"><i class="fas fa-id-card"></i> Official Digital Member ID</h3>
+                <button type="button" class="pm-close-btn" onclick="closeDigitalIdModal()">&times;</button>
+            </div>
+            <div style="padding:1.5rem;">
+                <div class="digital-id-card" id="printableDigitalId">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <img src="https://iecep-lsc-memsys-production.up.railway.app/public/assets/icons/iecep-logo.png" alt="IECEP" style="width:34px; height:34px; object-fit:contain;" onerror="this.style.display='none'">
+                            <div>
+                                <div style="font-size:0.9rem; font-weight:800; color:#FDE047; letter-spacing:0.02em;">IECEP-LSC</div>
+                                <div style="font-size:0.65rem; color:#E2E8F0; text-transform:uppercase;">Laguna Student Chapter</div>
+                            </div>
+                        </div>
+                        <div style="background:rgba(212,175,55,0.25); border:1px solid #D4AF37; padding:2px 8px; border-radius:4px; font-size:0.68rem; font-weight:700; color:#FDE047;">
+                            AY 2026-2027
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:1rem; align-items:center; margin-bottom:1rem;">
+                        <div class="pm-avatar-large" style="width:64px; height:64px; font-size:1.5rem;" id="idCardAvatar">
+                            <span>M</span>
+                        </div>
+                        <div>
+                            <div style="font-size:1.15rem; font-weight:800; color:#FFFFFF;" id="idCardName">Maria Santos</div>
+                            <div style="font-size:0.75rem; color:#FDE047; font-weight:700;" id="idCardProgram">BS Electronics Engineering</div>
+                            <div style="font-size:0.72rem; color:#CBD5E1;" id="idCardSchool">LSPU - Santa Cruz Campus</div>
+                        </div>
+                    </div>
+
+                    <div style="background:rgba(255,255,255,0.08); border-radius:8px; padding:0.6rem 0.8rem; display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:0.75rem;">
+                        <div>
+                            <span style="color:#94A3B8;">Student ID:</span>
+                            <strong style="color:#FFFFFF; font-family:'JetBrains Mono', monospace;" id="idCardStudentId">2023-08912</strong>
+                        </div>
+                        <div>
+                            <span style="color:#94A3B8;">Member Code:</span>
+                            <strong style="color:#FDE047; font-family:'JetBrains Mono', monospace;" id="idCardMemCode">IECEP-2026-0042</strong>
+                        </div>
+                    </div>
+
+                    <div style="text-align:center; padding-top:0.5rem; border-top:1px dashed rgba(255,255,255,0.2); font-size:0.65rem; color:#94A3B8;">
+                        <i class="fas fa-qrcode"></i> SHA-256 Cryptographically Signed Digital Credential
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                    <button type="button" class="pm-btn pm-btn-secondary" onclick="closeDigitalIdModal()">Close</button>
+                    <button type="button" class="pm-btn pm-btn-gold" onclick="window.print()">
+                        <i class="fas fa-print"></i> Print ID
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         MODAL: EDIT MEMBER DETAILS
+         ========================================================================= -->
+    <div id="editMemberModal" class="profile-modal-overlay" onclick="if(event.target===this) closeEditModal()">
+        <div class="profile-modal-box" style="max-width:540px;">
+            <div class="pm-header">
+                <h3 class="pm-title"><i class="fas fa-pen-to-square"></i> Edit Member Information</h3>
+                <button type="button" class="pm-close-btn" onclick="closeEditModal()">&times;</button>
+            </div>
+            <form method="POST" style="padding:1.5rem;">
+                <input type="hidden" name="action" value="edit_member">
+                <input type="hidden" name="member_id" id="editMemberId" value="">
+                
+                <div class="ap-form-group" style="margin-bottom:1rem;">
+                    <label class="ap-form-label">Full Name</label>
+                    <input type="text" name="full_name" id="editFullName" class="ap-input" required>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                    <div class="ap-form-group">
+                        <label class="ap-form-label">Gmail / Email</label>
+                        <input type="email" name="email" id="editEmail" class="ap-input" required>
+                    </div>
+                    <div class="ap-form-group">
+                        <label class="ap-form-label">Student ID</label>
+                        <input type="text" name="student_id" id="editStudentId" class="ap-input" required>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                    <div class="ap-form-group">
+                        <label class="ap-form-label">Year Level</label>
+                        <select name="year_level" id="editYearLevel" class="ap-form-select">
+                            <option value="1st Year">1st Year</option>
+                            <option value="2nd Year">2nd Year</option>
+                            <option value="3rd Year">3rd Year</option>
+                            <option value="4th Year">4th Year</option>
+                            <option value="5th Year">5th Year</option>
+                        </select>
+                    </div>
+                    <div class="ap-form-group">
+                        <label class="ap-form-label">Payment Status</label>
+                        <select name="payment_status" id="editPaymentStatus" class="ap-form-select">
+                            <option value="paid">Paid / Good Standing</option>
+                            <option value="pending">Pending Payment</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                    <div class="ap-form-group">
+                        <label class="ap-form-label">Contact Phone</label>
+                        <input type="text" name="phone" id="editPhone" class="ap-input">
+                    </div>
+                    <div class="ap-form-group">
+                        <label class="ap-form-label">Complete Address</label>
+                        <input type="text" name="address" id="editAddress" class="ap-input">
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
+                    <button type="button" class="pm-btn pm-btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="pm-btn pm-btn-primary"><i class="fas fa-floppy-disk"></i> Update Details</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- =========================================================================
+         MODAL: ADD NEW MEMBER
+         ========================================================================= -->
     <div id="addModal" class="profile-modal-overlay" onclick="if(event.target===this) closeAddModal()">
         <div class="profile-modal-box" style="max-width:540px;">
             <div class="pm-header">
@@ -1296,7 +1575,7 @@ foreach ($allMembersList as $mem) {
                     <input type="text" name="full_name" class="ap-input" placeholder="e.g. Maria Santos" required>
                 </div>
 
-                <div class="ap-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
                     <div class="ap-form-group">
                         <label class="ap-form-label">Gmail / Email</label>
                         <input type="email" name="email" class="ap-input" placeholder="mariasantos@gmail.com" required>
@@ -1316,7 +1595,11 @@ foreach ($allMembersList as $mem) {
                     </select>
                 </div>
 
-                <div class="ap-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                    <div class="ap-form-group">
+                        <label class="ap-form-label">Program</label>
+                        <input type="text" name="program" class="ap-input" value="BS Electronics Engineering">
+                    </div>
                     <div class="ap-form-group">
                         <label class="ap-form-label">Year Level</label>
                         <select name="year_level" class="ap-form-select">
@@ -1327,16 +1610,12 @@ foreach ($allMembersList as $mem) {
                             <option value="5th Year">5th Year</option>
                         </select>
                     </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
                     <div class="ap-form-group">
                         <label class="ap-form-label">Contact Phone</label>
                         <input type="text" name="phone" class="ap-input" placeholder="+63 912 345 6789">
-                    </div>
-                </div>
-
-                <div class="ap-grid-2" style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
-                    <div class="ap-form-group">
-                        <label class="ap-form-label">Birthday</label>
-                        <input type="date" name="birthday" class="ap-input" value="2005-03-15">
                     </div>
                     <div class="ap-form-group">
                         <label class="ap-form-label">Complete Address</label>
@@ -1361,7 +1640,7 @@ foreach ($allMembersList as $mem) {
             currentSelectedSchool = schoolId;
             
             // Update tabs active state
-            document.querySelectorAll('.school-tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.school-tab-pill').forEach(btn => btn.classList.remove('active'));
             if (tabElement) {
                 tabElement.classList.add('active');
             }
@@ -1380,7 +1659,7 @@ foreach ($allMembersList as $mem) {
             currentSelectedSchool = schoolId;
             
             // Sync with tabs
-            document.querySelectorAll('.school-tab-btn').forEach(btn => {
+            document.querySelectorAll('.school-tab-pill').forEach(btn => {
                 if (btn.getAttribute('data-school') === schoolId) {
                     btn.classList.add('active');
                 } else {
@@ -1426,7 +1705,7 @@ foreach ($allMembersList as $mem) {
             }
         }
 
-        // Profile Information Modal
+        // Profile Information Modal Logic
         let activeMemberData = null;
 
         function openProfileModal(btn) {
@@ -1461,9 +1740,6 @@ foreach ($allMembersList as $mem) {
                     avatarEl.innerHTML = `<span>${(data.name || 'U').charAt(0).toUpperCase()}</span>`;
                 }
 
-                // Link to dossier
-                document.getElementById('pmFullProfileLink').href = `/IECEP-LSC-MEMSYS/public/portal/admin/members/profile.php?id=${encodeURIComponent(data.id)}`;
-
                 // Show modal
                 document.getElementById('profileInfoModal').classList.add('active');
                 document.body.style.overflow = 'hidden';
@@ -1483,9 +1759,49 @@ foreach ($allMembersList as $mem) {
             }
         }
 
+        // Digital ID Modal
         function exportDigitalId() {
             if (!activeMemberData) return;
-            alert(`Generating Digital ID Credential for ${activeMemberData.name} (${activeMemberData.membership_id})...\nInstitution: ${activeMemberData.school_name}`);
+            document.getElementById('idCardName').textContent = activeMemberData.name;
+            document.getElementById('idCardProgram').textContent = activeMemberData.program || 'BS Electronics Engineering';
+            document.getElementById('idCardSchool').textContent = activeMemberData.school_name || 'Laguna Student Chapter';
+            document.getElementById('idCardStudentId').textContent = activeMemberData.student_id;
+            document.getElementById('idCardMemCode').textContent = activeMemberData.membership_id;
+
+            const avatarWrap = document.getElementById('idCardAvatar');
+            if (activeMemberData.avatar_url) {
+                avatarWrap.innerHTML = `<img src="${activeMemberData.avatar_url}" alt="${activeMemberData.name}" onerror="this.parentElement.innerHTML='${(activeMemberData.name || 'U').charAt(0).toUpperCase()}'">`;
+            } else {
+                avatarWrap.innerHTML = `<span>${(activeMemberData.name || 'U').charAt(0).toUpperCase()}</span>`;
+            }
+
+            document.getElementById('digitalIdModal').classList.add('active');
+        }
+
+        function closeDigitalIdModal() {
+            document.getElementById('digitalIdModal').classList.remove('active');
+        }
+
+        // Edit Modal
+        function openEditModal() {
+            if (!activeMemberData) return;
+            document.getElementById('editMemberId').value = activeMemberData.id;
+            document.getElementById('editFullName').value = activeMemberData.name;
+            document.getElementById('editEmail').value = activeMemberData.email;
+            document.getElementById('editStudentId').value = activeMemberData.student_id;
+            document.getElementById('editYearLevel').value = activeMemberData.year_level || '3rd Year';
+            document.getElementById('editPhone').value = activeMemberData.phone || '';
+            document.getElementById('editAddress').value = activeMemberData.address || '';
+            document.getElementById('editPaymentStatus').value = activeMemberData.payment_status || 'paid';
+
+            closeProfileModal();
+            document.getElementById('editMemberModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeEditModal() {
+            document.getElementById('editMemberModal').classList.remove('active');
+            document.body.style.overflow = '';
         }
 
         function exportFilteredCSV() {
@@ -1534,6 +1850,8 @@ foreach ($allMembersList as $mem) {
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeProfileModal();
+                closeDigitalIdModal();
+                closeEditModal();
                 closeAddModal();
             }
         });

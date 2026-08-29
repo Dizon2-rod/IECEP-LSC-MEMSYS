@@ -12,12 +12,9 @@ $ROLE_NAVIGATION = [
         'nav_items' => [
             ['icon' => 'fa-gauge-high', 'label' => 'Dashboard', 'url' => 'portal/admin/dashboard.php', 'active' => true],
             
-            ['icon' => 'fa-users', 'label' => 'Members', 'url' => 'portal/admin/members/list.php', 'children' => [
-                ['icon' => 'fa-users', 'label' => 'Members Roster', 'url' => 'portal/admin/members/list.php'],
-                ['icon' => 'fa-user', 'label' => 'Member Profile', 'url' => 'portal/admin/members/profile.php'],
+            ['icon' => 'fa-users', 'label' => 'Member Directory', 'url' => 'portal/admin/members/list.php', 'children' => [
+                ['icon' => 'fa-address-book', 'label' => 'Member Roster', 'url' => 'portal/admin/members/list.php'],
                 ['icon' => 'fa-file-import', 'label' => 'Batch Processing', 'url' => 'portal/admin/members/batch-process.php'],
-                ['icon' => 'fa-cloud-upload-alt', 'label' => 'Import Members', 'url' => 'portal/admin/import-members.php'],
-                ['icon' => 'fa-list-check', 'label' => 'Directory Batches', 'url' => 'portal/admin/list-batches.php'],
             ]],
 
             ['icon' => 'fa-building-columns', 'label' => 'Institutions', 'url' => 'portal/admin/institutions/list.php'],
@@ -81,12 +78,9 @@ $ROLE_NAVIGATION = [
         'nav_items' => [
             ['icon' => 'fa-gauge-high', 'label' => 'Dashboard', 'url' => 'portal/admin/dashboard.php', 'active' => true],
             
-            ['icon' => 'fa-users', 'label' => 'Members', 'url' => 'portal/admin/members/list.php', 'children' => [
-                ['icon' => 'fa-users', 'label' => 'Members Roster', 'url' => 'portal/admin/members/list.php'],
-                ['icon' => 'fa-user', 'label' => 'Member Profile', 'url' => 'portal/admin/members/profile.php'],
+            ['icon' => 'fa-users', 'label' => 'Member Directory', 'url' => 'portal/admin/members/list.php', 'children' => [
+                ['icon' => 'fa-address-book', 'label' => 'Member Roster', 'url' => 'portal/admin/members/list.php'],
                 ['icon' => 'fa-file-import', 'label' => 'Batch Processing', 'url' => 'portal/admin/members/batch-process.php'],
-                ['icon' => 'fa-cloud-upload-alt', 'label' => 'Import Members', 'url' => 'portal/admin/import-members.php'],
-                ['icon' => 'fa-list-check', 'label' => 'Directory Batches', 'url' => 'portal/admin/list-batches.php'],
             ]],
 
             ['icon' => 'fa-building-columns', 'label' => 'Institutions', 'url' => 'portal/admin/institutions/list.php'],
