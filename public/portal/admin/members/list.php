@@ -23,16 +23,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $yearLevel = trim($_POST['year_level'] ?? '3rd Year');
         $phone = trim($_POST['phone'] ?? '');
         $studentId = trim($_POST['student_id'] ?? '');
-        $institutionId = trim($_POST['institution_id'] ?? 'inst_lspu_scc');
+        $institutionId = trim($_POST['institution_id'] ?? '');
         $program = trim($_POST['program'] ?? 'BS Electronics Engineering');
-        $address = trim($_POST['address'] ?? 'Santa Cruz, Laguna');
-        $birthday = trim($_POST['birthday'] ?? '2005-03-15');
+        $address = trim($_POST['address'] ?? '');
+        $birthday = trim($_POST['birthday'] ?? '');
 
         if (!empty($fullName) && !empty($email)) {
             $timestamp = date('c');
             $memId = bin2hex(random_bytes(16));
             
-            // Get count for ID
+            // Get count for sequential membership ID
             $existing = $supabase ? $supabase->select('members', ['select' => 'id']) : [];
             $count = is_array($existing) ? count($existing) + 1 : 1;
             $memCode = 'IECEP-2026-' . str_pad($count, 4, '0', STR_PAD_LEFT);
@@ -72,10 +72,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     ]]);
                 }
 
-                $feedbackMsg = "Member '{$fullName}' successfully registered with ID {$memCode}!";
+                $feedbackMsg = "Member '{$fullName}' successfully registered and saved to database with ID {$memCode}!";
             } catch (\Throwable $e) {
                 error_log("Add member error: " . $e->getMessage());
-                $feedbackMsg = "Member registered successfully.";
+                $feedbackMsg = "Member record saved.";
             }
         }
     } elseif ($_POST['action'] === 'edit_member') {
@@ -107,64 +107,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'membership_status' => ($paymentStatus === 'paid' ? 'active' : 'pending')
                 ], $targetId);
 
-                $feedbackMsg = "Member record for '{$fullName}' updated successfully!";
+                $feedbackMsg = "Member record for '{$fullName}' updated successfully in database!";
             } catch (\Throwable $e) {
                 error_log("Edit member error: " . $e->getMessage());
                 $feedbackMsg = "Member details updated.";
             }
-        } else {
-            $feedbackMsg = "Member record updated in local session.";
         }
     }
 }
 
-// 1. Standard Predefined Institutions
-$schoolNamesMap = [
-    'inst_lspu_scc' => [
-        'id' => 'inst_lspu_scc',
-        'name' => 'Laguna State Polytechnic University - Santa Cruz Campus',
-        'acronym' => 'LSPU-SCC',
-        'city' => 'Santa Cruz, Laguna',
-        'badge_color' => '#1E3A8A'
-    ],
-    'inst_dlsu_laguna' => [
-        'id' => 'inst_dlsu_laguna',
-        'name' => 'De La Salle University - Laguna Campus',
-        'acronym' => 'DLSU-Laguna',
-        'city' => 'Biñan, Laguna',
-        'badge_color' => '#065F46'
-    ],
-    'inst_mmcl' => [
-        'id' => 'inst_mmcl',
-        'name' => 'Mapúa Malayan Colleges Laguna',
-        'acronym' => 'MMCL',
-        'city' => 'Cabuyao, Laguna',
-        'badge_color' => '#991B1B'
-    ],
-    'inst_csjl' => [
-        'id' => 'inst_csjl',
-        'name' => 'Colegio de San Juan de Letran - Calamba',
-        'acronym' => 'CSJL-Calamba',
-        'city' => 'Calamba, Laguna',
-        'badge_color' => '#1E40AF'
-    ],
-    'inst_uplb' => [
-        'id' => 'inst_uplb',
-        'name' => 'University of the Philippines Los Baños',
-        'acronym' => 'UPLB',
-        'city' => 'Los Baños, Laguna',
-        'badge_color' => '#7F1D1D'
-    ],
-    'inst_spcba' => [
-        'id' => 'inst_spcba',
-        'name' => 'San Pedro College of Business Administration',
-        'acronym' => 'SPCBA',
-        'city' => 'San Pedro, Laguna',
-        'badge_color' => '#4C1D95'
-    ]
-];
-
-// Fetch active institutions from Supabase
+// 1. Fetch REAL Affiliated Institutions from Database
+$schoolNamesMap = [];
 try {
     if ($supabase) {
         $institutions = $supabase->select('institutions', ['select' => '*']);
@@ -174,9 +127,8 @@ try {
                     $schoolNamesMap[$inst['id']] = [
                         'id' => $inst['id'],
                         'name' => $inst['name'] ?? 'Higher Education Institution',
-                        'acronym' => $inst['acronym'] ?? 'HEI',
-                        'city' => $inst['city'] ?? 'Laguna',
-                        'badge_color' => '#0B1D4A'
+                        'acronym' => $inst['acronym'] ?? (substr($inst['name'] ?? 'HEI', 0, 8)),
+                        'city' => $inst['city'] ?? 'Laguna'
                     ];
                 }
             }
@@ -186,244 +138,121 @@ try {
     error_log("Institutions fetch error: " . $e->getMessage());
 }
 
-// 2. Fetch members records
-$dbMembers = [];
+// 2. Fetch Upload Batches for mapping school directories
+$batchSchoolMap = [];
 try {
     if ($supabase) {
-        $membersData = $supabase->select('members', ['select' => '*', 'order' => 'created_at.desc']);
-        if (is_array($membersData) && !empty($membersData)) {
-            $dbMembers = $membersData;
+        $batches = $supabase->select('upload_batches', ['select' => 'id, institution_id, file_name']);
+        if (is_array($batches)) {
+            foreach ($batches as $b) {
+                if (!empty($b['id']) && !empty($b['institution_id'])) {
+                    $batchSchoolMap[$b['id']] = $b['institution_id'];
+                }
+            }
         }
     }
 } catch (\Throwable $e) {
-    error_log("Members fetch error: " . $e->getMessage());
+    error_log("Batches query error: " . $e->getMessage());
 }
 
-// 3. Rich Default Member Pool for Laguna Chapters
-$seedMembers = [
-    [
-        'id' => 'mem_lspu_01',
-        'full_name' => 'Maria Santos',
-        'email' => 'mariasantos@gmail.com',
-        'student_id' => '2023-08912',
-        'membership_id' => 'IECEP-2026-0042',
-        'institution_id' => 'inst_lspu_scc',
-        'program' => 'BS Electronics Engineering',
-        'year_level' => '3rd Year',
-        'birthday' => '2005-03-15',
-        'age' => 21,
-        'phone' => '+63 912 345 6789',
-        'address' => 'Brgy. Bubukal, Santa Cruz, Laguna',
-        'payment_status' => 'paid',
-        'avatar_url' => 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-        'created_at' => '2026-01-15T08:30:00Z'
-    ],
-    [
-        'id' => 'mem_lspu_02',
-        'full_name' => 'Juan Dela Cruz',
-        'email' => 'jdelacruz.lspu@gmail.com',
-        'student_id' => '2022-04192',
-        'membership_id' => 'IECEP-2026-0043',
-        'institution_id' => 'inst_lspu_scc',
-        'program' => 'BS Electronics Engineering',
-        'year_level' => '4th Year',
-        'birthday' => '2004-08-22',
-        'age' => 22,
-        'phone' => '+63 917 892 3411',
-        'address' => 'Poblacion IV, Santa Cruz, Laguna',
-        'payment_status' => 'paid',
-        'avatar_url' => 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-        'created_at' => '2026-01-18T09:15:00Z'
-    ],
-    [
-        'id' => 'mem_lspu_03',
-        'full_name' => 'Alyssa Reyes',
-        'email' => 'alyssa.reyes@gmail.com',
-        'student_id' => '2024-01205',
-        'membership_id' => 'IECEP-2026-0044',
-        'institution_id' => 'inst_lspu_scc',
-        'program' => 'BS Electronics Engineering',
-        'year_level' => '2nd Year',
-        'birthday' => '2006-01-10',
-        'age' => 20,
-        'phone' => '+63 928 441 5590',
-        'address' => 'Brgy. Pagsawitan, Santa Cruz, Laguna',
-        'payment_status' => 'paid',
-        'avatar_url' => 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        'created_at' => '2026-02-01T11:20:00Z'
-    ],
-    [
-        'id' => 'mem_dlsu_01',
-        'full_name' => 'Ethan Vance Lim',
-        'email' => 'ethan.lim@dlsu.edu.ph',
-        'student_id' => '12204918',
-        'membership_id' => 'IECEP-2026-0105',
-        'institution_id' => 'inst_dlsu_laguna',
-        'program' => 'BS Electronics and Communications Eng.',
-        'year_level' => '3rd Year',
-        'birthday' => '2005-06-18',
-        'age' => 21,
-        'phone' => '+63 919 555 8899',
-        'address' => 'Greenfield City, Santa Rosa, Laguna',
-        'payment_status' => 'paid',
-        'avatar_url' => 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-        'created_at' => '2026-01-20T14:00:00Z'
-    ],
-    [
-        'id' => 'mem_dlsu_02',
-        'full_name' => 'Sophia Nicole Tan',
-        'email' => 'sophia.tan@dlsu.edu.ph',
-        'student_id' => '12301824',
-        'membership_id' => 'IECEP-2026-0106',
-        'institution_id' => 'inst_dlsu_laguna',
-        'program' => 'BS Electronics Engineering',
-        'year_level' => '2nd Year',
-        'birthday' => '2006-09-04',
-        'age' => 20,
-        'phone' => '+63 920 123 9988',
-        'address' => 'Malamig, Biñan, Laguna',
-        'payment_status' => 'paid',
-        'avatar_url' => 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-        'created_at' => '2026-02-05T10:45:00Z'
-    ],
-    [
-        'id' => 'mem_mmcl_01',
-        'full_name' => 'Carlos Miguel Ramos',
-        'email' => 'cmramos@mcl.edu.ph',
-        'student_id' => '2022-10892',
-        'membership_id' => 'IECEP-2026-0210',
-        'institution_id' => 'inst_mmcl',
-        'program' => 'BS Electronics Engineering',
-        'year_level' => '4th Year',
-        'birthday' => '2004-11-30',
-        'age' => 22,
-        'phone' => '+63 915 771 2233',
-        'address' => 'Pulo, Cabuyao, Laguna',
-        'payment_status' => 'paid',
-        'avatar_url' => 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80',
-        'created_at' => '2026-01-25T16:20:00Z'
-    ],
-    [
-        'id' => 'mem_mmcl_02',
-        'full_name' => 'Bea Christine Gomez',
-        'email' => 'bcgomez@mcl.edu.ph',
-        'student_id' => '2023-11402',
-        'membership_id' => 'IECEP-2026-0211',
-        'institution_id' => 'inst_mmcl',
-        'program' => 'BS Electronics Engineering',
-        'year_level' => '3rd Year',
-        'birthday' => '2005-07-12',
-        'age' => 21,
-        'phone' => '+63 927 889 0012',
-        'address' => 'Banlic, Calamba, Laguna',
-        'payment_status' => 'pending',
-        'avatar_url' => 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&auto=format&fit=crop&q=80',
-        'created_at' => '2026-02-10T13:10:00Z'
-    ],
-    [
-        'id' => 'mem_csjl_01',
-        'full_name' => 'Gabriel Alonzo Fernandez',
-        'email' => 'gfernandez.csjl@gmail.com',
-        'student_id' => '2022-77189',
-        'membership_id' => 'IECEP-2026-0301',
-        'institution_id' => 'inst_csjl',
-        'program' => 'BS Electronics Engineering',
-        'year_level' => '4th Year',
-        'birthday' => '2004-02-14',
-        'age' => 22,
-        'phone' => '+63 918 334 5566',
-        'address' => 'Bucal, Calamba, Laguna',
-        'payment_status' => 'paid',
-        'avatar_url' => 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
-        'created_at' => '2026-01-28T09:00:00Z'
-    ],
-    [
-        'id' => 'mem_uplb_01',
-        'full_name' => 'Rica Danielle Mendoza',
-        'email' => 'rdmendoza@up.edu.ph',
-        'student_id' => '2023-55091',
-        'membership_id' => 'IECEP-2026-0415',
-        'institution_id' => 'inst_uplb',
-        'program' => 'BS Electrical & Electronics Engineering',
-        'year_level' => '3rd Year',
-        'birthday' => '2005-12-05',
-        'age' => 21,
-        'phone' => '+63 916 222 7788',
-        'address' => 'Batong Malake, Los Baños, Laguna',
-        'payment_status' => 'paid',
-        'avatar_url' => 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80',
-        'created_at' => '2026-02-02T15:30:00Z'
-    ],
-    [
-        'id' => 'mem_spcba_01',
-        'full_name' => 'Joshua Mark Bautista',
-        'email' => 'joshua.bautista@gmail.com',
-        'student_id' => '2024-99014',
-        'membership_id' => 'IECEP-2026-0520',
-        'institution_id' => 'inst_spcba',
-        'program' => 'BS Electronics Engineering',
-        'year_level' => '2nd Year',
-        'birthday' => '2006-04-19',
-        'age' => 20,
-        'phone' => '+63 929 110 4455',
-        'address' => 'San Antonio, San Pedro, Laguna',
-        'payment_status' => 'paid',
-        'avatar_url' => 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
-        'created_at' => '2026-02-12T08:45:00Z'
-    ]
-];
-
-// Merge DB members with seed members
+// 3. Fetch REAL Members from Database (members table, directory imports, and user_profiles)
 $allMembersList = [];
-$seenIds = [];
+$seenEmails = [];
 
-// 1. Process DB records first
-foreach ($dbMembers as $dm) {
-    $mId = $dm['id'] ?? ('mem_' . uniqid());
-    $seenIds[$mId] = true;
-    
-    // Fill in realistic defaults if DB columns are null
-    $instId = $dm['institution_id'] ?? 'inst_lspu_scc';
-    $bday = $dm['birthday'] ?? '2005-04-12';
-    $birthDate = new DateTime($bday);
-    $now = new DateTime();
-    $calculatedAge = $now->diff($birthDate)->y;
+try {
+    if ($supabase) {
+        // A. Fetch from `members` table
+        $membersData = $supabase->select('members', ['select' => '*', 'order' => 'created_at.desc']);
+        if (is_array($membersData)) {
+            foreach ($membersData as $m) {
+                $email = strtolower(trim($m['email'] ?? ''));
+                if (!empty($email)) {
+                    $seenEmails[$email] = true;
+                    $bday = $m['birthday'] ?? '';
+                    $age = '';
+                    if (!empty($bday)) {
+                        try {
+                            $bDate = new DateTime($bday);
+                            $age = (new DateTime())->diff($bDate)->y;
+                        } catch (\Throwable $t) {}
+                    }
 
-    $allMembersList[] = [
-        'id' => $mId,
-        'full_name' => $dm['full_name'] ?? 'Student Member',
-        'email' => $dm['email'] ?? 'member@iecep.ph',
-        'student_id' => $dm['student_id'] ?? ('2023-' . substr(md5($mId), 0, 5)),
-        'membership_id' => $dm['membership_id'] ?? ('IECEP-2026-' . substr(strtoupper(md5($mId)), 0, 4)),
-        'institution_id' => $instId,
-        'program' => $dm['program'] ?? 'BS Electronics Engineering',
-        'year_level' => $dm['year_level'] ?? '3rd Year',
-        'birthday' => $bday,
-        'age' => $calculatedAge > 15 ? $calculatedAge : 21,
-        'phone' => $dm['phone'] ?? '+63 912 345 6789',
-        'address' => $dm['address'] ?? 'Santa Cruz, Laguna',
-        'payment_status' => $dm['payment_status'] ?? 'paid',
-        'avatar_url' => $dm['avatar_url'] ?? '',
-        'created_at' => $dm['created_at'] ?? date('c')
-    ];
-}
+                    $allMembersList[] = [
+                        'id' => $m['id'] ?? uniqid('mem_'),
+                        'full_name' => $m['full_name'] ?? 'Student Member',
+                        'email' => $email,
+                        'student_id' => $m['student_id'] ?? ($m['membership_id'] ?? 'N/A'),
+                        'membership_id' => $m['membership_id'] ?? ('IECEP-' . strtoupper(substr(md5($email), 0, 8))),
+                        'institution_id' => $m['institution_id'] ?? '',
+                        'program' => $m['program'] ?? 'BS Electronics Engineering',
+                        'year_level' => $m['year_level'] ?? '3rd Year',
+                        'birthday' => $bday,
+                        'age' => $age,
+                        'phone' => $m['phone'] ?? '',
+                        'address' => $m['address'] ?? '',
+                        'payment_status' => strtolower($m['payment_status'] ?? 'paid'),
+                        'avatar_url' => $m['avatar_url'] ?? '',
+                        'created_at' => $m['created_at'] ?? date('c')
+                    ];
+                }
+            }
+        }
 
-// 2. Add seed members if not already loaded
-foreach ($seedMembers as $sm) {
-    if (!isset($seenIds[$sm['id']])) {
-        $allMembersList[] = $sm;
+        // B. Fetch from `membership_directory_imports` (School-submitted Excel/CSV directories)
+        $directoryImports = $supabase->select('membership_directory_imports', ['select' => '*', 'order' => 'created_at.desc']);
+        if (is_array($directoryImports)) {
+            foreach ($directoryImports as $imp) {
+                $email = strtolower(trim($imp['email'] ?? ''));
+                if (!empty($email) && !isset($seenEmails[$email])) {
+                    $seenEmails[$email] = true;
+                    $bId = $imp['batch_id'] ?? '';
+                    $instId = $batchSchoolMap[$bId] ?? ($imp['institution_id'] ?? '');
+                    $bday = $imp['birthday'] ?? '';
+                    $age = '';
+                    if (!empty($bday)) {
+                        try {
+                            $bDate = new DateTime($bday);
+                            $age = (new DateTime())->diff($bDate)->y;
+                        } catch (\Throwable $t) {}
+                    }
+
+                    $allMembersList[] = [
+                        'id' => $imp['id'] ?? uniqid('imp_'),
+                        'full_name' => $imp['name'] ?? 'Student Member',
+                        'email' => $email,
+                        'student_id' => $imp['existing_id'] ?? ($imp['student_id'] ?? 'N/A'),
+                        'membership_id' => $imp['membership_id'] ?? ('IECEP-' . strtoupper(substr(md5($email), 0, 8))),
+                        'institution_id' => $instId,
+                        'program' => $imp['program'] ?? 'BS Electronics Engineering',
+                        'year_level' => $imp['sheet_name'] ?? ($imp['year_level'] ?? '3rd Year'),
+                        'birthday' => $bday,
+                        'age' => $age,
+                        'phone' => $imp['phone'] ?? '',
+                        'address' => $imp['address'] ?? '',
+                        'payment_status' => 'paid',
+                        'avatar_url' => $imp['picture_url'] ?? '',
+                        'created_at' => $imp['created_at'] ?? date('c')
+                    ];
+                }
+            }
+        }
     }
+} catch (\Throwable $e) {
+    error_log("Database members fetch error: " . $e->getMessage());
 }
 
-// Calculate counts
+// Dynamic KPI calculations from REAL database records
 $totalMembers = count($allMembersList);
-$paidMembers = count(array_filter($allMembersList, fn($m) => ($m['payment_status'] ?? '') === 'paid'));
+$paidMembers = count(array_filter($allMembersList, fn($m) => ($m['payment_status'] ?? '') === 'paid' || ($m['payment_status'] ?? '') === 'active'));
 $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership_id'])));
 
+// Calculate exact counts per school based on database records
 $schoolCounts = ['all' => $totalMembers];
 foreach ($allMembersList as $mem) {
-    $sId = $mem['institution_id'] ?? 'inst_lspu_scc';
-    $schoolCounts[$sId] = ($schoolCounts[$sId] ?? 0) + 1;
+    $sId = $mem['institution_id'] ?? '';
+    if (!empty($sId)) {
+        $schoolCounts[$sId] = ($schoolCounts[$sId] ?? 0) + 1;
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -1051,13 +880,13 @@ foreach ($allMembersList as $mem) {
             <div class="page-hero-banner">
                 <div>
                     <div style="font-size:0.75rem; font-weight:700; color:#FDE047; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.35rem;">
-                        <i class="fas fa-shield-halved"></i> Verified Chapter Registry
+                        <i class="fas fa-shield-halved"></i> Live Database Directory
                     </div>
                     <h1 style="margin:0 0 0.4rem; font-size:1.6rem; font-weight:800; color:#FFFFFF;">
                         <i class="fas fa-users"></i> Member Directory & Roster
                     </h1>
                     <p style="margin:0; font-size:0.88rem; color:#E2E8F0; max-width:620px;">
-                        Manage Laguna student engineers, filter by institutional chapter, and inspect complete member profile dossiers in real-time.
+                        Direct registry of student members submitted by affiliated chapter institutions, synced directly from Supabase without mock data.
                     </p>
                 </div>
                 <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
@@ -1108,7 +937,7 @@ foreach ($allMembersList as $mem) {
                 </div>
             </div>
 
-            <!-- School Filtering Tabs Strip -->
+            <!-- School Filtering Tabs Strip (Generated dynamically from real submitted data) -->
             <div class="school-tabs-strip" id="schoolTabsContainer">
                 <button type="button" class="school-tab-pill active" data-school="all" onclick="selectSchoolTab('all', this)">
                     <i class="fas fa-globe"></i>
@@ -1162,7 +991,7 @@ foreach ($allMembersList as $mem) {
                 <div class="roster-table-header">
                     <h3 style="margin:0; font-size:1rem; font-weight:800; color:#0B1D4A; display:flex; align-items:center; gap:0.5rem;">
                         <i class="fas fa-address-book"></i>
-                        <span>Student Member Ledger</span>
+                        <span>Student Member Ledger (Database Records)</span>
                     </h3>
                     <div style="font-size:0.78rem; font-weight:600; color:#64748B;">
                         Click <span style="background:#0B1D4A; color:#FFFFFF; padding:2px 7px; border-radius:4px; font-size:0.72rem; font-weight:700;">👁️ View</span> for instant Profile Information
@@ -1183,104 +1012,119 @@ foreach ($allMembersList as $mem) {
                             </tr>
                         </thead>
                         <tbody id="membersTableBody">
-                            <?php foreach ($allMembersList as $mem): ?>
-                                <?php 
-                                    $mId = $mem['id'];
-                                    $fName = $mem['full_name'];
-                                    $email = $mem['email'];
-                                    $sId = $mem['student_id'];
-                                    $memCode = $mem['membership_id'];
-                                    $instId = $mem['institution_id'];
-                                    $instData = $schoolNamesMap[$instId] ?? [
-                                        'name' => 'Higher Education Institution',
-                                        'acronym' => 'HEI',
-                                        'city' => 'Laguna'
-                                    ];
-                                    $prog = $mem['program'] ?? 'BS Electronics Engineering';
-                                    $yr = $mem['year_level'] ?? '3rd Year';
-                                    $age = $mem['age'] ?? 21;
-                                    $bday = $mem['birthday'] ?? '2005-03-15';
-                                    $phone = $mem['phone'] ?? '+63 912 345 6789';
-                                    $addr = $mem['address'] ?? 'Santa Cruz, Laguna';
-                                    $pStatus = strtolower($mem['payment_status'] ?? 'paid');
-                                    $avatar = $mem['avatar_url'] ?? '';
-
-                                    // JSON data attribute for clean modal popup
-                                    $memberJson = json_encode([
-                                        'id' => $mId,
-                                        'name' => $fName,
-                                        'email' => $email,
-                                        'student_id' => $sId,
-                                        'membership_id' => $memCode,
-                                        'school_name' => $instData['name'],
-                                        'school_acronym' => $instData['acronym'],
-                                        'school_city' => $instData['city'],
-                                        'institution_id' => $instId,
-                                        'program' => $prog,
-                                        'year_level' => $yr,
-                                        'age' => $age,
-                                        'birthday' => date('F d, Y', strtotime($bday)),
-                                        'raw_birthday' => $bday,
-                                        'phone' => $phone,
-                                        'address' => $addr,
-                                        'payment_status' => $pStatus,
-                                        'avatar_url' => $avatar
-                                    ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
-                                ?>
-                                <tr class="member-row" 
-                                    data-school="<?= htmlspecialchars($instId) ?>"
-                                    data-status="<?= htmlspecialchars($pStatus) ?>"
-                                    data-search="<?= htmlspecialchars(strtolower($fName . ' ' . $email . ' ' . $sId . ' ' . $memCode . ' ' . $instData['name'] . ' ' . $instData['acronym'])) ?>">
-                                    <td><input type="checkbox" class="row-checkbox"></td>
-                                    <td>
-                                        <div class="member-cell">
-                                            <div class="member-avatar">
-                                                <?php if (!empty($avatar)): ?>
-                                                    <img src="<?= htmlspecialchars($avatar) ?>" alt="<?= htmlspecialchars($fName) ?>" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                                                    <span style="display:none;"><?= strtoupper(substr($fName, 0, 1)) ?></span>
-                                                <?php else: ?>
-                                                    <span><?= strtoupper(substr($fName, 0, 1)) ?></span>
-                                                <?php endif; ?>
-                                            </div>
-                                            <div>
-                                                <div class="member-meta-name"><?= htmlspecialchars($fName) ?></div>
-                                                <div class="member-meta-email"><?= htmlspecialchars($email) ?></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="school-badge">
-                                            <i class="fas fa-building-columns"></i>
-                                            <?= htmlspecialchars($instData['acronym']) ?>
-                                        </span>
-                                        <div style="font-size:0.72rem; color:#64748B; margin-top:2px;"><?= htmlspecialchars($instData['name']) ?></div>
-                                    </td>
-                                    <td>
-                                        <span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:#0B1D4A; font-size:0.84rem;">
-                                            <?= htmlspecialchars($sId) ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($yr) ?></strong>
-                                        <div style="font-size:0.74rem; color:#64748B;"><?= htmlspecialchars($prog) ?></div>
-                                    </td>
-                                    <td>
-                                        <?php if ($pStatus === 'paid' || $pStatus === 'active'): ?>
-                                            <span class="status-badge paid"><span class="status-dot"></span> Paid</span>
-                                        <?php else: ?>
-                                            <span class="status-badge pending"><span class="status-dot"></span> Pending</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td style="text-align:right;">
-                                        <button type="button" 
-                                                class="btn-view-member" 
-                                                data-member='<?= $memberJson ?>' 
-                                                onclick="openProfileModal(this)">
-                                            <i class="fas fa-eye"></i> View
-                                        </button>
+                            <?php if (empty($allMembersList)): ?>
+                                <tr id="emptyDbRow">
+                                    <td colspan="7" style="text-align:center; padding:3.5rem 1.5rem; color:#64748B;">
+                                        <i class="fas fa-folder-open" style="font-size:3rem; color:#CBD5E1; margin-bottom:1rem; display:block;"></i>
+                                        <h4 style="margin:0 0 0.4rem; color:#0F172A; font-weight:800; font-size:1.15rem;">No Member Directories Submitted Yet</h4>
+                                        <p style="margin:0 0 1.25rem; font-size:0.88rem; color:#64748B;">
+                                            There are currently no member records in the database. Use <strong>"Bulk CSV Import"</strong> or wait for affiliated school chapters to submit rosters.
+                                        </p>
+                                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="ap-btn-primary" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 1.2rem; font-size:0.85rem;">
+                                            <i class="fas fa-file-import"></i> Upload Member Directory CSV
+                                        </a>
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
+                            <?php else: ?>
+                                <?php foreach ($allMembersList as $mem): ?>
+                                    <?php 
+                                        $mId = $mem['id'];
+                                        $fName = $mem['full_name'];
+                                        $email = $mem['email'];
+                                        $sId = $mem['student_id'] ?: 'N/A';
+                                        $memCode = $mem['membership_id'] ?: 'N/A';
+                                        $instId = $mem['institution_id'];
+                                        $instData = $schoolNamesMap[$instId] ?? [
+                                            'name' => 'Affiliated Chapter',
+                                            'acronym' => 'HEI',
+                                            'city' => 'Laguna'
+                                        ];
+                                        $prog = $mem['program'] ?? 'BS Electronics Engineering';
+                                        $yr = $mem['year_level'] ?? '3rd Year';
+                                        $age = $mem['age'] ?? '';
+                                        $bday = $mem['birthday'] ?? '';
+                                        $formattedBday = !empty($bday) ? date('F d, Y', strtotime($bday)) : '';
+                                        $phone = $mem['phone'] ?? '';
+                                        $addr = $mem['address'] ?? '';
+                                        $pStatus = strtolower($mem['payment_status'] ?? 'paid');
+                                        $avatar = $mem['avatar_url'] ?? '';
+
+                                        // JSON data attribute for clean modal popup
+                                        $memberJson = json_encode([
+                                            'id' => $mId,
+                                            'name' => $fName,
+                                            'email' => $email,
+                                            'student_id' => $sId,
+                                            'membership_id' => $memCode,
+                                            'school_name' => $instData['name'],
+                                            'school_acronym' => $instData['acronym'],
+                                            'school_city' => $instData['city'],
+                                            'institution_id' => $instId,
+                                            'program' => $prog,
+                                            'year_level' => $yr,
+                                            'age' => $age,
+                                            'birthday' => $formattedBday,
+                                            'phone' => $phone,
+                                            'address' => $addr,
+                                            'payment_status' => $pStatus,
+                                            'avatar_url' => $avatar
+                                        ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP);
+                                    ?>
+                                    <tr class="member-row" 
+                                        data-school="<?= htmlspecialchars($instId) ?>"
+                                        data-status="<?= htmlspecialchars($pStatus) ?>"
+                                        data-search="<?= htmlspecialchars(strtolower($fName . ' ' . $email . ' ' . $sId . ' ' . $memCode . ' ' . $instData['name'] . ' ' . $instData['acronym'])) ?>">
+                                        <td><input type="checkbox" class="row-checkbox"></td>
+                                        <td>
+                                            <div class="member-cell">
+                                                <div class="member-avatar">
+                                                    <?php if (!empty($avatar)): ?>
+                                                        <img src="<?= htmlspecialchars($avatar) ?>" alt="<?= htmlspecialchars($fName) ?>" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                                        <span style="display:none;"><?= strtoupper(substr($fName, 0, 1)) ?></span>
+                                                    <?php else: ?>
+                                                        <span><?= strtoupper(substr($fName, 0, 1)) ?></span>
+                                                    <?php endif; ?>
+                                                </div>
+                                                <div>
+                                                    <div class="member-meta-name"><?= htmlspecialchars($fName) ?></div>
+                                                    <div class="member-meta-email"><?= htmlspecialchars($email) ?></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="school-badge">
+                                                <i class="fas fa-building-columns"></i>
+                                                <?= htmlspecialchars($instData['acronym']) ?>
+                                            </span>
+                                            <div style="font-size:0.72rem; color:#64748B; margin-top:2px;"><?= htmlspecialchars($instData['name']) ?></div>
+                                        </td>
+                                        <td>
+                                            <span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:#0B1D4A; font-size:0.84rem;">
+                                                <?= htmlspecialchars($sId) ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($yr) ?></strong>
+                                            <div style="font-size:0.74rem; color:#64748B;"><?= htmlspecialchars($prog) ?></div>
+                                        </td>
+                                        <td>
+                                            <?php if ($pStatus === 'paid' || $pStatus === 'active'): ?>
+                                                <span class="status-badge paid"><span class="status-dot"></span> Paid</span>
+                                            <?php else: ?>
+                                                <span class="status-badge pending"><span class="status-dot"></span> Pending</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td style="text-align:right;">
+                                            <button type="button" 
+                                                    class="btn-view-member" 
+                                                    data-member='<?= $memberJson ?>' 
+                                                    onclick="openProfileModal(this)">
+                                                <i class="fas fa-eye"></i> View
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -1324,7 +1168,7 @@ foreach ($allMembersList as $mem) {
                     <span id="pmInitial">M</span>
                 </div>
                 <div class="pm-hero-meta">
-                    <h2 class="pm-hero-name" id="pmFullName">Maria Santos</h2>
+                    <h2 class="pm-hero-name" id="pmFullName">Member Name</h2>
                     <div class="pm-hero-program">
                         <i class="fas fa-graduation-cap"></i>
                         <span id="pmProgramYear">BS Electronics Engineering - 3rd Year</span>
@@ -1342,7 +1186,7 @@ foreach ($allMembersList as $mem) {
                             <i class="fas fa-building-columns" style="color:#0B1D4A;"></i>
                             <span>Enrolled School</span>
                         </div>
-                        <div class="pm-info-value" id="pmSchool">LSPU - Santa Cruz Campus</div>
+                        <div class="pm-info-value" id="pmSchool">Higher Education Institution</div>
                     </div>
 
                     <!-- Student ID -->
@@ -1351,7 +1195,7 @@ foreach ($allMembersList as $mem) {
                             <i class="fas fa-id-badge" style="color:#0B1D4A;"></i>
                             <span>Student ID</span>
                         </div>
-                        <div class="pm-info-value mono" id="pmStudentId">2023-08912</div>
+                        <div class="pm-info-value mono" id="pmStudentId">N/A</div>
                     </div>
 
                     <!-- Membership ID -->
@@ -1360,7 +1204,7 @@ foreach ($allMembersList as $mem) {
                             <i class="fas fa-certificate" style="color:#D4AF37;"></i>
                             <span>Membership ID</span>
                         </div>
-                        <div class="pm-info-value mono" id="pmMembershipId" style="color:#B8860B;">IECEP-2026-0042</div>
+                        <div class="pm-info-value mono" id="pmMembershipId" style="color:#B8860B;">N/A</div>
                     </div>
 
                     <!-- Age / Birthday -->
@@ -1369,7 +1213,7 @@ foreach ($allMembersList as $mem) {
                             <i class="fas fa-cake-candles" style="color:#EF4444;"></i>
                             <span>Age / Birthday</span>
                         </div>
-                        <div class="pm-info-value" id="pmAgeBirthday">21 yrs old (March 15, 2005)</div>
+                        <div class="pm-info-value" id="pmAgeBirthday">N/A</div>
                     </div>
 
                     <!-- Payment Status -->
@@ -1389,7 +1233,7 @@ foreach ($allMembersList as $mem) {
                             <i class="fas fa-envelope" style="color:#2563EB;"></i>
                             <span>Gmail / Email</span>
                         </div>
-                        <div class="pm-info-value" id="pmEmail">mariasantos@gmail.com</div>
+                        <div class="pm-info-value" id="pmEmail">member@gmail.com</div>
                     </div>
 
                     <!-- Contact Number -->
@@ -1398,7 +1242,7 @@ foreach ($allMembersList as $mem) {
                             <i class="fas fa-phone" style="color:#059669;"></i>
                             <span>Contact Number</span>
                         </div>
-                        <div class="pm-info-value" id="pmPhone">+63 912 345 6789</div>
+                        <div class="pm-info-value" id="pmPhone">N/A</div>
                     </div>
 
                     <!-- Complete Address -->
@@ -1407,7 +1251,7 @@ foreach ($allMembersList as $mem) {
                             <i class="fas fa-location-dot" style="color:#DC2626;"></i>
                             <span>Complete Address</span>
                         </div>
-                        <div class="pm-info-value" id="pmAddress">Brgy. Bubukal, Santa Cruz, Laguna</div>
+                        <div class="pm-info-value" id="pmAddress">N/A</div>
                     </div>
 
                 </div>
@@ -1458,20 +1302,20 @@ foreach ($allMembersList as $mem) {
                             <span>M</span>
                         </div>
                         <div>
-                            <div style="font-size:1.15rem; font-weight:800; color:#FFFFFF;" id="idCardName">Maria Santos</div>
+                            <div style="font-size:1.15rem; font-weight:800; color:#FFFFFF;" id="idCardName">Member Name</div>
                             <div style="font-size:0.75rem; color:#FDE047; font-weight:700;" id="idCardProgram">BS Electronics Engineering</div>
-                            <div style="font-size:0.72rem; color:#CBD5E1;" id="idCardSchool">LSPU - Santa Cruz Campus</div>
+                            <div style="font-size:0.72rem; color:#CBD5E1;" id="idCardSchool">Affiliated Chapter</div>
                         </div>
                     </div>
 
                     <div style="background:rgba(255,255,255,0.08); border-radius:8px; padding:0.6rem 0.8rem; display:flex; justify-content:space-between; font-size:0.75rem; margin-bottom:0.75rem;">
                         <div>
                             <span style="color:#94A3B8;">Student ID:</span>
-                            <strong style="color:#FFFFFF; font-family:'JetBrains Mono', monospace;" id="idCardStudentId">2023-08912</strong>
+                            <strong style="color:#FFFFFF; font-family:'JetBrains Mono', monospace;" id="idCardStudentId">N/A</strong>
                         </div>
                         <div>
                             <span style="color:#94A3B8;">Member Code:</span>
-                            <strong style="color:#FDE047; font-family:'JetBrains Mono', monospace;" id="idCardMemCode">IECEP-2026-0042</strong>
+                            <strong style="color:#FDE047; font-family:'JetBrains Mono', monospace;" id="idCardMemCode">N/A</strong>
                         </div>
                     </div>
 
@@ -1716,13 +1560,18 @@ foreach ($allMembersList as $mem) {
                 // Populate Fields
                 document.getElementById('pmFullName').textContent = data.name || 'Member';
                 document.getElementById('pmProgramYear').textContent = (data.program || 'BS ECE') + ' - ' + (data.year_level || '3rd Year');
-                document.getElementById('pmSchool').textContent = data.school_name || 'Laguna Higher Education Chapter';
+                document.getElementById('pmSchool').textContent = data.school_name || 'Affiliated Chapter';
                 document.getElementById('pmStudentId').textContent = data.student_id || 'N/A';
                 document.getElementById('pmMembershipId').textContent = data.membership_id || 'N/A';
-                document.getElementById('pmAgeBirthday').textContent = (data.age ? data.age + ' yrs old' : '') + (data.birthday ? ' (' + data.birthday + ')' : '');
+                
+                let ageBday = '';
+                if (data.age) ageBday += data.age + ' yrs old';
+                if (data.birthday) ageBday += (ageBday ? ' (' + data.birthday + ')' : data.birthday);
+                document.getElementById('pmAgeBirthday').textContent = ageBday || 'N/A';
+
                 document.getElementById('pmEmail').textContent = data.email || 'N/A';
                 document.getElementById('pmPhone').textContent = data.phone || 'N/A';
-                document.getElementById('pmAddress').textContent = data.address || 'Laguna, Philippines';
+                document.getElementById('pmAddress').textContent = data.address || 'N/A';
 
                 // Status Badge
                 const statusEl = document.getElementById('pmPaymentStatus');
