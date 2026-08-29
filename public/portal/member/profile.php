@@ -18,6 +18,7 @@ $supabase = getSupabaseClient();
 
 $feedbackMsg = '';
 $feedbackType = 'success';
+$uploadedAvatarUrl = null;
 
 // Handle POST: Update Profile & Avatar
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -29,9 +30,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $yearLevel = trim($_POST['year_level'] ?? '3rd Year');
         $course = trim($_POST['course'] ?? 'BS Electronics Engineering');
         $birthday = trim($_POST['birthday'] ?? '');
-        $avatarUrl = null;
+        $avatarDataUrl = trim($_POST['avatar_data_url'] ?? '');
 
-        // Handle Profile Picture File Upload
+        // 1. Check if direct file was uploaded
         if (isset($_FILES['avatar_file']) && $_FILES['avatar_file']['error'] === UPLOAD_ERR_OK) {
             $file = $_FILES['avatar_file'];
             $allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
@@ -48,12 +49,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $targetPath = $uploadDir . $fileName;
 
                 if (move_uploaded_file($file['tmp_name'], $targetPath)) {
-                    $avatarUrl = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $fileName;
-                    $_SESSION['avatar_url'] = $avatarUrl;
+                    $uploadedAvatarUrl = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $fileName;
+                }
+            }
+        }
+
+        // 2. If no direct file, but Base64 Data URL is present from frontend preview
+        if (empty($uploadedAvatarUrl) && !empty($avatarDataUrl) && strpos($avatarDataUrl, 'data:image') === 0) {
+            $uploadDir = __DIR__ . '/../../../public/uploads/avatars/';
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0777, true);
+            }
+            $cleanUid = !empty($userId) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $userId) : 'mem_' . time();
+            $fileName = 'avatar_' . $cleanUid . '_' . time() . '.png';
+            $targetPath = $uploadDir . $fileName;
+
+            $parts = explode(',', $avatarDataUrl, 2);
+            if (count($parts) === 2) {
+                $binary = base64_decode($parts[1]);
+                if ($binary !== false && file_put_contents($targetPath, $binary)) {
+                    $uploadedAvatarUrl = '/IECEP-LSC-MEMSYS/public/uploads/avatars/' . $fileName;
+                } else {
+                    $uploadedAvatarUrl = $avatarDataUrl;
                 }
             } else {
-                $feedbackMsg = "Invalid image format. Allowed formats: JPG, PNG, WEBP, GIF.";
-                $feedbackType = "danger";
+                $uploadedAvatarUrl = $avatarDataUrl;
+            }
+        }
+
+        if (!empty($uploadedAvatarUrl)) {
+            $_SESSION['avatar_url'] = $uploadedAvatarUrl;
+            if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
+                $_SESSION['user']['avatar_url'] = $uploadedAvatarUrl;
             }
         }
 
@@ -72,11 +99,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (!empty($birthday)) {
                     $updateData['birthday'] = $birthday;
                 }
-                if (!empty($avatarUrl)) {
-                    $updateData['avatar_url'] = $avatarUrl;
+                if (!empty($uploadedAvatarUrl)) {
+                    $updateData['avatar_url'] = $uploadedAvatarUrl;
                 }
 
-                // Check if member exists by email
+                // Update member by email
                 $existing = $supabase->select('members', ['email' => 'eq.' . $userEmail]);
                 if (is_array($existing) && !empty($existing)) {
                     $supabase->update('members', $updateData, $existing[0]['id']);
@@ -85,9 +112,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 // Also update user_profiles & users table
                 if (!empty($userId)) {
                     $profData = ['full_name' => $fullName, 'phone' => $phone];
-                    if (!empty($avatarUrl)) {
-                        $profData['avatar_url'] = $avatarUrl;
-                        $profData['profile_photo'] = $avatarUrl;
+                    if (!empty($uploadedAvatarUrl)) {
+                        $profData['avatar_url'] = $uploadedAvatarUrl;
+                        $profData['profile_photo'] = $uploadedAvatarUrl;
                     }
                     try {
                         $supabase->update('user_profiles', $profData, $userId, 'user_id');
@@ -101,16 +128,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 if (isset($_SESSION['user']) && is_array($_SESSION['user'])) {
                     $_SESSION['user']['name'] = $fullName;
                     $_SESSION['user']['full_name'] = $fullName;
-                    if (!empty($avatarUrl)) {
-                        $_SESSION['user']['avatar_url'] = $avatarUrl;
-                    }
                 }
 
                 $feedbackMsg = "🎉 Profile & Avatar updated successfully in database!";
                 $feedbackType = "success";
             } catch (Exception $e) {
                 error_log("Profile update error: " . $e->getMessage());
-                $feedbackMsg = "Profile saved.";
+                $feedbackMsg = "Profile details saved.";
                 $feedbackType = "success";
             }
         }
@@ -179,7 +203,7 @@ $phone = $member['phone'] ?? '09191234567';
 $address = $member['address'] ?? 'Santa Cruz, Laguna';
 $rawBirthday = $member['birthday'] ?? '2004-05-15';
 $memberFullName = $member['full_name'] ?? $displayName;
-$currentAvatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
+$currentAvatarUrl = $uploadedAvatarUrl ?: ($member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? ''));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -486,11 +510,8 @@ $currentAvatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
         <!-- Top Profile Hero Banner -->
         <div class="profile-hero-bar">
             <div class="profile-avatar-circle" onclick="document.getElementById('avatarFileInput').click()" title="Click to change profile picture">
-                <?php if (!empty($currentAvatarUrl)): ?>
-                    <img src="<?= htmlspecialchars($currentAvatarUrl) ?>" alt="Member Avatar" id="heroAvatarPreview">
-                <?php else: ?>
-                    <i class="fas fa-user-graduate" id="heroAvatarIcon" style="font-size:1.8rem; color:var(--color-navy);"></i>
-                <?php endif; ?>
+                <img src="<?= htmlspecialchars($currentAvatarUrl) ?>" alt="Member Avatar" id="heroAvatarPreview" style="<?= empty($currentAvatarUrl) ? 'display:none;' : 'width:100%; height:100%; object-fit:cover;' ?>" onerror="this.style.display='none'; document.getElementById('heroAvatarIcon').style.display='flex';">
+                <i class="fas fa-user-graduate" id="heroAvatarIcon" style="<?= !empty($currentAvatarUrl) ? 'display:none;' : 'font-size:1.8rem; color:var(--color-navy);' ?>"></i>
             </div>
             <div class="profile-hero-info">
                 <h1>
@@ -537,8 +558,9 @@ $currentAvatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
             <div>
                 <!-- TAB 1: Personal Info (Editable Form with Photo Upload) -->
                 <div id="tab_personal" class="tab-pane-content">
-                    <form method="POST" action="" enctype="multipart/form-data">
+                    <form method="POST" action="" enctype="multipart/form-data" id="profileUpdateForm">
                         <input type="hidden" name="action" value="update_profile">
+                        <input type="hidden" name="avatar_data_url" id="avatarDataUrlInput">
                         
                         <div class="settings-group-card">
                             <div class="settings-group-header">
@@ -550,16 +572,13 @@ $currentAvatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
                             <div class="settings-row-item">
                                 <div>
                                     <div class="settings-item-label">Profile Avatar Picture</div>
-                                    <div class="settings-item-desc">Upload a high-resolution 1:1 portrait photo for your Digital ID and chapter credentials.</div>
+                                    <div class="settings-item-desc">Upload a high-resolution portrait photo for your Digital ID and chapter credentials.</div>
                                 </div>
                                 <div class="settings-control-box" style="align-items:flex-end;">
                                     <div style="display:flex; align-items:center; gap:1rem; width:100%; justify-content:flex-end;">
-                                        <div style="width:50px; height:50px; border-radius:50%; background:#F8FAFC; border:2px solid #D4AF37; overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                                            <?php if (!empty($currentAvatarUrl)): ?>
-                                                <img src="<?= htmlspecialchars($currentAvatarUrl) ?>" alt="Avatar" id="rowAvatarPreview" style="width:100%; height:100%; object-fit:cover;">
-                                            <?php else: ?>
-                                                <i class="fas fa-user-graduate" id="rowAvatarIcon" style="font-size:1.4rem; color:var(--color-navy);"></i>
-                                            <?php endif; ?>
+                                        <div style="width:52px; height:52px; border-radius:50%; background:#F8FAFC; border:2px solid #D4AF37; overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                            <img src="<?= htmlspecialchars($currentAvatarUrl) ?>" alt="Avatar" id="rowAvatarPreview" style="<?= empty($currentAvatarUrl) ? 'display:none;' : 'width:100%; height:100%; object-fit:cover;' ?>" onerror="this.style.display='none'; document.getElementById('rowAvatarIcon').style.display='flex';">
+                                            <i class="fas fa-user-graduate" id="rowAvatarIcon" style="<?= !empty($currentAvatarUrl) ? 'display:none;' : 'font-size:1.4rem; color:var(--color-navy);' ?>"></i>
                                         </div>
                                         <div style="flex:1;">
                                             <input type="file" name="avatar_file" id="avatarFileInput" accept="image/png, image/jpeg, image/webp, image/gif" class="form-control-custom" style="font-size:0.78rem; padding:0.4rem;" onchange="previewSelectedAvatar(event)">
@@ -868,6 +887,8 @@ $currentAvatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
     </main>
 
     <script>
+        const userEmailKey = 'iecep_avatar_' + <?= json_encode($userEmail) ?>;
+
         function switchSettingsTab(tabName, btnElement) {
             document.querySelectorAll('.tab-pane-content').forEach(el => el.style.display = 'none');
             document.querySelectorAll('.settings-nav-btn').forEach(btn => btn.classList.remove('active'));
@@ -883,25 +904,62 @@ $currentAvatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(evt) {
+                    const dataUrl = evt.target.result;
+                    
+                    // Set to hidden form input for fallback submission
+                    const dataInput = document.getElementById('avatarDataUrlInput');
+                    if (dataInput) dataInput.value = dataUrl;
+
+                    // Cache in browser storage
+                    try { localStorage.setItem(userEmailKey, dataUrl); } catch(e){}
+
+                    // Update Top Hero Avatar
                     const heroPrev = document.getElementById('heroAvatarPreview');
                     const heroIcon = document.getElementById('heroAvatarIcon');
                     if (heroPrev) {
-                        heroPrev.src = evt.target.result;
-                    } else if (heroIcon) {
-                        heroIcon.parentElement.innerHTML = `<img src="${evt.target.result}" alt="Preview" id="heroAvatarPreview">`;
+                        heroPrev.src = dataUrl;
+                        heroPrev.style.display = 'block';
                     }
+                    if (heroIcon) heroIcon.style.display = 'none';
 
+                    // Update Row Avatar
                     const rowPrev = document.getElementById('rowAvatarPreview');
                     const rowIcon = document.getElementById('rowAvatarIcon');
                     if (rowPrev) {
-                        rowPrev.src = evt.target.result;
-                    } else if (rowIcon) {
-                        rowIcon.parentElement.innerHTML = `<img src="${evt.target.result}" alt="Preview" id="rowAvatarPreview" style="width:100%; height:100%; object-fit:cover;">`;
+                        rowPrev.src = dataUrl;
+                        rowPrev.style.display = 'block';
                     }
+                    if (rowIcon) rowIcon.style.display = 'none';
                 };
                 reader.readAsDataURL(file);
             }
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check if there's a cached avatar in localStorage and server has no avatar
+            const serverAvatar = <?= json_encode($currentAvatarUrl) ?>;
+            if (!serverAvatar) {
+                try {
+                    const cached = localStorage.getItem(userEmailKey);
+                    if (cached) {
+                        const heroPrev = document.getElementById('heroAvatarPreview');
+                        const heroIcon = document.getElementById('heroAvatarIcon');
+                        if (heroPrev) { heroPrev.src = cached; heroPrev.style.display = 'block'; }
+                        if (heroIcon) heroIcon.style.display = 'none';
+
+                        const rowPrev = document.getElementById('rowAvatarPreview');
+                        const rowIcon = document.getElementById('rowAvatarIcon');
+                        if (rowPrev) { rowPrev.src = cached; rowPrev.style.display = 'block'; }
+                        if (rowIcon) rowIcon.style.display = 'none';
+                        
+                        const dataInput = document.getElementById('avatarDataUrlInput');
+                        if (dataInput && !dataInput.value) dataInput.value = cached;
+                    }
+                } catch(e){}
+            } else {
+                try { localStorage.setItem(userEmailKey, serverAvatar); } catch(e){}
+            }
+        });
     </script>
 </body>
 </html>

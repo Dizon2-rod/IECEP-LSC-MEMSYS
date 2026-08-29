@@ -488,6 +488,23 @@ $avatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
         document.addEventListener('DOMContentLoaded', () => {
             fetchAndRenderMemberQr();
             startTimer();
+
+            // Client-side avatar cache sync
+            const serverAvatar = <?= json_encode($avatarUrl) ?>;
+            const userEmailKey = 'iecep_avatar_' + <?= json_encode($userEmail) ?>;
+            if (!serverAvatar) {
+                try {
+                    const cached = localStorage.getItem(userEmailKey);
+                    if (cached) {
+                        const wrapper = document.querySelector('.id-photo-wrapper');
+                        if (wrapper) {
+                            wrapper.innerHTML = `<img src="${cached}" alt="Member Photo" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
+                        }
+                    }
+                } catch(e){}
+            } else {
+                try { localStorage.setItem(userEmailKey, serverAvatar); } catch(e){}
+            }
         });
     </script>
 </body>

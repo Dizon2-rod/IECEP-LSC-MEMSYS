@@ -534,8 +534,27 @@ $avatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
                         </div>
                     </div>
                 </div>
-            </div>
         </div>
     </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const serverAvatar = <?= json_encode($avatarUrl) ?>;
+            const userEmailKey = 'iecep_avatar_' + <?= json_encode($userEmail) ?>;
+            if (!serverAvatar) {
+                try {
+                    const cached = localStorage.getItem(userEmailKey);
+                    if (cached) {
+                        const miniWidgetAvatar = document.querySelector('.dash-card .fa-user-graduate');
+                        if (miniWidgetAvatar && miniWidgetAvatar.parentElement) {
+                            miniWidgetAvatar.parentElement.innerHTML = `<img src="${cached}" alt="Avatar" style="width:100%; height:100%; object-fit:cover;">`;
+                        }
+                    }
+                } catch(e){}
+            } else {
+                try { localStorage.setItem(userEmailKey, serverAvatar); } catch(e){}
+            }
+        });
+    </script>
 </body>
 </html>
