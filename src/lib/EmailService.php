@@ -380,6 +380,76 @@ class EmailService
         }
     }
 
+    public function sendMemberWelcomeEmail(string $to, string $memberName, string $membershipId, string $password, string $schoolName = ''): bool
+    {
+        try {
+            error_log("Preparing to send member welcome & credentials email to: $to");
+            $mail = $this->createMailer();
+            $mail->addAddress($to);
+            $loginUrl = $this->config['app_url'] . '/login.php';
+            $logoUrl = $this->config['app_url'] . '/public/assets/icons/iecep-logo.png';
+            $mail->Subject = 'Welcome to IECEP-LSC! Your Student Member Account is Ready';
+
+            $mail->Body = "
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; background: #ffffff;'>
+                    <div style='background-color: #0B1D4A; padding: 24px; text-align: center; border-bottom: 4px solid #D4AF37;'>
+                        <img src='{$logoUrl}' alt='IECEP-LSC Logo' style='width: 58px; height: auto; margin-bottom: 8px;' onerror=\"this.style.display='none';\">
+                        <h1 style='color: #ffffff; margin: 0; font-size: 20px;'>IECEP - Luzon Student Chapter</h1>
+                        <p style='color: #D4AF37; margin: 4px 0 0; font-size: 13px; font-weight: 700; letter-spacing: 0.5px;'>OFFICIAL STUDENT MEMBERSHIP NOTIFICATION</p>
+                    </div>
+                    <div style='padding: 28px;'>
+                        <h2 style='color: #0B1D4A; margin-top: 0;'>Congratulations, " . htmlspecialchars($memberName) . "!</h2>
+                        <p style='color: #475569; font-size: 15px; line-height: 1.5;'>
+                            Your institutional chapter " . (!empty($schoolName) ? "<strong>(" . htmlspecialchars($schoolName) . ")</strong>" : "") . " has been officially affiliated with the <strong>Institute of Electronics Engineers of the Philippines – Luzon Student Chapter (IECEP-LSC)</strong>.
+                        </p>
+                        <p style='color: #475569; font-size: 15px; line-height: 1.5;'>
+                            Your official student membership account and cryptographic Digital ID have been activated. Here are your account credentials:
+                        </p>
+                        
+                        <div style='background-color: #f8fafc; border: 2px solid #0B1D4A; border-radius: 8px; padding: 20px; margin: 22px 0;'>
+                            <table style='width: 100%; border-collapse: collapse;'>
+                                <tr>
+                                    <td style='padding: 8px; font-weight: bold; color: #0B1D4A;'>Membership ID:</td>
+                                    <td style='padding: 8px; font-family: monospace; font-size: 15px; font-weight: bold; color: #0B1D4A;'>" . htmlspecialchars($membershipId) . "</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding: 8px; font-weight: bold; color: #0B1D4A;'>Login Email:</td>
+                                    <td style='padding: 8px; font-family: monospace; color: #2563eb;'>" . htmlspecialchars($to) . "</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding: 8px; font-weight: bold; color: #0B1D4A;'>Temporary Password:</td>
+                                    <td style='padding: 8px; font-family: monospace; font-size: 15px; font-weight: bold; color: #b45309;'>" . htmlspecialchars($password) . "</td>
+                                </tr>
+                            </table>
+                        </div>
+
+                        <div style='text-align: center; margin: 28px 0;'>
+                            <a href='{$loginUrl}' style='display: inline-block; padding: 14px 28px; background: #0B1D4A; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px;'>
+                                Login to Student Portal
+                            </a>
+                        </div>
+
+                        <p style='color: #64748b; font-size: 13px; line-height: 1.4;'>
+                            <strong>What's Next?</strong> Log in to access your Digital ID card, register for regional seminars, scan dynamic event QR codes for attendance, and download certificates of participation.
+                        </p>
+                    </div>
+                    <div style='background-color: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;'>
+                        &copy; 2026 IECEP-LSC MEMSYS &ndash; All rights reserved<br>
+                        Institute of Electronics Engineers of the Philippines &bull; Luzon Student Chapter
+                    </div>
+                </div>";
+
+            $mail->AltBody = "Welcome to IECEP-LSC!\n\nDear {$memberName},\n\nYour membership account has been created.\n\nMembership ID: {$membershipId}\nEmail: {$to}\nPassword: {$password}\n\nLogin URL: {$loginUrl}\n\n© 2026 IECEP-LSC";
+
+            $result = $mail->send();
+            error_log("Member welcome email result to $to: " . ($result ? 'SUCCESS' : 'FAILED'));
+            return $result;
+        } catch (\Throwable $e) {
+            error_log("sendMemberWelcomeEmail error for $to: " . $e->getMessage());
+            return false;
+        }
+    }
+
     public function sendAffiliationApproved(string $to, string $institutionName): bool
     {
         try {

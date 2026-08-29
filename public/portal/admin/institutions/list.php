@@ -66,7 +66,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 ]]);
             }
 
-            // 3. Auto-Create School Officer Portal Account
+            // Initialize Email Service
+            require_once __DIR__ . '/../../../src/lib/EmailService.php';
+            $emailService = new \App\Lib\EmailService();
+
+            // 3. Auto-Create School Officer Portal Account & Send Credentials
+            $officerTempPass = 'LSC-' . rand(1000, 9999) . '-' . substr(strtoupper(bin2hex(random_bytes(2))), 0, 4);
             if ($email) {
                 $officerUserId = bin2hex(random_bytes(16));
                 $supabase->insert('user_profiles', [[
@@ -78,9 +83,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'membership_status' => 'active',
                     'created_at' => $timestamp
                 ]]);
+
+                try {
+                    $emailService->sendSchoolAccountCredentials($email, $instName, $officerTempPass, $contactPerson ?: "$acronym Officer");
+                } catch (\Throwable $emEx) {
+                    error_log("Officer email send error: " . $emEx->getMessage());
+                }
             }
 
-            // 4. Auto-Ingest Attached Student Members Directory
+            // 4. Auto-Ingest Attached Student Members Directory & Send Login Credentials
             $memberDirectoryUrl = $appData['member_directory'] ?? null;
             $ingestedCount = 0;
 
@@ -119,6 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                 $sId = trim((string)($row[2] ?? ('2026-' . rand(10000, 99999))));
                                 $prog = trim((string)($row[4] ?? 'BS Electronics Engineering'));
                                 $year = trim((string)($row[5] ?? '3rd Year'));
+                                $memberTempPass = 'MEM-' . rand(1000, 9999) . '-' . substr(strtoupper(bin2hex(random_bytes(2))), 0, 4);
 
                                 if (!empty($sEmail) && filter_var($sEmail, FILTER_VALIDATE_EMAIL) && !empty($name)) {
                                     $baseCount++;
@@ -152,6 +164,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                         'membership_status' => 'active',
                                         'created_at' => $timestamp
                                     ]]);
+
+                                    // Send credential email to student's Gmail
+                                    try {
+                                        $emailService->sendMemberWelcomeEmail($sEmail, $name, $membershipId, $memberTempPass, $instName);
+                                    } catch (\Throwable $stEx) {
+                                        error_log("Student welcome email error for $sEmail: " . $stEx->getMessage());
+                                    }
 
                                     $ingestedCount++;
                                 }
