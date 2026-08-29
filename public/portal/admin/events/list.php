@@ -8,6 +8,7 @@ $pageTitle = 'Event Management & Attendance Systems';
 $supabase = getSupabaseClient();
 
 $feedbackMsg = '';
+$feedbackType = 'success';
 
 // Handle POST: Create new event
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -20,7 +21,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $endDate = trim($_POST['end_date'] ?? date('Y-m-d H:i', strtotime('+4 hours')));
         $fee = floatval($_POST['registration_fee'] ?? 0);
         $maxAttendees = intval($_POST['max_attendees'] ?? 100);
-        $targetScope = trim($_POST['target_roles'] ?? 'All Laguna Chapters');
 
         if (!empty($title)) {
             $timestamp = date('c');
@@ -43,53 +43,264 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'updated_at' => $timestamp
                 ]]);
 
-                $feedbackMsg = "Event '{$title}' created successfully and saved to database!";
+                $feedbackMsg = "🎉 Event '{$title}' created successfully and saved to database!";
+                $feedbackType = 'success';
             } catch (Exception $e) {
                 error_log("Create event error: " . $e->getMessage());
-                $feedbackMsg = "Event saved to database.";
+                $feedbackMsg = "Error saving event: " . $e->getMessage();
+                $feedbackType = 'warning';
             }
         }
     }
 }
 
-// Fetch real events from database
+// Fetch 100% REAL events from database (Zero mock fallback)
 $eventsList = [];
+$totalAttendeesCount = 0;
+
 try {
     $rawEvents = $supabase->select('events', ['select' => '*', 'order' => 'start_date.desc']);
     if (is_array($rawEvents)) {
         $eventsList = $rawEvents;
     }
+
+    $rawAttendees = $supabase->select('event_attendees', ['select' => 'id']);
+    if (is_array($rawAttendees)) {
+        $totalAttendeesCount = count($rawAttendees);
+    }
 } catch (Exception $e) {
     error_log("Error loading events: " . $e->getMessage());
 }
 
-if (empty($eventsList)) {
-    $eventsList = [
-        [
-            'id' => '2f2f99ce-98e1-49f6-8949-760687189aa6',
-            'title' => 'IECEP-LSC Regional Technical Summit 2026',
-            'description' => 'Annual technical summit featuring electronics innovations, research paper presentations, and chapter delegates.',
-            'event_type' => 'Regional Summit',
-            'start_date' => date('Y-m-d 09:00:00'),
-            'venue' => 'LSPU Main Auditorium / Virtual Stream',
-            'status' => 'upcoming',
-            'registration_fee' => 0,
-            'max_attendees' => 500
-        ]
-    ];
+$upcomingCount = 0;
+$completedCount = 0;
+foreach ($eventsList as $ev) {
+    $st = strtolower($ev['status'] ?? 'upcoming');
+    if ($st === 'completed') $completedCount++;
+    else $upcomingCount++;
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
-    <meta name="description" content="Manage chapter events, seminars, workshops, dynamic 15-second QR attendance, and auto-computed compliance.">
+    <meta name="description" content="Manage chapter events, technical seminars, workshops, dynamic QR attendance, and CPD point accreditation.">
     <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-amber: #D97706;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dash-header-banner {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+        }
+        .dash-header-title {
+            margin: 0 0 0.15rem;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dash-header-sub {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #64748B;
+        }
+
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary-navy {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.95rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-decoration: none;
+            background: var(--color-navy);
+            border: 1px solid var(--color-navy);
+            color: #FFFFFF !important;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(11, 29, 74, 0.15);
+            transition: all 0.18s ease;
+        }
+        .btn-primary-navy:hover {
+            background: var(--color-navy-hover);
+            transform: translateY(-1px);
+            color: #FDE047 !important;
+        }
+
+        /* 4 KPI Grid */
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 0.85rem;
+        }
+        .dash-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            min-width: 0;
+        }
+        .kpi-icon-pill {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-lbl {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 1px;
+        }
+
+        .white-controls-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.95rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            box-shadow: var(--shadow-card);
+        }
+        .search-input-field {
+            padding: 0.45rem 0.75rem 0.45rem 2rem;
+            border: 1px solid #CBD5E1;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            background: #F8FAFC;
+        }
+
+        .ap-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1rem;
+        }
+        .ap-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+        }
+        .ap-card-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0F172A;
+        }
+
+        .ap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            text-align: left;
+        }
+        .ap-table th {
+            background: #F8FAFC;
+            color: #64748B;
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 0.55rem 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+        }
+        .ap-table td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid #F1F5F9;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .ap-table tr:hover td {
+            background: #F8FAFC;
+        }
+
         .doc-modal {
             display: none;
             position: fixed;
@@ -99,7 +310,21 @@ if (empty($eventsList)) {
             z-index: 9999;
             align-items: center;
             justify-content: center;
-            padding: 1.5rem;
+            padding: 1.25rem;
+        }
+        .doc-modal.active { display: flex; }
+        .modal-inner-box {
+            background: #FFFFFF;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 540px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        @media (max-width: 1024px) {
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
@@ -109,198 +334,249 @@ if (empty($eventsList)) {
     <main class="main-content">
         <div class="ap-scope">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-calendar-days"></i> Chapter Events & Summit Management</h1>
-                    <p class="ap-page-subtitle">Organize regional summits, technical seminars, dynamic 15s rotating QR attendance, and auto-computed campus compliance.</p>
+            <!-- 1. Header Banner -->
+            <div class="dash-header-banner">
+                <div>
+                    <h1 class="dash-header-title">
+                        <i class="fas fa-calendar-alt" style="color:var(--color-navy);"></i>
+                        Event Management & Attendance Operations
+                    </h1>
+                    <p class="dash-header-sub">
+                        Create technical seminars, regional workshops, manage attendance ledgers, and dynamic 15-second live QR scanning.
+                    </p>
                 </div>
-                <div class="ap-header-actions">
-                    <button class="ap-btn-primary" onclick="openEventModal()">
-                        <i class="fas fa-plus-circle"></i> Create New Event
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <a href="<?= PORTAL_URL ?>/admin/events/live-qr.php" class="btn-white">
+                        <i class="fas fa-qrcode" style="color:var(--color-blue);"></i> Live QR Scanner
+                    </a>
+                    <a href="<?= PORTAL_URL ?>/admin/events/attendance.php" class="btn-white">
+                        <i class="fas fa-clipboard-user" style="color:#059669;"></i> Attendance Logs
+                    </a>
+                    <button type="button" class="btn-primary-navy" onclick="openCreateModal()">
+                        <i class="fas fa-plus" style="color:#FDE047;"></i> Create New Event
                     </button>
                 </div>
             </div>
 
             <?php if (!empty($feedbackMsg)): ?>
-                <div class="ap-alert success"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($feedbackMsg) ?></div>
+                <div class="ap-alert <?= $feedbackType ?>" style="margin-bottom:0.85rem;">
+                    <i class="fas fa-check-circle" style="font-size:1.2rem;"></i> 
+                    <div><?= htmlspecialchars($feedbackMsg) ?></div>
+                </div>
             <?php endif; ?>
 
-            <!-- KPI Summary Cards -->
-            <div class="ap-kpi-grid">
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon navy"><i class="fas fa-calendar-check"></i></div>
-                        <div><div class="ap-stat-label">Events</div><div class="ap-stat-sublabel">Total Scheduled</div></div>
+            <!-- 2. KPI Cards -->
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy"><i class="fas fa-calendar-check"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= count($eventsList) ?></div>
+                        <div class="kpi-lbl">Total Events Scheduled</div>
                     </div>
-                    <div class="ap-stat-value"><?= count($eventsList) ?></div>
-                    <div class="ap-stat-footer">Live Chapter Activities</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon gold"><i class="fas fa-qrcode"></i></div>
-                        <div><div class="ap-stat-label">Attendance</div><div class="ap-stat-sublabel">15s Dynamic QR</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill emerald"><i class="fas fa-clock"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $upcomingCount ?></div>
+                        <div class="kpi-lbl">Upcoming & Active</div>
                     </div>
-                    <div class="ap-stat-value" style="color:var(--iecep-gold);">Active</div>
-                    <div class="ap-stat-footer">Instant Mobile Scan</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon emerald"><i class="fas fa-chart-pie"></i></div>
-                        <div><div class="ap-stat-label">Compliance</div><div class="ap-stat-sublabel">Auto-Computed</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill amber"><i class="fas fa-flag-checkered"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $completedCount ?></div>
+                        <div class="kpi-lbl">Completed Seminars</div>
                     </div>
-                    <div class="ap-stat-value" style="color:var(--accent-emerald);">Auto 40%</div>
-                    <div class="ap-stat-footer">Art. V Sec. 3 Standard</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon cyan"><i class="fas fa-school"></i></div>
-                        <div><div class="ap-stat-label">Campuses</div><div class="ap-stat-sublabel">Institutional Scope</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill gold"><i class="fas fa-users"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= number_format($totalAttendeesCount) ?></div>
+                        <div class="kpi-lbl">Total Check-in Attendees</div>
                     </div>
-                    <div class="ap-stat-value">5 Chapters</div>
-                    <div class="ap-stat-footer">LSPU SCC, San Pablo & Partners</div>
                 </div>
             </div>
 
-            <!-- Events Directory Card -->
+            <!-- 3. Search & Filter Bar -->
+            <div class="white-controls-card">
+                <div style="position:relative; flex:1; max-width:380px;">
+                    <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94A3B8; font-size:0.8rem;"></i>
+                    <input type="text" id="eventSearchInput" class="search-input-field" placeholder="Search event title, venue, type..." onkeyup="filterEventsTable()">
+                </div>
+                <div style="font-size:0.75rem; font-weight:700; color:#64748B;">
+                    Showing <?= count($eventsList) ?> events in database
+                </div>
+            </div>
+
+            <!-- 4. Table -->
             <div class="ap-card">
                 <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-list-check"></i> Scheduled Chapter Events</h3>
+                    <h3 class="ap-card-title"><i class="fas fa-list"></i> Scheduled Events & Technical Conventions</h3>
                 </div>
-
-                <div class="ap-table-wrapper">
-                    <table class="ap-table">
+                <div style="overflow-x:auto;">
+                    <table class="ap-table" id="eventsTable">
                         <thead>
                             <tr>
-                                <th>Event Title & Objectives</th>
-                                <th>Category / Type</th>
-                                <th>Schedule Date & Time</th>
+                                <th>Event Title & Type</th>
+                                <th>Date & Schedule</th>
                                 <th>Venue / Location</th>
+                                <th>Fee & Capacity</th>
                                 <th>Status</th>
-                                <th style="text-align:right;">Actions & Attendance</th>
+                                <th style="text-align:right;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($eventsList as $ev): ?>
-                                <?php 
-                                    $st = strtolower($ev['status'] ?? 'upcoming');
-                                    $pillClass = match($st) {
-                                        'ongoing' => 'active',
-                                        'completed' => 'gold',
-                                        default => 'navy'
-                                    };
-                                ?>
+                            <?php if (empty($eventsList)): ?>
                                 <tr>
-                                    <td>
-                                        <strong style="color:var(--text-heading); font-size:0.95rem;"><?= htmlspecialchars($ev['title']) ?></strong><br>
-                                        <span style="font-size:0.78rem; color:var(--text-muted); display:block; max-width:480px; margin-top:2px;">
-                                            <?= htmlspecialchars($ev['description'] ?? 'No description provided') ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="ap-pill gold"><?= htmlspecialchars($ev['event_type'] ?: 'Technical Seminar') ?></span>
-                                    </td>
-                                    <td style="font-size:0.82rem; color:var(--text-heading); font-weight:600;">
-                                        <i class="fas fa-calendar" style="color:var(--iecep-gold); margin-right:4px;"></i>
-                                        <?= isset($ev['start_date']) ? date('M d, Y &bull; h:i A', strtotime($ev['start_date'])) : 'TBD' ?>
-                                    </td>
-                                    <td style="font-size:0.82rem; color:var(--text-muted);">
-                                        <i class="fas fa-location-dot" style="color:var(--iecep-navy); margin-right:4px;"></i>
-                                        <?= htmlspecialchars($ev['venue'] ?: 'Laguna Campus') ?>
-                                    </td>
-                                    <td>
-                                        <span class="ap-pill <?= $pillClass ?>"><span class="ap-pill-dot"></span> <?= ucfirst($st) ?></span>
-                                    </td>
-                                    <td style="text-align:right;">
-                                        <div style="display:flex; justify-content:flex-end; gap:0.4rem; flex-wrap:wrap;">
-                                            <a href="/IECEP-LSC-MEMSYS/public/portal/admin/events/live-qr.php?id=<?= urlencode($ev['id']) ?>" class="ap-btn-primary" style="padding:0.3rem 0.65rem; font-size:0.75rem;" target="_blank" title="Launch 15s Dynamic Rotating QR Screen">
-                                                <i class="fas fa-qrcode"></i> Live QR
-                                            </a>
-                                            <a href="/IECEP-LSC-MEMSYS/public/portal/admin/events/attendance.php?id=<?= urlencode($ev['id']) ?>" class="ap-btn-secondary" style="padding:0.3rem 0.65rem; font-size:0.75rem;" title="View Campus-Filtered Attendance">
-                                                <i class="fas fa-users-viewfinder"></i> Attendance
-                                            </a>
-                                        </div>
+                                    <td colspan="6" style="text-align:center; padding:2.5rem; color:#64748B;">
+                                        <i class="fas fa-calendar-xmark" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
+                                        <strong style="color:#0F172A; font-size:0.92rem;">No Events Recorded in Database</strong>
+                                        <p style="margin:0.25rem 0 0; font-size:0.78rem;">Click "+ Create New Event" to schedule your first chapter seminar or technical convention.</p>
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
+                            <?php else: ?>
+                                <?php foreach ($eventsList as $ev): ?>
+                                    <?php 
+                                        $st = strtolower($ev['status'] ?? 'upcoming');
+                                        $fee = floatval($ev['registration_fee'] ?? 0);
+                                    ?>
+                                    <tr>
+                                        <td>
+                                            <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($ev['title'] ?? 'Event') ?></strong><br>
+                                            <span style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars($ev['event_type'] ?? 'Seminar') ?></span>
+                                        </td>
+                                        <td>
+                                            <div style="font-weight:700; color:#0F172A; font-size:0.78rem;">
+                                                <?= !empty($ev['start_date']) ? date('M d, Y', strtotime($ev['start_date'])) : 'TBD' ?>
+                                            </div>
+                                            <span style="font-size:0.72rem; color:#64748B;">
+                                                <?= !empty($ev['start_date']) ? date('h:i A', strtotime($ev['start_date'])) : '' ?>
+                                            </span>
+                                        </td>
+                                        <td style="font-size:0.78rem; color:#334155;">
+                                            <i class="fas fa-location-dot" style="color:var(--color-navy); margin-right:3px;"></i>
+                                            <?= htmlspecialchars($ev['venue'] ?? 'Online / Main Hall') ?>
+                                        </td>
+                                        <td>
+                                            <strong style="color:<?= $fee > 0 ? '#059669' : '#64748B' ?>; font-size:0.78rem;">
+                                                <?= $fee > 0 ? '₱' . number_format($fee, 2) : 'Free Registration' ?>
+                                            </strong><br>
+                                            <span style="font-size:0.7rem; color:#64748B;">Max: <?= intval($ev['max_attendees'] ?? 100) ?> delegates</span>
+                                        </td>
+                                        <td>
+                                            <span class="ap-pill <?= $st === 'completed' ? 'active' : 'pending' ?>">
+                                                <?= ucfirst($st) ?>
+                                            </span>
+                                        </td>
+                                        <td style="text-align:right;">
+                                            <div style="display:flex; justify-content:flex-end; gap:0.35rem;">
+                                                <a href="<?= PORTAL_URL ?>/admin/events/live-qr.php?event_id=<?= urlencode($ev['id']) ?>" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
+                                                    <i class="fas fa-qrcode" style="color:var(--color-blue);"></i> QR Scanner
+                                                </a>
+                                                <a href="<?= PORTAL_URL ?>/admin/events/attendance.php?event_id=<?= urlencode($ev['id']) ?>" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
+                                                    <i class="fas fa-users" style="color:#059669;"></i> Attendees
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
             </div>
 
             <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-qrcode"></i><span><strong>Check-in Engine:</strong> 15-Second Dynamic Rotating TOTP</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-scale-balanced"></i><span><strong>Compliance:</strong> Auto-Calculated Institutional Attribution</span></div>
+            <div class="ap-sentinel-strip" style="margin-top:1.5rem;">
+                <div class="ap-sentinel-item"><i class="fas fa-qrcode"></i><span><strong>Dynamic Attendance:</strong> 15-Second Refreshing Rolling QR Token System</span></div>
+                <div class="ap-sentinel-item"><i class="fas fa-certificate"></i><span><strong>Accreditation:</strong> Real-time Event CPD Verification</span></div>
             </div>
 
         </div>
     </main>
 
     <!-- Create Event Modal -->
-    <div id="eventModal" class="doc-modal">
-        <div class="ap-card" style="max-width:600px; width:100%; margin:0; box-shadow:var(--card-shadow);">
+    <div id="createModal" class="doc-modal">
+        <div class="modal-inner-box">
             <div class="ap-card-header">
-                <h3 class="ap-card-title"><i class="fas fa-calendar-plus"></i> Create New Chapter Event</h3>
-                <button class="ap-btn-secondary" style="border:none; padding:0.25rem 0.5rem;" onclick="closeEventModal()">&times;</button>
+                <h3 class="ap-card-title"><i class="fas fa-plus-circle"></i> Create Chapter Event</h3>
+                <button class="btn-white" style="border:none; padding:0.25rem 0.5rem;" onclick="closeCreateModal()">&times;</button>
             </div>
-            <form method="POST">
+            <form method="POST" style="padding:1.25rem;">
                 <input type="hidden" name="action" value="create_event">
                 <div class="ap-form-group">
-                    <label class="ap-form-label">Event Title *</label>
-                    <input type="text" name="title" class="ap-input" placeholder="e.g. IECEP-LSC Electronics Design & Innovation Summit 2026" required>
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Event Title</label>
+                    <input type="text" name="title" class="ap-input" placeholder="e.g. Regional Electronics Convention 2026" required style="font-size:0.8rem;">
                 </div>
                 <div class="ap-form-group">
-                    <label class="ap-form-label">Event Description & Objectives</label>
-                    <textarea name="description" class="ap-textarea" rows="3" placeholder="Brief event objectives, guest speakers, topics..."></textarea>
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Event Type</label>
+                    <select name="event_type" class="ap-input" style="font-size:0.8rem;">
+                        <option value="Technical Seminar">Technical Seminar</option>
+                        <option value="Workshop / Hands-on">Workshop / Hands-on</option>
+                        <option value="Regional Summit">Regional Summit</option>
+                        <option value="Chapter Assembly">Chapter Assembly</option>
+                        <option value="Quiz Bowl / Competition">Quiz Bowl / Competition</option>
+                    </select>
                 </div>
-                <div class="ap-grid-2">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem;">
                     <div class="ap-form-group">
-                        <label class="ap-form-label">Event Category / Type</label>
-                        <select name="event_type" class="ap-form-select">
-                            <option value="Regional Summit">Regional Summit</option>
-                            <option value="Technical Seminar">Technical Seminar</option>
-                            <option value="Hands-on Workshop">Hands-on Workshop</option>
-                            <option value="General Assembly">General Assembly</option>
-                            <option value="Competition & Hackathon">Competition & Hackathon</option>
-                        </select>
+                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Start Date & Time</label>
+                        <input type="datetime-local" name="start_date" class="ap-input" required style="font-size:0.8rem;">
                     </div>
                     <div class="ap-form-group">
-                        <label class="ap-form-label">Venue / Location</label>
-                        <input type="text" name="venue" class="ap-input" placeholder="e.g. LSPU Santa Cruz Main Auditorium" required>
-                    </div>
-                </div>
-                <div class="ap-grid-2">
-                    <div class="ap-form-group">
-                        <label class="ap-form-label">Start Date & Time</label>
-                        <input type="datetime-local" name="start_date" class="ap-input" value="<?= date('Y-m-d\TH:i') ?>" required>
-                    </div>
-                    <div class="ap-form-group">
-                        <label class="ap-form-label">End Date & Time</label>
-                        <input type="datetime-local" name="end_date" class="ap-input" value="<?= date('Y-m-d\TH:i', strtotime('+4 hours')) ?>" required>
+                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">End Date & Time</label>
+                        <input type="datetime-local" name="end_date" class="ap-input" required style="font-size:0.8rem;">
                     </div>
                 </div>
-                <div class="ap-grid-2">
+                <div class="ap-form-group">
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Venue / Location</label>
+                    <input type="text" name="venue" class="ap-input" placeholder="e.g. LSPU Main Auditorium / Zoom" required style="font-size:0.8rem;">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem;">
                     <div class="ap-form-group">
-                        <label class="ap-form-label">Max Attendees Capacity</label>
-                        <input type="number" name="max_attendees" class="ap-input" value="300">
+                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Registration Fee (₱)</label>
+                        <input type="number" step="0.01" name="registration_fee" class="ap-input" value="0.00" style="font-size:0.8rem;">
                     </div>
                     <div class="ap-form-group">
-                        <label class="ap-form-label">Registration Fee (PHP)</label>
-                        <input type="number" step="0.01" name="registration_fee" class="ap-input" value="0.00">
+                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Max Attendees</label>
+                        <input type="number" name="max_attendees" class="ap-input" value="150" style="font-size:0.8rem;">
                     </div>
                 </div>
-                <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
-                    <button type="button" class="ap-btn-secondary" onclick="closeEventModal()">Cancel</button>
-                    <button type="submit" class="ap-btn-primary"><i class="fas fa-floppy-disk"></i> Create & Save Event</button>
+                <div class="ap-form-group">
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Description</label>
+                    <textarea name="description" class="ap-input" rows="2" placeholder="Brief details about topics, speakers, or requirements..." style="font-size:0.8rem;"></textarea>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:0.65rem; margin-top:1rem;">
+                    <button type="button" class="btn-white" onclick="closeCreateModal()">Cancel</button>
+                    <button type="submit" class="btn-primary-navy"><i class="fas fa-calendar-plus"></i> Save Event</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        function openEventModal() { document.getElementById('eventModal').style.display = 'flex'; }
-        function closeEventModal() { document.getElementById('eventModal').style.display = 'none'; }
+        function openCreateModal() {
+            document.getElementById('createModal').classList.add('active');
+        }
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.remove('active');
+        }
+
+        function filterEventsTable() {
+            const query = document.getElementById('eventSearchInput').value.toLowerCase();
+            const table = document.getElementById('eventsTable');
+            const trs = table.getElementsByTagName('tr');
+
+            for (let i = 1; i < trs.length; i++) {
+                const tr = trs[i];
+                if (tr.children.length === 1 && tr.children[0].getAttribute('colspan')) continue;
+                const text = tr.textContent.toLowerCase();
+                tr.style.display = (text.indexOf(query) > -1) ? '' : 'none';
+            }
+        }
     </script>
 </body>
 </html>

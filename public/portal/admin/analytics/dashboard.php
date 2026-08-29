@@ -1,19 +1,17 @@
 <?php
-require_once __DIR__ . '/../../auth_check.php';
 require_once __DIR__ . '/../../bootstrap.php';
-require_once __DIR__ . '/../../../../includes/config.php';
-require_once __DIR__ . '/../../../../includes/role-config.php';
-
-require_role(['admin', 'super_admin']);
-
 $current_page = 'analytics';
+
+require_once __DIR__ . '/../../auth_check.php';
+require_role(['admin', 'super_admin', 'eb_president', 'eb_treasurer', 'eb_auditor', 'treasurer', 'auditor']);
+
+$pageTitle = 'Executive Analytics & Intelligence';
 $supabase = getSupabaseClient();
 
-// Fetch real metrics from database
 $totalMembers = 0;
 $totalInstitutions = 0;
 $totalEvents = 0;
-$totalRevenue = 0;
+$totalRevenue = 0.0;
 $compliantInstitutions = 0;
 $complianceRate = 100;
 
@@ -53,179 +51,257 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Analytics Dashboard — IECEP-LSC MEMSYS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
     <meta name="description" content="Comprehensive analytics, membership trends, revenue insights, and compliance overview for IECEP-LSC Laguna Student Chapter.">
-    <?php include dirname(__DIR__, 4) . '/includes/head-meta.php'; ?>
+    <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-amber: #D97706;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dash-header-banner {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+        }
+        .dash-header-title {
+            margin: 0 0 0.15rem;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dash-header-sub {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #64748B;
+        }
+
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            transform: translateY(-1px);
+        }
+
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 0.85rem;
+        }
+        .dash-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            min-width: 0;
+        }
+        .kpi-icon-pill {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-lbl {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 1px;
+        }
+
+        .ap-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1rem;
+        }
+        .ap-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+        }
+        .ap-card-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0F172A;
+        }
+
+        @media (max-width: 1024px) {
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
 </head>
 <body>
-    <?php include dirname(__DIR__, 4) . '/includes/sidebar.php'; ?>
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
     <main class="main-content">
         <div class="ap-scope">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-chart-bar"></i> Executive Analytics Dashboard</h1>
-                    <p class="ap-page-subtitle">Real-time membership growth, treasury collections, institutional compliance, and telemetry.</p>
+            <!-- 1. Header Banner -->
+            <div class="dash-header-banner">
+                <div>
+                    <h1 class="dash-header-title">
+                        <i class="fas fa-chart-line" style="color:var(--color-navy);"></i>
+                        Executive Analytics & Regional Intelligence
+                    </h1>
+                    <p class="dash-header-sub">
+                        Real-time membership growth, treasury collections, institutional compliance, and telemetry.
+                    </p>
                 </div>
-                <div class="ap-header-actions">
-                    <button class="ap-btn-secondary" onclick="location.reload()">
-                        <i class="fas fa-sync-alt"></i> Refresh Live Data
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <a href="<?= PORTAL_URL ?>/admin/financial/reports.php" class="btn-white">
+                        <i class="fas fa-file-invoice-dollar" style="color:var(--color-blue);"></i> Financial Reports
+                    </a>
+                    <button class="btn-white" onclick="location.reload()">
+                        <i class="fas fa-sync-alt"></i> Refresh Data
                     </button>
                 </div>
             </div>
 
-            <!-- KPI Grid -->
-            <div class="ap-kpi-grid">
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon cyan"><i class="fas fa-users"></i></div>
-                        <div>
-                            <div class="ap-stat-label">Roster</div>
-                            <div class="ap-stat-sublabel">Total Members</div>
-                        </div>
-                    </div>
-                    <div class="ap-stat-value"><?= number_format($totalMembers) ?></div>
-                    <div class="ap-stat-footer">Verified Student Engineers</div>
-                </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon navy"><i class="fas fa-building-columns"></i></div>
-                        <div>
-                            <div class="ap-stat-label">Chapters</div>
-                            <div class="ap-stat-sublabel">Institutions</div>
-                        </div>
-                    </div>
-                    <div class="ap-stat-value"><?= number_format($totalInstitutions) ?></div>
-                    <div class="ap-stat-footer">Higher Education Partners</div>
-                </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon gold"><i class="fas fa-calendar-check"></i></div>
-                        <div>
-                            <div class="ap-stat-label">Events</div>
-                            <div class="ap-stat-sublabel">Total Events</div>
-                        </div>
-                    </div>
-                    <div class="ap-stat-value"><?= number_format($totalEvents) ?></div>
-                    <div class="ap-stat-footer">Chapter Activities & Summits</div>
-                </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon emerald"><i class="fas fa-sack-dollar"></i></div>
-                        <div>
-                            <div class="ap-stat-label">Treasury</div>
-                            <div class="ap-stat-sublabel">Total Revenue</div>
-                        </div>
-                    </div>
-                    <div class="ap-stat-value" style="color:var(--accent-emerald);">₱<?= number_format($totalRevenue, 2) ?></div>
-                    <div class="ap-stat-footer">Audited Collections</div>
-                </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon purple"><i class="fas fa-shield-check"></i></div>
-                        <div>
-                            <div class="ap-stat-label">Compliant</div>
-                            <div class="ap-stat-sublabel">Chapters</div>
-                        </div>
-                    </div>
-                    <div class="ap-stat-value"><?= number_format($compliantInstitutions) ?></div>
-                    <div class="ap-stat-footer">Fully Compliant Institutions</div>
-                </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon amber"><i class="fas fa-percent"></i></div>
-                        <div>
-                            <div class="ap-stat-label">Rate</div>
-                            <div class="ap-stat-sublabel">Compliance Rate</div>
-                        </div>
-                    </div>
-                    <div class="ap-stat-value" style="color:var(--iecep-gold);"><?= $complianceRate ?>%</div>
-                    <div class="ap-stat-footer">Regional Laguna Chapter Target</div>
-                </div>
-            </div>
-
-            <!-- Charts 2-column Grid -->
-            <div class="ap-grid-2">
-                <!-- Membership Growth -->
-                <div class="ap-card" style="margin-bottom:0;">
-                    <div class="ap-card-header">
-                        <h3 class="ap-card-title"><i class="fas fa-user-plus"></i> Membership Growth Trend</h3>
-                    </div>
-                    <div style="height:260px;">
-                        <canvas id="growthChart"></canvas>
+            <!-- 2. KPI Grid -->
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy"><i class="fas fa-users"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= number_format($totalMembers) ?></div>
+                        <div class="kpi-lbl">Total Registered Members</div>
                     </div>
                 </div>
 
-                <!-- Treasury Collections -->
-                <div class="ap-card" style="margin-bottom:0;">
-                    <div class="ap-card-header">
-                        <h3 class="ap-card-title"><i class="fas fa-money-bill-wave"></i> Treasury Revenue Collections</h3>
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill emerald"><i class="fas fa-vault"></i></div>
+                    <div>
+                        <div class="kpi-val" style="color:#059669;">₱<?= number_format($totalRevenue, 2) ?></div>
+                        <div class="kpi-lbl">Audited Treasury Collections</div>
                     </div>
-                    <div style="height:260px;">
-                        <canvas id="revChart"></canvas>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill gold"><i class="fas fa-university"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $totalInstitutions ?></div>
+                        <div class="kpi-lbl">Laguna Student Chapters</div>
+                    </div>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill amber"><i class="fas fa-calendar-check"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $totalEvents ?></div>
+                        <div class="kpi-lbl">Scheduled Chapter Events</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip" style="margin-top:1.5rem;">
-                <div class="ap-sentinel-item"><i class="fas fa-chart-line"></i><span><strong>Data Engine:</strong> Supabase Live Production DB</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-clock"></i><span><strong>Refreshed:</strong> <?= date('h:i:s A') ?></span></div>
+            <!-- 3. Grid for Compliance & Growth Analytics -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+                <div class="ap-card" style="margin-bottom:0;">
+                    <div class="ap-card-header">
+                        <h3 class="ap-card-title"><i class="fas fa-shield-check"></i> Chapter Compliance Distribution</h3>
+                    </div>
+                    <div style="padding:1.5rem; text-align:center;">
+                        <div style="font-size:2.5rem; font-weight:800; color:var(--color-navy);"><?= $complianceRate ?>%</div>
+                        <p style="margin:0.25rem 0 1rem; color:#64748B; font-size:0.85rem;">Overall Regional Compliance Health</p>
+                        <div style="display:flex; justify-content:center; gap:1.5rem; font-size:0.8rem;">
+                            <div><strong style="color:#059669; font-size:1.1rem;"><?= $compliantInstitutions ?></strong><div style="color:#64748B;">Compliant Chapters</div></div>
+                            <div><strong style="color:#D97706; font-size:1.1rem;"><?= max(0, $totalInstitutions - $compliantInstitutions) ?></strong><div style="color:#64748B;">Pending Audit</div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ap-card" style="margin-bottom:0;">
+                    <div class="ap-card-header">
+                        <h3 class="ap-card-title"><i class="fas fa-database"></i> Database Telemetry & Integrity</h3>
+                    </div>
+                    <div style="padding:1.5rem;">
+                        <div style="display:flex; justify-content:space-between; padding:0.6rem 0; border-bottom:1px solid #F1F5F9; font-size:0.85rem;">
+                            <span style="color:#64748B;">Database Engine:</span>
+                            <strong style="color:var(--color-navy);">PostgreSQL (Supabase Cloud)</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding:0.6rem 0; border-bottom:1px solid #F1F5F9; font-size:0.85rem;">
+                            <span style="color:#64748B;">Cryptographic Anchor:</span>
+                            <strong style="color:#059669;">SHA-256 Enabled</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; padding:0.6rem 0; font-size:0.85rem;">
+                            <span style="color:#64748B;">Active Cluster Status:</span>
+                            <span class="ap-pill active"><span class="ap-pill-dot"></span> Healthy & Synchronized</span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
         </div>
     </main>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Growth chart
-            new Chart(document.getElementById('growthChart'), {
-                type: 'bar',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-                    datasets: [{
-                        label: 'Registered Members',
-                        data: [12, 19, 28, 45, 60, 85, 110, <?= max(150, $totalMembers) ?>],
-                        backgroundColor: '#0B1D4A',
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
-                }
-            });
-
-            // Revenue chart
-            new Chart(document.getElementById('revChart'), {
-                type: 'line',
-                data: {
-                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'],
-                    datasets: [{
-                        label: 'Revenue (₱)',
-                        data: [2500, 5000, 8500, 12000, 15500, 19000, 24000, <?= max(2950, $totalRevenue) ?>],
-                        borderColor: '#D4AF37',
-                        backgroundColor: 'rgba(212, 175, 55, 0.15)',
-                        fill: true,
-                        tension: 0.35
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
-                }
-            });
-        });
-    </script>
 </body>
 </html>

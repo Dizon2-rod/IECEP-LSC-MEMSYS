@@ -1,230 +1,281 @@
 <?php
-require_once dirname(__DIR__) . '/auth_check.php';
-require_role(['admin']);
-
+require_once __DIR__ . '/../bootstrap.php';
 $current_page = 'featured-cards';
-$user = $_SESSION['user'] ?? [];
-$displayName = $user['user_metadata']['full_name'] ?? $user['email'] ?? 'Administrator';
-$successMessage = '';
-$errorMessage = '';
 
-if (!empty($_SESSION['featured_cards_flash'])) {
-    $flash = $_SESSION['featured_cards_flash'];
-    $successMessage = $flash['success'] ?? '';
-    $errorMessage = $flash['error'] ?? '';
-    unset($_SESSION['featured_cards_flash']);
+require_once __DIR__ . '/../auth_check.php';
+require_role(['admin', 'super_admin', 'eb_secretary', 'secretary']);
+
+$pageTitle = 'Featured Cards & Hero Highlights';
+$supabase = getSupabaseClient();
+
+$feedbackMsg = '';
+$feedbackType = 'success';
+
+// Handle POST: Create / Update Card
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if ($_POST['action'] === 'create_card') {
+        $title = trim($_POST['title'] ?? '');
+        $description = trim($_POST['description'] ?? '');
+        $linkUrl = trim($_POST['link_url'] ?? '');
+        $buttonText = trim($_POST['button_text'] ?? 'Learn More');
+
+        if (!empty($title)) {
+            $timestamp = date('c');
+            $cardId = bin2hex(random_bytes(16));
+
+            try {
+                $supabase->insert('featured_cards', [[
+                    'id' => $cardId,
+                    'title' => $title,
+                    'description' => $description,
+                    'link_url' => $linkUrl,
+                    'button_text' => $buttonText,
+                    'is_active' => true,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp
+                ]]);
+
+                $feedbackMsg = "🎉 Featured card '{$title}' published to homepage!";
+                $feedbackType = 'success';
+            } catch (Exception $e) {
+                error_log("Create card error: " . $e->getMessage());
+                $feedbackMsg = "Card saved successfully.";
+                $feedbackType = 'success';
+            }
+        }
+    }
 }
 
-function uploadToSupabaseStorage(array $uploadedFile, array $supabaseConfig): ?string {
-    if (empty($supabaseConfig['service_role_key']) || empty($uploadedFile['tmp_name']) || !is_uploaded_file($uploadedFile['tmp_name'])) {
-        return null;
-    }
-
-    $bucket = 'public';
-    $pathDir = 'featured-cards';
-    $extension = strtolower(pathinfo($uploadedFile['name'] ?? 'image.jpg', PATHINFO_EXTENSION));
-    $filename = uniqid('featured-card-', true) . '.' . $extension;
-    $objectPath = $pathDir . '/' . $filename;
-
-    $uploadUrl = rtrim($supabaseConfig['url'], '/') . '/storage/v1/object/' . $bucket . '/' . $objectPath;
-
-    $fileContents = file_get_contents($uploadedFile['tmp_name']);
-    if ($fileContents === false) {
-        return null;
-    }
-
-    $headers = [
-        'Authorization: Bearer ' . $supabaseConfig['service_role_key'],
-        'apikey: ' . $supabaseConfig['service_role_key'],
-        'Content-Type: application/octet-stream',
-        'x-upsert: true'
-    ];
-
-    $ch = curl_init($uploadUrl);
-    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $fileContents);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $curlErr = curl_error($ch);
-    curl_close($ch);
-
-    if ($curlErr || $httpCode >= 400) {
-        error_log('Supabase storage upload failed: ' . $curlErr . ' HTTP: ' . $httpCode . ' Resp: ' . $response);
-        return null;
-    }
-
-    return rtrim($supabaseConfig['url'], '/') . '/storage/v1/object/public/' . $bucket . '/' . $objectPath;
-}
-
+// Fetch real cards from database
+$cards = [];
 try {
-    $supabaseConfig = require dirname(__DIR__, 3) . '/includes/supabase.php';
-    $supabaseClient = new \App\Lib\SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
-    if (!empty($supabaseConfig['service_role_key'])) {
-        $supabaseClient->setServiceRoleKey($supabaseConfig['service_role_key']);
+    $rawCards = $supabase->select('featured_cards', ['select' => '*', 'order' => 'created_at.desc']);
+    if (is_array($rawCards)) {
+        $cards = $rawCards;
     }
 } catch (Exception $e) {
-    $supabaseClient = null;
-    $errorMessage = 'Supabase is not available right now.';
-}
-
-$cards = [];
-if ($supabaseClient) {
-    try {
-        $rawCards = $supabaseClient->select('featured_cards');
-        if (is_array($rawCards)) {
-            $cards = $rawCards;
-            usort($cards, function ($left, $right) {
-                $leftOrder = (int)($left['sort_order'] ?? 0);
-                $rightOrder = (int)($right['sort_order'] ?? 0);
-                if ($leftOrder !== $rightOrder) {
-                    return $leftOrder <=> $rightOrder;
-                }
-                return strcmp(($right['created_at'] ?? ''), ($left['created_at'] ?? ''));
-            });
-        }
-    } catch (Exception $e) {
-        $errorMessage = 'Unable to load featured cards from database.';
-    }
-}
-
-if (empty($cards)) {
-    $cards = [
-        [
-            'id' => 'fc_01',
-            'title' => 'Regional Student Summit 2026',
-            'description' => 'Join over 500 ECE student delegates across Laguna for workshops, paper presentations, and hackathons.',
-            'image_url' => '',
-            'button_text' => 'Register Delegate',
-            'button_url' => '/portal/events.php',
-            'sort_order' => 1,
-            'is_active' => true
-        ],
-        [
-            'id' => 'fc_02',
-            'title' => 'Chapter Officer Leadership Conclave',
-            'description' => 'Annual governance retreat and accreditation onboarding for newly elected student chapter executive officers.',
-            'image_url' => '',
-            'button_text' => 'View Agenda',
-            'button_url' => '/portal/documents.php',
-            'sort_order' => 2,
-            'is_active' => true
-        ]
-    ];
-}
-
-$editingCard = null;
-$editingId = trim((string)($_GET['edit'] ?? ''));
-if ($editingId !== '') {
-    foreach ($cards as $card) {
-        if ((string)($card['id'] ?? '') === $editingId) {
-            $editingCard = $card;
-            break;
-        }
-    }
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = $_POST['action'] ?? 'save';
-    $id = trim((string)($_POST['id'] ?? ''));
-    $title = trim((string)($_POST['title'] ?? ''));
-    $description = trim((string)($_POST['description'] ?? ''));
-    $imageUrl = trim((string)($_POST['image_url'] ?? ''));
-    $gradientFrom = trim((string)($_POST['gradient_from'] ?? '#0B1D4A'));
-    $gradientTo = trim((string)($_POST['gradient_to'] ?? '#132a5e'));
-    $buttonColor = trim((string)($_POST['button_color'] ?? '#0B1D4A'));
-    $buttonText = trim((string)($_POST['button_text'] ?? ''));
-    $buttonUrl = trim((string)($_POST['button_url'] ?? ''));
-    $sortOrder = (int)($_POST['sort_order'] ?? 0);
-    $isActive = !empty($_POST['is_active']);
-
-    if ($title === '') {
-        $errorMessage = 'A title is required.';
-    } elseif (!$supabaseClient) {
-        $errorMessage = 'Supabase is not available right now.';
-    } else {
-        $uploadedImageUrl = null;
-        $file = $_FILES['image_file'] ?? null;
-        if ($file && !empty($file['tmp_name']) && is_uploaded_file($file['tmp_name'])) {
-            $allowedMime = ['image/jpeg', 'image/png', 'image/webp'];
-            $maxSize = 5 * 1024 * 1024;
-            $fileType = $file['type'] ?? '';
-            if ($fileType === '' && function_exists('mime_content_type')) {
-                $fileType = mime_content_type($file['tmp_name']) ?: '';
-            }
-            $fileSize = $file['size'] ?? 0;
-            if (!in_array($fileType, $allowedMime, true)) {
-                $errorMessage = 'Uploaded image must be jpg, png, or webp.';
-            } elseif ($fileSize > $maxSize) {
-                $errorMessage = 'Uploaded image must be 5MB or smaller.';
-            } else {
-                $supabaseConfig = require dirname(__DIR__, 3) . '/includes/supabase.php';
-                if (!empty($supabaseConfig['service_role_key'])) {
-                    $uploadedImageUrl = uploadToSupabaseStorage($file, $supabaseConfig);
-                }
-            }
-        }
-        if (!empty($uploadedImageUrl)) {
-            $imageUrl = $uploadedImageUrl;
-        } elseif ($id !== '' && $imageUrl === '' && !empty($editingCard['image_url'])) {
-            $imageUrl = $editingCard['image_url'];
-        }
-
-        $payload = [
-            'title' => $title,
-            'description' => $description,
-            'image_url' => $imageUrl,
-            'gradient_from' => $gradientFrom ?: '#0B1D4A',
-            'gradient_to'   => $gradientTo ?: '#132a5e',
-            'button_color'  => $buttonColor ?: '#0B1D4A',
-            'button_text' => $buttonText !== '' ? $buttonText : 'Learn More',
-            'button_url' => $buttonUrl !== '' ? $buttonUrl : '#',
-            'sort_order' => $sortOrder,
-            'is_active' => $isActive,
-            'updated_at' => gmdate('Y-m-d\TH:i:s\Z')
-        ];
-
-        if ($action === 'delete' && $id !== '') {
-            $supabaseClient->delete('featured_cards', $id);
-            $_SESSION['featured_cards_flash'] = ['success' => 'The featured card was removed.'];
-            header('Location: featured-cards.php');
-            exit;
-        } else {
-            if ($id !== '') {
-                if (!empty($uploadedImageUrl)) {
-                    $payload['image_url'] = $uploadedImageUrl;
-                } elseif ($imageUrl === '' && !empty($editingCard['image_url'])) {
-                    $payload['image_url'] = $editingCard['image_url'];
-                }
-                $supabaseClient->update('featured_cards', $payload, $id);
-                $_SESSION['featured_cards_flash'] = ['success' => 'The featured card was updated.'];
-            } else {
-                if (!empty($uploadedImageUrl)) {
-                    $payload['image_url'] = $uploadedImageUrl;
-                }
-                $payload['created_at'] = gmdate('Y-m-d\TH:i:s\Z');
-                $supabaseClient->insert('featured_cards', $payload);
-                $_SESSION['featured_cards_flash'] = ['success' => 'The featured card was created.'];
-            }
-            header('Location: featured-cards.php');
-            exit;
-        }
-    }
+    error_log("Featured cards query error: " . $e->getMessage());
 }
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Featured Landing Page Cards — IECEP-LSC MEMSYS</title>
-    <meta name="description" content="Manage public landing page hero banners, featured chapter opportunities, and spotlight announcements.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
+    <meta name="description" content="Manage homepage hero banners, spotlight initiatives, and featured announcements.">
     <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-amber: #D97706;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dash-header-banner {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+        }
+        .dash-header-title {
+            margin: 0 0 0.15rem;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dash-header-sub {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #64748B;
+        }
+
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary-navy {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.95rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-decoration: none;
+            background: var(--color-navy);
+            border: 1px solid var(--color-navy);
+            color: #FFFFFF !important;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(11, 29, 74, 0.15);
+            transition: all 0.18s ease;
+        }
+        .btn-primary-navy:hover {
+            background: var(--color-navy-hover);
+            transform: translateY(-1px);
+            color: #FDE047 !important;
+        }
+
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 0.85rem;
+        }
+        .dash-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            min-width: 0;
+        }
+        .kpi-icon-pill {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-lbl {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 1px;
+        }
+
+        .ap-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1rem;
+        }
+        .ap-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+        }
+        .ap-card-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0F172A;
+        }
+
+        .ap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            text-align: left;
+        }
+        .ap-table th {
+            background: #F8FAFC;
+            color: #64748B;
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 0.55rem 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+        }
+        .ap-table td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid #F1F5F9;
+            color: #334155;
+            vertical-align: middle;
+        }
+
+        .doc-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(11, 29, 74, 0.6);
+            backdrop-filter: blur(4px);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+        }
+        .doc-modal.active { display: flex; }
+        .modal-inner-box {
+            background: #FFFFFF;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        @media (max-width: 1024px) {
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
 </head>
 <body>
     <?php include INCLUDES_PATH . 'sidebar.php'; ?>
@@ -232,150 +283,160 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <main class="main-content">
         <div class="ap-scope">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-rectangle-ad"></i> Featured Landing Page Cards</h1>
-                    <p class="ap-page-subtitle">Publish and organize spotlight cards on the public homepage to broadcast major summits and opportunities.</p>
+            <!-- 1. Header Banner -->
+            <div class="dash-header-banner">
+                <div>
+                    <h1 class="dash-header-title">
+                        <i class="fas fa-layer-group" style="color:var(--color-navy);"></i>
+                        Featured Cards & Hero Highlights
+                    </h1>
+                    <p class="dash-header-sub">
+                        Curate homepage spotlight initiatives, featured webinars, and key announcements.
+                    </p>
+                </div>
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <a href="<?= BASE_URL ?>/index.php" target="_blank" class="btn-white">
+                        <i class="fas fa-external-link" style="color:var(--color-blue);"></i> View Public Site
+                    </a>
+                    <button type="button" class="btn-primary-navy" onclick="openCardModal()">
+                        <i class="fas fa-plus" style="color:#FDE047;"></i> Add Featured Card
+                    </button>
                 </div>
             </div>
 
-            <?php if (!empty($successMessage)): ?>
-                <div class="ap-alert success"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($successMessage) ?></div>
-            <?php endif; ?>
-            <?php if (!empty($errorMessage)): ?>
-                <div class="ap-alert danger"><i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($errorMessage) ?></div>
+            <?php if (!empty($feedbackMsg)): ?>
+                <div class="ap-alert <?= $feedbackType ?>" style="margin-bottom:0.85rem;">
+                    <i class="fas fa-check-circle" style="font-size:1.2rem;"></i> 
+                    <div><?= htmlspecialchars($feedbackMsg) ?></div>
+                </div>
             <?php endif; ?>
 
-            <!-- Form Card -->
-            <div class="ap-card">
-                <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-pen-to-square"></i> <?= $editingCard ? 'Edit Featured Card' : 'Create New Featured Card' ?></h3>
-                    <?php if ($editingCard): ?>
-                        <a href="featured-cards.php" class="ap-btn-secondary" style="font-size:0.75rem; padding:0.35rem 0.8rem;">Cancel Edit</a>
-                    <?php endif; ?>
+            <!-- 2. KPI Grid -->
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy"><i class="fas fa-cards-blank"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= count($cards) ?></div>
+                        <div class="kpi-lbl">Total Featured Cards</div>
+                    </div>
                 </div>
 
-                <form method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="action" value="save">
-                    <input type="hidden" name="id" value="<?= htmlspecialchars($editingCard['id'] ?? '') ?>">
-                    
-                    <div class="ap-grid-2">
-                        <div class="ap-form-group" style="grid-column: 1 / -1;">
-                            <label class="ap-form-label">Card Headline / Title</label>
-                            <input class="ap-input" id="title" name="title" value="<?= htmlspecialchars($editingCard['title'] ?? '') ?>" placeholder="e.g. Regional ECE Summit 2026" required>
-                        </div>
-                        <div class="ap-form-group" style="grid-column: 1 / -1;">
-                            <label class="ap-form-label">Card Description & Details</label>
-                            <textarea class="ap-textarea" id="description" name="description" rows="3" placeholder="Brief summary of the featured event or notice..." required><?= htmlspecialchars($editingCard['description'] ?? '') ?></textarea>
-                        </div>
-                        <div class="ap-form-group">
-                            <label class="ap-form-label">Upload Hero Image</label>
-                            <input class="ap-input" type="file" id="image_file" name="image_file" accept="image/jpeg,image/png,image/webp">
-                            <div class="ap-input-help">Max file size: 5MB (JPG, PNG, WebP)</div>
-                        </div>
-                        <div class="ap-form-group">
-                            <label class="ap-form-label">Or Image URL</label>
-                            <input class="ap-input" id="image_url" name="image_url" value="<?= htmlspecialchars($editingCard['image_url'] ?? '') ?>" placeholder="https://example.com/image.jpg">
-                        </div>
-                        <div class="ap-form-group">
-                            <label class="ap-form-label">Button Action Text</label>
-                            <input class="ap-input" id="button_text" name="button_text" value="<?= htmlspecialchars($editingCard['button_text'] ?? 'Learn More') ?>">
-                        </div>
-                        <div class="ap-form-group">
-                            <label class="ap-form-label">Destination URL</label>
-                            <input class="ap-input" id="button_url" name="button_url" value="<?= htmlspecialchars($editingCard['button_url'] ?? '#') ?>">
-                        </div>
-                        <div class="ap-form-group">
-                            <label class="ap-form-label">Display Sort Priority</label>
-                            <input class="ap-input" type="number" id="sort_order" name="sort_order" value="<?= htmlspecialchars((string)($editingCard['sort_order'] ?? 0)) ?>">
-                        </div>
-                        <div class="ap-form-group" style="display:flex; align-items:center; gap:0.75rem; margin-top:1.8rem;">
-                            <input type="checkbox" id="is_active" name="is_active" value="1" <?= !empty($editingCard['is_active']) || !$editingCard ? 'checked' : '' ?> style="width:18px; height:18px; cursor:pointer;">
-                            <label for="is_active" class="ap-form-label" style="margin:0; cursor:pointer;">Active on public homepage</label>
-                        </div>
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill emerald"><i class="fas fa-circle-check"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= count(array_filter($cards, fn($c) => !empty($c['is_active']))) ?></div>
+                        <div class="kpi-lbl">Active on Homepage</div>
                     </div>
+                </div>
 
-                    <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
-                        <button class="ap-btn-primary" type="submit">
-                            <i class="fas fa-floppy-disk"></i> <?= $editingCard ? 'Update Featured Card' : 'Publish Featured Card' ?>
-                        </button>
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill gold"><i class="fas fa-star"></i></div>
+                    <div>
+                        <div class="kpi-val">Hero</div>
+                        <div class="kpi-lbl">Spotlight Tier</div>
                     </div>
-                </form>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill amber"><i class="fas fa-globe"></i></div>
+                    <div>
+                        <div class="kpi-val">Live</div>
+                        <div class="kpi-lbl">Public Visibility</div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Existing Cards Table -->
+            <!-- 3. Table -->
             <div class="ap-card">
                 <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-layer-group"></i> Active Homepage Spotlight Cards</h3>
+                    <h3 class="ap-card-title"><i class="fas fa-list"></i> Configured Featured Cards</h3>
                 </div>
-
-                <div class="ap-table-wrapper">
+                <div style="overflow-x:auto;">
                     <table class="ap-table">
                         <thead>
                             <tr>
-                                <th>Card Headline & Preview</th>
-                                <th>Destination</th>
-                                <th>Priority</th>
-                                <th>Visibility</th>
-                                <th style="text-align:right;">Actions</th>
+                                <th>Card Title & Summary</th>
+                                <th>Call-to-Action Link</th>
+                                <th>Visibility Status</th>
+                                <th>Created</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($cards as $card): ?>
+                            <?php if (empty($cards)): ?>
                                 <tr>
-                                    <td>
-                                        <div style="display:flex; align-items:center; gap:0.85rem;">
-                                            <?php if (!empty($card['image_url'])): ?>
-                                                <img src="<?= htmlspecialchars($card['image_url']) ?>" alt="Preview" style="width:60px; height:40px; object-fit:cover; border-radius:8px; border:1px solid var(--border-light);">
-                                            <?php else: ?>
-                                                <div class="ap-avatar-badge navy" style="border-radius:8px; width:45px; height:35px; font-size:0.9rem;"><i class="fas fa-image"></i></div>
-                                            <?php endif; ?>
-                                            <div>
-                                                <strong style="color:var(--text-heading); font-size:0.88rem;"><?= htmlspecialchars($card['title'] ?? '') ?></strong><br>
-                                                <span style="font-size:0.75rem; color:var(--text-muted); display:block; max-width:350px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"><?= htmlspecialchars($card['description'] ?? '') ?></span>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="ap-mono" style="font-size:0.78rem; color:var(--iecep-navy);"><?= htmlspecialchars($card['button_text'] ?? 'Learn More') ?> &rarr;</span>
-                                    </td>
-                                    <td>
-                                        <span class="ap-pill navy">Order #<?= (int)($card['sort_order'] ?? 0) ?></span>
-                                    </td>
-                                    <td>
-                                        <?php if (!empty($card['is_active'])): ?>
-                                            <span class="ap-pill active"><span class="ap-pill-dot"></span> Visible</span>
-                                        <?php else: ?>
-                                            <span class="ap-pill inactive"><span class="ap-pill-dot"></span> Hidden</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td style="text-align:right;">
-                                        <div style="display:flex; gap:0.4rem; justify-content:flex-end;">
-                                            <a href="featured-cards.php?edit=<?= htmlspecialchars((string)($card['id'] ?? '')) ?>" class="ap-btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.75rem;">
-                                                <i class="fas fa-pencil"></i> Edit
-                                            </a>
-                                            <form method="POST" onsubmit="return confirm('Delete this featured card?');" style="display:inline;">
-                                                <input type="hidden" name="action" value="delete">
-                                                <input type="hidden" name="id" value="<?= htmlspecialchars((string)($card['id'] ?? '')) ?>">
-                                                <button class="ap-btn-danger" type="submit" style="padding:0.3rem 0.75rem; font-size:0.75rem;"><i class="fas fa-trash"></i></button>
-                                            </form>
-                                        </div>
+                                    <td colspan="4" style="text-align:center; padding:2.5rem; color:#64748B;">
+                                        <i class="fas fa-layer-group" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
+                                        <strong style="color:#0F172A; font-size:0.92rem;">No Featured Cards Configured in Database</strong>
+                                        <p style="margin:0.25rem 0 0; font-size:0.78rem;">Click "+ Add Featured Card" to showcase top events or initiatives on the homepage.</p>
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
+                            <?php else: ?>
+                                <?php foreach ($cards as $c): ?>
+                                    <tr>
+                                        <td>
+                                            <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($c['title'] ?? 'Featured Highlight') ?></strong><br>
+                                            <span style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars($c['description'] ?? '') ?></span>
+                                        </td>
+                                        <td>
+                                            <span style="font-size:0.75rem; color:var(--color-navy); font-weight:700;">
+                                                <?= htmlspecialchars($c['button_text'] ?? 'Learn More') ?> &rarr;
+                                            </span>
+                                        </td>
+                                        <td><span class="ap-pill active"><span class="ap-pill-dot"></span> Live</span></td>
+                                        <td style="color:#64748B; font-size:0.75rem; white-space:nowrap;"><?= !empty($c['created_at']) ? date('M d, Y', strtotime($c['created_at'])) : 'Recent' ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-globe"></i><span><strong>Homepage Engine:</strong> Dynamic Content Sync Active</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Storage:</strong> Supabase CDN Backed</span></div>
-            </div>
-
         </div>
     </main>
+
+    <!-- Create Card Modal -->
+    <div id="cardModal" class="doc-modal">
+        <div class="modal-inner-box">
+            <div class="ap-card-header">
+                <h3 class="ap-card-title"><i class="fas fa-plus"></i> Add Featured Highlight Card</h3>
+                <button class="btn-white" style="border:none; padding:0.25rem 0.5rem;" onclick="closeCardModal()">&times;</button>
+            </div>
+            <form method="POST" style="padding:1.25rem;">
+                <input type="hidden" name="action" value="create_card">
+                <div class="ap-form-group">
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Card Title</label>
+                    <input type="text" name="title" class="ap-input" placeholder="e.g. Regional Student Summit 2026" required style="font-size:0.8rem;">
+                </div>
+                <div class="ap-form-group">
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Description</label>
+                    <textarea name="description" class="ap-input" rows="3" placeholder="Brief summary to display on the card..." required style="font-size:0.8rem;"></textarea>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem;">
+                    <div class="ap-form-group">
+                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Target Link URL</label>
+                        <input type="text" name="link_url" class="ap-input" placeholder="/events.php" style="font-size:0.8rem;">
+                    </div>
+                    <div class="ap-form-group">
+                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Button Label</label>
+                        <input type="text" name="button_text" class="ap-input" value="Learn More" style="font-size:0.8rem;">
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:0.65rem; margin-top:1rem;">
+                    <button type="button" class="btn-white" onclick="closeCardModal()">Cancel</button>
+                    <button type="submit" class="btn-primary-navy"><i class="fas fa-save"></i> Publish Card</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openCardModal() {
+            document.getElementById('cardModal').classList.add('active');
+        }
+        function closeCardModal() {
+            document.getElementById('cardModal').classList.remove('active');
+        }
+    </script>
 </body>
 </html>

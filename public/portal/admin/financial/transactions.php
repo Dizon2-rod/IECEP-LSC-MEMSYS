@@ -1,16 +1,15 @@
 <?php
-require_once __DIR__ . '/../../auth_check.php';
 require_once __DIR__ . '/../../bootstrap.php';
-require_once __DIR__ . '/../../../../includes/config.php';
-require_once __DIR__ . '/../../../../includes/role-config.php';
-
-require_role(['admin', 'super_admin', 'eb_treasurer', 'eb_auditor']);
-
 $current_page = 'transactions';
+
+require_once __DIR__ . '/../../auth_check.php';
+require_role(['admin', 'super_admin', 'eb_treasurer', 'eb_auditor', 'treasurer', 'auditor']);
+
 $pageTitle = 'Treasury Transactions & Audit Ledger';
 $supabase = getSupabaseClient();
 
 $feedbackMsg = '';
+$feedbackType = 'success';
 
 // Handle POST: Record new transaction
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -43,10 +42,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'updated_at' => $timestamp
                 ]]);
 
-                $feedbackMsg = "Transaction {$rcpNumber} for ₱" . number_format($amount, 2) . " recorded and saved to database!";
+                $feedbackMsg = "🎉 Transaction {$rcpNumber} for ₱" . number_format($amount, 2) . " recorded successfully!";
+                $feedbackType = 'success';
             } catch (Exception $e) {
                 error_log("Record transaction error: " . $e->getMessage());
-                $feedbackMsg = "Transaction recorded successfully.";
+                $feedbackMsg = "Error saving transaction: " . $e->getMessage();
+                $feedbackType = 'warning';
             }
         }
     }
@@ -54,8 +55,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
 // Fetch real transactions from database
 $transactionsList = [];
-$totalPaid = 0;
-$totalPending = 0;
+$totalPaid = 0.0;
+$totalPending = 0.0;
 
 try {
     $rawTx = $supabase->select('transactions', ['select' => '*', 'order' => 'created_at.desc']);
@@ -63,7 +64,8 @@ try {
         $transactionsList = $rawTx;
         foreach ($transactionsList as $tx) {
             $amt = floatval($tx['amount'] ?? 0);
-            if (($tx['status'] ?? '') === 'paid' || ($tx['status'] ?? '') === 'completed') {
+            $st = strtolower($tx['status'] ?? 'pending');
+            if ($st === 'paid' || $st === 'completed') {
                 $totalPaid += $amt;
             } else {
                 $totalPending += $amt;
@@ -78,13 +80,222 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
     <meta name="description" content="View and manage all financial transactions, membership dues, and payment records for IECEP-LSC.">
-    <?php include dirname(__DIR__, 4) . '/includes/head-meta.php'; ?>
+    <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-amber: #D97706;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dash-header-banner {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+        }
+        .dash-header-title {
+            margin: 0 0 0.15rem;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dash-header-sub {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #64748B;
+        }
+
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary-navy {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.95rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-decoration: none;
+            background: var(--color-navy);
+            border: 1px solid var(--color-navy);
+            color: #FFFFFF !important;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(11, 29, 74, 0.15);
+            transition: all 0.18s ease;
+        }
+        .btn-primary-navy:hover {
+            background: var(--color-navy-hover);
+            transform: translateY(-1px);
+            color: #FDE047 !important;
+        }
+
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 0.85rem;
+        }
+        .dash-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            min-width: 0;
+        }
+        .kpi-icon-pill {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-lbl {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 1px;
+        }
+
+        .white-controls-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.95rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            box-shadow: var(--shadow-card);
+        }
+        .search-input-field {
+            padding: 0.45rem 0.75rem 0.45rem 2rem;
+            border: 1px solid #CBD5E1;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            background: #F8FAFC;
+        }
+
+        .ap-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1rem;
+        }
+        .ap-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+        }
+        .ap-card-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0F172A;
+        }
+
+        .ap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            text-align: left;
+        }
+        .ap-table th {
+            background: #F8FAFC;
+            color: #64748B;
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 0.55rem 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+        }
+        .ap-table td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid #F1F5F9;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .ap-table tr:hover td {
+            background: #F8FAFC;
+        }
+
         .doc-modal {
             display: none;
             position: fixed;
@@ -94,114 +305,157 @@ try {
             z-index: 9999;
             align-items: center;
             justify-content: center;
-            padding: 1.5rem;
+            padding: 1.25rem;
+        }
+        .doc-modal.active { display: flex; }
+        .modal-inner-box {
+            background: #FFFFFF;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        @media (max-width: 1024px) {
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
 <body>
-    <?php include dirname(__DIR__, 4) . '/includes/sidebar.php'; ?>
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
     <main class="main-content">
         <div class="ap-scope">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-money-bill-transfer"></i> Treasury Transactions & Audit Ledger</h1>
-                    <p class="ap-page-subtitle">Full audit trail of membership dues, event registration remittances, and institutional collections.</p>
+            <!-- 1. Header Banner -->
+            <div class="dash-header-banner">
+                <div>
+                    <h1 class="dash-header-title">
+                        <i class="fas fa-receipt" style="color:var(--color-navy);"></i>
+                        Treasury Transactions & Audit Ledger
+                    </h1>
+                    <p class="dash-header-sub">
+                        Record chapter remittances, membership fees, generate official receipts, and audit collections.
+                    </p>
                 </div>
-                <div class="ap-header-actions">
-                    <button class="ap-btn-primary" onclick="openTxModal()">
-                        <i class="fas fa-plus"></i> Record New Transaction
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <a href="<?= PORTAL_URL ?>/admin/financial/dashboard.php" class="btn-white">
+                        <i class="fas fa-chart-line" style="color:var(--color-blue);"></i> Financial Dashboard
+                    </a>
+                    <a href="<?= PORTAL_URL ?>/admin/financial/reports.php" class="btn-white">
+                        <i class="fas fa-file-invoice-dollar" style="color:#059669;"></i> Financial Reports
+                    </a>
+                    <button type="button" class="btn-primary-navy" onclick="openRecordModal()">
+                        <i class="fas fa-plus" style="color:#FDE047;"></i> Record Payment
                     </button>
                 </div>
             </div>
 
             <?php if (!empty($feedbackMsg)): ?>
-                <div class="ap-alert success"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($feedbackMsg) ?></div>
+                <div class="ap-alert <?= $feedbackType ?>" style="margin-bottom:0.85rem;">
+                    <i class="fas fa-check-circle" style="font-size:1.2rem;"></i> 
+                    <div><?= htmlspecialchars($feedbackMsg) ?></div>
+                </div>
             <?php endif; ?>
 
-            <!-- KPI Stat Row -->
-            <div class="ap-kpi-grid-3">
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon emerald"><i class="fas fa-circle-check"></i></div>
-                        <div><div class="ap-stat-label">Cleared</div><div class="ap-stat-sublabel">Paid Transactions</div></div>
+            <!-- 2. KPI Grid -->
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill emerald"><i class="fas fa-vault"></i></div>
+                    <div>
+                        <div class="kpi-val" style="color:#059669;">₱<?= number_format($totalPaid, 2) ?></div>
+                        <div class="kpi-lbl">Total Paid Transactions</div>
                     </div>
-                    <div class="ap-stat-value" style="color:var(--accent-emerald);">₱<?= number_format($totalPaid, 2) ?></div>
-                    <div class="ap-stat-footer">Total Cleared Inflow</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon amber"><i class="fas fa-clock"></i></div>
-                        <div><div class="ap-stat-label">Pending</div><div class="ap-stat-sublabel">Awaiting Clearance</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill amber"><i class="fas fa-hourglass-half"></i></div>
+                    <div>
+                        <div class="kpi-val" style="color:#D97706;">₱<?= number_format($totalPending, 2) ?></div>
+                        <div class="kpi-lbl">Pending Settlement</div>
                     </div>
-                    <div class="ap-stat-value" style="color:var(--accent-amber);">₱<?= number_format($totalPending, 2) ?></div>
-                    <div class="ap-stat-footer">Unsettled Invoices</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon navy"><i class="fas fa-receipt"></i></div>
-                        <div><div class="ap-stat-label">Volume</div><div class="ap-stat-sublabel">Total Records</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy"><i class="fas fa-receipt"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= count($transactionsList) ?></div>
+                        <div class="kpi-lbl">Total Ledger Entries</div>
                     </div>
-                    <div class="ap-stat-value"><?= count($transactionsList) ?></div>
-                    <div class="ap-stat-footer">Audited Ledger Entries</div>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill gold"><i class="fas fa-shield-check"></i></div>
+                    <div>
+                        <div class="kpi-val">100%</div>
+                        <div class="kpi-lbl">Audit Integrity</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Transactions Table Card -->
+            <!-- 3. Search & Filter Bar -->
+            <div class="white-controls-card">
+                <div style="position:relative; flex:1; max-width:380px;">
+                    <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94A3B8; font-size:0.8rem;"></i>
+                    <input type="text" id="txSearchInput" class="search-input-field" placeholder="Search receipt number, description, method..." onkeyup="filterTransactionsTable()">
+                </div>
+                <div style="font-size:0.75rem; font-weight:700; color:#64748B;">
+                    Showing <?= count($transactionsList) ?> transactions
+                </div>
+            </div>
+
+            <!-- 4. Table -->
             <div class="ap-card">
                 <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-list-check"></i> Financial Audit Ledger</h3>
-                    <div class="ap-toolbar" style="margin-bottom:0;">
-                        <div class="ap-search-wrapper" style="min-width:240px;">
-                            <i class="fas fa-magnifying-glass"></i>
-                            <input type="text" id="txnSearch" class="ap-search-input" placeholder="Search transactions..." onkeyup="filterTxnTable()">
-                        </div>
-                    </div>
+                    <h3 class="ap-card-title"><i class="fas fa-file-invoice"></i> Financial Transactions & Receipt Ledger</h3>
                 </div>
-
-                <div class="ap-table-wrapper">
-                    <table class="ap-table" id="txnTable">
+                <div style="overflow-x:auto;">
+                    <table class="ap-table" id="txTable">
                         <thead>
                             <tr>
-                                <th>Receipt / Reference</th>
-                                <th>Category / Description</th>
-                                <th>Payment Channel</th>
+                                <th>Receipt / Ref #</th>
+                                <th>Transaction Type</th>
+                                <th>Description / Notes</th>
+                                <th>Payment Method</th>
                                 <th>Amount</th>
-                                <th>Timestamp</th>
                                 <th>Status</th>
+                                <th style="text-align:right;">Date & Time</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($transactionsList)): ?>
-                                <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">No transactions recorded in database.</td></tr>
+                                <tr>
+                                    <td colspan="7" style="text-align:center; padding:2.5rem; color:#64748B;">
+                                        <i class="fas fa-receipt" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
+                                        <strong style="color:#0F172A; font-size:0.92rem;">No Transactions Recorded in Database</strong>
+                                        <p style="margin:0.25rem 0 0; font-size:0.78rem;">Click "+ Record Payment" to log official membership dues or event remittances.</p>
+                                    </td>
+                                </tr>
                             <?php else: ?>
-                                <?php foreach ($transactionsList as $t): ?>
+                                <?php foreach ($transactionsList as $tx): ?>
                                     <?php 
-                                        $status = strtolower($t['status'] ?? 'paid');
-                                        $pillClass = ($status === 'paid' || $status === 'completed') ? 'active' : 'pending';
-                                        $rcp = $t['receipt_number'] ?? 'RCP-2026-0001';
-                                        $amt = floatval($t['amount'] ?? 0);
+                                        $amt = floatval($tx['amount'] ?? 0);
+                                        $st = strtolower($tx['status'] ?? 'pending');
                                     ?>
                                     <tr>
                                         <td>
-                                            <span class="ap-mono" style="font-weight:700; color:var(--iecep-navy);"><?= htmlspecialchars($rcp) ?></span>
+                                            <span style="font-family:'JetBrains Mono', monospace; font-size:0.75rem; font-weight:700; color:var(--color-navy);">
+                                                <?= htmlspecialchars($tx['receipt_number'] ?? $tx['id'] ?? 'RCP') ?>
+                                            </span>
                                         </td>
+                                        <td><strong><?= htmlspecialchars(ucwords(str_replace('_', ' ', $tx['type'] ?? 'Membership Fee'))) ?></strong></td>
+                                        <td><?= htmlspecialchars($tx['notes'] ?? $tx['description'] ?? 'Official Dues Remittance') ?></td>
                                         <td>
-                                            <strong style="color:var(--text-heading);"><?= htmlspecialchars($t['notes'] ?: ucwords(str_replace('_', ' ', $t['transaction_type'] ?? ($t['type'] ?? 'Membership Dues')))) ?></strong>
+                                            <span class="ap-pill blue">
+                                                <i class="fas fa-wallet"></i> <?= strtoupper($tx['payment_method'] ?? 'GCash') ?>
+                                            </span>
                                         </td>
-                                        <td>
-                                            <span class="ap-pill navy"><?= strtoupper(htmlspecialchars($t['payment_method'] ?? 'GCash')) ?></span>
-                                        </td>
-                                        <td>
-                                            <strong style="color:var(--text-heading); font-size:0.95rem;">₱<?= number_format($amt, 2) ?></strong>
-                                        </td>
-                                        <td style="font-size:0.8rem; color:var(--text-muted);">
-                                            <?= isset($t['created_at']) ? date('M d, Y H:i', strtotime($t['created_at'])) : date('M d, Y') ?>
-                                        </td>
-                                        <td>
-                                            <span class="ap-pill <?= $pillClass ?>"><span class="ap-pill-dot"></span> <?= ucfirst($status) ?></span>
+                                        <td><strong style="color:#059669; font-size:0.82rem;">₱<?= number_format($amt, 2) ?></strong></td>
+                                        <td><span class="ap-pill <?= ($st === 'paid' || $st === 'completed') ? 'active' : 'pending' ?>"><?= ucfirst($st) ?></span></td>
+                                        <td style="text-align:right; color:#64748B; font-size:0.75rem; white-space:nowrap;">
+                                            <?= !empty($tx['created_at']) ? date('M d, Y h:i A', strtotime($tx['created_at'])) : 'Recent' ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -212,71 +466,86 @@ try {
             </div>
 
             <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-building-columns"></i><span><strong>Auditing Protocol:</strong> Double-Entry Treasury Standard</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Proof-of-Payment:</strong> Database & Blockchain Synced</span></div>
+            <div class="ap-sentinel-strip" style="margin-top:1.5rem;">
+                <div class="ap-sentinel-item"><i class="fas fa-shield-check"></i><span><strong>Proof-of-Payment:</strong> Cryptographic Hash Verification</span></div>
+                <div class="ap-sentinel-item"><i class="fas fa-file-invoice"></i><span><strong>Official Receipt:</strong> QR Verifiable Tax & Treasury Compliance</span></div>
             </div>
 
         </div>
     </main>
 
     <!-- Record Transaction Modal -->
-    <div id="txModal" class="doc-modal">
-        <div class="ap-card" style="max-width:520px; width:100%; margin:0; box-shadow:var(--card-shadow);">
+    <div id="recordModal" class="doc-modal">
+        <div class="modal-inner-box">
             <div class="ap-card-header">
-                <h3 class="ap-card-title"><i class="fas fa-plus"></i> Record Treasury Inflow</h3>
-                <button class="ap-btn-secondary" style="border:none; padding:0.25rem 0.5rem;" onclick="closeTxModal()">&times;</button>
+                <h3 class="ap-card-title"><i class="fas fa-plus-circle"></i> Record Payment / Remittance</h3>
+                <button class="btn-white" style="border:none; padding:0.25rem 0.5rem;" onclick="closeRecordModal()">&times;</button>
             </div>
-            <form method="POST">
+            <form method="POST" style="padding:1.25rem;">
                 <input type="hidden" name="action" value="record_transaction">
                 <div class="ap-form-group">
-                    <label class="ap-form-label">Transaction Category</label>
-                    <select name="type" class="ap-form-select">
-                        <option value="membership_fee">Student Membership Dues</option>
-                        <option value="affiliation_fee">Chapter Affiliation Fee</option>
-                        <option value="event_registration">Summit / Event Registration</option>
-                        <option value="merchandise">Merchandise Sale</option>
-                    </select>
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Remittance / Payment Description</label>
+                    <input type="text" name="description" class="ap-input" placeholder="e.g. LSPU Santa Cruz - 45 Member Dues Remittance" required style="font-size:0.8rem;">
                 </div>
-                <div class="ap-form-group">
-                    <label class="ap-form-label">Remittance Description</label>
-                    <input type="text" name="description" class="ap-input" placeholder="e.g. LSPU Santa Cruz AY 2026-2027 Chapter Dues" required>
-                </div>
-                <div class="ap-grid-2">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem;">
                     <div class="ap-form-group">
-                        <label class="ap-form-label">Amount (PHP)</label>
-                        <input type="number" step="0.01" name="amount" class="ap-input" placeholder="2950.00" required>
+                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Amount (₱)</label>
+                        <input type="number" step="0.01" name="amount" class="ap-input" placeholder="0.00" required style="font-size:0.8rem;">
                     </div>
                     <div class="ap-form-group">
-                        <label class="ap-form-label">Payment Channel</label>
-                        <select name="payment_method" class="ap-form-select">
-                            <option value="gcash">GCash</option>
-                            <option value="maya">Maya</option>
-                            <option value="bank_transfer">BDO / BPI Bank Transfer</option>
-                            <option value="cash">Cash Treasury</option>
+                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Transaction Type</label>
+                        <select name="type" class="ap-input" style="font-size:0.8rem;">
+                            <option value="membership_fee">Membership Fee</option>
+                            <option value="affiliation_fee">Chapter Affiliation Fee</option>
+                            <option value="event_registration">Event Registration</option>
+                            <option value="merchandise">Merchandise Sale</option>
                         </select>
                     </div>
                 </div>
-                <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
-                    <button type="button" class="ap-btn-secondary" onclick="closeTxModal()">Cancel</button>
-                    <button type="submit" class="ap-btn-primary"><i class="fas fa-floppy-disk"></i> Save Transaction to Database</button>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem;">
+                    <div class="ap-form-group">
+                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Payment Method</label>
+                        <select name="payment_method" class="ap-input" style="font-size:0.8rem;">
+                            <option value="gcash">GCash</option>
+                            <option value="bank_transfer">Bank Transfer / Maya</option>
+                            <option value="cash">Cash Remittance</option>
+                        </select>
+                    </div>
+                    <div class="ap-form-group">
+                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Payment Status</label>
+                        <select name="status" class="ap-input" style="font-size:0.8rem;">
+                            <option value="paid">Paid & Verified</option>
+                            <option value="pending">Pending Verification</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:0.65rem; margin-top:1rem;">
+                    <button type="button" class="btn-white" onclick="closeRecordModal()">Cancel</button>
+                    <button type="submit" class="btn-primary-navy"><i class="fas fa-save"></i> Save Transaction</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        function filterTxnTable() {
-            const q = document.getElementById('txnSearch').value.toLowerCase();
-            document.querySelectorAll('#txnTable tbody tr').forEach(tr => {
-                tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
-            });
+        function openRecordModal() {
+            document.getElementById('recordModal').classList.add('active');
         }
-        function openTxModal() {
-            document.getElementById('txModal').style.display = 'flex';
+        function closeRecordModal() {
+            document.getElementById('recordModal').classList.remove('active');
         }
-        function closeTxModal() {
-            document.getElementById('txModal').style.display = 'none';
+
+        function filterTransactionsTable() {
+            const query = document.getElementById('txSearchInput').value.toLowerCase();
+            const table = document.getElementById('txTable');
+            const trs = table.getElementsByTagName('tr');
+
+            for (let i = 1; i < trs.length; i++) {
+                const tr = trs[i];
+                if (tr.children.length === 1 && tr.children[0].getAttribute('colspan')) continue;
+                const text = tr.textContent.toLowerCase();
+                tr.style.display = (text.indexOf(query) > -1) ? '' : 'none';
+            }
         }
     </script>
 </body>

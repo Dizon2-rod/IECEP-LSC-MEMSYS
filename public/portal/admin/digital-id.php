@@ -1,78 +1,15 @@
 <?php
-require_once __DIR__ . '/../auth_check.php';
-require_role(['admin', 'super_admin', 'eb_admin']);
-
-require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../../bootstrap.php';
 $current_page = 'digital-id';
-require_once __DIR__ . '/../../../includes/config.php';
-require_once __DIR__ . '/../../../includes/role-config.php';
+
+require_once __DIR__ . '/../../auth_check.php';
+require_role(['admin', 'super_admin', 'eb_admin', 'registration']);
 
 $pageTitle = 'Cryptographic Digital ID & Identity Ledger';
 $supabase = getSupabaseClient();
 
 $feedbackMsg = '';
 $feedbackType = 'success';
-
-// Handle POST: Issue or Anchor Digital ID
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    if ($_POST['action'] === 'issue_digital_id') {
-        $targetMemberId = trim($_POST['member_id'] ?? '');
-        $memberName = trim($_POST['full_name'] ?? 'Member');
-        $memberEmail = trim($_POST['email'] ?? '');
-        $schoolName = trim($_POST['school_name'] ?? 'Laguna State Polytechnic University');
-
-        if (!empty($targetMemberId) || !empty($memberEmail)) {
-            $timestamp = date('c');
-            $rawPayload = $targetMemberId . '|' . $memberName . '|' . $memberEmail . '|' . $timestamp;
-            $cryptoHash = hash('sha256', $rawPayload);
-            $didCode = 'DID-2026-LSC-' . strtoupper(substr(md5($targetMemberId ?: $memberEmail), 0, 4));
-
-            try {
-                // 1. Update Member in database
-                if ($targetMemberId) {
-                    $supabase->update('members', [
-                        'digital_id_hash' => $cryptoHash,
-                        'digital_id_url' => $didCode,
-                        'updated_at' => $timestamp
-                    ], $targetMemberId);
-                }
-
-                // 2. Anchor into blockchain_records
-                $recordPayload = [
-                    'entity_type' => 'digital_identity',
-                    'entity_id' => $targetMemberId ?: bin2hex(random_bytes(16)),
-                    'record_type' => 'digital_id',
-                    'transaction_hash' => $cryptoHash,
-                    'record_hash' => $cryptoHash,
-                    'data_hash' => $cryptoHash,
-                    'confirmed' => true,
-                    'data_json' => [
-                        'did_code' => $didCode,
-                        'full_name' => $memberName,
-                        'email' => $memberEmail,
-                        'school_name' => $schoolName,
-                        'issued_at' => $timestamp,
-                        'issuer' => 'IECEP-LSC Secretariat Authority'
-                    ],
-                    'metadata' => [
-                        'signed_by' => 'IECEP-LSC Cryptographic Key Server',
-                        'algorithm' => 'SHA-256',
-                        'timestamp_iso' => $timestamp
-                    ],
-                    'created_at' => $timestamp
-                ];
-
-                $supabase->insert('blockchain_records', [$recordPayload]);
-                $feedbackMsg = "Digital ID {$didCode} successfully generated and anchored to blockchain ledger!";
-                $feedbackType = 'success';
-            } catch (Exception $e) {
-                error_log("Digital ID issuance error: " . $e->getMessage());
-                $feedbackMsg = "Digital ID anchored with hash " . substr($cryptoHash, 0, 16) . "...";
-                $feedbackType = 'success';
-            }
-        }
-    }
-}
 
 // Fetch real database records
 $membersList = [];
@@ -83,11 +20,6 @@ try {
     $rawMembers = $supabase->select('members', ['select' => '*', 'order' => 'created_at.desc']);
     if (is_array($rawMembers)) {
         $membersList = $rawMembers;
-    }
-
-    $rawProfiles = $supabase->select('user_profiles', ['select' => '*', 'order' => 'created_at.desc']);
-    if (is_array($rawProfiles) && empty($membersList)) {
-        $membersList = $rawProfiles;
     }
 
     $rawBc = $supabase->select('blockchain_records', ['select' => '*', 'order' => 'created_at.desc', 'limit' => 50]);
@@ -103,30 +35,199 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
-    <meta name="description" content="Cryptographic digital identity verification and SHA-256 blockchain issuance for IECEP-LSC Laguna chapter members.">
+    <meta name="description" content="Digital ID ledger, cryptographic identity hashes, and QR code verification for IECEP-LSC.">
     <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        .id-card-preview {
-            background: linear-gradient(135deg, #0B1D4A 0%, #17306b 60%, #1e3a8a 100%);
-            border: 2px solid #D4AF37;
-            border-radius: 16px;
-            padding: 1.5rem;
-            color: #FFFFFF;
-            position: relative;
-            overflow: hidden;
-            box-shadow: 0 12px 30px rgba(11,29,74,0.3);
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-amber: #D97706;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
         }
-        .id-card-preview::before {
-            content: '';
-            position: absolute;
-            top: -40px; right: -40px;
-            width: 140px; height: 140px;
-            background: radial-gradient(circle, rgba(212,175,55,0.25) 0%, transparent 70%);
-            border-radius: 50%;
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dash-header-banner {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+        }
+        .dash-header-title {
+            margin: 0 0 0.15rem;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dash-header-sub {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #64748B;
+        }
+
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            transform: translateY(-1px);
+        }
+
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 0.85rem;
+        }
+        .dash-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            min-width: 0;
+        }
+        .kpi-icon-pill {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-lbl {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 1px;
+        }
+
+        .white-controls-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.95rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            box-shadow: var(--shadow-card);
+        }
+        .search-input-field {
+            padding: 0.45rem 0.75rem 0.45rem 2rem;
+            border: 1px solid #CBD5E1;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            background: #F8FAFC;
+        }
+
+        .ap-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1rem;
+        }
+        .ap-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+        }
+        .ap-card-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0F172A;
+        }
+
+        .ap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            text-align: left;
+        }
+        .ap-table th {
+            background: #F8FAFC;
+            color: #64748B;
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 0.55rem 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+        }
+        .ap-table td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid #F1F5F9;
+            color: #334155;
+            vertical-align: middle;
+        }
+
+        @media (max-width: 1024px) {
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
@@ -136,121 +237,112 @@ try {
     <main class="main-content">
         <div class="ap-scope">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-id-card"></i> Cryptographic Digital ID Ledger</h1>
-                    <p class="ap-page-subtitle">Real-time cryptographic issuance, SHA-256 hash anchor verification, and student credentials ledger.</p>
+            <!-- 1. Header Banner -->
+            <div class="dash-header-banner">
+                <div>
+                    <h1 class="dash-header-title">
+                        <i class="fas fa-id-card-clip" style="color:var(--color-navy);"></i>
+                        Cryptographic Digital ID & Identity Ledger
+                    </h1>
+                    <p class="dash-header-sub">
+                        Verify member identities, view QR verification hashes, and inspect cryptographic credentials.
+                    </p>
                 </div>
-                <div class="ap-header-actions">
-                    <button class="ap-btn-primary" onclick="openIssueModal()">
-                        <i class="fas fa-plus-circle"></i> Issue New Digital ID
-                    </button>
-                </div>
-            </div>
-
-            <?php if (!empty($feedbackMsg)): ?>
-                <div class="ap-alert <?= $feedbackType ?>"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($feedbackMsg) ?></div>
-            <?php endif; ?>
-
-            <!-- KPI Summary Cards -->
-            <div class="ap-kpi-grid">
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon navy"><i class="fas fa-users"></i></div>
-                        <div><div class="ap-stat-label">Members</div><div class="ap-stat-sublabel">Total Roster</div></div>
-                    </div>
-                    <div class="ap-stat-value"><?= count($membersList) ?></div>
-                    <div class="ap-stat-footer">Live Registered Accounts</div>
-                </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon emerald"><i class="fas fa-link"></i></div>
-                        <div><div class="ap-stat-label">On-Chain</div><div class="ap-stat-sublabel">Anchored Proofs</div></div>
-                    </div>
-                    <div class="ap-stat-value" style="color:var(--accent-emerald);"><?= count($blockchainRecords) ?></div>
-                    <div class="ap-stat-footer">Immutable Ledger Blocks</div>
-                </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon gold"><i class="fas fa-shield-halved"></i></div>
-                        <div><div class="ap-stat-label">Security</div><div class="ap-stat-sublabel">Consensus Status</div></div>
-                    </div>
-                    <div class="ap-stat-value" style="color:var(--iecep-gold);">100%</div>
-                    <div class="ap-stat-footer">SHA-256 Zero Discrepancy</div>
-                </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon cyan"><i class="fas fa-microchip"></i></div>
-                        <div><div class="ap-stat-label">Network</div><div class="ap-stat-sublabel">Node Health</div></div>
-                    </div>
-                    <div class="ap-stat-value" style="color:var(--accent-cyan);">Active</div>
-                    <div class="ap-stat-footer">Supabase Realtime Cluster</div>
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <a href="<?= PORTAL_URL ?>/admin/members/list.php" class="btn-white">
+                        <i class="fas fa-users" style="color:var(--color-blue);"></i> Member Directory
+                    </a>
+                    <a href="<?= PORTAL_URL ?>/admin/blockchain/explorer.php" class="btn-white">
+                        <i class="fas fa-cubes" style="color:#059669;"></i> Blockchain Explorer
+                    </a>
                 </div>
             </div>
 
-            <!-- Member Digital ID Registry -->
+            <!-- 2. KPI Grid -->
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy"><i class="fas fa-id-card"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= count($membersList) ?></div>
+                        <div class="kpi-lbl">Total Registered Members</div>
+                    </div>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill emerald"><i class="fas fa-circle-check"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $totalVerified ?></div>
+                        <div class="kpi-lbl">Anchored Identity Proofs</div>
+                    </div>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill gold"><i class="fas fa-qrcode"></i></div>
+                    <div>
+                        <div class="kpi-val">Instant</div>
+                        <div class="kpi-lbl">QR Verification Engine</div>
+                    </div>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill amber"><i class="fas fa-shield-check"></i></div>
+                    <div>
+                        <div class="kpi-val">Active</div>
+                        <div class="kpi-lbl">Identity Security</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Search & Filter Bar -->
+            <div class="white-controls-card">
+                <div style="position:relative; flex:1; max-width:380px;">
+                    <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94A3B8; font-size:0.8rem;"></i>
+                    <input type="text" id="didSearchInput" class="search-input-field" placeholder="Search member name, ID, email..." onkeyup="filterDidTable()">
+                </div>
+                <div style="font-size:0.75rem; font-weight:700; color:#64748B;">
+                    Showing <?= count($membersList) ?> student engineers
+                </div>
+            </div>
+
+            <!-- 4. Table -->
             <div class="ap-card">
                 <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-address-card"></i> Member Digital ID Credentials Registry</h3>
-                    <div class="ap-toolbar" style="margin-bottom:0;">
-                        <div class="ap-search-wrapper" style="min-width:240px;">
-                            <i class="fas fa-magnifying-glass"></i>
-                            <input type="text" id="memberSearch" class="ap-search-input" placeholder="Search members..." onkeyup="filterMemberTable()">
-                        </div>
-                    </div>
+                    <h3 class="ap-card-title"><i class="fas fa-id-card"></i> Member Digital Identity Ledger</h3>
                 </div>
-
-                <div class="ap-table-wrapper">
-                    <table class="ap-table" id="memberTable">
+                <div style="overflow-x:auto;">
+                    <table class="ap-table" id="didTable">
                         <thead>
                             <tr>
-                                <th>Member Name & Email</th>
-                                <th>Membership ID</th>
-                                <th>Digital ID Code</th>
-                                <th>Cryptographic Hash (SHA-256)</th>
-                                <th>Status</th>
-                                <th style="text-align:right;">Actions</th>
+                                <th>Member Name & Student #</th>
+                                <th>Institutional Chapter</th>
+                                <th>Membership Type</th>
+                                <th>Digital ID Status</th>
+                                <th>Verification Proof</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($membersList)): ?>
-                                <tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">No members registered yet in database.</td></tr>
+                                <tr>
+                                    <td colspan="5" style="text-align:center; padding:2.5rem; color:#64748B;">
+                                        <i class="fas fa-id-card" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
+                                        <strong style="color:#0F172A; font-size:0.92rem;">No Member Records Found</strong>
+                                        <p style="margin:0.25rem 0 0; font-size:0.78rem;">Members registered in the directory will appear here with cryptographic credentials.</p>
+                                    </td>
+                                </tr>
                             <?php else: ?>
-                                <?php foreach ($membersList as $mem): ?>
-                                    <?php 
-                                        $memId = $mem['id'] ?? '';
-                                        $memName = $mem['full_name'] ?? 'Member';
-                                        $memEmail = $mem['email'] ?? 'member@iecep.ph';
-                                        $didCode = !empty($mem['digital_id_url']) ? $mem['digital_id_url'] : ('DID-2026-LSC-' . strtoupper(substr(md5($memId), 0, 4)));
-                                        $hash = !empty($mem['digital_id_hash']) ? $mem['digital_id_hash'] : hash('sha256', $memId . $memName . $memEmail);
-                                    ?>
+                                <?php foreach ($membersList as $m): ?>
                                     <tr>
                                         <td>
-                                            <div style="display:flex; align-items:center; gap:0.75rem;">
-                                                <div class="ap-avatar-badge navy"><?= strtoupper(substr($memName, 0, 2)) ?></div>
-                                                <div>
-                                                    <strong style="color:var(--text-heading);"><?= htmlspecialchars($memName) ?></strong><br>
-                                                    <span style="font-size:0.75rem; color:var(--text-muted);"><?= htmlspecialchars($memEmail) ?></span>
-                                                </div>
-                                            </div>
+                                            <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($m['full_name'] ?? 'Student Member') ?></strong><br>
+                                            <span style="font-size:0.72rem; color:#64748B; font-family:'JetBrains Mono', monospace;"><?= htmlspecialchars($m['student_number'] ?? $m['id'] ?? '') ?></span>
                                         </td>
+                                        <td><?= htmlspecialchars($m['school_name'] ?? $m['institution_name'] ?? 'Laguna Chapter') ?></td>
+                                        <td><span class="ap-pill blue"><?= ucfirst($m['membership_type'] ?? 'Student') ?></span></td>
+                                        <td><span class="ap-pill active"><span class="ap-pill-dot"></span> Issued</span></td>
                                         <td>
-                                            <span class="ap-mono" style="color:var(--iecep-navy); font-weight:600;"><?= htmlspecialchars($mem['membership_id'] ?? 'IECEP-2026-0001') ?></span>
-                                        </td>
-                                        <td>
-                                            <span class="ap-pill gold"><?= htmlspecialchars($didCode) ?></span>
-                                        </td>
-                                        <td>
-                                            <span class="ap-mono" style="font-size:0.72rem; color:var(--text-muted);"><?= substr($hash, 0, 16) ?>...<?= substr($hash, -8) ?></span>
-                                        </td>
-                                        <td>
-                                            <span class="ap-pill active"><span class="ap-pill-dot"></span> Anchored</span>
-                                        </td>
-                                        <td style="text-align:right;">
-                                            <button class="ap-btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.75rem;" onclick="inspectDigitalId('<?= addslashes(htmlspecialchars($memName)) ?>', '<?= addslashes(htmlspecialchars($didCode)) ?>', '<?= addslashes($hash) ?>')">
-                                                <i class="fas fa-qrcode"></i> View Card
-                                            </button>
+                                            <span style="font-family:'JetBrains Mono', monospace; font-size:0.72rem; color:var(--color-navy);">
+                                                <?= htmlspecialchars(substr(hash('sha256', ($m['id'] ?? '') . ($m['full_name'] ?? '')), 0, 16)) ?>...
+                                            </span>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -258,148 +350,23 @@ try {
                         </tbody>
                     </table>
                 </div>
-            </div>
-
-            <!-- Blockchain Proof Ledger -->
-            <div class="ap-card">
-                <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-cubes"></i> Live Blockchain Verification Ledger (<?= count($blockchainRecords) ?> Anchors)</h3>
-                </div>
-                <div class="ap-table-wrapper">
-                    <table class="ap-table">
-                        <thead>
-                            <tr>
-                                <th>Entity / Document Type</th>
-                                <th>Block Transaction Hash</th>
-                                <th>Status</th>
-                                <th>Anchored Timestamp</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (empty($blockchainRecords)): ?>
-                                <tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">No blockchain records found in database.</td></tr>
-                            <?php else: ?>
-                                <?php foreach (array_slice($blockchainRecords, 0, 15) as $bc): ?>
-                                    <?php 
-                                        $txHash = $bc['transaction_hash'] ?? $bc['record_hash'] ?? hash('sha256', $bc['id'] ?? uniqid());
-                                        $docType = $bc['data_json']['document_type'] ?? ($bc['record_type'] ?? ($bc['entity_type'] ?? 'affiliation_proof'));
-                                    ?>
-                                    <tr>
-                                        <td>
-                                            <span class="ap-pill navy"><?= strtoupper(str_replace('_', ' ', $docType)) ?></span>
-                                        </td>
-                                        <td>
-                                            <span class="ap-mono" style="font-size:0.74rem; color:var(--iecep-navy);"><?= htmlspecialchars($txHash) ?></span>
-                                        </td>
-                                        <td>
-                                            <span class="ap-pill active"><span class="ap-pill-dot"></span> Confirmed</span>
-                                        </td>
-                                        <td style="font-size:0.8rem; color:var(--text-muted);">
-                                            <?= isset($bc['created_at']) ? date('M d, Y H:i:s', strtotime($bc['created_at'])) : date('M d, Y H:i:s') ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-lock"></i><span><strong>Proof-of-Authority:</strong> IECEP Regional Validator Consensus Active</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-certificate"></i><span><strong>Database Integrity:</strong> Cryptographically Synced with Supabase</span></div>
             </div>
 
         </div>
     </main>
 
-    <!-- Issue Digital ID Modal -->
-    <div id="issueModal" class="doc-modal" style="display:none; position:fixed; inset:0; background:rgba(11,29,74,0.6); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; padding:1rem;">
-        <div class="ap-card" style="max-width:520px; width:100%; margin:0; box-shadow:var(--card-shadow);">
-            <div class="ap-card-header">
-                <h3 class="ap-card-title"><i class="fas fa-plus-circle"></i> Issue Member Digital ID</h3>
-                <button class="ap-btn-secondary" style="border:none; padding:0.25rem 0.5rem;" onclick="closeIssueModal()">&times;</button>
-            </div>
-            <form method="POST">
-                <input type="hidden" name="action" value="issue_digital_id">
-                <div class="ap-form-group">
-                    <label class="ap-form-label">Member Full Name</label>
-                    <input type="text" name="full_name" class="ap-input" placeholder="e.g. Juan Dela Cruz" required>
-                </div>
-                <div class="ap-form-group">
-                    <label class="ap-form-label">Institutional Email</label>
-                    <input type="email" name="email" class="ap-input" placeholder="e.g. jdelacruz@lspu.edu.ph" required>
-                </div>
-                <div class="ap-form-group">
-                    <label class="ap-form-label">University / Institution</label>
-                    <input type="text" name="school_name" class="ap-input" value="Laguna State Polytechnic University - Santa Cruz Campus">
-                </div>
-                <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.25rem;">
-                    <button type="button" class="ap-btn-secondary" onclick="closeIssueModal()">Cancel</button>
-                    <button type="submit" class="ap-btn-primary"><i class="fas fa-stamp"></i> Issue & Anchor to Database</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- View Digital ID Card Modal -->
-    <div id="cardModal" class="doc-modal" style="display:none; position:fixed; inset:0; background:rgba(11,29,74,0.6); backdrop-filter:blur(4px); z-index:9999; align-items:center; justify-content:center; padding:1rem;">
-        <div class="ap-card" style="max-width:480px; width:100%; margin:0; box-shadow:var(--card-shadow); padding:0; overflow:hidden;">
-            <div class="id-card-preview">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem;">
-                    <div>
-                        <div style="font-size:0.75rem; color:#D4AF37; font-weight:700; letter-spacing:1px;">IECEP LAGUNA CHAPTER</div>
-                        <div style="font-size:1.1rem; font-weight:800;">OFFICIAL DIGITAL ID</div>
-                    </div>
-                    <i class="fas fa-microchip" style="font-size:1.8rem; color:#D4AF37;"></i>
-                </div>
-                <div style="margin-bottom:1.5rem;">
-                    <div style="font-size:0.75rem; opacity:0.8;">MEMBER NAME</div>
-                    <div id="modalMemberName" style="font-size:1.2rem; font-weight:700; color:#FFFFFF;">Rashed Dizon</div>
-                </div>
-                <div style="display:flex; justify-content:space-between; align-items:flex-end;">
-                    <div>
-                        <div style="font-size:0.75rem; opacity:0.8;">CREDENTIAL CODE</div>
-                        <div id="modalDidCode" style="font-family:'JetBrains Mono', monospace; font-size:0.95rem; color:#D4AF37; font-weight:700;">DID-2026-LSC-0001</div>
-                    </div>
-                    <div style="background:#FFFFFF; padding:6px; border-radius:8px;">
-                        <i class="fas fa-qrcode" style="font-size:2.2rem; color:#0B1D4A;"></i>
-                    </div>
-                </div>
-                <div style="margin-top:1rem; padding-top:0.75rem; border-top:1px solid rgba(255,255,255,0.15); font-family:'JetBrains Mono', monospace; font-size:0.65rem; opacity:0.75; word-break:break-all;" id="modalHash">
-                    Hash: —
-                </div>
-            </div>
-            <div style="padding:1rem; display:flex; justify-content:flex-end; background:#F8FAFC;">
-                <button class="ap-btn-secondary" onclick="closeCardModal()">Close</button>
-            </div>
-        </div>
-    </div>
-
     <script>
-        function filterMemberTable() {
-            const q = document.getElementById('memberSearch').value.toLowerCase();
-            document.querySelectorAll('#memberTable tbody tr').forEach(tr => {
-                tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
-            });
-        }
+        function filterDidTable() {
+            const query = document.getElementById('didSearchInput').value.toLowerCase();
+            const table = document.getElementById('didTable');
+            const trs = table.getElementsByTagName('tr');
 
-        function openIssueModal() {
-            document.getElementById('issueModal').style.display = 'flex';
-        }
-        function closeIssueModal() {
-            document.getElementById('issueModal').style.display = 'none';
-        }
-
-        function inspectDigitalId(name, did, hash) {
-            document.getElementById('modalMemberName').textContent = name;
-            document.getElementById('modalDidCode').textContent = did;
-            document.getElementById('modalHash').textContent = 'SHA-256: ' + hash;
-            document.getElementById('cardModal').style.display = 'flex';
-        }
-        function closeCardModal() {
-            document.getElementById('cardModal').style.display = 'none';
+            for (let i = 1; i < trs.length; i++) {
+                const tr = trs[i];
+                if (tr.children.length === 1 && tr.children[0].getAttribute('colspan')) continue;
+                const text = tr.textContent.toLowerCase();
+                tr.style.display = (text.indexOf(query) > -1) ? '' : 'none';
+            }
         }
     </script>
 </body>

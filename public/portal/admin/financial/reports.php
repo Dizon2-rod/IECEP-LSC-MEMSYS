@@ -1,336 +1,330 @@
 <?php
-require_once __DIR__ . '/../../auth_check.php';
-require_once __DIR__ . '/../../../../includes/config.php';
-require_once __DIR__ . '/../../../../includes/middleware/auth.php';
-
-if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'] ?? ($_SESSION['role'] ?? ''), ['admin', 'super_admin'], true)) {
-    header('Location: ' . BASE_URL . '/login.php');
-    exit;
-}
-
+require_once __DIR__ . '/../../bootstrap.php';
 $current_page = 'reports';
-$pageTitle = 'Financial Reports';
+
+require_once __DIR__ . '/../../auth_check.php';
+require_role(['admin', 'super_admin', 'treasurer', 'auditor', 'eb_treasurer', 'eb_auditor']);
+
+$pageTitle = 'Financial Audits & Reports';
+$supabase = getSupabaseClient();
+
+$monthlyData = [];
+$typeBreakdown = [
+    'membership_fee' => 0.0,
+    'event_registration' => 0.0,
+    'affiliation_fee' => 0.0,
+    'merchandise' => 0.0
+];
+$totalCollections = 0.0;
+$totalTransactions = 0;
+
+try {
+    $rawTx = $supabase->select('transactions', ['select' => '*', 'order' => 'created_at.desc']);
+    if (is_array($rawTx)) {
+        $totalTransactions = count($rawTx);
+        foreach ($rawTx as $tx) {
+            $amt = floatval($tx['amount'] ?? 0);
+            $type = strtolower($tx['type'] ?? ($tx['transaction_type'] ?? 'membership_fee'));
+            $created = $tx['created_at'] ?? $tx['transaction_date'] ?? date('Y-m-d');
+            $monthKey = date('F Y', strtotime($created));
+
+            if (($tx['status'] ?? '') === 'paid' || ($tx['status'] ?? '') === 'completed') {
+                $totalCollections += $amt;
+                if (!isset($monthlyData[$monthKey])) {
+                    $monthlyData[$monthKey] = 0.0;
+                }
+                $monthlyData[$monthKey] += $amt;
+
+                if (isset($typeBreakdown[$type])) {
+                    $typeBreakdown[$type] += $amt;
+                } else {
+                    $typeBreakdown['membership_fee'] += $amt;
+                }
+            }
+        }
+    }
+} catch (Exception $e) {
+    error_log("Financial reports error: " . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
     <meta name="description" content="Comprehensive financial reports, monthly dues collection audits, and institutional breakdown for IECEP-LSC.">
-    <?php include __DIR__ . '/../../../../includes/head-meta.php'; ?>
+    <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-amber: #D97706;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dash-header-banner {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+        }
+        .dash-header-title {
+            margin: 0 0 0.15rem;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dash-header-sub {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #64748B;
+        }
+
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            transform: translateY(-1px);
+        }
+
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 0.85rem;
+        }
+        .dash-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            min-width: 0;
+        }
+        .kpi-icon-pill {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-lbl {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 1px;
+        }
+
+        .ap-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1rem;
+        }
+        .ap-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+        }
+        .ap-card-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0F172A;
+        }
+
+        .ap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            text-align: left;
+        }
+        .ap-table th {
+            background: #F8FAFC;
+            color: #64748B;
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 0.55rem 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+        }
+        .ap-table td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid #F1F5F9;
+            color: #334155;
+            vertical-align: middle;
+        }
+
+        @media (max-width: 1024px) {
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../../../../includes/sidebar.php'; ?>
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
     <main class="main-content">
         <div class="ap-scope">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-file-invoice-dollar"></i> Financial Audits & Reports</h1>
-                    <p class="ap-page-subtitle">Monthly dues aggregation, income by category, institutional fee breakdown, and treasury reconciliation.</p>
+            <!-- 1. Header Banner -->
+            <div class="dash-header-banner">
+                <div>
+                    <h1 class="dash-header-title">
+                        <i class="fas fa-file-invoice-dollar" style="color:var(--color-navy);"></i>
+                        Financial Audits & Collections Reports
+                    </h1>
+                    <p class="dash-header-sub">
+                        Audited revenue streams, dues aggregation, and treasury reconciliation.
+                    </p>
                 </div>
-                <div class="ap-header-actions">
-                    <select class="ap-select" id="report-year" onchange="loadReports()">
-                        <option value="2024">FY 2024</option>
-                        <option value="2025">FY 2025</option>
-                        <option value="2026" selected>FY 2026</option>
-                    </select>
-                    <button class="ap-btn-secondary" onclick="loadReports()">
-                        <i class="fas fa-sync-alt"></i> Refresh
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <button class="btn-white" onclick="window.print()">
+                        <i class="fas fa-print"></i> Print Report
                     </button>
-                    <button class="ap-btn-primary" onclick="exportCSV()">
-                        <i class="fas fa-file-csv"></i> Export CSV
-                    </button>
+                    <a href="<?= PORTAL_URL ?>/admin/financial/transactions.php" class="btn-white">
+                        <i class="fas fa-receipt" style="color:var(--color-blue);"></i> Transactions Ledger
+                    </a>
                 </div>
             </div>
 
-            <!-- Report Navigation Tabs -->
-            <div class="ap-tabs">
-                <button class="ap-tab active" onclick="switchReportTab('monthly', this)"><i class="fas fa-chart-line"></i> Monthly Audit</button>
-                <button class="ap-tab" onclick="switchReportTab('institution', this)"><i class="fas fa-university"></i> Institution Breakdown</button>
-                <button class="ap-tab" onclick="switchReportTab('categories', this)"><i class="fas fa-pie-chart"></i> Revenue Categories</button>
-            </div>
-
-            <!-- Tab 1: Monthly Audit -->
-            <div id="monthlyTab" class="report-pane">
-                <div class="ap-grid-2" style="grid-template-columns: 2fr 1fr;">
-                    <div class="ap-card" style="margin-bottom:0;">
-                        <div class="ap-card-header">
-                            <h3 class="ap-card-title"><i class="fas fa-chart-column"></i> Monthly Collections (FY 2026)</h3>
-                        </div>
-                        <div style="position:relative; height:260px;">
-                            <canvas id="monthlyIncomeChart"></canvas>
-                        </div>
-                    </div>
-                    <div class="ap-card" style="margin-bottom:0;">
-                        <div class="ap-card-header">
-                            <h3 class="ap-card-title"><i class="fas fa-chart-pie"></i> Payment Types</h3>
-                        </div>
-                        <div style="position:relative; height:260px;">
-                            <canvas id="paymentTypeChart"></canvas>
-                        </div>
+            <!-- 2. KPI Grid -->
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill emerald"><i class="fas fa-vault"></i></div>
+                    <div>
+                        <div class="kpi-val" style="color:#059669;">₱<?= number_format($totalCollections, 2) ?></div>
+                        <div class="kpi-lbl">Total Gross Collections</div>
                     </div>
                 </div>
 
-                <div class="ap-card" style="margin-top:1.25rem;">
-                    <div class="ap-card-header">
-                        <h3 class="ap-card-title"><i class="fas fa-table-cells"></i> Monthly Collections Breakdown</h3>
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy"><i class="fas fa-id-card"></i></div>
+                    <div>
+                        <div class="kpi-val">₱<?= number_format($typeBreakdown['membership_fee'], 2) ?></div>
+                        <div class="kpi-lbl">Membership Dues Share</div>
                     </div>
-                    <div class="ap-table-wrapper">
-                        <table class="ap-table">
-                            <thead>
-                                <tr>
-                                    <th>Month</th>
-                                    <th>Membership Dues</th>
-                                    <th>Event Fees</th>
-                                    <th>Accreditation</th>
-                                    <th>Merchandise</th>
-                                    <th>Monthly Gross Total</th>
-                                </tr>
-                            </thead>
-                            <tbody id="monthly-table">
-                                <tr>
-                                    <td><strong>January 2026</strong></td>
-                                    <td>₱38,000</td>
-                                    <td>₱12,500</td>
-                                    <td>₱5,000</td>
-                                    <td>₱2,400</td>
-                                    <td><strong style="color:var(--iecep-navy);">₱57,900</strong></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>February 2026</strong></td>
-                                    <td>₱42,500</td>
-                                    <td>₱8,000</td>
-                                    <td>₱0</td>
-                                    <td>₱3,100</td>
-                                    <td><strong style="color:var(--iecep-navy);">₱53,600</strong></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>March 2026</strong></td>
-                                    <td>₱29,000</td>
-                                    <td>₱15,000</td>
-                                    <td>₱0</td>
-                                    <td>₱1,800</td>
-                                    <td><strong style="color:var(--iecep-navy);">₱45,800</strong></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>April 2026</strong></td>
-                                    <td>₱31,200</td>
-                                    <td>₱4,500</td>
-                                    <td>₱0</td>
-                                    <td>₱950</td>
-                                    <td><strong style="color:var(--iecep-navy);">₱36,650</strong></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>May 2026</strong></td>
-                                    <td>₱18,500</td>
-                                    <td>₱22,000</td>
-                                    <td>₱0</td>
-                                    <td>₱4,200</td>
-                                    <td><strong style="color:var(--iecep-navy);">₱44,700</strong></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>June 2026</strong></td>
-                                    <td>₱24,000</td>
-                                    <td>₱6,500</td>
-                                    <td>₱0</td>
-                                    <td>₱1,150</td>
-                                    <td><strong style="color:var(--iecep-navy);">₱31,650</strong></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>July 2026</strong></td>
-                                    <td>₱35,000</td>
-                                    <td>₱18,500</td>
-                                    <td>₱0</td>
-                                    <td>₱2,800</td>
-                                    <td><strong style="color:var(--iecep-navy);">₱56,300</strong></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>August 2026</strong></td>
-                                    <td>₱48,500</td>
-                                    <td>₱0</td>
-                                    <td>₱10,000</td>
-                                    <td>₱5,600</td>
-                                    <td><strong style="color:var(--iecep-navy);">₱64,100</strong></td>
-                                </tr>
-                            </tbody>
-                        </table>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill gold"><i class="fas fa-calendar-check"></i></div>
+                    <div>
+                        <div class="kpi-val">₱<?= number_format($typeBreakdown['event_registration'], 2) ?></div>
+                        <div class="kpi-lbl">Event Registration Fees</div>
+                    </div>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill amber"><i class="fas fa-receipt"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $totalTransactions ?></div>
+                        <div class="kpi-lbl">Audited Ledger Records</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tab 2: Institution Breakdown -->
-            <div id="institutionTab" class="report-pane" style="display:none;">
-                <div class="ap-card">
-                    <div class="ap-card-header">
-                        <h3 class="ap-card-title"><i class="fas fa-university"></i> Collections by Higher Education Institution</h3>
-                    </div>
-                    <div class="ap-table-wrapper">
-                        <table class="ap-table">
-                            <thead>
-                                <tr>
-                                    <th>Institution</th>
-                                    <th>Registered Members</th>
-                                    <th>Dues Remitted</th>
-                                    <th>Pending Clearance</th>
-                                    <th>Compliance Level</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><strong>LSPU Santa Cruz</strong></td>
-                                    <td>142</td>
-                                    <td>₱134,900</td>
-                                    <td><span style="color:var(--accent-emerald); font-weight:700;">₱0 (Cleared)</span></td>
-                                    <td><span class="ap-pill active"><span class="ap-pill-dot"></span> 100% Compliant</span></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Mapúa Malayan Colleges Laguna</strong></td>
-                                    <td>98</td>
-                                    <td>₱93,100</td>
-                                    <td><span style="color:var(--accent-amber); font-weight:700;">₱2,500</span></td>
-                                    <td><span class="ap-pill active"><span class="ap-pill-dot"></span> 97% Compliant</span></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>De La Salle University - Laguna</strong></td>
-                                    <td>87</td>
-                                    <td>₱82,650</td>
-                                    <td><span style="color:var(--accent-emerald); font-weight:700;">₱0 (Cleared)</span></td>
-                                    <td><span class="ap-pill active"><span class="ap-pill-dot"></span> 100% Compliant</span></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>LSPU San Pablo</strong></td>
-                                    <td>76</td>
-                                    <td>₱72,200</td>
-                                    <td><span style="color:var(--accent-emerald); font-weight:700;">₱0 (Cleared)</span></td>
-                                    <td><span class="ap-pill active"><span class="ap-pill-dot"></span> 100% Compliant</span></td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Colegio de San Juan de Letran - Calamba</strong></td>
-                                    <td>52</td>
-                                    <td>₱49,400</td>
-                                    <td><span style="color:var(--accent-amber); font-weight:700;">₱4,750</span></td>
-                                    <td><span class="ap-pill pending"><span class="ap-pill-dot"></span> 90% Compliant</span></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+            <!-- 3. Monthly Audit Summary Table -->
+            <div class="ap-card">
+                <div class="ap-card-header">
+                    <h3 class="ap-card-title"><i class="fas fa-calendar-days"></i> Monthly Collections Audit</h3>
                 </div>
-            </div>
-
-            <!-- Tab 3: Revenue Categories -->
-            <div id="categoriesTab" class="report-pane" style="display:none;">
-                <div class="ap-kpi-grid">
-                    <div class="ap-stat-card">
-                        <div class="ap-stat-header"><div class="ap-stat-icon navy"><i class="fas fa-id-card"></i></div><div><div class="ap-stat-label">Category</div><div class="ap-stat-sublabel">Membership Dues</div></div></div>
-                        <div class="ap-stat-value">₱266,700</div>
-                        <div class="ap-stat-footer">68.2% of Total Revenue</div>
-                    </div>
-                    <div class="ap-stat-card">
-                        <div class="ap-stat-header"><div class="ap-stat-icon gold"><i class="fas fa-calendar-star"></i></div><div><div class="ap-stat-label">Category</div><div class="ap-stat-sublabel">Event Registrations</div></div></div>
-                        <div class="ap-stat-value">₱87,000</div>
-                        <div class="ap-stat-footer">22.3% of Total Revenue</div>
-                    </div>
-                    <div class="ap-stat-card">
-                        <div class="ap-stat-header"><div class="ap-stat-icon emerald"><i class="fas fa-stamp"></i></div><div><div class="ap-stat-label">Category</div><div class="ap-stat-sublabel">Accreditation Fees</div></div></div>
-                        <div class="ap-stat-value">₱15,000</div>
-                        <div class="ap-stat-footer">3.8% of Total Revenue</div>
-                    </div>
-                    <div class="ap-stat-card">
-                        <div class="ap-stat-header"><div class="ap-stat-icon purple"><i class="fas fa-shirt"></i></div><div><div class="ap-stat-label">Category</div><div class="ap-stat-sublabel">Merchandise</div></div></div>
-                        <div class="ap-stat-value">₱22,000</div>
-                        <div class="ap-stat-footer">5.7% of Total Revenue</div>
-                    </div>
+                <div style="overflow-x:auto;">
+                    <table class="ap-table">
+                        <thead>
+                            <tr>
+                                <th>Billing Period / Month</th>
+                                <th>Fiscal Year</th>
+                                <th>Collections Status</th>
+                                <th style="text-align:right;">Audited Collections (PHP)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($monthlyData)): ?>
+                                <tr>
+                                    <td colspan="4" style="text-align:center; padding:2.5rem; color:#64748B;">
+                                        <i class="fas fa-chart-line" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
+                                        <strong style="color:#0F172A; font-size:0.92rem;">No Collections Recorded in Database</strong>
+                                        <p style="margin:0.25rem 0 0; font-size:0.78rem;">Transactions recorded in the ledger will automatically be aggregated here.</p>
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($monthlyData as $mName => $mTotal): ?>
+                                    <tr>
+                                        <td><strong><?= htmlspecialchars($mName) ?></strong></td>
+                                        <td>AY 2026-2027</td>
+                                        <td><span class="ap-pill active"><span class="ap-pill-dot"></span> Reconciled</span></td>
+                                        <td style="text-align:right;"><strong style="color:#059669; font-size:0.84rem;">₱<?= number_format($mTotal, 2) ?></strong></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
-            </div>
-
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-calculator"></i><span><strong>Audited By:</strong> Regional Treasury Committee</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Cryptographic Anchor:</strong> SHA-256 Ledger Backed</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-clock"></i><span><strong>Last Audit:</strong> <?= date('Y-m-d H:i:s') ?> UTC+8</span></div>
             </div>
 
         </div>
     </main>
-
-    <script>
-        let monthlyChart, paymentChart;
-
-        function switchReportTab(tabId, el) {
-            document.querySelectorAll('.ap-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.report-pane').forEach(p => p.style.display = 'none');
-            
-            el.classList.add('active');
-            if (tabId === 'monthly') document.getElementById('monthlyTab').style.display = 'block';
-            if (tabId === 'institution') document.getElementById('institutionTab').style.display = 'block';
-            if (tabId === 'categories') document.getElementById('categoriesTab').style.display = 'block';
-        }
-
-        function initCharts() {
-            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug'];
-            const incomeData = [57900, 53600, 45800, 36650, 44700, 31650, 56300, 64100];
-
-            const ctx1 = document.getElementById('monthlyIncomeChart').getContext('2d');
-            monthlyChart = new Chart(ctx1, {
-                type: 'bar',
-                data: {
-                    labels: months,
-                    datasets: [{
-                        label: 'Gross Collections (₱)',
-                        data: incomeData,
-                        backgroundColor: '#0B1D4A',
-                        borderRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { beginAtZero: true, grid: { color: '#F1F5F9' } },
-                        x: { grid: { display: false } }
-                    }
-                }
-            });
-
-            const ctx2 = document.getElementById('paymentTypeChart').getContext('2d');
-            paymentChart = new Chart(ctx2, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Membership', 'Events', 'Accreditation', 'Merch'],
-                    datasets: [{
-                        data: [68.2, 22.3, 3.8, 5.7],
-                        backgroundColor: ['#0B1D4A', '#D4AF37', '#059669', '#7C3AED'],
-                        borderWidth: 2,
-                        borderColor: '#FFFFFF'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'bottom' }
-                    }
-                }
-            });
-        }
-
-        function loadReports() {
-            alert('Reloading live report aggregation...');
-        }
-
-        function exportCSV() {
-            alert('Generating CSV file for download...');
-        }
-
-        document.addEventListener('DOMContentLoaded', initCharts);
-    </script>
 </body>
 </html>

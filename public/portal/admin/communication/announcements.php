@@ -1,19 +1,22 @@
 <?php
-if (!isset($current_page)) { $current_page = 'announcements'; }
-require_once __DIR__ . '/../../auth_check.php';
-require_role(['admin', 'super_admin', 'eb_secretary']);
-
 require_once __DIR__ . '/../../bootstrap.php';
+$current_page = 'announcements';
+
+require_once __DIR__ . '/../../auth_check.php';
+require_role(['admin', 'super_admin', 'eb_secretary', 'secretary', 'registration']);
+
+$pageTitle = 'Chapter Announcements & Broadcasts';
 $supabase = getSupabaseClient();
 
 $feedbackMsg = '';
+$feedbackType = 'success';
 
 // Handle POST: Create Announcement
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'create_announcement') {
         $title = trim($_POST['title'] ?? '');
         $body = trim($_POST['body'] ?? '');
-        $priority = trim($_POST['priority'] ?? 'normal');
+        $priority = trim($_POST['priority'] ?? 'Normal');
         $status = trim($_POST['status'] ?? 'published');
 
         if (!empty($title) && !empty($body)) {
@@ -21,7 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $annId = bin2hex(random_bytes(16));
 
             try {
-                // 1. Insert into announcements
                 $supabase->insert('announcements', [[
                     'id' => $annId,
                     'title' => $title,
@@ -34,7 +36,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'updated_at' => $timestamp
                 ]]);
 
-                // 2. Insert into notifications table
                 $supabase->insert('notifications', [[
                     'id' => bin2hex(random_bytes(16)),
                     'title' => $title,
@@ -43,16 +44,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'created_at' => $timestamp
                 ]]);
 
-                $feedbackMsg = "Announcement '{$title}' published and saved to database!";
+                $feedbackMsg = "🎉 Announcement '{$title}' published successfully!";
+                $feedbackType = 'success';
             } catch (Exception $e) {
                 error_log("Announcement create error: " . $e->getMessage());
-                $feedbackMsg = "Announcement saved to database.";
+                $feedbackMsg = "Error publishing announcement: " . $e->getMessage();
+                $feedbackType = 'warning';
             }
         }
     }
 }
 
-// Fetch real announcements
+// Fetch real announcements from database
 $announcements = [];
 $publishedCount = 0;
 $draftCount = 0;
@@ -77,13 +80,219 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chapter Announcements — IECEP-LSC MEMSYS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
     <meta name="description" content="Manage and publish chapter announcements for IECEP-LSC Laguna Student Chapter.">
-    <?php include dirname(__DIR__, 4) . '/includes/head-meta.php'; ?>
+    <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-amber: #D97706;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dash-header-banner {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+        }
+        .dash-header-title {
+            margin: 0 0 0.15rem;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dash-header-sub {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #64748B;
+        }
+
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary-navy {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.95rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-decoration: none;
+            background: var(--color-navy);
+            border: 1px solid var(--color-navy);
+            color: #FFFFFF !important;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(11, 29, 74, 0.15);
+            transition: all 0.18s ease;
+        }
+        .btn-primary-navy:hover {
+            background: var(--color-navy-hover);
+            transform: translateY(-1px);
+            color: #FDE047 !important;
+        }
+
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 0.85rem;
+        }
+        .dash-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            min-width: 0;
+        }
+        .kpi-icon-pill {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-lbl {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 1px;
+        }
+
+        .white-controls-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.95rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            box-shadow: var(--shadow-card);
+        }
+        .search-input-field {
+            padding: 0.45rem 0.75rem 0.45rem 2rem;
+            border: 1px solid #CBD5E1;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            background: #F8FAFC;
+        }
+
+        .ap-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1rem;
+        }
+        .ap-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+        }
+        .ap-card-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0F172A;
+        }
+
+        .ap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            text-align: left;
+        }
+        .ap-table th {
+            background: #F8FAFC;
+            color: #64748B;
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 0.55rem 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+        }
+        .ap-table td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid #F1F5F9;
+            color: #334155;
+            vertical-align: middle;
+        }
+
         .doc-modal {
             display: none;
             position: fixed;
@@ -93,114 +302,152 @@ try {
             z-index: 9999;
             align-items: center;
             justify-content: center;
-            padding: 1.5rem;
+            padding: 1.25rem;
+        }
+        .doc-modal.active { display: flex; }
+        .modal-inner-box {
+            background: #FFFFFF;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 520px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.18);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        @media (max-width: 1024px) {
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
         }
     </style>
 </head>
 <body>
-    <?php include dirname(__DIR__, 4) . '/includes/sidebar.php'; ?>
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
     <main class="main-content">
         <div class="ap-scope">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-bullhorn"></i> Chapter Announcements</h1>
-                    <p class="ap-page-subtitle">Publish official chapter news, deadline reminders, and academic summit bulletins across Laguna chapters.</p>
+            <!-- 1. Header Banner -->
+            <div class="dash-header-banner">
+                <div>
+                    <h1 class="dash-header-title">
+                        <i class="fas fa-bullhorn" style="color:var(--color-navy);"></i>
+                        Chapter Announcements & Broadcasts
+                    </h1>
+                    <p class="dash-header-sub">
+                        Publish news, regional updates, and push notifications to all registered student chapter members.
+                    </p>
                 </div>
-                <div class="ap-header-actions">
-                    <button class="ap-btn-primary" onclick="openNewModal()">
-                        <i class="fas fa-plus"></i> Post Announcement
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <a href="<?= PORTAL_URL ?>/admin/communication/newsletter.php" class="btn-white">
+                        <i class="fas fa-newspaper" style="color:var(--color-blue);"></i> Newsletters
+                    </a>
+                    <button type="button" class="btn-primary-navy" onclick="openAnnModal()">
+                        <i class="fas fa-plus" style="color:#FDE047;"></i> Compose Announcement
                     </button>
                 </div>
             </div>
 
             <?php if (!empty($feedbackMsg)): ?>
-                <div class="ap-alert success"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($feedbackMsg) ?></div>
+                <div class="ap-alert <?= $feedbackType ?>" style="margin-bottom:0.85rem;">
+                    <i class="fas fa-check-circle" style="font-size:1.2rem;"></i> 
+                    <div><?= htmlspecialchars($feedbackMsg) ?></div>
+                </div>
             <?php endif; ?>
 
-            <!-- KPI Summary Cards -->
-            <div class="ap-kpi-grid">
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon navy"><i class="fas fa-bullhorn"></i></div>
-                        <div><div class="ap-stat-label">Announcements</div><div class="ap-stat-sublabel">Total Dispatched</div></div>
+            <!-- 2. KPI Grid -->
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy"><i class="fas fa-message"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= count($announcements) ?></div>
+                        <div class="kpi-lbl">Total Announcements</div>
                     </div>
-                    <div class="ap-stat-value"><?= count($announcements) ?></div>
-                    <div class="ap-stat-footer">Live Bulletin Records</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon emerald"><i class="fas fa-circle-check"></i></div>
-                        <div><div class="ap-stat-label">Published</div><div class="ap-stat-sublabel">Active Bulletins</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill emerald"><i class="fas fa-circle-check"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $publishedCount ?></div>
+                        <div class="kpi-lbl">Active Broadcasts</div>
                     </div>
-                    <div class="ap-stat-value" style="color:var(--accent-emerald);"><?= $publishedCount ?></div>
-                    <div class="ap-stat-footer">Visible to Members</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon rose"><i class="fas fa-triangle-exclamation"></i></div>
-                        <div><div class="ap-stat-label">Urgent</div><div class="ap-stat-sublabel">Priority Dispatches</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill amber"><i class="fas fa-triangle-exclamation"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $urgentCount ?></div>
+                        <div class="kpi-lbl">Urgent Bulletins</div>
                     </div>
-                    <div class="ap-stat-value" style="color:var(--accent-rose);"><?= $urgentCount ?></div>
-                    <div class="ap-stat-footer">High Priority Action</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon gold"><i class="fas fa-bell"></i></div>
-                        <div><div class="ap-stat-label">Alerts</div><div class="ap-stat-sublabel">In-App Sync</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill gold"><i class="fas fa-clock"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $draftCount ?></div>
+                        <div class="kpi-lbl">Draft Messages</div>
                     </div>
-                    <div class="ap-stat-value" style="color:var(--iecep-gold);">100%</div>
-                    <div class="ap-stat-footer">Realtime Notification Feed</div>
                 </div>
             </div>
 
-            <!-- Announcements Table Card -->
+            <!-- 3. Search & Filter Bar -->
+            <div class="white-controls-card">
+                <div style="position:relative; flex:1; max-width:380px;">
+                    <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94A3B8; font-size:0.8rem;"></i>
+                    <input type="text" id="annSearchInput" class="search-input-field" placeholder="Search announcement title, content..." onkeyup="filterAnnouncementsTable()">
+                </div>
+                <div style="font-size:0.75rem; font-weight:700; color:#64748B;">
+                    Showing <?= count($announcements) ?> announcements in database
+                </div>
+            </div>
+
+            <!-- 4. Table -->
             <div class="ap-card">
                 <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-list"></i> Published Announcements Directory</h3>
+                    <h3 class="ap-card-title"><i class="fas fa-list"></i> Published Announcements</h3>
                 </div>
-
-                <div class="ap-table-wrapper">
-                    <table class="ap-table">
+                <div style="overflow-x:auto;">
+                    <table class="ap-table" id="annTable">
                         <thead>
                             <tr>
-                                <th>Announcement Title & Content</th>
+                                <th>Announcement Title & Summary</th>
                                 <th>Priority</th>
+                                <th>Target Audience</th>
                                 <th>Status</th>
                                 <th>Date Published</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($announcements)): ?>
-                                <tr><td colspan="4" style="text-align:center; padding:2rem; color:var(--text-muted);">No announcements published yet. Click "Post Announcement" to create one.</td></tr>
+                                <tr>
+                                    <td colspan="5" style="text-align:center; padding:2.5rem; color:#64748B;">
+                                        <i class="fas fa-bullhorn" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
+                                        <strong style="color:#0F172A; font-size:0.92rem;">No Announcements Published Yet</strong>
+                                        <p style="margin:0.25rem 0 0; font-size:0.78rem;">Click "+ Compose Announcement" to broadcast news to all chapters.</p>
+                                    </td>
+                                </tr>
                             <?php else: ?>
-                                <?php foreach ($announcements as $ann): ?>
+                                <?php foreach ($announcements as $a): ?>
                                     <?php 
-                                        $pri = strtolower($ann['priority'] ?? 'normal');
-                                        $pillPri = match($pri) {
-                                            'urgent' => 'danger',
-                                            'high' => 'pending',
-                                            default => 'navy'
-                                        };
+                                        $st = strtolower($a['status'] ?? 'published');
+                                        $pr = strtolower($a['priority'] ?? 'normal');
                                     ?>
                                     <tr>
                                         <td>
-                                            <strong style="color:var(--text-heading); font-size:0.92rem;"><?= htmlspecialchars($ann['title'] ?? 'Announcement') ?></strong><br>
-                                            <span style="font-size:0.8rem; color:var(--text-muted); display:block; max-width:550px; margin-top:2px;">
-                                                <?= htmlspecialchars($ann['body'] ?? ($ann['content'] ?? '')) ?>
+                                            <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($a['title'] ?? 'Announcement') ?></strong><br>
+                                            <span style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars(substr($a['content'] ?? ($a['body'] ?? ''), 0, 90)) ?>...</span>
+                                        </td>
+                                        <td>
+                                            <span class="ap-pill <?= ($pr === 'urgent' || $pr === 'high') ? 'danger' : 'blue' ?>">
+                                                <?= ucfirst($pr) ?>
                                             </span>
                                         </td>
+                                        <td><span style="color:#64748B; font-size:0.75rem;">All Laguna Chapters</span></td>
                                         <td>
-                                            <span class="ap-pill <?= $pillPri ?>"><?= ucfirst($pri) ?></span>
+                                            <span class="ap-pill <?= ($st === 'published' || $st === 'active') ? 'active' : 'pending' ?>">
+                                                <?= ucfirst($st) ?>
+                                            </span>
                                         </td>
-                                        <td>
-                                            <span class="ap-pill active"><span class="ap-pill-dot"></span> Published</span>
-                                        </td>
-                                        <td style="font-size:0.8rem; color:var(--text-muted);">
-                                            <?= isset($ann['created_at']) ? date('M d, Y H:i', strtotime($ann['created_at'])) : date('M d, Y') ?>
-                                        </td>
+                                        <td style="color:#64748B; font-size:0.75rem; white-space:nowrap;"><?= !empty($a['created_at']) ? date('M d, Y', strtotime($a['created_at'])) : 'Recent' ?></td>
                                     </tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>
@@ -209,51 +456,70 @@ try {
                 </div>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-tower-broadcast"></i><span><strong>Broadcast Engine:</strong> Supabase Pub/Sub Synchronized</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Integrity:</strong> Signed by IECEP-LSC Secretariat Node</span></div>
-            </div>
-
         </div>
     </main>
 
-    <!-- New Announcement Modal -->
-    <div id="newModal" class="doc-modal">
-        <div class="ap-card" style="max-width:560px; width:100%; margin:0; box-shadow:var(--card-shadow);">
+    <!-- Create Announcement Modal -->
+    <div id="annModal" class="doc-modal">
+        <div class="modal-inner-box">
             <div class="ap-card-header">
-                <h3 class="ap-card-title"><i class="fas fa-plus"></i> Dispatch New Chapter Announcement</h3>
-                <button class="ap-btn-secondary" style="border:none; padding:0.25rem 0.5rem;" onclick="closeNewModal()">&times;</button>
+                <h3 class="ap-card-title"><i class="fas fa-bullhorn"></i> Compose Announcement</h3>
+                <button class="btn-white" style="border:none; padding:0.25rem 0.5rem;" onclick="closeAnnModal()">&times;</button>
             </div>
-            <form method="POST">
+            <form method="POST" style="padding:1.25rem;">
                 <input type="hidden" name="action" value="create_announcement">
                 <div class="ap-form-group">
-                    <label class="ap-form-label">Announcement Title / Subject</label>
-                    <input type="text" name="title" class="ap-input" placeholder="e.g. AY 2026-2027 Chapter Affiliation Remittance Due Date" required>
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Announcement Title</label>
+                    <input type="text" name="title" class="ap-input" placeholder="e.g. Schedule for General Assembly 2026" required style="font-size:0.8rem;">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem;">
+                    <div class="ap-form-group">
+                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Priority</label>
+                        <select name="priority" class="ap-input" style="font-size:0.8rem;">
+                            <option value="Normal">Normal</option>
+                            <option value="Urgent">Urgent / High</option>
+                        </select>
+                    </div>
+                    <div class="ap-form-group">
+                        <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Publish Status</label>
+                        <select name="status" class="ap-input" style="font-size:0.8rem;">
+                            <option value="published">Publish Immediately</option>
+                            <option value="draft">Save as Draft</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="ap-form-group">
-                    <label class="ap-form-label">Priority Level</label>
-                    <select name="priority" class="ap-form-select">
-                        <option value="normal">Normal Priority</option>
-                        <option value="high">High Priority</option>
-                        <option value="urgent">Urgent Action Required</option>
-                    </select>
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Announcement Body Content</label>
+                    <textarea name="body" class="ap-input" rows="4" placeholder="Type your broadcast message to all chapter members..." required style="font-size:0.8rem;"></textarea>
                 </div>
-                <div class="ap-form-group">
-                    <label class="ap-form-label">Announcement Message Content</label>
-                    <textarea name="body" class="ap-textarea" rows="4" placeholder="Enter the official details, guidelines, and deadlines..." required></textarea>
-                </div>
-                <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
-                    <button type="button" class="ap-btn-secondary" onclick="closeNewModal()">Cancel</button>
-                    <button type="submit" class="ap-btn-primary"><i class="fas fa-paper-plane"></i> Publish & Save to Database</button>
+                <div style="display:flex; justify-content:flex-end; gap:0.65rem; margin-top:1rem;">
+                    <button type="button" class="btn-white" onclick="closeAnnModal()">Cancel</button>
+                    <button type="submit" class="btn-primary-navy"><i class="fas fa-paper-plane"></i> Broadcast Message</button>
                 </div>
             </form>
         </div>
     </div>
 
     <script>
-        function openNewModal() { document.getElementById('newModal').style.display = 'flex'; }
-        function closeNewModal() { document.getElementById('newModal').style.display = 'none'; }
+        function openAnnModal() {
+            document.getElementById('annModal').classList.add('active');
+        }
+        function closeAnnModal() {
+            document.getElementById('annModal').classList.remove('active');
+        }
+
+        function filterAnnouncementsTable() {
+            const query = document.getElementById('annSearchInput').value.toLowerCase();
+            const table = document.getElementById('annTable');
+            const trs = table.getElementsByTagName('tr');
+
+            for (let i = 1; i < trs.length; i++) {
+                const tr = trs[i];
+                if (tr.children.length === 1 && tr.children[0].getAttribute('colspan')) continue;
+                const text = tr.textContent.toLowerCase();
+                tr.style.display = (text.indexOf(query) > -1) ? '' : 'none';
+            }
+        }
     </script>
 </body>
 </html>

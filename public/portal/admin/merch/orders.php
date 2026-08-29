@@ -1,251 +1,416 @@
 <?php
-require_once dirname(dirname(__DIR__)) . '/auth_check.php';
-require_role(['admin', 'super_admin']);
+require_once __DIR__ . '/../../bootstrap.php';
+$current_page = 'merch-orders';
 
-$supabaseConfig = require INCLUDES_PATH . 'supabase.php';
-$supabase = new \App\Lib\SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
-if (!empty($supabaseConfig['service_role_key'])) {
-    $supabase->setServiceRoleKey($supabaseConfig['service_role_key']);
+require_once __DIR__ . '/../../auth_check.php';
+require_role(['admin', 'super_admin', 'treasurer', 'merchandise']);
+
+$pageTitle = 'Merchandise Orders & Fulfillment';
+$supabase = getSupabaseClient();
+
+$feedbackMsg = '';
+$feedbackType = 'success';
+
+// Handle POST: Update Order Status
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if ($_POST['action'] === 'update_order_status') {
+        $orderId = trim($_POST['order_id'] ?? '');
+        $newStatus = trim($_POST['status'] ?? 'completed');
+
+        if ($orderId) {
+            try {
+                $supabase->update('merch_orders', [
+                    'status' => $newStatus,
+                    'updated_at' => date('c')
+                ], $orderId);
+
+                $feedbackMsg = "Order status updated to " . ucfirst($newStatus) . "!";
+                $feedbackType = 'success';
+            } catch (Exception $e) {
+                error_log("Order update error: " . $e->getMessage());
+            }
+        }
+    }
 }
 
-$successMessage = '';
-$errorMessage = '';
-
-if (!empty($_SESSION['merch_orders_flash'])) {
-    $flash = $_SESSION['merch_orders_flash'];
-    $successMessage = $flash['success'] ?? '';
-    $errorMessage = $flash['error'] ?? '';
-    unset($_SESSION['merch_orders_flash']);
-}
-
+// Fetch real merchandise orders from database
 $orders = [];
 try {
-    $result = $supabase->select('merch_orders', ['order' => 'created_at.desc']);
-    if (is_array($result) && isset($result[0]['id'])) {
-        $orders = $result;
+    $rawOrders = $supabase->select('merch_orders', ['select' => '*', 'order' => 'created_at.desc']);
+    if (is_array($rawOrders)) {
+        $orders = $rawOrders;
     }
-} catch (\Throwable $e) {
-    $errorMessage = 'Failed to load orders: ' . $e->getMessage();
+} catch (Exception $e) {
+    error_log("Error loading merch orders: " . $e->getMessage());
 }
 
-// Fallback demo data
-if (empty($orders)) {
-    $orders = [
-        [
-            'id' => 'ord_101',
-            'order_number' => 'ORD-2026-0801',
-            'customer_name' => 'Alex Johnson',
-            'customer_email' => 'alex.johnson@lspu.edu.ph',
-            'item_name' => 'IECEP-LSC Official Polo (Navy/Gold)',
-            'quantity' => 1,
-            'total_amount' => 650.00,
-            'status' => 'paid',
-            'created_at' => date('Y-m-d H:i:s', strtotime('-2 days')),
-            'institution' => 'LSPU Santa Cruz'
-        ],
-        [
-            'id' => 'ord_102',
-            'order_number' => 'ORD-2026-0802',
-            'customer_name' => 'David Kim',
-            'customer_email' => 'david.kim@mmcl.edu.ph',
-            'item_name' => 'Chapter Tumbler 500ml + Lanyard Set',
-            'quantity' => 2,
-            'total_amount' => 570.00,
-            'status' => 'shipped',
-            'created_at' => date('Y-m-d H:i:s', strtotime('-1 day')),
-            'institution' => 'Mapúa Malayan Colleges'
-        ],
-        [
-            'id' => 'ord_103',
-            'order_number' => 'ORD-2026-0803',
-            'customer_name' => 'Emma Wilson',
-            'customer_email' => 'emma.wilson@letran.edu.ph',
-            'item_name' => 'IECEP Holographic Sticker Pack (5pc)',
-            'quantity' => 3,
-            'total_amount' => 225.00,
-            'status' => 'pending',
-            'created_at' => date('Y-m-d H:i:s', strtotime('-3 hours')),
-            'institution' => 'Colegio de San Juan de Letran'
-        ]
-    ];
-}
+$pendingCount = 0;
+$completedCount = 0;
+$totalSales = 0.0;
 
-$current_page = 'merch';
+foreach ($orders as $ord) {
+    $st = strtolower($ord['status'] ?? 'pending');
+    $amt = floatval($ord['total_amount'] ?? ($ord['amount'] ?? 0));
+    if ($st === 'completed' || $st === 'paid' || $st === 'shipped') {
+        $completedCount++;
+        $totalSales += $amt;
+    } else {
+        $pendingCount++;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Merchandise Orders — IECEP-LSC MEMSYS</title>
-    <meta name="description" content="Manage chapter merchandise orders, fulfillment workflow, and blockchain payment confirmations.">
-    <?php include dirname(__DIR__, 4) . '/includes/head-meta.php'; ?>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
+    <meta name="description" content="Track member merchandise orders, fulfillment, and sales ledger.">
+    <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-amber: #D97706;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dash-header-banner {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+        }
+        .dash-header-title {
+            margin: 0 0 0.15rem;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dash-header-sub {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #64748B;
+        }
+
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            transform: translateY(-1px);
+        }
+
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 0.85rem;
+        }
+        .dash-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            min-width: 0;
+        }
+        .kpi-icon-pill {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-lbl {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 1px;
+        }
+
+        .white-controls-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.95rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            box-shadow: var(--shadow-card);
+        }
+        .search-input-field {
+            padding: 0.45rem 0.75rem 0.45rem 2rem;
+            border: 1px solid #CBD5E1;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            background: #F8FAFC;
+        }
+
+        .ap-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1rem;
+        }
+        .ap-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+        }
+        .ap-card-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0F172A;
+        }
+
+        .ap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            text-align: left;
+        }
+        .ap-table th {
+            background: #F8FAFC;
+            color: #64748B;
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 0.55rem 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+        }
+        .ap-table td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid #F1F5F9;
+            color: #334155;
+            vertical-align: middle;
+        }
+
+        @media (max-width: 1024px) {
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
 </head>
 <body>
-    <?php include dirname(__DIR__, 4) . '/includes/sidebar.php'; ?>
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
     <main class="main-content">
         <div class="ap-scope">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-boxes-packing"></i> Merchandise Orders & Fulfillment</h1>
-                    <p class="ap-page-subtitle">Track member orders, payment statuses, delivery logistics, and sales ledger receipts.</p>
+            <!-- 1. Header Banner -->
+            <div class="dash-header-banner">
+                <div>
+                    <h1 class="dash-header-title">
+                        <i class="fas fa-boxes-packing" style="color:var(--color-navy);"></i>
+                        Merchandise Orders & Fulfillment
+                    </h1>
+                    <p class="dash-header-sub">
+                        Track customer orders, payment status, delivery fulfillment, and merchandise sales.
+                    </p>
                 </div>
-                <div class="ap-header-actions">
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/merch/items.php" class="ap-btn-secondary">
-                        <i class="fas fa-store"></i> Inventory Management
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <a href="<?= PORTAL_URL ?>/admin/merch/items.php" class="btn-white">
+                        <i class="fas fa-tags" style="color:var(--color-blue);"></i> Inventory Catalog
                     </a>
                 </div>
             </div>
 
-            <?php if (!empty($successMessage)): ?>
-                <div class="ap-alert success"><i class="fas fa-check-circle"></i> <?= htmlspecialchars($successMessage) ?></div>
-            <?php endif; ?>
-            <?php if (!empty($errorMessage)): ?>
-                <div class="ap-alert danger"><i class="fas fa-exclamation-circle"></i> <?= htmlspecialchars($errorMessage) ?></div>
+            <?php if (!empty($feedbackMsg)): ?>
+                <div class="ap-alert <?= $feedbackType ?>" style="margin-bottom:0.85rem;">
+                    <i class="fas fa-check-circle" style="font-size:1.2rem;"></i> 
+                    <div><?= htmlspecialchars($feedbackMsg) ?></div>
+                </div>
             <?php endif; ?>
 
-            <!-- KPI Cards -->
-            <div class="ap-kpi-grid">
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon navy"><i class="fas fa-shopping-bag"></i></div>
-                        <div><div class="ap-stat-label">Orders</div><div class="ap-stat-sublabel">Total Placed</div></div>
+            <!-- 2. KPI Grid -->
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy"><i class="fas fa-cart-shopping"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= count($orders) ?></div>
+                        <div class="kpi-lbl">Total Orders Placed</div>
                     </div>
-                    <div class="ap-stat-value"><?= count($orders) ?></div>
-                    <div class="ap-stat-footer">All member order volume</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon emerald"><i class="fas fa-circle-check"></i></div>
-                        <div><div class="ap-stat-label">Paid</div><div class="ap-stat-sublabel">Settled Orders</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill emerald"><i class="fas fa-circle-check"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $completedCount ?></div>
+                        <div class="kpi-lbl">Fulfilled Orders</div>
                     </div>
-                    <div class="ap-stat-value" style="color:var(--accent-emerald);">
-                        <?= count(array_filter($orders, fn($o) => in_array($o['status'] ?? '', ['paid', 'shipped', 'delivered']))) ?>
-                    </div>
-                    <div class="ap-stat-footer">Payment confirmed on-chain</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon amber"><i class="fas fa-clock"></i></div>
-                        <div><div class="ap-stat-label">Pending</div><div class="ap-stat-sublabel">Awaiting Payment</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill amber"><i class="fas fa-clock"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $pendingCount ?></div>
+                        <div class="kpi-lbl">Pending Processing</div>
                     </div>
-                    <div class="ap-stat-value" style="color:var(--accent-amber);">
-                        <?= count(array_filter($orders, fn($o) => ($o['status'] ?? '') === 'pending')) ?>
-                    </div>
-                    <div class="ap-stat-footer">Unsettled carts</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon gold"><i class="fas fa-sack-dollar"></i></div>
-                        <div><div class="ap-stat-label">Revenue</div><div class="ap-stat-sublabel">Gross Sales</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill gold"><i class="fas fa-sack-dollar"></i></div>
+                    <div>
+                        <div class="kpi-val" style="color:#059669;">₱<?= number_format($totalSales, 2) ?></div>
+                        <div class="kpi-lbl">Total Merchandise Revenue</div>
                     </div>
-                    <div class="ap-stat-value">₱<?= number_format(array_sum(array_column($orders, 'total_amount')), 2) ?></div>
-                    <div class="ap-stat-footer">Total merchandise sales</div>
                 </div>
             </div>
 
-            <!-- Orders Table Card -->
+            <!-- 3. Search & Filter Bar -->
+            <div class="white-controls-card">
+                <div style="position:relative; flex:1; max-width:380px;">
+                    <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94A3B8; font-size:0.8rem;"></i>
+                    <input type="text" id="orderSearchInput" class="search-input-field" placeholder="Search order #, customer name, item..." onkeyup="filterOrdersTable()">
+                </div>
+                <div style="font-size:0.75rem; font-weight:700; color:#64748B;">
+                    Showing <?= count($orders) ?> customer orders
+                </div>
+            </div>
+
+            <!-- 4. Table -->
             <div class="ap-card">
                 <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-table-list"></i> Merchandise Orders Queue</h3>
-                    <div class="ap-toolbar" style="margin-bottom:0;">
-                        <div class="ap-search-wrapper" style="min-width:220px;">
-                            <i class="fas fa-magnifying-glass"></i>
-                            <input type="text" class="ap-search-input" id="orderSearch" placeholder="Search orders..." onkeyup="filterOrders()">
-                        </div>
-                    </div>
+                    <h3 class="ap-card-title"><i class="fas fa-list-check"></i> Customer Orders Ledger</h3>
                 </div>
-
-                <div class="ap-table-wrapper">
+                <div style="overflow-x:auto;">
                     <table class="ap-table" id="ordersTable">
                         <thead>
                             <tr>
-                                <th>Order Ref</th>
-                                <th>Member & Institution</th>
-                                <th>Item Ordered</th>
-                                <th>Qty</th>
+                                <th>Order Number</th>
+                                <th>Customer / Student</th>
+                                <th>Item Particulars</th>
                                 <th>Total Amount</th>
-                                <th>Payment Status</th>
-                                <th>Timestamp</th>
-                                <th style="text-align:right;">Actions</th>
+                                <th>Status</th>
+                                <th>Order Date</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($orders as $ord): ?>
-                                <?php 
-                                    $st = strtolower($ord['status'] ?? 'pending');
-                                    $pillClass = match($st) {
-                                        'paid', 'delivered' => 'active',
-                                        'shipped' => 'info',
-                                        default => 'pending'
-                                    };
-                                ?>
+                            <?php if (empty($orders)): ?>
                                 <tr>
-                                    <td>
-                                        <span class="ap-mono" style="font-weight:700; color:var(--iecep-navy); font-size:0.84rem;">
-                                            <?= htmlspecialchars($ord['order_number'] ?? ('ORD-' . $ord['id'])) ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <strong style="color:var(--text-heading);"><?= htmlspecialchars($ord['customer_name'] ?? 'Member') ?></strong><br>
-                                        <span style="font-size:0.75rem; color:var(--text-muted);"><?= htmlspecialchars($ord['institution'] ?? ($ord['customer_email'] ?? '')) ?></span>
-                                    </td>
-                                    <td>
-                                        <span style="font-weight:600; color:var(--text-primary); font-size:0.85rem;"><?= htmlspecialchars($ord['item_name'] ?? 'Merch Item') ?></span>
-                                    </td>
-                                    <td>
-                                        <span class="ap-pill navy"><?= htmlspecialchars($ord['quantity'] ?? '1') ?>x</span>
-                                    </td>
-                                    <td>
-                                        <strong style="color:var(--text-heading);">₱<?= number_format($ord['total_amount'] ?? 0, 2) ?></strong>
-                                    </td>
-                                    <td>
-                                        <span class="ap-pill <?= $pillClass ?>"><span class="ap-pill-dot"></span> <?= ucfirst($st) ?></span>
-                                    </td>
-                                    <td style="font-size:0.8rem; color:var(--text-muted);">
-                                        <?= isset($ord['created_at']) ? date('M d, Y H:i', strtotime($ord['created_at'])) : '—' ?>
-                                    </td>
-                                    <td style="text-align:right;">
-                                        <div style="display:flex; gap:0.4rem; justify-content:flex-end;">
-                                            <button class="ap-btn-secondary" style="padding:0.3rem 0.75rem; font-size:0.75rem;" onclick="updateOrderStatus('<?= $ord['id'] ?>')" title="Update Status">
-                                                <i class="fas fa-truck-fast"></i> Update
-                                            </button>
-                                        </div>
+                                    <td colspan="6" style="text-align:center; padding:2.5rem; color:#64748B;">
+                                        <i class="fas fa-box-open" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
+                                        <strong style="color:#0F172A; font-size:0.92rem;">No Merchandise Orders in Database</strong>
+                                        <p style="margin:0.25rem 0 0; font-size:0.78rem;">Orders placed by student members will automatically display here for fulfillment.</p>
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
+                            <?php else: ?>
+                                <?php foreach ($orders as $ord): ?>
+                                    <?php 
+                                        $amt = floatval($ord['total_amount'] ?? ($ord['amount'] ?? 0));
+                                        $st = strtolower($ord['status'] ?? 'pending');
+                                    ?>
+                                    <tr>
+                                        <td>
+                                            <span style="font-family:'JetBrains Mono', monospace; font-size:0.75rem; font-weight:700; color:var(--color-navy);">
+                                                <?= htmlspecialchars($ord['order_number'] ?? $ord['id'] ?? 'ORD') ?>
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($ord['customer_name'] ?? 'Customer') ?></strong><br>
+                                            <span style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars($ord['customer_email'] ?? '') ?></span>
+                                        </td>
+                                        <td>
+                                            <?= htmlspecialchars($ord['item_name'] ?? 'Merchandise Item') ?>
+                                            <span style="font-size:0.72rem; color:#64748B;">(x<?= intval($ord['quantity'] ?? 1) ?>)</span>
+                                        </td>
+                                        <td><strong style="color:#059669; font-size:0.82rem;">₱<?= number_format($amt, 2) ?></strong></td>
+                                        <td>
+                                            <span class="ap-pill <?= ($st === 'completed' || $st === 'paid' || $st === 'shipped') ? 'active' : 'pending' ?>">
+                                                <?= ucfirst($st) ?>
+                                            </span>
+                                        </td>
+                                        <td style="color:#64748B; font-size:0.75rem;"><?= !empty($ord['created_at']) ? date('M d, Y', strtotime($ord['created_at'])) : 'Recent' ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
-            </div>
-
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-receipt"></i><span><strong>Receipts:</strong> Auto-Anchored to Chapter Treasury</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Fulfillment Workflow:</strong> QR Code Dispatch Verified</span></div>
             </div>
 
         </div>
     </main>
 
     <script>
-        function filterOrders() {
-            const q = document.getElementById('orderSearch').value.toLowerCase();
-            document.querySelectorAll('#ordersTable tbody tr').forEach(tr => {
-                tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
-            });
-        }
+        function filterOrdersTable() {
+            const query = document.getElementById('orderSearchInput').value.toLowerCase();
+            const table = document.getElementById('ordersTable');
+            const trs = table.getElementsByTagName('tr');
 
-        function updateOrderStatus(id) {
-            const next = prompt("Enter new status (pending, paid, shipped, delivered):");
-            if (next) {
-                alert("Order " + id + " updated to " + next);
-                location.reload();
+            for (let i = 1; i < trs.length; i++) {
+                const tr = trs[i];
+                if (tr.children.length === 1 && tr.children[0].getAttribute('colspan')) continue;
+                const text = tr.textContent.toLowerCase();
+                tr.style.display = (text.indexOf(query) > -1) ? '' : 'none';
             }
         }
     </script>

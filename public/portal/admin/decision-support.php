@@ -1,33 +1,40 @@
 <?php
-if (!isset($current_page)) { $current_page = 'decision-support'; }
-require_once __DIR__ . '/../auth_check.php';
-require_role(['admin', 'super_admin', 'eb_officer']);
+require_once __DIR__ . '/../../bootstrap.php';
+$current_page = 'decision-support';
 
-use App\Lib\SupabaseClient;
+require_once __DIR__ . '/../../auth_check.php';
+require_role(['admin', 'super_admin', 'eb_officer', 'eb_president']);
 
-$financialHealth = [
-    'total_collected' => 390700,
-    'total_pending' => 24500,
-    'collection_rate' => 94.1
-];
+$pageTitle = 'Executive Decision Support & Strategy';
+$supabase = getSupabaseClient();
+
+$totalCollected = 0.0;
+$totalPending = 0.0;
+$collectionRate = 100.0;
+$totalInstitutions = 0;
+$atRiskCount = 0;
 
 try {
-    $supabase = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     $txs = $supabase->select('transactions', ['select' => '*']);
     if (is_array($txs) && !empty($txs)) {
-        $c = 0; $p = 0;
         foreach ($txs as $t) {
-            if (($t['status'] ?? '') === 'completed' || ($t['status'] ?? '') === 'paid') {
-                $c += floatval($t['amount'] ?? 0);
+            $amt = floatval($t['amount'] ?? 0);
+            $st = strtolower($t['status'] ?? 'pending');
+            if ($st === 'completed' || $st === 'paid') {
+                $totalCollected += $amt;
             } else {
-                $p += floatval($t['amount'] ?? 0);
+                $totalPending += $amt;
             }
         }
-        if ($c + $p > 0) {
-            $financialHealth['total_collected'] = $c;
-            $financialHealth['total_pending'] = $p;
-            $financialHealth['collection_rate'] = round(($c / ($c + $p)) * 100, 1);
+        if ($totalCollected + $totalPending > 0) {
+            $collectionRate = round(($totalCollected / ($totalCollected + $totalPending)) * 100, 1);
         }
+    }
+
+    $insts = $supabase->select('institutions', ['select' => '*']);
+    if (is_array($insts)) {
+        $totalInstitutions = count($insts);
+        $atRiskCount = count(array_filter($insts, fn($i) => ($i['compliance_status'] ?? '') === 'at_risk'));
     }
 } catch (Exception $e) {
     error_log("Decision support query error: " . $e->getMessage());
@@ -37,13 +44,155 @@ try {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Executive Decision Support System — IECEP-LSC MEMSYS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title><?= htmlspecialchars($pageTitle) ?> — IECEP-LSC MEMSYS</title>
     <meta name="description" content="Predictive chapter metrics, compliance risk forecasting, and strategic decision support for IECEP-LSC executive officers.">
     <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-amber: #D97706;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dash-header-banner {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+        }
+        .dash-header-title {
+            margin: 0 0 0.15rem;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dash-header-sub {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #64748B;
+        }
+
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            transform: translateY(-1px);
+        }
+
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 0.85rem;
+        }
+        .dash-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            min-width: 0;
+        }
+        .kpi-icon-pill {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-lbl {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 1px;
+        }
+
+        .ap-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1rem;
+        }
+        .ap-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+        }
+        .ap-card-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0F172A;
+        }
+
+        @media (max-width: 1024px) {
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
 </head>
 <body>
     <?php include INCLUDES_PATH . 'sidebar.php'; ?>
@@ -51,156 +200,79 @@ try {
     <main class="main-content">
         <div class="ap-scope">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-brain"></i> Executive Decision Support & Insights</h1>
-                    <p class="ap-page-subtitle">Algorithmic risk forecasting, institutional compliance radar, and membership growth predictive modeling.</p>
+            <!-- 1. Header Banner -->
+            <div class="dash-header-banner">
+                <div>
+                    <h1 class="dash-header-title">
+                        <i class="fas fa-brain" style="color:var(--color-navy);"></i>
+                        Executive Decision Support & Strategic Forecasts
+                    </h1>
+                    <p class="dash-header-sub">
+                        Algorithmic risk forecasting, institutional compliance radar, and membership growth models.
+                    </p>
                 </div>
-                <div class="ap-header-actions">
-                    <button class="ap-btn-secondary" onclick="alert('Running live Bayesian regression across all chapter KPIs...')">
-                        <i class="fas fa-rotate"></i> Recompute Models
-                    </button>
-                    <button class="ap-btn-primary" onclick="alert('Exporting Strategic Executive Briefing PDF...')">
-                        <i class="fas fa-file-pdf"></i> Export Briefing
-                    </button>
-                </div>
-            </div>
-
-            <!-- KPI Metric Cards -->
-            <div class="ap-kpi-grid">
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon emerald"><i class="fas fa-gauge-high"></i></div>
-                        <div><div class="ap-stat-label">Health</div><div class="ap-stat-sublabel">Chapter Vitality Score</div></div>
-                    </div>
-                    <div class="ap-stat-value" style="color:var(--accent-emerald);">94.8 / 100</div>
-                    <div class="ap-stat-footer">High operational efficiency</div>
-                </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon navy"><i class="fas fa-arrow-trend-up"></i></div>
-                        <div><div class="ap-stat-label">Growth</div><div class="ap-stat-sublabel">Forecasted AY 2026-27</div></div>
-                    </div>
-                    <div class="ap-stat-value">+28.4%</div>
-                    <div class="ap-stat-footer">Projected enrollment surge</div>
-                </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon gold"><i class="fas fa-sack-dollar"></i></div>
-                        <div><div class="ap-stat-label">Treasury</div><div class="ap-stat-sublabel">Collection Efficiency</div></div>
-                    </div>
-                    <div class="ap-stat-value"><?= $financialHealth['collection_rate'] ?>%</div>
-                    <div class="ap-stat-footer">₱<?= number_format($financialHealth['total_collected']) ?> remitted</div>
-                </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon amber"><i class="fas fa-triangle-exclamation"></i></div>
-                        <div><div class="ap-stat-label">Alerts</div><div class="ap-stat-sublabel">Compliance Risks</div></div>
-                    </div>
-                    <div class="ap-stat-value" style="color:var(--accent-amber);">1</div>
-                    <div class="ap-stat-footer">Chapter requires event hosting</div>
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <a href="<?= PORTAL_URL ?>/admin/compliance/dashboard.php" class="btn-white">
+                        <i class="fas fa-clipboard-check" style="color:var(--color-blue);"></i> Compliance Monitor
+                    </a>
                 </div>
             </div>
 
-            <!-- Strategic Action Matrix & Recommendations -->
-            <div class="ap-grid-2">
-                <div class="ap-card" style="margin-bottom:0;">
-                    <div class="ap-card-header">
-                        <h3 class="ap-card-title"><i class="fas fa-lightbulb"></i> Automated Strategic Recommendations</h3>
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:0.9rem;">
-                        <div class="ap-card-sm" style="border-left:4px solid var(--accent-emerald);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-                                <strong style="color:var(--text-heading); font-size:0.88rem;">Membership Target Surpassed</strong>
-                                <span class="ap-pill active" style="font-size:0.68rem;">Positive Trend</span>
-                            </div>
-                            <p style="font-size:0.8rem; color:var(--text-secondary); margin:0;">
-                                LSPU Santa Cruz & Mapúa Malayan have attained over 90% member registration. Consider allocating additional tech summit slots.
-                            </p>
-                        </div>
-                        <div class="ap-card-sm" style="border-left:4px solid var(--accent-amber);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-                                <strong style="color:var(--text-heading); font-size:0.88rem;">Event Hosting Deficit Detected</strong>
-                                <span class="ap-pill pending" style="font-size:0.68rem;">Action Required</span>
-                            </div>
-                            <p style="font-size:0.8rem; color:var(--text-secondary); margin:0;">
-                                Letran Calamba has only hosted 1 regional event this term. Recommended to co-host the upcoming Q4 IoT Hackathon.
-                            </p>
-                        </div>
-                        <div class="ap-card-sm" style="border-left:4px solid var(--accent-cyan);">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
-                                <strong style="color:var(--text-heading); font-size:0.88rem;">Blockchain ID Adoption High</strong>
-                                <span class="ap-pill info" style="font-size:0.68rem;">Security Benchmark</span>
-                            </div>
-                            <p style="font-size:0.8rem; color:var(--text-secondary); margin:0;">
-                                Over 98% of active members have verifiable cryptographic Digital IDs anchored on-chain.
-                            </p>
-                        </div>
+            <!-- 2. KPI Grid -->
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill emerald"><i class="fas fa-vault"></i></div>
+                    <div>
+                        <div class="kpi-val" style="color:#059669;">₱<?= number_format($totalCollected, 2) ?></div>
+                        <div class="kpi-lbl">Collected Treasury Remittance</div>
                     </div>
                 </div>
 
-                <!-- Growth Forecast Chart -->
-                <div class="ap-card" style="margin-bottom:0;">
-                    <div class="ap-card-header">
-                        <h3 class="ap-card-title"><i class="fas fa-chart-line"></i> 6-Month Membership Predictive Model</h3>
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill gold"><i class="fas fa-chart-pie"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $collectionRate ?>%</div>
+                        <div class="kpi-lbl">Collection Efficiency</div>
                     </div>
-                    <div style="position:relative; height:260px;">
-                        <canvas id="forecastChart"></canvas>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy"><i class="fas fa-university"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $totalInstitutions ?></div>
+                        <div class="kpi-lbl">Active Chapter Institutions</div>
+                    </div>
+                </div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill amber"><i class="fas fa-triangle-exclamation"></i></div>
+                    <div>
+                        <div class="kpi-val" style="color:<?= $atRiskCount > 0 ? '#D97706' : '#059669' ?>;"><?= $atRiskCount ?></div>
+                        <div class="kpi-lbl">Chapters Requiring Audit</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-microchip"></i><span><strong>Decision Engine:</strong> IECEP Quantitative Model v3.1</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Data Provenance:</strong> Cryptographically Verified Records</span></div>
+            <!-- 3. Intelligence Briefing Card -->
+            <div class="ap-card">
+                <div class="ap-card-header">
+                    <h3 class="ap-card-title"><i class="fas fa-compass"></i> Strategic Chapter Recommendations</h3>
+                </div>
+                <div style="padding:1.25rem;">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:1rem;">
+                            <strong style="color:var(--color-navy); font-size:0.88rem;"><i class="fas fa-lightbulb" style="color:#D4AF37;"></i> Membership Expansion</strong>
+                            <p style="font-size:0.8rem; color:#64748B; margin:0.35rem 0 0;">Prioritize outreach for non-compliant school chapters to submit their rosters before midterm accreditation deadlines.</p>
+                        </div>
+                        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:1rem;">
+                            <strong style="color:var(--color-navy); font-size:0.88rem;"><i class="fas fa-shield-halved" style="color:#059669;"></i> Treasury Assurance</strong>
+                            <p style="font-size:0.8rem; color:#64748B; margin:0.35rem 0 0;">Maintain 100% cryptographic SHA-256 block receipts for every chapter remittance to ensure seamless year-end auditing.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
         </div>
     </main>
-
-    <script>
-        function initForecastChart() {
-            const ctx = document.getElementById('forecastChart').getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: ['May 2026', 'Jun 2026', 'Jul 2026', 'Aug 2026 (Now)', 'Sep 2026 (Est)', 'Oct 2026 (Est)'],
-                    datasets: [
-                        {
-                            label: 'Historical Registrations',
-                            data: [320, 360, 410, 455, null, null],
-                            borderColor: '#0B1D4A',
-                            backgroundColor: 'rgba(11, 29, 74, 0.1)',
-                            borderWidth: 3,
-                            tension: 0.3,
-                            fill: true
-                        },
-                        {
-                            label: 'Algorithmic Forecast',
-                            data: [null, null, null, 455, 520, 585],
-                            borderColor: '#D4AF37',
-                            borderDash: [6, 6],
-                            borderWidth: 3,
-                            tension: 0.3,
-                            fill: false
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } },
-                    scales: {
-                        y: { beginAtZero: false, grid: { color: '#F1F5F9' } },
-                        x: { grid: { display: false } }
-                    }
-                }
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', initForecastChart);
-    </script>
 </body>
 </html>

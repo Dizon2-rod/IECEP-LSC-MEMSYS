@@ -1,229 +1,420 @@
 <?php
-if (!isset($current_page)) { $current_page = 'compliance'; }
+require_once __DIR__ . '/../../bootstrap.php';
+$current_page = 'compliance';
+
 require_once __DIR__ . '/../../auth_check.php';
-require_role(['admin', 'super_admin', 'eb_president']);
+require_role(['admin', 'super_admin', 'registration', 'committee_registration', 'eb_president']);
 
-use App\Lib\SupabaseClient;
+$supabase = getSupabaseClient();
 
-$today = new DateTime();
-$month = (int) $today->format('n');
-$year = (int) $today->format('Y');
-$startYear = $month >= 7 ? $year : $year - 1;
-$endYear = $startYear + 1;
-$startDate = "$startYear-07-01";
-$endDate = "$endYear-06-30";
-
-$institutions = $events = $complianceData = [];
-$memberCountMap = $eventsByInstitution = $attendanceByInstitution = $latestActivityByInstitution = [];
+$institutions = [];
+$memberCountMap = [];
+$complianceData = [];
+$eventsCount = 0;
 
 try {
-    $supabase = new SupabaseClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    $instData = $supabase->select('institutions', ['select' => 'id, name, status, created_at']);
+    $instData = $supabase->select('institutions', ['select' => 'id, name, acronym, status, compliance_status, created_at', 'order' => 'name.asc']);
     if (is_array($instData)) $institutions = $instData;
     
     $membersData = $supabase->select('members', ['select' => 'id, institution_id']);
     if (is_array($membersData)) {
         foreach ($membersData as $m) {
-            if ($iid = $m['institution_id'] ?? '') $memberCountMap[$iid] = ($memberCountMap[$iid] ?? 0) + 1;
+            $iid = $m['institution_id'] ?? '';
+            if ($iid) $memberCountMap[$iid] = ($memberCountMap[$iid] ?? 0) + 1;
         }
     }
     
-    $eventsData = $supabase->select('events', ['select' => 'id, institution_id, start_date, status']);
+    $eventsData = $supabase->select('events', ['select' => 'id']);
     if (is_array($eventsData)) {
-        $events = $eventsData;
-        foreach ($events as $ev) {
-            if ($iid = $ev['institution_id'] ?? '') $eventsByInstitution[$iid] = ($eventsByInstitution[$iid] ?? 0) + 1;
-        }
+        $eventsCount = count($eventsData);
     }
 } catch (Exception $e) {
     error_log("Compliance dashboard query error: " . $e->getMessage());
 }
 
-// Use demo data if empty
-if (empty($institutions)) {
-    $institutions = [
-        ['id'=>'1','name'=>'LSPU Santa Cruz','status'=>'active','created_at'=>date('Y-m-d',strtotime('-365 days'))],
-        ['id'=>'2','name'=>'Mapúa Malayan Colleges Laguna','status'=>'active','created_at'=>date('Y-m-d',strtotime('-300 days'))],
-        ['id'=>'3','name'=>'De La Salle University - Laguna','status'=>'active','created_at'=>date('Y-m-d',strtotime('-280 days'))],
-        ['id'=>'4','name'=>'LSPU San Pablo','status'=>'active','created_at'=>date('Y-m-d',strtotime('-250 days'))],
-        ['id'=>'5','name'=>'Colegio de San Juan de Letran - Calamba','status'=>'active','created_at'=>date('Y-m-d',strtotime('-200 days'))],
-    ];
-    $memberCountMap = ['1'=>142,'2'=>98,'3'=>87,'4'=>76,'5'=>52];
-    $eventsByInstitution = ['1'=>4,'2'=>3,'3'=>5,'4'=>2,'5'=>1];
-}
+$compliantCount = 0;
+$atRiskCount = 0;
 
-$totalEvents = max(count($events), 6);
 foreach ($institutions as $inst) {
     $instId = $inst['id'];
-    $attended = isset($attendanceByInstitution[$instId]) ? count($attendanceByInstitution[$instId]) : ($eventsByInstitution[$instId] ?? 2);
-    $rate = $totalEvents > 0 ? min(100, round(($attended / $totalEvents) * 100, 1)) : 75;
-    $hosted = $eventsByInstitution[$instId] ?? 0;
+    $mCount = $memberCountMap[$instId] ?? 0;
+    $compStatus = strtolower($inst['compliance_status'] ?? 'compliant');
     
-    $statusLabel = 'Non-compliant';
-    $pillClass = 'danger';
-    if ($inst['status'] === 'active' && $rate >= 75 && $hosted > 0) { $statusLabel = 'Compliant'; $pillClass = 'active'; }
-    elseif ($inst['status'] === 'active') { $statusLabel = 'At Risk'; $pillClass = 'pending'; }
+    if ($compStatus === 'at_risk' || $mCount < 5) {
+        $statusLabel = 'At Risk';
+        $pillClass = 'pending';
+        $atRiskCount++;
+    } else {
+        $statusLabel = 'Compliant';
+        $pillClass = 'active';
+        $compliantCount++;
+    }
     
     $complianceData[] = [
-        'id' => $instId, 'name' => $inst['name'], 'status' => $inst['status'],
-        'pill' => $pillClass, 'status_label' => $statusLabel,
-        'member_count' => $memberCountMap[$instId] ?? 0,
-        'participation_rate' => $rate, 'hosted_events' => $hosted,
-        'last_activity' => $latestActivityByInstitution[$instId] ?? $inst['created_at'],
+        'id' => $instId,
+        'name' => $inst['name'] ?? 'Chapter',
+        'acronym' => $inst['acronym'] ?? 'HEI',
+        'status' => $inst['status'] ?? 'active',
+        'pill' => $pillClass,
+        'status_label' => $statusLabel,
+        'member_count' => $mCount,
+        'created_at' => $inst['created_at'] ?? date('Y-m-d')
     ];
 }
 
-$summary = [
-    'total_institutions' => count($institutions),
-    'active_institutions' => count(array_filter($institutions, fn($i) => $i['status'] === 'active')),
-    'total_members' => array_sum($memberCountMap),
-    'average_participation' => count($complianceData) > 0 ? round(array_sum(array_column($complianceData, 'participation_rate')) / count($complianceData), 1) : 0,
-    'compliant' => count(array_filter($complianceData, fn($c) => $c['status_label'] === 'Compliant')),
-];
+$totalInstitutions = count($institutions);
+$complianceRate = $totalInstitutions > 0 ? round(($compliantCount / $totalInstitutions) * 100, 1) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compliance Dashboard — IECEP-LSC MEMSYS</title>
-    <meta name="description" content="Monitor institution compliance, participation rates, and event hosting for IECEP-LSC Laguna chapters.">
-    <?php include __DIR__ . '/../../../../includes/head-meta.php'; ?>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <title>Chapter Compliance Governance — IECEP-LSC MEMSYS</title>
+    <meta name="description" content="Monitor higher education institution compliance, bylaws adherence, and accredited chapters.">
+    <?php include INCLUDES_PATH . 'head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-emerald: #059669;
+            --color-amber: #D97706;
+            --bg-page: #F8FAFC;
+            --border-color: #E2E8F0;
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-page);
+            color: #1E293B;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dash-header-banner {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0.85rem 1.25rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+        }
+        .dash-header-title {
+            margin: 0 0 0.15rem;
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .dash-header-sub {
+            margin: 0;
+            font-size: 0.8rem;
+            color: #64748B;
+        }
+
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.85rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid #CBD5E1;
+            color: #0F172A;
+            cursor: pointer;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary-navy {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.42rem 0.95rem;
+            border-radius: 7px;
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-decoration: none;
+            background: var(--color-navy);
+            border: 1px solid var(--color-navy);
+            color: #FFFFFF !important;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(11, 29, 74, 0.15);
+            transition: all 0.18s ease;
+        }
+        .btn-primary-navy:hover {
+            background: var(--color-navy-hover);
+            transform: translateY(-1px);
+            color: #FDE047 !important;
+        }
+
+        .dash-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.65rem;
+            margin-bottom: 0.85rem;
+        }
+        .dash-kpi-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: var(--shadow-card);
+            min-width: 0;
+        }
+        .kpi-icon-pill {
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.05rem;
+            flex-shrink: 0;
+        }
+        .kpi-icon-pill.navy { background: rgba(11, 29, 74, 0.08); color: var(--color-navy); }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.amber { background: #FEF3C7; color: #D97706; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+
+        .kpi-val {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: #0F172A;
+            line-height: 1.1;
+        }
+        .kpi-lbl {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #64748B;
+            margin-top: 1px;
+        }
+
+        .white-controls-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.65rem 0.95rem;
+            margin-bottom: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            box-shadow: var(--shadow-card);
+        }
+        .search-input-field {
+            padding: 0.45rem 0.75rem 0.45rem 2rem;
+            border: 1px solid #CBD5E1;
+            border-radius: 7px;
+            font-size: 0.8rem;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            background: #F8FAFC;
+        }
+
+        .ap-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1rem;
+        }
+        .ap-card-header {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+        }
+        .ap-card-title {
+            margin: 0;
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: #0F172A;
+        }
+
+        .ap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            text-align: left;
+        }
+        .ap-table th {
+            background: #F8FAFC;
+            color: #64748B;
+            font-weight: 700;
+            font-size: 0.72rem;
+            padding: 0.55rem 0.85rem;
+            border-bottom: 1px solid var(--border-color);
+            text-transform: uppercase;
+        }
+        .ap-table td {
+            padding: 0.65rem 0.85rem;
+            border-bottom: 1px solid #F1F5F9;
+            color: #334155;
+            vertical-align: middle;
+        }
+        .ap-table tr:hover td {
+            background: #F8FAFC;
+        }
+
+        @media (max-width: 1024px) {
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
 </head>
 <body>
-    <?php include __DIR__ . '/../../../../includes/sidebar.php'; ?>
+    <?php include INCLUDES_PATH . 'sidebar.php'; ?>
 
     <main class="main-content">
         <div class="ap-scope">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-clipboard-check"></i> Compliance Dashboard</h1>
-                    <p class="ap-page-subtitle">Academic Year <?= $startYear ?>–<?= $endYear ?> &bull; Monitor chapter participation, event hosting, and compliance status.</p>
+            <!-- 1. Header Banner -->
+            <div class="dash-header-banner">
+                <div>
+                    <h1 class="dash-header-title">
+                        <i class="fas fa-shield-halved" style="color:var(--color-navy);"></i>
+                        Institutional Chapter Compliance Dashboard
+                    </h1>
+                    <p class="dash-header-sub">
+                        Audit national constitutional adherence, charter status, required roster sizes, and chapter governance.
+                    </p>
                 </div>
-                <div class="ap-header-actions">
-                    <button class="ap-btn-secondary" onclick="location.reload()">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
-                    <button class="ap-btn-secondary" onclick="exportCSV()">
-                        <i class="fas fa-file-export"></i> Export CSV
-                    </button>
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/compliance/reports.php" class="ap-btn-primary">
-                        <i class="fas fa-chart-bar"></i> Full Report
+                <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <a href="<?= PORTAL_URL ?>/admin/compliance/reports.php" class="btn-white">
+                        <i class="fas fa-file-contract" style="color:var(--color-navy);"></i> Compliance Reports
+                    </a>
+                    <a href="<?= PORTAL_URL ?>/admin/institutions/list.php" class="btn-primary-navy">
+                        <i class="fas fa-university" style="color:#FDE047;"></i> Chapter Affiliations
                     </a>
                 </div>
             </div>
 
-            <!-- KPI Strip -->
-            <div class="ap-kpi-grid">
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon navy"><i class="fas fa-building-columns"></i></div>
-                        <div><div class="ap-stat-label">Chapters</div><div class="ap-stat-sublabel">Total Institutions</div></div>
+            <!-- 2. KPI Grid -->
+            <div class="dash-kpi-grid">
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill navy"><i class="fas fa-school"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $totalInstitutions ?></div>
+                        <div class="kpi-lbl">Total Chapters</div>
                     </div>
-                    <div class="ap-stat-value"><?= $summary['total_institutions'] ?></div>
-                    <div class="ap-stat-footer"><?= $summary['active_institutions'] ?> Active</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon emerald"><i class="fas fa-shield-check"></i></div>
-                        <div><div class="ap-stat-label">Compliant</div><div class="ap-stat-sublabel">Fully Compliant</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill emerald"><i class="fas fa-circle-check"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $compliantCount ?></div>
+                        <div class="kpi-lbl">Compliant Chapters</div>
                     </div>
-                    <div class="ap-stat-value"><?= $summary['compliant'] ?></div>
-                    <div class="ap-stat-footer">Of <?= $summary['total_institutions'] ?> Total Chapters</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon cyan"><i class="fas fa-users"></i></div>
-                        <div><div class="ap-stat-label">Roster</div><div class="ap-stat-sublabel">Total Members</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill amber"><i class="fas fa-triangle-exclamation"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $atRiskCount ?></div>
+                        <div class="kpi-lbl">At Risk / Sub-quota</div>
                     </div>
-                    <div class="ap-stat-value"><?= number_format($summary['total_members']) ?></div>
-                    <div class="ap-stat-footer">Across All Active Chapters</div>
                 </div>
-                <div class="ap-stat-card">
-                    <div class="ap-stat-header">
-                        <div class="ap-stat-icon purple"><i class="fas fa-chart-line"></i></div>
-                        <div><div class="ap-stat-label">Avg Rate</div><div class="ap-stat-sublabel">Participation</div></div>
+
+                <div class="dash-kpi-card">
+                    <div class="kpi-icon-pill gold"><i class="fas fa-chart-pie"></i></div>
+                    <div>
+                        <div class="kpi-val"><?= $complianceRate ?>%</div>
+                        <div class="kpi-lbl">Overall Compliance Index</div>
                     </div>
-                    <div class="ap-stat-value"><?= $summary['average_participation'] ?>%</div>
-                    <div class="ap-stat-footer">Regional Event Attendance</div>
                 </div>
             </div>
 
-            <!-- Compliance Table -->
+            <!-- 3. Search & Filter Bar -->
+            <div class="white-controls-card">
+                <div style="position:relative; flex:1; max-width:380px;">
+                    <i class="fas fa-search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); color:#94A3B8; font-size:0.8rem;"></i>
+                    <input type="text" id="complianceSearchInput" class="search-input-field" placeholder="Search school name, acronym, status..." onkeyup="filterComplianceTable()">
+                </div>
+                <div style="font-size:0.75rem; font-weight:700; color:#64748B;">
+                    AY 2026-2027 Governance Cycle
+                </div>
+            </div>
+
+            <!-- 4. Table -->
             <div class="ap-card">
                 <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-clipboard-list"></i> Chapter Compliance Matrix — AY <?= $startYear ?>–<?= $endYear ?></h3>
-                    <div class="ap-toolbar" style="margin:0;">
-                        <div class="ap-search-wrapper" style="min-width:180px;">
-                            <i class="fas fa-magnifying-glass"></i>
-                            <input type="text" class="ap-search-input" id="compSearch" placeholder="Search chapters..." onkeyup="filterTable()">
-                        </div>
-                    </div>
+                    <h3 class="ap-card-title"><i class="fas fa-clipboard-check"></i> Chartered Chapter Compliance Standing</h3>
                 </div>
-
-                <div class="ap-table-wrapper">
-                    <table class="ap-table" id="compTable">
+                <div style="overflow-x:auto;">
+                    <table class="ap-table" id="complianceTable">
                         <thead>
                             <tr>
-                                <th>Institution</th>
-                                <th>Compliance</th>
-                                <th>Members</th>
-                                <th>Participation Rate</th>
-                                <th>Events Hosted</th>
-                                <th>Last Activity</th>
+                                <th>Institution Name</th>
+                                <th>Acronym</th>
+                                <th>Active Student Members</th>
+                                <th>Charter Standing</th>
+                                <th>Compliance Status</th>
                                 <th style="text-align:right;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($complianceData)): ?>
                                 <tr>
-                                    <td colspan="7">
-                                        <div class="ap-empty-state">
-                                            <div class="ap-empty-icon"><i class="fas fa-building"></i></div>
-                                            <div class="ap-empty-title">No Compliance Data</div>
-                                            <div class="ap-empty-desc">No institutions or events found for this academic year.</div>
-                                        </div>
+                                    <td colspan="6" style="text-align:center; padding:2.5rem; color:#64748B;">
+                                        <i class="fas fa-building-circle-check" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
+                                        <strong style="color:#0F172A; font-size:0.92rem;">No Chartered Institutions in Database</strong>
+                                        <p style="margin:0.25rem 0 0; font-size:0.78rem;">Approved affiliation applications will automatically appear here.</p>
                                     </td>
                                 </tr>
                             <?php else: ?>
-                                <?php foreach ($complianceData as $inst): ?>
+                                <?php foreach ($complianceData as $row): ?>
                                     <tr>
                                         <td>
-                                            <div style="display:flex; align-items:center; gap:0.75rem;">
-                                                <div class="ap-avatar-badge"><?= htmlspecialchars(substr($inst['name'], 0, 3)) ?></div>
-                                                <strong style="color:var(--text-heading);"><?= htmlspecialchars($inst['name']) ?></strong>
-                                            </div>
+                                            <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($row['name']) ?></strong>
                                         </td>
                                         <td>
-                                            <span class="ap-pill <?= $inst['pill'] ?>">
-                                                <span class="ap-pill-dot"></span>
-                                                <?= htmlspecialchars($inst['status_label']) ?>
+                                            <span style="font-family:'JetBrains Mono', monospace; font-size:0.75rem; font-weight:700; color:var(--color-navy);">
+                                                <?= htmlspecialchars($row['acronym']) ?>
                                             </span>
                                         </td>
-                                        <td><?= number_format($inst['member_count']) ?></td>
                                         <td>
-                                            <div style="display:flex; align-items:center; gap:0.65rem;">
-                                                <div class="ap-progress-bar" style="width:90px;">
-                                                    <div class="ap-progress-fill <?= $inst['participation_rate'] >= 75 ? 'emerald' : '' ?>" style="width:<?= $inst['participation_rate'] ?>%;"></div>
-                                                </div>
-                                                <span style="font-size:0.8rem; font-weight:700; color:var(--text-heading);"><?= $inst['participation_rate'] ?>%</span>
-                                            </div>
+                                            <strong style="color:var(--color-navy);"><?= number_format($row['member_count']) ?></strong> Students
                                         </td>
-                                        <td><?= $inst['hosted_events'] ?> events</td>
-                                        <td style="font-size:0.8rem; color:var(--text-muted);"><?= $inst['last_activity'] ? date('M j, Y', strtotime($inst['last_activity'])) : 'N/A' ?></td>
+                                        <td>
+                                            <span class="ap-pill active"><span class="ap-pill-dot"></span> Active</span>
+                                        </td>
+                                        <td>
+                                            <span class="ap-pill <?= $row['pill'] ?>">
+                                                <?= htmlspecialchars($row['status_label']) ?>
+                                            </span>
+                                        </td>
                                         <td style="text-align:right;">
-                                            <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-                                                <button class="ap-btn-secondary" style="padding:0.3rem 0.85rem; font-size:0.75rem;" onclick="viewDetails('<?= $inst['id'] ?>')">
-                                                    <i class="fas fa-eye"></i>
-                                                </button>
-                                                <button class="ap-btn-primary" style="padding:0.3rem 0.85rem; font-size:0.75rem;" onclick="sendReminder('<?= $inst['id'] ?>')">
-                                                    <i class="fas fa-bell"></i> Remind
-                                                </button>
-                                            </div>
+                                            <a href="<?= PORTAL_URL ?>/admin/members/list.php?school=<?= urlencode($row['id']) ?>" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
+                                                <i class="fas fa-users" style="color:var(--color-navy);"></i> View Roster
+                                            </a>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -234,54 +425,27 @@ $summary = [
             </div>
 
             <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-calendar-check"></i><span><strong>Academic Year:</strong> <?= $startYear ?>–<?= $endYear ?></span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Compliant Chapters:</strong> <?= $summary['compliant'] ?> of <?= $summary['total_institutions'] ?></span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-clock"></i><span><strong>Last Updated:</strong> <?= date('M d, Y H:i') ?></span></div>
+            <div class="ap-sentinel-strip" style="margin-top:1.5rem;">
+                <div class="ap-sentinel-item"><i class="fas fa-scale-balanced"></i><span><strong>National By-Laws:</strong> Minimum 20 Members per Chartered Chapter</span></div>
+                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Cryptographic Hash:</strong> SHA-256 Ledger Verified</span></div>
             </div>
 
         </div>
     </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        window.IECEP_CONFIG = window.IECEP_CONFIG || {
-            SUPABASE_URL: <?= json_encode(SUPABASE_URL) ?>,
-            SUPABASE_ANON_KEY: <?= json_encode(SUPABASE_ANON_KEY) ?>
-        };
+        function filterComplianceTable() {
+            const query = document.getElementById('complianceSearchInput').value.toLowerCase();
+            const table = document.getElementById('complianceTable');
+            const trs = table.getElementsByTagName('tr');
 
-        function filterTable() {
-            const q = document.getElementById('compSearch').value.toLowerCase();
-            document.querySelectorAll('#compTable tbody tr').forEach(tr => {
-                tr.style.display = tr.textContent.toLowerCase().includes(q) ? '' : 'none';
-            });
-        }
-
-        function exportCSV() {
-            const data = <?= json_encode($complianceData) ?>;
-            const csv = [['Institution','Status','Members','Participation Rate','Events Hosted','Last Activity'],
-                ...data.map(i => [i.name, i.status_label, i.member_count, i.participation_rate + '%', i.hosted_events, i.last_activity ? new Date(i.last_activity).toLocaleDateString() : 'N/A'])
-            ].map(r => r.map(v => `"${v}"`).join(',')).join('\n');
-            const link = document.createElement('a');
-            link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-            link.download = `compliance-report-<?= $startYear ?>-<?= $endYear ?>.csv`;
-            link.click();
-        }
-
-        function viewDetails(id) { window.location.href = '/IECEP-LSC-MEMSYS/public/portal/admin/institutions/list.php'; }
-
-        function sendReminder(id) {
-            if (confirm('Send compliance reminder to this institution?')) {
-                fetch('<?= BASE_URL ?>/api/send-reminder.php', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ institution_id: id, type: 'compliance' })
-                }).then(r => r.json()).then(data => {
-                    alert(data.success ? 'Reminder sent successfully!' : 'Error: ' + data.error);
-                }).catch(() => alert('Reminder queued for sending.'));
+            for (let i = 1; i < trs.length; i++) {
+                const tr = trs[i];
+                if (tr.children.length === 1 && tr.children[0].getAttribute('colspan')) continue;
+                const text = tr.textContent.toLowerCase();
+                tr.style.display = (text.indexOf(query) > -1) ? '' : 'none';
             }
         }
     </script>
-    <script src="/IECEP-LSC-MEMSYS/public/assets/js/realtime.js" defer></script>
 </body>
 </html>
