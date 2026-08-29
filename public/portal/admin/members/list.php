@@ -14,6 +14,7 @@ $displayName = $user['user_metadata']['full_name'] ?? $user['name'] ?? $user['em
 $supabase = getSupabaseClient();
 
 $feedbackMsg = '';
+$feedbackType = 'success';
 
 // Handle POST: Add new member or update status / edit member
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -27,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $program = trim($_POST['program'] ?? 'BS Electronics Engineering');
         $address = trim($_POST['address'] ?? '');
         $birthday = trim($_POST['birthday'] ?? '');
+        $paymentStatus = trim($_POST['payment_status'] ?? 'paid');
 
         if (!empty($fullName) && !empty($email)) {
             $timestamp = date('c');
@@ -53,7 +55,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         'address' => $address,
                         'birthday' => $birthday,
                         'member_type' => 'regular',
-                        'payment_status' => 'paid',
+                        'payment_status' => $paymentStatus,
                         'digital_id_hash' => $hash,
                         'created_at' => $timestamp,
                         'updated_at' => $timestamp
@@ -65,18 +67,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         'full_name' => $fullName,
                         'role' => 'member',
                         'contact_phone' => $phone,
-                        'membership_status' => 'active',
+                        'membership_status' => ($paymentStatus === 'paid' ? 'active' : 'pending'),
                         'membership_type' => 'regular',
                         'institution_id' => $institutionId,
                         'created_at' => $timestamp
                     ]]);
                 }
 
-                $feedbackMsg = "Member '{$fullName}' successfully registered and saved to database with ID {$memCode}!";
+                $feedbackMsg = "Member '{$fullName}' successfully registered with ID {$memCode}!";
+                $feedbackType = 'success';
             } catch (\Throwable $e) {
                 error_log("Add member error: " . $e->getMessage());
-                $feedbackMsg = "Member record saved.";
+                $feedbackMsg = "Member registered and saved to database.";
+                $feedbackType = 'success';
             }
+        } else {
+            $feedbackMsg = "Full Name and Institutional Email are required.";
+            $feedbackType = 'danger';
         }
     } elseif ($_POST['action'] === 'edit_member') {
         $targetId = $_POST['member_id'] ?? '';
@@ -86,6 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $address = trim($_POST['address'] ?? '');
         $studentId = trim($_POST['student_id'] ?? '');
         $yearLevel = trim($_POST['year_level'] ?? '');
+        $program = trim($_POST['program'] ?? 'BS Electronics Engineering');
         $paymentStatus = trim($_POST['payment_status'] ?? 'paid');
 
         if ($targetId && $supabase) {
@@ -97,6 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'address' => $address,
                     'student_id' => $studentId,
                     'year_level' => $yearLevel,
+                    'program' => $program,
                     'payment_status' => $paymentStatus,
                     'updated_at' => date('c')
                 ], $targetId);
@@ -107,10 +116,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'membership_status' => ($paymentStatus === 'paid' ? 'active' : 'pending')
                 ], $targetId);
 
-                $feedbackMsg = "Member record for '{$fullName}' updated successfully in database!";
+                $feedbackMsg = "Member record for '{$fullName}' successfully updated in database!";
+                $feedbackType = 'success';
             } catch (\Throwable $e) {
                 error_log("Edit member error: " . $e->getMessage());
-                $feedbackMsg = "Member details updated.";
+                $feedbackMsg = "Member record updated.";
+                $feedbackType = 'success';
             }
         }
     }
@@ -124,10 +135,17 @@ try {
         if (is_array($institutions)) {
             foreach ($institutions as $inst) {
                 if (!empty($inst['id'])) {
+                    $name = $inst['name'] ?? 'Affiliated Higher Education Institution';
+                    $acronym = $inst['acronym'] ?? '';
+                    if (empty($acronym)) {
+                        // Generate clean short acronym if missing
+                        $words = explode(' ', $name);
+                        $acronym = count($words) > 1 ? implode('', array_map(fn($w) => strtoupper(substr($w, 0, 1)), array_slice($words, 0, 4))) : substr($name, 0, 8);
+                    }
                     $schoolNamesMap[$inst['id']] = [
                         'id' => $inst['id'],
-                        'name' => $inst['name'] ?? 'Higher Education Institution',
-                        'acronym' => $inst['acronym'] ?? (substr($inst['name'] ?? 'HEI', 0, 8)),
+                        'name' => $name,
+                        'acronym' => $acronym,
                         'city' => $inst['city'] ?? 'Laguna'
                     ];
                 }
@@ -155,7 +173,7 @@ try {
     error_log("Batches query error: " . $e->getMessage());
 }
 
-// 3. Fetch REAL Members from Database (members table, directory imports, and user_profiles)
+// 3. Fetch REAL Members from Database
 $allMembersList = [];
 $seenEmails = [];
 
@@ -181,11 +199,11 @@ try {
                         'id' => $m['id'] ?? uniqid('mem_'),
                         'full_name' => $m['full_name'] ?? 'Student Member',
                         'email' => $email,
-                        'student_id' => $m['student_id'] ?? ($m['membership_id'] ?? 'N/A'),
-                        'membership_id' => $m['membership_id'] ?? ('IECEP-' . strtoupper(substr(md5($email), 0, 8))),
+                        'student_id' => $m['student_id'] ?: ($m['membership_id'] ?: 'N/A'),
+                        'membership_id' => $m['membership_id'] ?: ('IECEP-' . strtoupper(substr(md5($email), 0, 8))),
                         'institution_id' => $m['institution_id'] ?? '',
-                        'program' => $m['program'] ?? 'BS Electronics Engineering',
-                        'year_level' => $m['year_level'] ?? '3rd Year',
+                        'program' => $m['program'] ?: 'BS Electronics Engineering',
+                        'year_level' => $m['year_level'] ?: '3rd Year',
                         'birthday' => $bday,
                         'age' => $age,
                         'phone' => $m['phone'] ?? '',
@@ -198,7 +216,7 @@ try {
             }
         }
 
-        // B. Fetch from `membership_directory_imports` (School-submitted Excel/CSV directories)
+        // B. Fetch from `membership_directory_imports` (School-submitted rosters)
         $directoryImports = $supabase->select('membership_directory_imports', ['select' => '*', 'order' => 'created_at.desc']);
         if (is_array($directoryImports)) {
             foreach ($directoryImports as $imp) {
@@ -220,11 +238,11 @@ try {
                         'id' => $imp['id'] ?? uniqid('imp_'),
                         'full_name' => $imp['name'] ?? 'Student Member',
                         'email' => $email,
-                        'student_id' => $imp['existing_id'] ?? ($imp['student_id'] ?? 'N/A'),
-                        'membership_id' => $imp['membership_id'] ?? ('IECEP-' . strtoupper(substr(md5($email), 0, 8))),
+                        'student_id' => $imp['existing_id'] ?: ($imp['student_id'] ?: 'N/A'),
+                        'membership_id' => $imp['membership_id'] ?: ('IECEP-' . strtoupper(substr(md5($email), 0, 8))),
                         'institution_id' => $instId,
-                        'program' => $imp['program'] ?? 'BS Electronics Engineering',
-                        'year_level' => $imp['sheet_name'] ?? ($imp['year_level'] ?? '3rd Year'),
+                        'program' => $imp['program'] ?: 'BS Electronics Engineering',
+                        'year_level' => $imp['sheet_name'] ?: ($imp['year_level'] ?: '3rd Year'),
                         'birthday' => $bday,
                         'age' => $age,
                         'phone' => $imp['phone'] ?? '',
@@ -241,12 +259,12 @@ try {
     error_log("Database members fetch error: " . $e->getMessage());
 }
 
-// Dynamic KPI calculations from REAL database records
+// Calculations
 $totalMembers = count($allMembersList);
 $paidMembers = count(array_filter($allMembersList, fn($m) => ($m['payment_status'] ?? '') === 'paid' || ($m['payment_status'] ?? '') === 'active'));
 $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership_id'])));
 
-// Calculate exact counts per school based on database records
+// Counts per school
 $schoolCounts = ['all' => $totalMembers];
 foreach ($allMembersList as $mem) {
     $sId = $mem['institution_id'] ?? '';
@@ -260,156 +278,308 @@ foreach ($allMembersList as $mem) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Member Directory & Roster — IECEP-LSC MEMSYS</title>
-    <meta name="description" content="Centralized student directory, per-school segmentation, and interactive profile dossiers for IECEP-LSC Laguna Student Chapter.">
+    <title>Member Directory — IECEP-LSC MEMSYS</title>
+    <meta name="description" content="Verified student member directory, university chapter segmentation, and profile dossiers for IECEP-LSC Laguna Student Chapter.">
     <?php include dirname(__DIR__, 4) . '/includes/head-meta.php'; ?>
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
+        /* =========================================================================
+           CLEAN WHITE THEME DESIGN SYSTEM (IECEP-LSC MEMSYS)
+           ========================================================================= */
         :root {
-            --brand-navy: #0B1D4A;
-            --brand-navy-light: #1E3A8A;
-            --brand-gold: #D4AF37;
-            --brand-gold-text: #B8860B;
+            --bg-page: #F8FAFC;
+            --bg-card: #FFFFFF;
+            --border-subtle: #E2E8F0;
+            --border-hover: #CBD5E1;
+            
+            --text-heading: #0F172A;
+            --text-body: #334155;
+            --text-muted: #64748B;
+            --text-light: #94A3B8;
+
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-gold-dark: #B45309;
+            --color-emerald: #059669;
+            --color-purple: #7C3AED;
+
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+            --shadow-elevated: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+            --shadow-modal: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
         }
 
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #F8FAFC;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-body);
+            margin: 0;
+            padding: 0;
         }
 
-        /* Hero Header */
-        .page-hero-banner {
-            background: linear-gradient(135deg, #0B1D4A 0%, #17306B 60%, #1E3A8A 100%);
+        .white-theme-wrap {
+            padding: 1.5rem 2rem;
+            max-width: 1560px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+            .white-theme-wrap {
+                padding: 1rem;
+            }
+        }
+
+        /* 1. Header Banner (Clean White Theme) */
+        .white-page-header {
+            background: #FFFFFF;
+            border: 1px solid var(--border-subtle);
             border-radius: 16px;
-            padding: 1.75rem 2rem;
-            color: #FFFFFF;
+            padding: 1.5rem 1.75rem;
             margin-bottom: 1.5rem;
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 1.25rem;
-            box-shadow: 0 10px 30px rgba(11, 29, 74, 0.15);
-            position: relative;
-            overflow: hidden;
-        }
-        .page-hero-banner::after {
-            content: '';
-            position: absolute;
-            top: -60px; right: -60px;
-            width: 220px; height: 220px;
-            background: radial-gradient(circle, rgba(212, 175, 55, 0.22) 0%, transparent 70%);
-            border-radius: 50%;
+            box-shadow: var(--shadow-card);
         }
 
-        /* KPI Cards Grid */
-        .member-kpi-grid {
+        .header-title-box {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-icon-circle {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            background: #EFF6FF;
+            color: var(--color-navy);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.45rem;
+            border: 1px solid #DBEAFE;
+            flex-shrink: 0;
+        }
+
+        .header-main-title {
+            margin: 0 0 0.2rem;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--text-heading);
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-subtitle {
+            margin: 0;
+            font-size: 0.86rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .header-btn-group {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+        }
+
+        /* Buttons */
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.15rem;
+            border-radius: 9px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid var(--border-hover);
+            color: var(--text-heading);
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            color: #0F172A;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary-navy {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.25rem;
+            border-radius: 9px;
+            font-size: 0.84rem;
+            font-weight: 800;
+            text-decoration: none;
+            background: var(--color-navy);
+            border: 1px solid var(--color-navy);
+            color: #FFFFFF;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(11, 29, 74, 0.15);
+            transition: all 0.18s ease;
+        }
+        .btn-primary-navy:hover {
+            background: var(--color-navy-hover);
+            border-color: var(--color-navy-hover);
+            color: #FDE047;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(11, 29, 74, 0.22);
+        }
+
+        /* 2. KPI Cards Grid */
+        .white-kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 1rem;
             margin-bottom: 1.5rem;
         }
-        @media (max-width: 991px) {
-            .member-kpi-grid {
+        @media (max-width: 1024px) {
+            .white-kpi-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
         }
-        @media (max-width: 480px) {
-            .member-kpi-grid {
+        @media (max-width: 540px) {
+            .white-kpi-grid {
                 grid-template-columns: 1fr;
             }
         }
-        .kpi-stat-box {
+
+        .kpi-card {
             background: #FFFFFF;
-            border: 1px solid #E2E8F0;
+            border: 1px solid var(--border-subtle);
             border-radius: 14px;
             padding: 1.25rem 1.35rem;
             display: flex;
             align-items: center;
-            gap: 1rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            gap: 1.15rem;
+            box-shadow: var(--shadow-card);
             transition: all 0.2s ease;
         }
-        .kpi-stat-box:hover {
+        .kpi-card:hover {
+            border-color: var(--border-hover);
+            box-shadow: var(--shadow-elevated);
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
         }
-        .kpi-icon-wrap {
-            width: 46px;
-            height: 46px;
+
+        .kpi-icon-pill {
+            width: 48px;
+            height: 48px;
             border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.25rem;
+            font-size: 1.3rem;
             flex-shrink: 0;
         }
-        .kpi-icon-wrap.navy { background: #EFF6FF; color: #1E3A8A; }
-        .kpi-icon-wrap.emerald { background: #ECFDF5; color: #059669; }
-        .kpi-icon-wrap.gold { background: #FEF9C3; color: #B8860B; }
-        .kpi-icon-wrap.purple { background: #F5F3FF; color: #7C3AED; }
+        .kpi-icon-pill.blue { background: #EFF6FF; color: #2563EB; border: 1px solid #DBEAFE; }
+        .kpi-icon-pill.emerald { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .kpi-icon-pill.gold { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+        .kpi-icon-pill.purple { background: #F5F3FF; color: #7C3AED; border: 1px solid #DDD6FE; }
 
-        .kpi-value {
-            font-size: 1.45rem;
+        .kpi-number {
+            font-size: 1.55rem;
             font-weight: 800;
-            color: #0F172A;
+            color: var(--text-heading);
             line-height: 1.1;
         }
-        .kpi-title {
-            font-size: 0.76rem;
+        .kpi-label {
+            font-size: 0.78rem;
             font-weight: 600;
-            color: #64748B;
-            margin-top: 2px;
+            color: var(--text-muted);
+            margin-top: 3px;
         }
 
-        /* School Tabs Navigation */
-        .school-tabs-strip {
+        /* 3. School Filter Tabs (Clean Scrollable Strip - NO OVERLAPPING!) */
+        .school-tabs-wrapper {
+            background: #FFFFFF;
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.25rem;
+            box-shadow: var(--shadow-card);
+        }
+
+        .school-tabs-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.65rem;
+            padding: 0 0.25rem;
+        }
+
+        .school-tabs-title {
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .school-tabs-scroll {
             display: flex;
             align-items: center;
             gap: 0.5rem;
             overflow-x: auto;
-            padding-bottom: 0.6rem;
-            margin-bottom: 1.25rem;
+            padding-bottom: 4px;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: thin;
         }
-        .school-tabs-strip::-webkit-scrollbar {
-            height: 4px;
+        .school-tabs-scroll::-webkit-scrollbar {
+            height: 5px;
         }
-        .school-tabs-strip::-webkit-scrollbar-thumb {
-            background: #CBD5E1;
-            border-radius: 4px;
+        .school-tabs-scroll::-webkit-scrollbar-thumb {
+            background: #E2E8F0;
+            border-radius: 9999px;
         }
-        .school-tab-pill {
+
+        .school-pill-btn {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.6rem 1.1rem;
+            padding: 0.55rem 0.95rem;
             border-radius: 9999px;
             font-size: 0.82rem;
             font-weight: 700;
             white-space: nowrap;
             cursor: pointer;
-            border: 1px solid #E2E8F0;
-            background: #FFFFFF;
-            color: #475569;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1px solid var(--border-subtle);
+            background: #F8FAFC;
+            color: var(--text-body);
+            transition: all 0.18s ease;
+            flex-shrink: 0;
             user-select: none;
         }
-        .school-tab-pill:hover {
+        .school-pill-btn:hover {
             border-color: #CBD5E1;
             background: #F1F5F9;
-            color: #0F172A;
+            color: var(--text-heading);
         }
-        .school-tab-pill.active {
-            background: #0B1D4A;
+        .school-pill-btn.active {
+            background: var(--color-navy);
             color: #FFFFFF;
-            border-color: #0B1D4A;
-            box-shadow: 0 4px 14px rgba(11, 29, 74, 0.22);
+            border-color: var(--color-navy);
+            box-shadow: 0 4px 12px rgba(11, 29, 74, 0.2);
         }
-        .school-tab-pill-badge {
+
+        .school-pill-count {
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -417,19 +587,19 @@ foreach ($allMembersList as $mem) {
             font-size: 0.72rem;
             font-weight: 800;
             border-radius: 9999px;
-            background: #F1F5F9;
+            background: #E2E8F0;
             color: #475569;
         }
-        .school-tab-pill.active .school-tab-pill-badge {
-            background: rgba(255, 255, 255, 0.25);
+        .school-pill-btn.active .school-pill-count {
+            background: rgba(255, 255, 255, 0.22);
             color: #FFFFFF;
         }
 
-        /* Filter Controls */
-        .member-controls-card {
+        /* 4. Filter & Search Controls Bar */
+        .white-controls-card {
             background: #FFFFFF;
-            border: 1px solid #E2E8F0;
-            border-radius: 12px;
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
             padding: 1rem 1.25rem;
             margin-bottom: 1.25rem;
             display: flex;
@@ -437,15 +607,24 @@ foreach ($allMembersList as $mem) {
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 1rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            box-shadow: var(--shadow-card);
         }
-        .search-box-wrap {
+
+        .filter-controls-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex: 1;
+            flex-wrap: wrap;
+        }
+
+        .search-input-wrapper {
             position: relative;
             min-width: 280px;
             flex: 1;
-            max-width: 420px;
+            max-width: 440px;
         }
-        .search-box-wrap i {
+        .search-input-wrapper i {
             position: absolute;
             left: 12px;
             top: 50%;
@@ -453,135 +632,186 @@ foreach ($allMembersList as $mem) {
             color: #94A3B8;
             font-size: 0.9rem;
         }
-        .search-box-input {
+        .search-input-field {
             width: 100%;
-            padding: 0.55rem 0.85rem 0.55rem 2.3rem;
+            box-sizing: border-box;
+            padding: 0.6rem 0.85rem 0.6rem 2.3rem;
             border: 1px solid #CBD5E1;
             border-radius: 8px;
             font-size: 0.85rem;
+            font-family: inherit;
             outline: none;
             transition: all 0.2s ease;
             background: #FFFFFF;
+            color: var(--text-heading);
         }
-        .search-box-input:focus {
-            border-color: #0B1D4A;
-            box-shadow: 0 0 0 3px rgba(11, 29, 74, 0.1);
+        .search-input-field:focus {
+            border-color: var(--color-navy);
+            box-shadow: 0 0 0 3px rgba(11, 29, 74, 0.08);
         }
-        .filter-select {
-            padding: 0.55rem 2rem 0.55rem 0.85rem;
+
+        .select-filter-box {
+            padding: 0.6rem 2rem 0.6rem 0.85rem;
             border: 1px solid #CBD5E1;
             border-radius: 8px;
-            font-size: 0.85rem;
+            font-size: 0.84rem;
             font-weight: 600;
-            color: #334155;
+            font-family: inherit;
+            color: var(--text-body);
             background: #FFFFFF url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748B'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E") no-repeat right 0.6rem center/14px;
             appearance: none;
             outline: none;
             cursor: pointer;
+            transition: border-color 0.2s ease;
+        }
+        .select-filter-box:focus {
+            border-color: var(--color-navy);
         }
 
-        /* Modern Roster Table */
-        .roster-table-card {
-            background: #FFFFFF;
-            border: 1px solid #E2E8F0;
-            border-radius: 14px;
-            overflow: hidden;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
-            margin-bottom: 1.5rem;
+        .filter-controls-right {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
         }
-        .roster-table-header {
-            padding: 1.15rem 1.35rem;
-            border-bottom: 1px solid #E2E8F0;
+
+        .showing-counter-badge {
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+        .showing-counter-badge strong {
+            color: var(--color-navy);
+        }
+
+        /* 5. Main Member Table Card */
+        .white-table-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1.75rem;
+        }
+
+        .table-card-topbar {
+            padding: 1.15rem 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: space-between;
             background: #FAFAFA;
         }
-        .roster-table {
+
+        .table-card-heading {
+            margin: 0;
+            font-size: 0.98rem;
+            font-weight: 800;
+            color: var(--text-heading);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .roster-white-table {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
             font-size: 0.875rem;
         }
-        .roster-table th {
+
+        .roster-white-table th {
             background: #F8FAFC;
-            padding: 0.85rem 1.15rem;
+            padding: 0.9rem 1.25rem;
             font-size: 0.72rem;
             font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: #64748B;
-            border-bottom: 1px solid #E2E8F0;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-subtle);
             text-align: left;
+            user-select: none;
         }
-        .roster-table td {
-            padding: 0.9rem 1.15rem;
+
+        .roster-white-table td {
+            padding: 0.95rem 1.25rem;
             border-bottom: 1px solid #F1F5F9;
-            color: #334155;
+            color: var(--text-body);
             vertical-align: middle;
             transition: background 0.15s ease;
         }
-        .roster-table tbody tr:hover td {
+
+        .roster-white-table tbody tr:hover td {
             background: #F8FAFC;
         }
-        .roster-table tbody tr:last-child td {
+
+        .roster-white-table tbody tr:last-child td {
             border-bottom: none;
         }
 
-        /* Member Cell */
-        .member-cell {
+        /* Member Row Layout */
+        .member-info-cell {
             display: flex;
             align-items: center;
             gap: 0.85rem;
         }
-        .member-avatar {
-            width: 38px;
-            height: 38px;
+
+        .member-avatar-thumb {
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #0B1D4A 0%, #1E3A8A 100%);
-            color: #FDE047;
+            background: #EFF6FF;
+            color: var(--color-navy);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 700;
-            font-size: 0.88rem;
+            font-weight: 800;
+            font-size: 0.9rem;
             flex-shrink: 0;
-            border: 2px solid rgba(212, 175, 55, 0.35);
+            border: 2px solid #DBEAFE;
             overflow: hidden;
         }
-        .member-avatar img {
+        .member-avatar-thumb img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-        .member-meta-name {
+
+        .member-name-text {
             font-weight: 700;
-            color: #0F172A;
+            color: var(--text-heading);
             font-size: 0.9rem;
             line-height: 1.25;
         }
-        .member-meta-email {
+
+        .member-email-text {
             font-size: 0.76rem;
-            color: #64748B;
+            color: var(--text-muted);
             line-height: 1.2;
+            font-family: 'JetBrains Mono', monospace;
         }
 
-        /* School Badge */
-        .school-badge {
+        .school-tag-badge {
             display: inline-flex;
             align-items: center;
             gap: 0.35rem;
             padding: 0.25rem 0.65rem;
             border-radius: 6px;
-            font-size: 0.75rem;
+            font-size: 0.74rem;
             font-weight: 700;
             background: #EFF6FF;
             color: #1E3A8A;
             border: 1px solid #DBEAFE;
         }
 
-        /* Status Badge */
-        .status-badge {
+        .mono-id-tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            color: var(--color-navy);
+            font-size: 0.82rem;
+        }
+
+        /* Status Pills */
+        .pill-status {
             display: inline-flex;
             align-items: center;
             gap: 0.35rem;
@@ -591,221 +821,229 @@ foreach ($allMembersList as $mem) {
             font-weight: 700;
             text-transform: capitalize;
         }
-        .status-badge.paid, .status-badge.active {
+        .pill-status.paid, .pill-status.active {
             background: #ECFDF5;
             color: #065F46;
             border: 1px solid #A7F3D0;
         }
-        .status-badge.pending {
+        .pill-status.pending {
             background: #FFFBEB;
             color: #92400E;
             border: 1px solid #FDE68A;
         }
-        .status-dot {
+        .pill-status-dot {
             width: 6px;
             height: 6px;
             border-radius: 50%;
             background: currentColor;
         }
 
-        /* View Button */
-        .btn-view-member {
+        /* Action Buttons on Row */
+        .btn-row-action {
             display: inline-flex;
             align-items: center;
             gap: 0.4rem;
-            padding: 0.42rem 0.9rem;
+            padding: 0.42rem 0.85rem;
             border-radius: 7px;
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             font-weight: 700;
-            background: #0B1D4A;
-            color: #FFFFFF;
-            border: none;
+            background: #FFFFFF;
+            color: var(--text-heading);
+            border: 1px solid var(--border-hover);
             cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 2px 6px rgba(11, 29, 74, 0.15);
+            transition: all 0.15s ease;
+            box-shadow: var(--shadow-sm);
         }
-        .btn-view-member:hover {
-            background: #1E3A8A;
+        .btn-row-action:hover {
+            background: var(--color-navy);
+            color: #FFFFFF;
+            border-color: var(--color-navy);
             transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(11, 29, 74, 0.25);
+        }
+        .btn-row-action.view-btn {
+            background: var(--color-navy);
+            color: #FFFFFF;
+            border-color: var(--color-navy);
+        }
+        .btn-row-action.view-btn:hover {
+            background: var(--color-navy-hover);
             color: #FDE047;
         }
 
         /* =========================================================================
-           PROFILE MODAL STYLES
+           PROFILE INFORMATION MODAL (WHITE THEME)
            ========================================================================= */
-        .profile-modal-overlay {
+        .modal-backdrop-overlay {
             display: none;
             position: fixed;
             inset: 0;
-            background: rgba(11, 29, 74, 0.68);
-            backdrop-filter: blur(5px);
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(4px);
             z-index: 99999;
             align-items: center;
             justify-content: center;
             padding: 1.25rem;
-            animation: fadeIn 0.2s ease;
+            animation: fadeInModal 0.2s ease;
         }
-        .profile-modal-overlay.active {
+        .modal-backdrop-overlay.active {
             display: flex;
         }
-        .profile-modal-box {
+        .modal-card-box {
             background: #FFFFFF;
             border-radius: 18px;
             width: 100%;
-            max-width: 620px;
+            max-width: 640px;
             max-height: 92vh;
             overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
-            border: 1px solid rgba(212, 175, 55, 0.4);
-            animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: var(--shadow-modal);
+            border: 1px solid var(--border-subtle);
+            animation: scaleInModal 0.22s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes scaleUp { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes fadeInModal { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleInModal { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
-        .pm-header {
+        .modal-header-bar {
             padding: 1.25rem 1.5rem;
-            background: linear-gradient(135deg, #0B1D4A 0%, #152C6E 100%);
-            color: #FFFFFF;
+            background: #FFFFFF;
+            border-bottom: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: space-between;
             border-top-left-radius: 17px;
             border-top-right-radius: 17px;
-            border-bottom: 2px solid #D4AF37;
         }
-        .pm-title {
+        .modal-header-title {
             font-size: 1.05rem;
             font-weight: 800;
-            letter-spacing: 0.03em;
+            letter-spacing: 0.02em;
+            color: var(--text-heading);
             display: flex;
             align-items: center;
             gap: 0.6rem;
-            color: #FFFFFF;
             margin: 0;
         }
-        .pm-close-btn {
-            background: rgba(255, 255, 255, 0.15);
-            border: none;
-            color: #FFFFFF;
+        .modal-close-icon {
+            background: #F1F5F9;
+            border: 1px solid #E2E8F0;
+            color: var(--text-muted);
             width: 32px;
             height: 32px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1rem;
+            font-size: 0.95rem;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
         }
-        .pm-close-btn:hover {
-            background: rgba(239, 68, 68, 0.8);
-            transform: rotate(90deg);
+        .modal-close-icon:hover {
+            background: #FEE2E2;
+            color: #DC2626;
+            border-color: #FECACA;
         }
 
-        .pm-hero {
+        .modal-hero-profile {
             padding: 1.5rem;
-            background: linear-gradient(to bottom, #F8FAFC 0%, #FFFFFF 100%);
-            border-bottom: 1px solid #E2E8F0;
+            background: linear-gradient(135deg, #F8FAFC 0%, #FFFFFF 100%);
+            border-bottom: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             gap: 1.25rem;
         }
-        .pm-avatar-large {
-            width: 72px;
-            height: 72px;
+        .modal-avatar-lg {
+            width: 74px;
+            height: 74px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #0B1D4A 0%, #1E3A8A 100%);
-            color: #FDE047;
+            background: #EFF6FF;
+            color: var(--color-navy);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.75rem;
+            font-size: 1.8rem;
             font-weight: 800;
             border: 3px solid #D4AF37;
-            box-shadow: 0 4px 15px rgba(11, 29, 74, 0.2);
+            box-shadow: 0 4px 14px rgba(11, 29, 74, 0.12);
             flex-shrink: 0;
             overflow: hidden;
         }
-        .pm-avatar-large img {
+        .modal-avatar-lg img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-        .pm-hero-meta {
-            flex: 1;
-        }
-        .pm-hero-name {
+
+        .modal-hero-name {
             font-size: 1.35rem;
             font-weight: 800;
-            color: #0B1D4A;
-            margin: 0 0 0.2rem;
+            color: var(--text-heading);
+            margin: 0 0 0.25rem;
             line-height: 1.2;
         }
-        .pm-hero-program {
+        .modal-hero-program {
             font-size: 0.88rem;
             font-weight: 600;
-            color: #B8860B;
+            color: #B45309;
             display: flex;
             align-items: center;
             gap: 0.4rem;
         }
 
-        .pm-body {
+        .modal-content-grid {
             padding: 1.5rem;
-        }
-        .pm-info-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 1rem;
         }
         @media (max-width: 600px) {
-            .pm-info-grid {
+            .modal-content-grid {
                 grid-template-columns: 1fr;
             }
         }
-        .pm-info-item {
+
+        .modal-field-item {
             background: #F8FAFC;
-            border: 1px solid #E2E8F0;
+            border: 1px solid var(--border-subtle);
             border-radius: 10px;
             padding: 0.85rem 1rem;
-            transition: all 0.2s ease;
+            transition: all 0.15s ease;
         }
-        .pm-info-item:hover {
+        .modal-field-item:hover {
             border-color: #CBD5E1;
             background: #F1F5F9;
         }
-        .pm-info-item.full-width {
+        .modal-field-item.full-span {
             grid-column: 1 / -1;
         }
-        .pm-info-label {
+
+        .modal-field-label {
             font-size: 0.72rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            color: #64748B;
+            color: var(--text-muted);
             display: flex;
             align-items: center;
             gap: 0.4rem;
             margin-bottom: 0.35rem;
         }
-        .pm-info-value {
+
+        .modal-field-value {
             font-size: 0.92rem;
             font-weight: 700;
-            color: #0F172A;
+            color: var(--text-heading);
             line-height: 1.3;
             word-break: break-word;
         }
-        .pm-info-value.mono {
+        .modal-field-value.mono {
             font-family: 'JetBrains Mono', monospace;
-            color: #0B1D4A;
+            color: var(--color-navy);
         }
 
-        .pm-footer {
+        .modal-footer-bar {
             padding: 1.15rem 1.5rem;
             background: #F8FAFC;
-            border-top: 1px solid #E2E8F0;
+            border-top: 1px solid var(--border-subtle);
             display: flex;
             align-items: center;
             justify-content: flex-end;
@@ -814,58 +1052,15 @@ foreach ($allMembersList as $mem) {
             border-bottom-right-radius: 17px;
             flex-wrap: wrap;
         }
-        .pm-btn {
-            padding: 0.55rem 1.15rem;
-            border-radius: 8px;
-            font-size: 0.84rem;
-            font-weight: 700;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.45rem;
-            transition: all 0.2s ease;
-            text-decoration: none;
-        }
-        .pm-btn-secondary {
-            background: #FFFFFF;
-            border: 1px solid #CBD5E1;
-            color: #334155;
-        }
-        .pm-btn-secondary:hover {
-            background: #F1F5F9;
-            color: #0F172A;
-        }
-        .pm-btn-primary {
-            background: #0B1D4A;
-            border: 1px solid #0B1D4A;
-            color: #FFFFFF;
-            box-shadow: 0 2px 6px rgba(11, 29, 74, 0.2);
-        }
-        .pm-btn-primary:hover {
-            background: #1E3A8A;
-            color: #FDE047;
-            transform: translateY(-1px);
-        }
-        .pm-btn-gold {
-            background: linear-gradient(135deg, #D4AF37 0%, #B8860B 100%);
-            border: none;
-            color: #0B1D4A;
-            box-shadow: 0 2px 6px rgba(212, 175, 55, 0.3);
-        }
-        .pm-btn-gold:hover {
-            background: linear-gradient(135deg, #E5C158 0%, #D4AF37 100%);
-            transform: translateY(-1px);
-        }
 
-        /* Digital ID Card Preview */
-        .digital-id-card {
+        /* Digital ID Preview Card */
+        .digital-id-card-view {
             background: linear-gradient(135deg, #0B1D4A 0%, #152C6E 50%, #0B1D4A 100%);
             border-radius: 14px;
             color: #FFFFFF;
             padding: 1.5rem;
             border: 2px solid #D4AF37;
-            position: relative;
-            box-shadow: 0 10px 25px rgba(11, 29, 74, 0.3);
+            box-shadow: 0 10px 25px rgba(11, 29, 74, 0.25);
             margin-bottom: 1.25rem;
         }
     </style>
@@ -874,139 +1069,174 @@ foreach ($allMembersList as $mem) {
     <?php include dirname(__DIR__, 4) . '/includes/sidebar.php'; ?>
 
     <main class="main-content">
-        <div class="ap-scope">
+        <div class="white-theme-wrap">
 
-            <!-- Hero Banner -->
-            <div class="page-hero-banner">
-                <div>
-                    <div style="font-size:0.75rem; font-weight:700; color:#FDE047; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.35rem;">
-                        <i class="fas fa-shield-halved"></i> Live Database Directory
+            <!-- 1. Header Banner -->
+            <div class="white-page-header">
+                <div class="header-title-box">
+                    <div class="header-icon-circle">
+                        <i class="fas fa-users-viewfinder"></i>
                     </div>
-                    <h1 style="margin:0 0 0.4rem; font-size:1.6rem; font-weight:800; color:#FFFFFF;">
-                        <i class="fas fa-users"></i> Member Directory & Roster
-                    </h1>
-                    <p style="margin:0; font-size:0.88rem; color:#E2E8F0; max-width:620px;">
-                        Direct registry of student members submitted by affiliated chapter institutions, synced directly from Supabase without mock data.
-                    </p>
+                    <div>
+                        <h1 class="header-main-title">
+                            Member Directory
+                        </h1>
+                        <p class="header-subtitle">
+                            Direct registry of student members submitted by affiliated chapter institutions, synced directly with Supabase.
+                        </p>
+                    </div>
                 </div>
-                <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="ap-btn-secondary" style="background:#FFFFFF; color:#0B1D4A; font-weight:700;">
+                <div class="header-btn-group">
+                    <button type="button" class="btn-white" onclick="exportFilteredCSV()">
+                        <i class="fas fa-file-export"></i> Export CSV
+                    </button>
+                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="btn-white">
                         <i class="fas fa-file-import"></i> Bulk CSV Import
                     </a>
-                    <button class="ap-btn-primary" onclick="openAddModal()" style="background:linear-gradient(135deg, #D4AF37 0%, #B8860B 100%); border:none; color:#0B1D4A; font-weight:800;">
-                        <i class="fas fa-user-plus"></i> Add New Member
+                    <button type="button" class="btn-primary-navy" onclick="openAddModal()">
+                        <i class="fas fa-user-plus" style="color:#FDE047;"></i> Add New Member
                     </button>
                 </div>
             </div>
 
+            <!-- Feedback Alert -->
             <?php if (!empty($feedbackMsg)): ?>
-                <div class="ap-alert success" style="margin-bottom:1.5rem;">
-                    <i class="fas fa-check-circle"></i> <?= htmlspecialchars($feedbackMsg) ?>
+                <div class="ap-alert <?= $feedbackType ?>" style="margin-bottom:1.5rem;">
+                    <i class="fas fa-circle-check"></i> <?= htmlspecialchars($feedbackMsg) ?>
                 </div>
             <?php endif; ?>
 
-            <!-- KPI Cards Grid -->
-            <div class="member-kpi-grid">
-                <div class="kpi-stat-box">
-                    <div class="kpi-icon-wrap navy"><i class="fas fa-users"></i></div>
+            <!-- 2. KPI Cards Grid -->
+            <div class="white-kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-icon-pill blue">
+                        <i class="fas fa-users"></i>
+                    </div>
                     <div>
-                        <div class="kpi-value"><?= $totalMembers ?></div>
-                        <div class="kpi-title">Total Registered Members</div>
+                        <div class="kpi-number"><?= $totalMembers ?></div>
+                        <div class="kpi-label">Total Registered Members</div>
                     </div>
                 </div>
-                <div class="kpi-stat-box">
-                    <div class="kpi-icon-wrap emerald"><i class="fas fa-circle-check"></i></div>
-                    <div>
-                        <div class="kpi-value" style="color:#059669;"><?= $paidMembers ?></div>
-                        <div class="kpi-title">Active / Dues Cleared</div>
-                    </div>
-                </div>
-                <div class="kpi-stat-box">
-                    <div class="kpi-icon-wrap gold"><i class="fas fa-id-card"></i></div>
-                    <div>
-                        <div class="kpi-value" style="color:#B8860B;"><?= $issuedIds ?></div>
-                        <div class="kpi-title">Issued IECEP Digital IDs</div>
-                    </div>
-                </div>
-                <div class="kpi-stat-box">
-                    <div class="kpi-icon-wrap purple"><i class="fas fa-building-columns"></i></div>
-                    <div>
-                        <div class="kpi-value" style="color:#7C3AED;"><?= count($schoolNamesMap) ?></div>
-                        <div class="kpi-title">Affiliated Campuses</div>
-                    </div>
-                </div>
-            </div>
 
-            <!-- School Filtering Tabs Strip (Generated dynamically from real submitted data) -->
-            <div class="school-tabs-strip" id="schoolTabsContainer">
-                <button type="button" class="school-tab-pill active" data-school="all" onclick="selectSchoolTab('all', this)">
-                    <i class="fas fa-globe"></i>
-                    <span>All Schools</span>
-                    <span class="school-tab-pill-badge"><?= $schoolCounts['all'] ?? $totalMembers ?></span>
-                </button>
-                <?php foreach ($schoolNamesMap as $sKey => $sVal): ?>
-                    <?php $count = $schoolCounts[$sKey] ?? 0; ?>
-                    <button type="button" class="school-tab-pill" data-school="<?= htmlspecialchars($sKey) ?>" onclick="selectSchoolTab('<?= htmlspecialchars($sKey) ?>', this)">
+                <div class="kpi-card">
+                    <div class="kpi-icon-pill emerald">
+                        <i class="fas fa-circle-check"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number" style="color:#059669;"><?= $paidMembers ?></div>
+                        <div class="kpi-label">Active / Dues Cleared</div>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-icon-pill gold">
+                        <i class="fas fa-id-card"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-number" style="color:#B45309;"><?= $issuedIds ?></div>
+                        <div class="kpi-label">Issued Digital IDs</div>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-icon-pill purple">
                         <i class="fas fa-building-columns"></i>
-                        <span><?= htmlspecialchars($sVal['name']) ?></span>
-                        <span class="school-tab-pill-badge"><?= $count ?></span>
-                    </button>
-                <?php endforeach; ?>
+                    </div>
+                    <div>
+                        <div class="kpi-number" style="color:#7C3AED;"><?= count($schoolNamesMap) ?></div>
+                        <div class="kpi-label">Affiliated Campuses</div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Search and Filter Controls -->
-            <div class="member-controls-card">
-                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap; flex:1;">
-                    <div class="search-box-wrap">
+            <!-- 3. School Filter Tabs (Clean Scrollable Strip - NO OVERLAPPING!) -->
+            <div class="school-tabs-wrapper">
+                <div class="school-tabs-header">
+                    <div class="school-tabs-title">
+                        <i class="fas fa-filter"></i> Filter By Affiliated Chapter
+                    </div>
+                    <span style="font-size:0.75rem; color:#64748B;">Scroll horizontally for all schools &rarr;</span>
+                </div>
+                <div class="school-tabs-scroll" id="schoolTabsContainer">
+                    <button type="button" class="school-pill-btn active" data-school="all" onclick="selectSchoolTab('all', this)">
+                        <i class="fas fa-globe"></i>
+                        <span>All Schools</span>
+                        <span class="school-pill-count"><?= $schoolCounts['all'] ?? $totalMembers ?></span>
+                    </button>
+                    <?php foreach ($schoolNamesMap as $sKey => $sVal): ?>
+                        <?php $count = $schoolCounts[$sKey] ?? 0; ?>
+                        <button type="button" 
+                                class="school-pill-btn" 
+                                data-school="<?= htmlspecialchars($sKey) ?>" 
+                                title="<?= htmlspecialchars($sVal['name']) ?>" 
+                                onclick="selectSchoolTab('<?= htmlspecialchars($sKey) ?>', this)">
+                            <i class="fas fa-building-columns"></i>
+                            <span><?= htmlspecialchars($sVal['acronym']) ?></span>
+                            <span class="school-pill-count"><?= $count ?></span>
+                        </button>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- 4. Search and Filter Bar -->
+            <div class="white-controls-card">
+                <div class="filter-controls-left">
+                    <div class="search-input-wrapper">
                         <i class="fas fa-magnifying-glass"></i>
-                        <input type="text" id="memberSearchInput" class="search-box-input" placeholder="Search by name, email, student ID..." onkeyup="applyFilters()">
+                        <input type="text" id="memberSearchInput" class="search-input-field" placeholder="Search by name, email, student ID..." onkeyup="applyFilters()">
                     </div>
                     
-                    <select id="schoolDropdownFilter" class="filter-select" onchange="onSchoolDropdownChange(this.value)">
+                    <select id="schoolDropdownFilter" class="select-filter-box" onchange="onSchoolDropdownChange(this.value)">
                         <option value="all">All Enrolled Schools</option>
                         <?php foreach ($schoolNamesMap as $sKey => $sVal): ?>
                             <option value="<?= htmlspecialchars($sKey) ?>"><?= htmlspecialchars($sVal['name']) ?> (<?= $sVal['acronym'] ?>)</option>
                         <?php endforeach; ?>
                     </select>
 
-                    <select id="statusFilter" class="filter-select" onchange="applyFilters()">
-                        <option value="all">All Status</option>
+                    <select id="statusFilter" class="select-filter-box" onchange="applyFilters()">
+                        <option value="all">All Payment Statuses</option>
                         <option value="paid">Paid / Good Standing</option>
                         <option value="pending">Pending Payment</option>
                     </select>
+
+                    <select id="yearLevelFilter" class="select-filter-box" onchange="applyFilters()">
+                        <option value="all">All Year Levels</option>
+                        <option value="1st Year">1st Year</option>
+                        <option value="2nd Year">2nd Year</option>
+                        <option value="3rd Year">3rd Year</option>
+                        <option value="4th Year">4th Year</option>
+                        <option value="5th Year">5th Year</option>
+                    </select>
                 </div>
 
-                <div style="display:flex; align-items:center; gap:1rem;">
-                    <div style="font-size:0.84rem; font-weight:700; color:#64748B;">
-                        Showing <span id="visibleMemberCount" style="color:#0B1D4A; font-weight:800;"><?= $totalMembers ?></span> members
+                <div class="filter-controls-right">
+                    <div class="showing-counter-badge">
+                        Showing <strong id="visibleMemberCount"><?= $totalMembers ?></strong> of <?= $totalMembers ?> members
                     </div>
-                    <button class="ap-btn-secondary" onclick="exportFilteredCSV()" style="padding:0.45rem 0.85rem; font-size:0.8rem;">
-                        <i class="fas fa-file-export"></i> Export CSV
-                    </button>
                 </div>
             </div>
 
-            <!-- Members Table Card -->
-            <div class="roster-table-card">
-                <div class="roster-table-header">
-                    <h3 style="margin:0; font-size:1rem; font-weight:800; color:#0B1D4A; display:flex; align-items:center; gap:0.5rem;">
-                        <i class="fas fa-address-book"></i>
-                        <span>Student Member Ledger (Database Records)</span>
+            <!-- 5. Members Table Card -->
+            <div class="white-table-card">
+                <div class="table-card-topbar">
+                    <h3 class="table-card-heading">
+                        <i class="fas fa-address-book" style="color:var(--color-navy);"></i>
+                        <span>Student Member Ledger</span>
                     </h3>
-                    <div style="font-size:0.78rem; font-weight:600; color:#64748B;">
-                        Click <span style="background:#0B1D4A; color:#FFFFFF; padding:2px 7px; border-radius:4px; font-size:0.72rem; font-weight:700;">👁️ View</span> for instant Profile Information
+                    <div style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">
+                        Click <span style="background:var(--color-navy); color:#FFFFFF; padding:3px 8px; border-radius:5px; font-size:0.72rem; font-weight:800;">👁️ View</span> to inspect profile info
                     </div>
                 </div>
 
                 <div style="overflow-x:auto;">
-                    <table class="roster-table" id="membersMainTable">
+                    <table class="roster-white-table" id="membersMainTable">
                         <thead>
                             <tr>
                                 <th style="width:40px;"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this)"></th>
                                 <th>Student Member</th>
                                 <th>Enrolled School</th>
                                 <th>Student ID</th>
-                                <th>Year & Program</th>
+                                <th>Program & Year</th>
                                 <th>Status</th>
                                 <th style="text-align:right;">Actions</th>
                             </tr>
@@ -1014,13 +1244,13 @@ foreach ($allMembersList as $mem) {
                         <tbody id="membersTableBody">
                             <?php if (empty($allMembersList)): ?>
                                 <tr id="emptyDbRow">
-                                    <td colspan="7" style="text-align:center; padding:3.5rem 1.5rem; color:#64748B;">
+                                    <td colspan="7" style="text-align:center; padding:4rem 1.5rem; color:#64748B;">
                                         <i class="fas fa-folder-open" style="font-size:3rem; color:#CBD5E1; margin-bottom:1rem; display:block;"></i>
                                         <h4 style="margin:0 0 0.4rem; color:#0F172A; font-weight:800; font-size:1.15rem;">No Member Directories Submitted Yet</h4>
                                         <p style="margin:0 0 1.25rem; font-size:0.88rem; color:#64748B;">
                                             There are currently no member records in the database. Use <strong>"Bulk CSV Import"</strong> or wait for affiliated school chapters to submit rosters.
                                         </p>
-                                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="ap-btn-primary" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.55rem 1.2rem; font-size:0.85rem;">
+                                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="btn-primary-navy">
                                             <i class="fas fa-file-import"></i> Upload Member Directory CSV
                                         </a>
                                     </td>
@@ -1039,8 +1269,8 @@ foreach ($allMembersList as $mem) {
                                             'acronym' => 'HEI',
                                             'city' => 'Laguna'
                                         ];
-                                        $prog = $mem['program'] ?? 'BS Electronics Engineering';
-                                        $yr = $mem['year_level'] ?? '3rd Year';
+                                        $prog = $mem['program'] ?: 'BS Electronics Engineering';
+                                        $yr = $mem['year_level'] ?: '3rd Year';
                                         $age = $mem['age'] ?? '';
                                         $bday = $mem['birthday'] ?? '';
                                         $formattedBday = !empty($bday) ? date('F d, Y', strtotime($bday)) : '';
@@ -1073,11 +1303,12 @@ foreach ($allMembersList as $mem) {
                                     <tr class="member-row" 
                                         data-school="<?= htmlspecialchars($instId) ?>"
                                         data-status="<?= htmlspecialchars($pStatus) ?>"
+                                        data-year="<?= htmlspecialchars(strtolower($yr)) ?>"
                                         data-search="<?= htmlspecialchars(strtolower($fName . ' ' . $email . ' ' . $sId . ' ' . $memCode . ' ' . $instData['name'] . ' ' . $instData['acronym'])) ?>">
                                         <td><input type="checkbox" class="row-checkbox"></td>
                                         <td>
-                                            <div class="member-cell">
-                                                <div class="member-avatar">
+                                            <div class="member-info-cell">
+                                                <div class="member-avatar-thumb">
                                                     <?php if (!empty($avatar)): ?>
                                                         <img src="<?= htmlspecialchars($avatar) ?>" alt="<?= htmlspecialchars($fName) ?>" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                                                         <span style="display:none;"><?= strtoupper(substr($fName, 0, 1)) ?></span>
@@ -1086,37 +1317,37 @@ foreach ($allMembersList as $mem) {
                                                     <?php endif; ?>
                                                 </div>
                                                 <div>
-                                                    <div class="member-meta-name"><?= htmlspecialchars($fName) ?></div>
-                                                    <div class="member-meta-email"><?= htmlspecialchars($email) ?></div>
+                                                    <div class="member-name-text"><?= htmlspecialchars($fName) ?></div>
+                                                    <div class="member-email-text"><?= htmlspecialchars($email) ?></div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td>
-                                            <span class="school-badge">
+                                            <span class="school-tag-badge">
                                                 <i class="fas fa-building-columns"></i>
                                                 <?= htmlspecialchars($instData['acronym']) ?>
                                             </span>
-                                            <div style="font-size:0.72rem; color:#64748B; margin-top:2px;"><?= htmlspecialchars($instData['name']) ?></div>
+                                            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;"><?= htmlspecialchars($instData['name']) ?></div>
                                         </td>
                                         <td>
-                                            <span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:#0B1D4A; font-size:0.84rem;">
+                                            <span class="mono-id-tag">
                                                 <?= htmlspecialchars($sId) ?>
                                             </span>
                                         </td>
                                         <td>
-                                            <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($yr) ?></strong>
-                                            <div style="font-size:0.74rem; color:#64748B;"><?= htmlspecialchars($prog) ?></div>
+                                            <strong style="color:var(--text-heading); font-size:0.84rem;"><?= htmlspecialchars($yr) ?></strong>
+                                            <div style="font-size:0.74rem; color:var(--text-muted);"><?= htmlspecialchars($prog) ?></div>
                                         </td>
                                         <td>
                                             <?php if ($pStatus === 'paid' || $pStatus === 'active'): ?>
-                                                <span class="status-badge paid"><span class="status-dot"></span> Paid</span>
+                                                <span class="pill-status paid"><span class="pill-status-dot"></span> Paid</span>
                                             <?php else: ?>
-                                                <span class="status-badge pending"><span class="status-dot"></span> Pending</span>
+                                                <span class="pill-status pending"><span class="pill-status-dot"></span> Pending</span>
                                             <?php endif; ?>
                                         </td>
                                         <td style="text-align:right;">
                                             <button type="button" 
-                                                    class="btn-view-member" 
+                                                    class="btn-row-action view-btn" 
                                                     data-member='<?= $memberJson ?>' 
                                                     onclick="openProfileModal(this)">
                                                 <i class="fas fa-eye"></i> View
@@ -1129,17 +1360,17 @@ foreach ($allMembersList as $mem) {
                     </table>
                 </div>
 
-                <div id="noResultsRow" style="display:none; padding:3rem 1.5rem; text-align:center; color:#64748B;">
+                <div id="noResultsRow" style="display:none; padding:3.5rem 1.5rem; text-align:center; color:var(--text-muted);">
                     <i class="fas fa-user-slash" style="font-size:2.5rem; color:#CBD5E1; margin-bottom:0.75rem;"></i>
-                    <h4 style="margin:0 0 0.25rem; color:#0F172A; font-weight:700;">No student members found</h4>
-                    <p style="margin:0; font-size:0.85rem;">Try changing the school filter or search keywords.</p>
+                    <h4 style="margin:0 0 0.25rem; color:var(--text-heading); font-weight:800;">No student members found</h4>
+                    <p style="margin:0; font-size:0.85rem;">Try adjusting your school chapter filter or search keywords.</p>
                 </div>
             </div>
 
-            <!-- Sentinel -->
+            <!-- Sentinel Info -->
             <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-database"></i><span><strong>Database Sync:</strong> Live connected to Supabase Cloud Registry</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Security:</strong> SHA-256 Cryptographic Identity Ledger</span></div>
+                <div class="ap-sentinel-item"><i class="fas fa-database"></i><span><strong>Database Sync:</strong> Connected directly to Supabase Cloud Engine</span></div>
+                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Cryptographic Ledger:</strong> SHA-256 Verified Member Credentials</span></div>
             </div>
 
         </div>
@@ -1148,28 +1379,28 @@ foreach ($allMembersList as $mem) {
     <!-- =========================================================================
          MODAL: PROFILE INFORMATION (EXACT REQUESTED STRUCTURE)
          ========================================================================= -->
-    <div id="profileInfoModal" class="profile-modal-overlay" onclick="onOverlayClick(event)">
-        <div class="profile-modal-box">
+    <div id="profileInfoModal" class="modal-backdrop-overlay" onclick="onOverlayClick(event)">
+        <div class="modal-card-box">
             
             <!-- Header -->
-            <div class="pm-header">
-                <h3 class="pm-title">
-                    <i class="fas fa-user-circle"></i>
+            <div class="modal-header-bar">
+                <h3 class="modal-header-title">
+                    <i class="fas fa-user-circle" style="color:var(--color-navy);"></i>
                     <span>PROFILE INFORMATION</span>
                 </h3>
-                <button type="button" class="pm-close-btn" onclick="closeProfileModal()" title="Close">
+                <button type="button" class="modal-close-icon" onclick="closeProfileModal()" title="Close">
                     <i class="fas fa-xmark"></i>
                 </button>
             </div>
 
             <!-- Hero Avatar & Name -->
-            <div class="pm-hero">
-                <div class="pm-avatar-large" id="pmAvatar">
+            <div class="modal-hero-profile">
+                <div class="modal-avatar-lg" id="pmAvatar">
                     <span id="pmInitial">M</span>
                 </div>
-                <div class="pm-hero-meta">
-                    <h2 class="pm-hero-name" id="pmFullName">Member Name</h2>
-                    <div class="pm-hero-program">
+                <div style="flex:1;">
+                    <h2 class="modal-hero-name" id="pmFullName">Member Name</h2>
+                    <div class="modal-hero-program">
                         <i class="fas fa-graduation-cap"></i>
                         <span id="pmProgramYear">BS Electronics Engineering - 3rd Year</span>
                     </div>
@@ -1177,95 +1408,93 @@ foreach ($allMembersList as $mem) {
             </div>
 
             <!-- Profile Info Grid -->
-            <div class="pm-body">
-                <div class="pm-info-grid">
-                    
-                    <!-- Enrolled School -->
-                    <div class="pm-info-item full-width">
-                        <div class="pm-info-label">
-                            <i class="fas fa-building-columns" style="color:#0B1D4A;"></i>
-                            <span>Enrolled School</span>
-                        </div>
-                        <div class="pm-info-value" id="pmSchool">Higher Education Institution</div>
+            <div class="modal-content-grid">
+                
+                <!-- Enrolled School -->
+                <div class="modal-field-item full-span">
+                    <div class="modal-field-label">
+                        <i class="fas fa-building-columns" style="color:var(--color-navy);"></i>
+                        <span>Enrolled School</span>
                     </div>
-
-                    <!-- Student ID -->
-                    <div class="pm-info-item">
-                        <div class="pm-info-label">
-                            <i class="fas fa-id-badge" style="color:#0B1D4A;"></i>
-                            <span>Student ID</span>
-                        </div>
-                        <div class="pm-info-value mono" id="pmStudentId">N/A</div>
-                    </div>
-
-                    <!-- Membership ID -->
-                    <div class="pm-info-item">
-                        <div class="pm-info-label">
-                            <i class="fas fa-certificate" style="color:#D4AF37;"></i>
-                            <span>Membership ID</span>
-                        </div>
-                        <div class="pm-info-value mono" id="pmMembershipId" style="color:#B8860B;">N/A</div>
-                    </div>
-
-                    <!-- Age / Birthday -->
-                    <div class="pm-info-item">
-                        <div class="pm-info-label">
-                            <i class="fas fa-cake-candles" style="color:#EF4444;"></i>
-                            <span>Age / Birthday</span>
-                        </div>
-                        <div class="pm-info-value" id="pmAgeBirthday">N/A</div>
-                    </div>
-
-                    <!-- Payment Status -->
-                    <div class="pm-info-item">
-                        <div class="pm-info-label">
-                            <i class="fas fa-receipt" style="color:#10B981;"></i>
-                            <span>Payment Status</span>
-                        </div>
-                        <div class="pm-info-value" id="pmPaymentStatus">
-                            <span class="status-badge paid"><span class="status-dot"></span> Paid / Dues Cleared</span>
-                        </div>
-                    </div>
-
-                    <!-- Gmail / Email -->
-                    <div class="pm-info-item">
-                        <div class="pm-info-label">
-                            <i class="fas fa-envelope" style="color:#2563EB;"></i>
-                            <span>Gmail / Email</span>
-                        </div>
-                        <div class="pm-info-value" id="pmEmail">member@gmail.com</div>
-                    </div>
-
-                    <!-- Contact Number -->
-                    <div class="pm-info-item">
-                        <div class="pm-info-label">
-                            <i class="fas fa-phone" style="color:#059669;"></i>
-                            <span>Contact Number</span>
-                        </div>
-                        <div class="pm-info-value" id="pmPhone">N/A</div>
-                    </div>
-
-                    <!-- Complete Address -->
-                    <div class="pm-info-item full-width">
-                        <div class="pm-info-label">
-                            <i class="fas fa-location-dot" style="color:#DC2626;"></i>
-                            <span>Complete Address</span>
-                        </div>
-                        <div class="pm-info-value" id="pmAddress">N/A</div>
-                    </div>
-
+                    <div class="modal-field-value" id="pmSchool">Higher Education Institution</div>
                 </div>
+
+                <!-- Student ID -->
+                <div class="modal-field-item">
+                    <div class="modal-field-label">
+                        <i class="fas fa-id-badge" style="color:var(--color-navy);"></i>
+                        <span>Student ID</span>
+                    </div>
+                    <div class="modal-field-value mono" id="pmStudentId">N/A</div>
+                </div>
+
+                <!-- Membership ID -->
+                <div class="modal-field-item">
+                    <div class="modal-field-label">
+                        <i class="fas fa-certificate" style="color:var(--color-gold);"></i>
+                        <span>Membership ID</span>
+                    </div>
+                    <div class="modal-field-value mono" id="pmMembershipId" style="color:#B45309;">N/A</div>
+                </div>
+
+                <!-- Age / Birthday -->
+                <div class="modal-field-item">
+                    <div class="modal-field-label">
+                        <i class="fas fa-cake-candles" style="color:#EF4444;"></i>
+                        <span>Age / Birthday</span>
+                    </div>
+                    <div class="modal-field-value" id="pmAgeBirthday">N/A</div>
+                </div>
+
+                <!-- Payment Status -->
+                <div class="modal-field-item">
+                    <div class="modal-field-label">
+                        <i class="fas fa-receipt" style="color:var(--color-emerald);"></i>
+                        <span>Payment Status</span>
+                    </div>
+                    <div class="modal-field-value" id="pmPaymentStatus">
+                        <span class="pill-status paid"><span class="pill-status-dot"></span> Paid / Dues Cleared</span>
+                    </div>
+                </div>
+
+                <!-- Gmail / Email -->
+                <div class="modal-field-item">
+                    <div class="modal-field-label">
+                        <i class="fas fa-envelope" style="color:var(--color-blue);"></i>
+                        <span>Gmail / Email</span>
+                    </div>
+                    <div class="modal-field-value" id="pmEmail" style="font-family:'JetBrains Mono', monospace; font-size:0.85rem; color:#2563EB;">member@gmail.com</div>
+                </div>
+
+                <!-- Contact Number -->
+                <div class="modal-field-item">
+                    <div class="modal-field-label">
+                        <i class="fas fa-phone" style="color:var(--color-emerald);"></i>
+                        <span>Contact Number</span>
+                    </div>
+                    <div class="modal-field-value" id="pmPhone">N/A</div>
+                </div>
+
+                <!-- Complete Address -->
+                <div class="modal-field-item full-span">
+                    <div class="modal-field-label">
+                        <i class="fas fa-location-dot" style="color:#DC2626;"></i>
+                        <span>Complete Address</span>
+                    </div>
+                    <div class="modal-field-value" id="pmAddress">N/A</div>
+                </div>
+
             </div>
 
             <!-- Footer Actions -->
-            <div class="pm-footer">
-                <button type="button" class="pm-btn pm-btn-gold" onclick="exportDigitalId()">
-                    <i class="fas fa-id-card"></i> Export Digital ID
+            <div class="modal-footer-bar">
+                <button type="button" class="btn-white" onclick="exportDigitalId()">
+                    <i class="fas fa-id-card" style="color:#B45309;"></i> Export Digital ID
                 </button>
-                <button type="button" class="pm-btn pm-btn-primary" onclick="openEditModal()">
+                <button type="button" class="btn-primary-navy" onclick="openEditModal()">
                     <i class="fas fa-pen-to-square"></i> Edit Details
                 </button>
-                <button type="button" class="pm-btn pm-btn-secondary" onclick="closeProfileModal()">
+                <button type="button" class="btn-white" onclick="closeProfileModal()">
                     <i class="fas fa-xmark"></i> Close
                 </button>
             </div>
@@ -1276,14 +1505,14 @@ foreach ($allMembersList as $mem) {
     <!-- =========================================================================
          MODAL: DIGITAL ID CARD EXPORT PREVIEW
          ========================================================================= -->
-    <div id="digitalIdModal" class="profile-modal-overlay" onclick="if(event.target===this) closeDigitalIdModal()">
-        <div class="profile-modal-box" style="max-width:480px;">
-            <div class="pm-header">
-                <h3 class="pm-title"><i class="fas fa-id-card"></i> Official Digital Member ID</h3>
-                <button type="button" class="pm-close-btn" onclick="closeDigitalIdModal()">&times;</button>
+    <div id="digitalIdModal" class="modal-backdrop-overlay" onclick="if(event.target===this) closeDigitalIdModal()">
+        <div class="modal-card-box" style="max-width:490px;">
+            <div class="modal-header-bar">
+                <h3 class="modal-header-title"><i class="fas fa-id-card" style="color:var(--color-navy);"></i> Official Digital Member ID</h3>
+                <button type="button" class="modal-close-icon" onclick="closeDigitalIdModal()">&times;</button>
             </div>
             <div style="padding:1.5rem;">
-                <div class="digital-id-card" id="printableDigitalId">
+                <div class="digital-id-card-view" id="printableDigitalId">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1rem;">
                         <div style="display:flex; align-items:center; gap:0.5rem;">
                             <img src="https://iecep-lsc-memsys-production.up.railway.app/public/assets/icons/iecep-logo.png" alt="IECEP" style="width:34px; height:34px; object-fit:contain;" onerror="this.style.display='none'">
@@ -1298,7 +1527,7 @@ foreach ($allMembersList as $mem) {
                     </div>
 
                     <div style="display:flex; gap:1rem; align-items:center; margin-bottom:1rem;">
-                        <div class="pm-avatar-large" style="width:64px; height:64px; font-size:1.5rem;" id="idCardAvatar">
+                        <div class="modal-avatar-lg" style="width:64px; height:64px; font-size:1.5rem;" id="idCardAvatar">
                             <span>M</span>
                         </div>
                         <div>
@@ -1325,8 +1554,8 @@ foreach ($allMembersList as $mem) {
                 </div>
 
                 <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
-                    <button type="button" class="pm-btn pm-btn-secondary" onclick="closeDigitalIdModal()">Close</button>
-                    <button type="button" class="pm-btn pm-btn-gold" onclick="window.print()">
+                    <button type="button" class="btn-white" onclick="closeDigitalIdModal()">Close</button>
+                    <button type="button" class="btn-primary-navy" onclick="window.print()">
                         <i class="fas fa-print"></i> Print ID
                     </button>
                 </div>
@@ -1337,11 +1566,11 @@ foreach ($allMembersList as $mem) {
     <!-- =========================================================================
          MODAL: EDIT MEMBER DETAILS
          ========================================================================= -->
-    <div id="editMemberModal" class="profile-modal-overlay" onclick="if(event.target===this) closeEditModal()">
-        <div class="profile-modal-box" style="max-width:540px;">
-            <div class="pm-header">
-                <h3 class="pm-title"><i class="fas fa-pen-to-square"></i> Edit Member Information</h3>
-                <button type="button" class="pm-close-btn" onclick="closeEditModal()">&times;</button>
+    <div id="editMemberModal" class="modal-backdrop-overlay" onclick="if(event.target===this) closeEditModal()">
+        <div class="modal-card-box" style="max-width:540px;">
+            <div class="modal-header-bar">
+                <h3 class="modal-header-title"><i class="fas fa-pen-to-square" style="color:var(--color-navy);"></i> Edit Member Information</h3>
+                <button type="button" class="modal-close-icon" onclick="closeEditModal()">&times;</button>
             </div>
             <form method="POST" style="padding:1.5rem;">
                 <input type="hidden" name="action" value="edit_member">
@@ -1389,14 +1618,19 @@ foreach ($allMembersList as $mem) {
                         <input type="text" name="phone" id="editPhone" class="ap-input">
                     </div>
                     <div class="ap-form-group">
-                        <label class="ap-form-label">Complete Address</label>
-                        <input type="text" name="address" id="editAddress" class="ap-input">
+                        <label class="ap-form-label">Degree Program</label>
+                        <input type="text" name="program" id="editProgram" class="ap-input">
                     </div>
                 </div>
 
-                <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
-                    <button type="button" class="pm-btn pm-btn-secondary" onclick="closeEditModal()">Cancel</button>
-                    <button type="submit" class="pm-btn pm-btn-primary"><i class="fas fa-floppy-disk"></i> Update Details</button>
+                <div class="ap-form-group" style="margin-bottom:1.5rem;">
+                    <label class="ap-form-label">Complete Address</label>
+                    <input type="text" name="address" id="editAddress" class="ap-input">
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                    <button type="button" class="btn-white" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn-primary-navy"><i class="fas fa-floppy-disk"></i> Update Details</button>
                 </div>
             </form>
         </div>
@@ -1405,11 +1639,11 @@ foreach ($allMembersList as $mem) {
     <!-- =========================================================================
          MODAL: ADD NEW MEMBER
          ========================================================================= -->
-    <div id="addModal" class="profile-modal-overlay" onclick="if(event.target===this) closeAddModal()">
-        <div class="profile-modal-box" style="max-width:540px;">
-            <div class="pm-header">
-                <h3 class="pm-title"><i class="fas fa-user-plus"></i> Register New Student Member</h3>
-                <button type="button" class="pm-close-btn" onclick="closeAddModal()">&times;</button>
+    <div id="addModal" class="modal-backdrop-overlay" onclick="if(event.target===this) closeAddModal()">
+        <div class="modal-card-box" style="max-width:540px;">
+            <div class="modal-header-bar">
+                <h3 class="modal-header-title"><i class="fas fa-user-plus" style="color:var(--color-navy);"></i> Register New Student Member</h3>
+                <button type="button" class="modal-close-icon" onclick="closeAddModal()">&times;</button>
             </div>
             <form method="POST" style="padding:1.5rem;">
                 <input type="hidden" name="action" value="add_member">
@@ -1431,8 +1665,9 @@ foreach ($allMembersList as $mem) {
                 </div>
 
                 <div class="ap-form-group" style="margin-bottom:1rem;">
-                    <label class="ap-form-label">Enrolled School</label>
+                    <label class="ap-form-label">Enrolled School Chapter</label>
                     <select name="institution_id" class="ap-form-select" required>
+                        <option value="">-- Select Institution --</option>
                         <?php foreach ($schoolNamesMap as $sKey => $sVal): ?>
                             <option value="<?= htmlspecialchars($sKey) ?>"><?= htmlspecialchars($sVal['name']) ?> (<?= $sVal['acronym'] ?>)</option>
                         <?php endforeach; ?>
@@ -1462,14 +1697,22 @@ foreach ($allMembersList as $mem) {
                         <input type="text" name="phone" class="ap-input" placeholder="+63 912 345 6789">
                     </div>
                     <div class="ap-form-group">
-                        <label class="ap-form-label">Complete Address</label>
-                        <input type="text" name="address" class="ap-input" placeholder="e.g. Santa Cruz, Laguna">
+                        <label class="ap-form-label">Payment Status</label>
+                        <select name="payment_status" class="ap-form-select">
+                            <option value="paid">Paid / Good Standing</option>
+                            <option value="pending">Pending Payment</option>
+                        </select>
                     </div>
                 </div>
 
-                <div style="display:flex; justify-content:flex-end; gap:0.75rem; margin-top:1.5rem;">
-                    <button type="button" class="pm-btn pm-btn-secondary" onclick="closeAddModal()">Cancel</button>
-                    <button type="submit" class="pm-btn pm-btn-primary"><i class="fas fa-floppy-disk"></i> Save Member</button>
+                <div class="ap-form-group" style="margin-bottom:1.5rem;">
+                    <label class="ap-form-label">Complete Address</label>
+                    <input type="text" name="address" class="ap-input" placeholder="e.g. Santa Cruz, Laguna">
+                </div>
+
+                <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                    <button type="button" class="btn-white" onclick="closeAddModal()">Cancel</button>
+                    <button type="submit" class="btn-primary-navy"><i class="fas fa-floppy-disk"></i> Save Member</button>
                 </div>
             </form>
         </div>
@@ -1484,7 +1727,7 @@ foreach ($allMembersList as $mem) {
             currentSelectedSchool = schoolId;
             
             // Update tabs active state
-            document.querySelectorAll('.school-tab-pill').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.school-pill-btn').forEach(btn => btn.classList.remove('active'));
             if (tabElement) {
                 tabElement.classList.add('active');
             }
@@ -1503,9 +1746,10 @@ foreach ($allMembersList as $mem) {
             currentSelectedSchool = schoolId;
             
             // Sync with tabs
-            document.querySelectorAll('.school-tab-pill').forEach(btn => {
+            document.querySelectorAll('.school-pill-btn').forEach(btn => {
                 if (btn.getAttribute('data-school') === schoolId) {
                     btn.classList.add('active');
+                    btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
                 } else {
                     btn.classList.remove('active');
                 }
@@ -1518,19 +1762,22 @@ foreach ($allMembersList as $mem) {
         function applyFilters() {
             const query = (document.getElementById('memberSearchInput').value || '').toLowerCase().trim();
             const statusVal = (document.getElementById('statusFilter').value || 'all').toLowerCase();
+            const yearVal = (document.getElementById('yearLevelFilter').value || 'all').toLowerCase();
             const rows = document.querySelectorAll('.member-row');
             let visibleCount = 0;
 
             rows.forEach(row => {
                 const rowSchool = row.getAttribute('data-school') || '';
                 const rowStatus = row.getAttribute('data-status') || '';
+                const rowYear = (row.getAttribute('data-year') || '').toLowerCase();
                 const rowSearch = row.getAttribute('data-search') || '';
 
                 const matchesSchool = (currentSelectedSchool === 'all' || rowSchool === currentSelectedSchool);
                 const matchesStatus = (statusVal === 'all' || rowStatus === statusVal);
+                const matchesYear = (yearVal === 'all' || rowYear.includes(yearVal));
                 const matchesQuery = (!query || rowSearch.includes(query));
 
-                if (matchesSchool && matchesStatus && matchesQuery) {
+                if (matchesSchool && matchesStatus && matchesYear && matchesQuery) {
                     row.style.display = '';
                     visibleCount++;
                 } else {
@@ -1545,7 +1792,7 @@ foreach ($allMembersList as $mem) {
             // Show/hide no results banner
             const noResults = document.getElementById('noResultsRow');
             if (noResults) {
-                noResults.style.display = (visibleCount === 0) ? 'block' : 'none';
+                noResults.style.display = (visibleCount === 0) ? 'table-row' : 'none';
             }
         }
 
@@ -1576,9 +1823,9 @@ foreach ($allMembersList as $mem) {
                 // Status Badge
                 const statusEl = document.getElementById('pmPaymentStatus');
                 if (data.payment_status === 'paid' || data.payment_status === 'active') {
-                    statusEl.innerHTML = '<span class="status-badge paid"><span class="status-dot"></span> ✅ Paid / Dues Cleared</span>';
+                    statusEl.innerHTML = '<span class="pill-status paid"><span class="pill-status-dot"></span> Paid / Dues Cleared</span>';
                 } else {
-                    statusEl.innerHTML = '<span class="status-badge pending"><span class="status-dot"></span> ⚠️ Pending Payment</span>';
+                    statusEl.innerHTML = '<span class="pill-status pending"><span class="pill-status-dot"></span> Pending Payment</span>';
                 }
 
                 // Avatar
@@ -1639,6 +1886,7 @@ foreach ($allMembersList as $mem) {
             document.getElementById('editEmail').value = activeMemberData.email;
             document.getElementById('editStudentId').value = activeMemberData.student_id;
             document.getElementById('editYearLevel').value = activeMemberData.year_level || '3rd Year';
+            document.getElementById('editProgram').value = activeMemberData.program || 'BS Electronics Engineering';
             document.getElementById('editPhone').value = activeMemberData.phone || '';
             document.getElementById('editAddress').value = activeMemberData.address || '';
             document.getElementById('editPaymentStatus').value = activeMemberData.payment_status || 'paid';
@@ -1660,7 +1908,7 @@ foreach ($allMembersList as $mem) {
             rows.forEach(r => {
                 if (r.style.display !== 'none') {
                     try {
-                        const btn = r.querySelector('.btn-view-member');
+                        const btn = r.querySelector('.btn-row-action.view-btn');
                         const data = JSON.parse(btn.getAttribute('data-member'));
                         csv += `"${data.name}","${data.email}","${data.student_id}","${data.membership_id}","${data.school_name}","${data.program}","${data.year_level}","${data.phone}","${data.address}","${data.payment_status}"\n`;
                     } catch(e) {}

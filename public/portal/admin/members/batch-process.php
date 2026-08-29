@@ -5,7 +5,7 @@ require_once __DIR__ . '/../../../../includes/config.php';
 require_once __DIR__ . '/../../../../includes/role-config.php';
 
 $current_page = 'batch-process';
-$page_title = 'Bulk Member CSV Ingestion & Ledger Sync';
+$page_title = 'Bulk Member CSV Ingestion';
 
 require_role(['admin', 'super_admin', 'registration', 'committee_registration']);
 
@@ -47,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             $yearIdx = array_search('year_level', $headers);
             $phoneIdx = array_search('phone', $headers);
             $addressIdx = array_search('address', $headers);
+            $birthdayIdx = array_search('birthday', $headers);
             $roleIdx = array_search('role', $headers);
 
             if ($emailIdx !== false && $nameIdx !== false) {
@@ -77,6 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                     $yearLvl = ($yearIdx !== false && !empty($cols[$yearIdx])) ? trim($cols[$yearIdx]) : '3rd Year';
                     $phone = ($phoneIdx !== false && !empty($cols[$phoneIdx])) ? trim($cols[$phoneIdx]) : '+63 912 345 6789';
                     $addr = ($addressIdx !== false && !empty($cols[$addressIdx])) ? trim($cols[$addressIdx]) : 'Laguna, Philippines';
+                    $bday = ($birthdayIdx !== false && !empty($cols[$birthdayIdx])) ? trim($cols[$birthdayIdx]) : '2005-03-15';
 
                     if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL) && !empty($name)) {
                         $baseCount++;
@@ -98,6 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                                     'year_level' => $yearLvl,
                                     'phone' => $phone,
                                     'address' => $addr,
+                                    'birthday' => $bday,
                                     'member_type' => 'regular',
                                     'payment_status' => 'paid',
                                     'digital_id_hash' => $hash,
@@ -140,10 +143,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                 $importResult = ['success' => false, 'message' => 'CSV file must include at least "email" and "full_name" columns in the header row.'];
             }
         } else {
-            $importResult = ['success' => false, 'message' => 'CSV file contains no records.'];
+            $importResult = ['success' => false, 'message' => 'CSV file contains no data rows.'];
         }
     } else {
-        $importResult = ['success' => false, 'message' => 'Failed to read uploaded file. Please select a valid .csv document.'];
+        $importResult = ['success' => false, 'message' => 'Failed to read uploaded file. Please select a valid .csv file.'];
     }
 }
 ?>
@@ -159,47 +162,197 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
+        /* =========================================================================
+           CLEAN WHITE THEME - BATCH INGESTION WORKSPACE
+           ========================================================================= */
         :root {
-            --brand-navy: #0B1D4A;
-            --brand-gold: #D4AF37;
+            --bg-page: #F8FAFC;
+            --bg-card: #FFFFFF;
+            --border-subtle: #E2E8F0;
+            --border-hover: #CBD5E1;
+            
+            --text-heading: #0F172A;
+            --text-body: #334155;
+            --text-muted: #64748B;
+
+            --color-navy: #0B1D4A;
+            --color-navy-hover: #152C6E;
+            --color-blue: #2563EB;
+            --color-gold: #D4AF37;
+            --color-gold-dark: #B45309;
+            --color-emerald: #059669;
+
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+            --shadow-elevated: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
         }
 
         body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #F8FAFC;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-page);
+            color: var(--text-body);
+            margin: 0;
+            padding: 0;
         }
 
-        /* Pipeline Steps */
-        .pipeline-steps {
+        .white-theme-wrap {
+            padding: 1.5rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        @media (max-width: 768px) {
+            .white-theme-wrap {
+                padding: 1rem;
+            }
+        }
+
+        /* 1. Header Banner */
+        .white-page-header {
+            background: #FFFFFF;
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 1.5rem 1.75rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1.25rem;
+            box-shadow: var(--shadow-card);
+        }
+
+        .header-title-box {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-icon-circle {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            background: #EFF6FF;
+            color: var(--color-navy);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.45rem;
+            border: 1px solid #DBEAFE;
+            flex-shrink: 0;
+        }
+
+        .header-main-title {
+            margin: 0 0 0.2rem;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--text-heading);
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .header-subtitle {
+            margin: 0;
+            font-size: 0.86rem;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        .header-btn-group {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        /* Buttons */
+        .btn-white {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.15rem;
+            border-radius: 9px;
+            font-size: 0.84rem;
+            font-weight: 700;
+            text-decoration: none;
+            background: #FFFFFF;
+            border: 1px solid var(--border-hover);
+            color: var(--text-heading);
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.18s ease;
+        }
+        .btn-white:hover {
+            background: #F8FAFC;
+            border-color: #94A3B8;
+            color: #0F172A;
+            transform: translateY(-1px);
+        }
+
+        .btn-primary-navy {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.25rem;
+            border-radius: 9px;
+            font-size: 0.84rem;
+            font-weight: 800;
+            text-decoration: none;
+            background: var(--color-navy);
+            border: 1px solid var(--color-navy);
+            color: #FFFFFF;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(11, 29, 74, 0.15);
+            transition: all 0.18s ease;
+        }
+        .btn-primary-navy:hover:not(:disabled) {
+            background: var(--color-navy-hover);
+            border-color: var(--color-navy-hover);
+            color: #FDE047;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(11, 29, 74, 0.22);
+        }
+        .btn-primary-navy:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* 2. 3-Step Wizard Visualizer */
+        .pipeline-steps-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 1rem;
             margin-bottom: 1.5rem;
         }
         @media (max-width: 768px) {
-            .pipeline-steps {
+            .pipeline-steps-grid {
                 grid-template-columns: 1fr;
             }
         }
-        .pipeline-step-card {
+
+        .wizard-step-box {
             background: #FFFFFF;
-            border: 1px solid #E2E8F0;
-            border-radius: 12px;
-            padding: 1.15rem;
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 1.15rem 1.25rem;
             display: flex;
             align-items: center;
             gap: 1rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+            box-shadow: var(--shadow-card);
             transition: all 0.2s ease;
         }
-        .pipeline-step-card.active {
-            border-color: #0B1D4A;
+        .wizard-step-box.active {
+            border-color: var(--color-navy);
             background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 100%);
-            box-shadow: 0 4px 12px rgba(11, 29, 74, 0.06);
+            box-shadow: 0 4px 14px rgba(11, 29, 74, 0.08);
         }
-        .step-num-badge {
-            width: 36px;
-            height: 36px;
+
+        .step-circle-badge {
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             background: #EFF6FF;
             color: #1E3A8A;
@@ -211,46 +364,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             flex-shrink: 0;
             border: 2px solid #DBEAFE;
         }
-        .pipeline-step-card.active .step-num-badge {
-            background: #0B1D4A;
+        .wizard-step-box.active .step-circle-badge {
+            background: var(--color-navy);
             color: #FDE047;
             border-color: #D4AF37;
         }
-        .step-info-title {
-            font-weight: 700;
+
+        .step-text-title {
+            font-weight: 800;
             font-size: 0.88rem;
-            color: #0F172A;
+            color: var(--text-heading);
             margin-bottom: 2px;
         }
-        .step-info-desc {
-            font-size: 0.75rem;
-            color: #64748B;
-            line-height: 1.2;
+        .step-text-desc {
+            font-size: 0.76rem;
+            color: var(--text-muted);
+            line-height: 1.3;
         }
 
-        /* Drag and Drop Zone */
-        .batch-dropzone {
+        /* 3. Drag and Drop Zone (White Theme) */
+        .white-upload-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 1.75rem;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1.5rem;
+        }
+
+        .drag-drop-zone {
             border: 2px dashed #CBD5E1;
             background: #F8FAFC;
-            border-radius: 16px;
+            border-radius: 14px;
             padding: 3.5rem 2rem;
             text-align: center;
             cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
         }
-        .batch-dropzone:hover, .batch-dropzone.dragover {
+        .drag-drop-zone:hover, .drag-drop-zone.dragover {
             background: #FFFFFF;
-            border-color: #0B1D4A;
+            border-color: var(--color-navy);
             box-shadow: 0 8px 30px rgba(11, 29, 74, 0.08);
             transform: translateY(-2px);
         }
-        .dropzone-icon-circle {
+
+        .upload-icon-circle {
             width: 72px;
             height: 72px;
             border-radius: 50%;
             background: #EFF6FF;
-            color: #1E3A8A;
+            color: var(--color-navy);
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -259,15 +423,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             border: 2px solid #DBEAFE;
             transition: all 0.2s ease;
         }
-        .batch-dropzone:hover .dropzone-icon-circle {
-            background: #0B1D4A;
+        .drag-drop-zone:hover .upload-icon-circle {
+            background: var(--color-navy);
             color: #FDE047;
             border-color: #D4AF37;
-            transform: scale(1.08);
+            transform: scale(1.06);
         }
 
-        /* File Selected State Banner */
-        .file-selected-badge {
+        .file-selected-pill {
             display: inline-flex;
             align-items: center;
             gap: 0.75rem;
@@ -279,34 +442,100 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
             font-weight: 700;
             font-size: 0.9rem;
             margin-top: 1.25rem;
-            animation: fadeIn 0.2s ease;
         }
 
-        /* Template Guidance Box */
-        .schema-card {
+        /* 4. Table Preview Card */
+        .white-preview-card {
             background: #FFFFFF;
-            border: 1px solid #E2E8F0;
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1.5rem;
+        }
+
+        .preview-header-bar {
+            padding: 1.15rem 1.5rem;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FAFAFA;
+        }
+
+        .preview-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 0.875rem;
+        }
+        .preview-table th {
+            background: #F8FAFC;
+            padding: 0.85rem 1.25rem;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-subtle);
+            text-align: left;
+        }
+        .preview-table td {
+            padding: 0.85rem 1.25rem;
+            border-bottom: 1px solid #F1F5F9;
+            color: var(--text-body);
+            vertical-align: middle;
+        }
+
+        /* Schema Guidance Box */
+        .schema-guidance-card {
+            background: #FFFFFF;
+            border: 1px solid var(--border-subtle);
             border-radius: 14px;
             padding: 1.25rem 1.5rem;
-            margin-top: 1.5rem;
+            box-shadow: var(--shadow-card);
+            margin-bottom: 1.5rem;
         }
-        .schema-tag {
+
+        .schema-pill-tag {
             display: inline-block;
-            padding: 0.2rem 0.5rem;
+            padding: 0.25rem 0.6rem;
             background: #F1F5F9;
             border: 1px solid #E2E8F0;
-            border-radius: 4px;
+            border-radius: 6px;
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.76rem;
             font-weight: 600;
-            color: #0B1D4A;
-            margin: 2px;
+            color: var(--color-navy);
+            margin: 3px;
         }
-        .schema-tag.required {
+        .schema-pill-tag.required {
             background: #EFF6FF;
             border-color: #BFDBFE;
             color: #1E3A8A;
-            font-weight: 700;
+            font-weight: 800;
+        }
+
+        /* Sentinel Spacing */
+        .sentinel-white-strip {
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            padding: 1rem 1.25rem;
+            background: #FFFFFF;
+            border: 1px solid var(--border-subtle);
+            border-radius: 12px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            flex-wrap: wrap;
+        }
+        .sentinel-node-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .sentinel-node-item i {
+            color: var(--color-navy);
         }
     </style>
 </head>
@@ -314,25 +543,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
     <?php include dirname(__DIR__, 4) . '/includes/sidebar.php'; ?>
 
     <main class="main-content">
-        <div class="ap-scope">
+        <div class="white-theme-wrap">
 
-            <!-- Page Header -->
-            <div class="ap-page-header">
-                <div class="ap-title-block">
-                    <h1 class="ap-page-title"><i class="fas fa-file-import"></i> Bulk Member CSV Ingestion</h1>
-                    <p class="ap-page-subtitle">Batch register verified chapter student engineers, assign sequential membership IDs, and commit to Supabase ledger.</p>
+            <!-- 1. Header Banner -->
+            <div class="white-page-header">
+                <div class="header-title-box">
+                    <div class="header-icon-circle">
+                        <i class="fas fa-file-import"></i>
+                    </div>
+                    <div>
+                        <h1 class="header-main-title">
+                            Bulk Member CSV Ingestion
+                        </h1>
+                        <p class="header-subtitle">
+                            Batch register verified chapter student engineers, assign sequential membership IDs, and commit directly to Supabase ledger.
+                        </p>
+                    </div>
                 </div>
-                <div class="ap-header-actions">
-                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php" class="ap-btn-secondary">
+                <div class="header-btn-group">
+                    <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php" class="btn-white">
                         <i class="fas fa-arrow-left"></i> Member Directory
                     </a>
-                    <button type="button" id="btnDownloadTemplate" class="ap-btn-primary" style="background:linear-gradient(135deg, #D4AF37 0%, #B8860B 100%); border:none; color:#0B1D4A;">
-                        <i class="fas fa-download"></i> Official CSV Template
+                    <button type="button" id="btnDownloadTemplate" class="btn-white">
+                        <i class="fas fa-download" style="color:#B45309;"></i> Official CSV Template
                     </button>
                 </div>
             </div>
 
-            <!-- Import Result Banner -->
+            <!-- Import Result Alert -->
             <?php if ($importResult): ?>
                 <?php if ($importResult['success']): ?>
                     <div class="ap-alert success" style="margin-bottom:1.5rem;">
@@ -343,9 +581,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                             <?php if ($importResult['failed'] > 0): ?> 
                                 <span style="color:#92400E;">(<?= $importResult['failed'] ?> duplicate/invalid rows skipped)</span>
                             <?php endif; ?>
-                            <div style="margin-top:0.75rem; display:flex; gap:0.5rem;">
-                                <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php" class="ap-btn-primary" style="padding:0.4rem 0.9rem; font-size:0.82rem;">
-                                    <i class="fas fa-users"></i> View Member Directory
+                            <div style="margin-top:0.75rem;">
+                                <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/list.php" class="btn-primary-navy" style="padding:0.4rem 0.9rem; font-size:0.82rem;">
+                                    <i class="fas fa-users"></i> View Updated Member Directory
                                 </a>
                             </div>
                         </div>
@@ -360,53 +598,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                 <?php endif; ?>
             <?php endif; ?>
 
-            <!-- Pipeline 3-Step Guide -->
-            <div class="pipeline-steps">
-                <div class="pipeline-step-card active">
-                    <div class="step-num-badge">1</div>
+            <!-- 2. Wizard Visualizer -->
+            <div class="pipeline-steps-grid">
+                <div class="wizard-step-box active">
+                    <div class="step-circle-badge">1</div>
                     <div>
-                        <div class="step-info-title">Select CSV File</div>
-                        <div class="step-info-desc">Drop your student roster spreadsheet formatted with headers</div>
+                        <div class="step-text-title">Select CSV File</div>
+                        <div class="step-text-desc">Drop your student roster spreadsheet with headers</div>
                     </div>
                 </div>
-                <div class="pipeline-step-card">
-                    <div class="step-num-badge">2</div>
+                <div class="wizard-step-box">
+                    <div class="step-circle-badge">2</div>
                     <div>
-                        <div class="step-info-title">Instant Row Preview</div>
-                        <div class="step-info-desc">Automatic client-side parsing checks data validity</div>
+                        <div class="step-text-title">Instant Row Preview</div>
+                        <div class="step-text-desc">Automatic client-side parsing checks data validity</div>
                     </div>
                 </div>
-                <div class="pipeline-step-card">
-                    <div class="step-num-badge">3</div>
+                <div class="wizard-step-box">
+                    <div class="step-circle-badge">3</div>
                     <div>
-                        <div class="step-info-title">Database & ID Commit</div>
-                        <div class="step-info-desc">Assigns sequential IECEP IDs & cryptographic proofs</div>
+                        <div class="step-text-title">Database & ID Commit</div>
+                        <div class="step-text-desc">Assigns sequential IECEP IDs & cryptographic proofs</div>
                     </div>
                 </div>
             </div>
 
-            <!-- Upload Card -->
-            <div class="ap-card">
-                <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-cloud-arrow-up"></i> Upload CSV File</h3>
-                </div>
-
+            <!-- 3. Upload Card -->
+            <div class="white-upload-card">
                 <form method="POST" enctype="multipart/form-data" id="batchImportForm">
                     <input type="file" id="csvFilePicker" name="csv_file" accept=".csv" style="display:none;" onchange="handleFileSelected(this)">
                     
-                    <div class="batch-dropzone" id="dropzoneBox" onclick="document.getElementById('csvFilePicker').click()">
-                        <div class="dropzone-icon-circle">
+                    <div class="drag-drop-zone" id="dropzoneBox" onclick="document.getElementById('csvFilePicker').click()">
+                        <div class="upload-icon-circle">
                             <i class="fas fa-file-csv"></i>
                         </div>
-                        <h3 style="margin:0 0 0.4rem 0; color:#0B1D4A; font-weight:800; font-size:1.25rem;">
+                        <h3 style="margin:0 0 0.4rem 0; color:var(--text-heading); font-weight:800; font-size:1.25rem;">
                             Click to browse or drag & drop CSV file
                         </h3>
-                        <p style="margin:0; font-size:0.85rem; color:#64748B;">
+                        <p style="margin:0; font-size:0.85rem; color:var(--text-muted);">
                             Supports UTF-8 CSV exports from Excel, Google Sheets, or School Portals
                         </p>
                         
                         <div id="fileSelectedDisplay" style="display:none;">
-                            <div class="file-selected-badge">
+                            <div class="file-selected-pill">
                                 <i class="fas fa-circle-check"></i>
                                 <span id="fileSelectedName">selected_roster.csv</span>
                             </div>
@@ -414,32 +648,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                     </div>
 
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-top:1.5rem; flex-wrap:wrap; gap:1rem;">
-                        <span style="font-size:0.82rem; color:#64748B;">
-                            <i class="fas fa-info-circle"></i> Requires columns: <code>full_name, email</code>. Optional: <code>student_id, school, program, year_level, phone, address</code>.
+                        <span style="font-size:0.82rem; color:var(--text-muted);">
+                            <i class="fas fa-info-circle" style="color:var(--color-blue);"></i> Required columns: <code>full_name, email</code>. Optional: <code>student_id, school, program, year_level, phone, address</code>.
                         </span>
-                        <button type="submit" class="ap-btn-primary" id="btnSubmitImport" disabled style="padding:0.65rem 1.4rem; font-size:0.9rem;">
-                            <i class="fas fa-database"></i> Process & Save to Database
+                        <button type="submit" class="btn-primary-navy" id="btnSubmitImport" disabled style="padding:0.65rem 1.4rem; font-size:0.9rem;">
+                            <i class="fas fa-database" style="color:#FDE047;"></i> Process & Save to Database
                         </button>
                     </div>
                 </form>
             </div>
 
-            <!-- Real-time Live Preview Card -->
-            <div class="ap-card" id="csvPreviewCard" style="display:none; margin-top:1.5rem;">
-                <div class="ap-card-header" style="background:#F8FAFC;">
-                    <h3 class="ap-card-title">
-                        <i class="fas fa-table-list"></i>
-                        <span>CSV Preview (<span id="parsedRowCount" style="color:#0B1D4A;">0</span> Valid Rows Detected)</span>
+            <!-- 4. Live Table Preview Card -->
+            <div class="white-preview-card" id="csvPreviewCard" style="display:none;">
+                <div class="preview-header-bar">
+                    <h3 style="margin:0; font-size:0.98rem; font-weight:800; color:var(--text-heading); display:flex; align-items:center; gap:0.5rem;">
+                        <i class="fas fa-table-list" style="color:var(--color-navy);"></i>
+                        <span>CSV Preview (<span id="parsedRowCount" style="color:var(--color-navy);">0</span> Valid Rows Detected)</span>
                     </h3>
                 </div>
-                <div class="ap-table-wrapper" style="max-height:400px; overflow-y:auto;">
-                    <table class="ap-table" id="previewTable">
+                <div style="max-height:380px; overflow-y:auto;">
+                    <table class="preview-table" id="previewTable">
                         <thead>
                             <tr>
                                 <th>Student Name</th>
                                 <th>Gmail / Email</th>
                                 <th>Student ID</th>
-                                <th>School / Chapter</th>
+                                <th>School Chapter</th>
                                 <th>Program & Year</th>
                                 <th>Status</th>
                             </tr>
@@ -449,30 +683,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                 </div>
             </div>
 
-            <!-- CSV Specification Guidance -->
-            <div class="schema-card">
-                <h4 style="margin:0 0 0.5rem; color:#0B1D4A; font-weight:800; font-size:0.95rem;">
-                    <i class="fas fa-code"></i> Supported CSV Header Columns
+            <!-- 5. CSV Specification Guidance -->
+            <div class="schema-guidance-card">
+                <h4 style="margin:0 0 0.5rem; color:var(--text-heading); font-weight:800; font-size:0.95rem; display:flex; align-items:center; gap:0.4rem;">
+                    <i class="fas fa-code" style="color:var(--color-navy);"></i> Supported CSV Header Columns
                 </h4>
-                <p style="font-size:0.82rem; color:#64748B; margin-bottom:0.75rem;">
+                <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:0.75rem;">
                     Ensure your spreadsheet header matches the recognized column names:
                 </p>
                 <div>
-                    <span class="schema-tag required">full_name *</span>
-                    <span class="schema-tag required">email *</span>
-                    <span class="schema-tag">student_id</span>
-                    <span class="schema-tag">school (e.g. LSPU, DLSU, MMCL, CSJL, UPLB)</span>
-                    <span class="schema-tag">program (e.g. BS ECE)</span>
-                    <span class="schema-tag">year_level (e.g. 3rd Year)</span>
-                    <span class="schema-tag">phone</span>
-                    <span class="schema-tag">address</span>
+                    <span class="schema-pill-tag required">full_name *</span>
+                    <span class="schema-pill-tag required">email *</span>
+                    <span class="schema-pill-tag">student_id</span>
+                    <span class="schema-pill-tag">school (e.g. LSPU, DLSU, MMCL, CSJL, UPLB, SPCBA)</span>
+                    <span class="schema-pill-tag">program (e.g. BS ECE)</span>
+                    <span class="schema-pill-tag">year_level (e.g. 3rd Year)</span>
+                    <span class="schema-pill-tag">phone</span>
+                    <span class="schema-pill-tag">address</span>
                 </div>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip" style="margin-top:2rem;">
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Data Ingestion:</strong> Direct Supabase REST Protocol</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-link"></i><span><strong>Ledger Anchor:</strong> SHA-256 Hashes Generated Sequentially</span></div>
+            <!-- 6. Sentinel Info Strip -->
+            <div class="sentinel-white-strip">
+                <div class="sentinel-node-item">
+                    <i class="fas fa-shield-halved"></i>
+                    <span><strong>Data Ingestion:</strong> Direct Supabase REST Protocol</span>
+                </div>
+                <div class="sentinel-node-item">
+                    <i class="fas fa-link"></i>
+                    <span><strong>Ledger Anchor:</strong> SHA-256 Hashes Generated Sequentially</span>
+                </div>
             </div>
 
         </div>
@@ -564,12 +804,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['csv_file'])) {
                             validCount++;
                             const tr = document.createElement('tr');
                             tr.innerHTML = `
-                                <td><strong style="color:#0F172A;">${name}</strong></td>
+                                <td><strong style="color:var(--text-heading);">${name}</strong></td>
                                 <td style="font-family:'JetBrains Mono', monospace; font-size:0.8rem; color:#2563EB;">${email}</td>
-                                <td><span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:#0B1D4A;">${studentId}</span></td>
-                                <td><span class="ap-pill navy">${school.toUpperCase()}</span></td>
-                                <td style="font-size:0.8rem; color:#64748B;">${progYear}</td>
-                                <td><span class="ap-pill active"><span class="ap-pill-dot"></span> Ready to Commit</span></td>
+                                <td><span style="font-family:'JetBrains Mono', monospace; font-weight:700; color:var(--color-navy); font-size:0.82rem;">${studentId}</span></td>
+                                <td><span style="display:inline-block; padding:2px 7px; border-radius:5px; background:#EFF6FF; color:#1E3A8A; font-weight:700; font-size:0.75rem; border:1px solid #DBEAFE;">${school.toUpperCase()}</span></td>
+                                <td style="font-size:0.8rem; color:var(--text-muted);">${progYear}</td>
+                                <td><span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:9999px; background:#ECFDF5; color:#065F46; font-size:0.72rem; font-weight:700; border:1px solid #A7F3D0;"><span style="width:5px; height:5px; border-radius:50%; background:#059669;"></span> Ready to Commit</span></td>
                             `;
                             tbody.appendChild(tr);
                         }
