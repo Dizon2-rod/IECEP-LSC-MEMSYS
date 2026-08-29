@@ -262,15 +262,6 @@ try {
 $totalMembers = count($allMembersList);
 $paidMembers = count(array_filter($allMembersList, fn($m) => ($m['payment_status'] ?? '') === 'paid' || ($m['payment_status'] ?? '') === 'active'));
 $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership_id'])));
-
-// Counts per school
-$schoolCounts = ['all' => $totalMembers];
-foreach ($allMembersList as $mem) {
-    $sId = $mem['institution_id'] ?? '';
-    if (!empty($sId)) {
-        $schoolCounts[$sId] = ($schoolCounts[$sId] ?? 0) + 1;
-    }
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -492,98 +483,7 @@ foreach ($allMembersList as $mem) {
             margin-top: 3px;
         }
 
-        /* 3. School Filter Tabs (Clean Scrollable Strip - NO OVERLAPPING!) */
-        .school-tabs-wrapper {
-            background: #FFFFFF;
-            border: 1px solid var(--border-subtle);
-            border-radius: 14px;
-            padding: 0.75rem 1rem;
-            margin-bottom: 1.25rem;
-            box-shadow: var(--shadow-card);
-        }
-
-        .school-tabs-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 0.65rem;
-            padding: 0 0.25rem;
-        }
-
-        .school-tabs-title {
-            font-size: 0.78rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .school-tabs-scroll {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            overflow-x: auto;
-            padding-bottom: 6px;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: thin;
-        }
-        .school-tabs-scroll::-webkit-scrollbar {
-            height: 5px;
-        }
-        .school-tabs-scroll::-webkit-scrollbar-thumb {
-            background: #CBD5E1;
-            border-radius: 9999px;
-        }
-
-        .school-pill-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.55rem 0.95rem;
-            border-radius: 9999px;
-            font-size: 0.82rem;
-            font-weight: 700;
-            white-space: nowrap;
-            cursor: pointer;
-            border: 1px solid var(--border-subtle);
-            background: #F8FAFC;
-            color: var(--text-body);
-            transition: all 0.18s ease;
-            flex-shrink: 0;
-            user-select: none;
-        }
-        .school-pill-btn:hover {
-            border-color: #CBD5E1;
-            background: #F1F5F9;
-            color: var(--text-heading);
-        }
-        .school-pill-btn.active {
-            background: var(--color-navy);
-            color: #FFFFFF;
-            border-color: var(--color-navy);
-            box-shadow: 0 4px 12px rgba(11, 29, 74, 0.2);
-        }
-
-        .school-pill-count {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.15rem 0.5rem;
-            font-size: 0.72rem;
-            font-weight: 800;
-            border-radius: 9999px;
-            background: #E2E8F0;
-            color: #475569;
-        }
-        .school-pill-btn.active .school-pill-count {
-            background: rgba(255, 255, 255, 0.22);
-            color: #FFFFFF;
-        }
-
-        /* 4. Filter & Search Controls Bar */
+        /* 3. Filter & Search Controls Bar */
         .white-controls-card {
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
@@ -672,7 +572,7 @@ foreach ($allMembersList as $mem) {
             color: var(--color-navy);
         }
 
-        /* 5. Main Member Table Card */
+        /* 4. Main Member Table Card */
         .white-table-card {
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
@@ -703,7 +603,7 @@ foreach ($allMembersList as $mem) {
             gap: 0.5rem;
         }
 
-        /* Responsive Viewport for Table (Exact desktop layout preserved on mobile) */
+        /* Responsive Viewport for Table */
         .table-responsive-viewport {
             width: 100%;
             overflow-x: auto;
@@ -712,7 +612,7 @@ foreach ($allMembersList as $mem) {
 
         .roster-white-table {
             width: 100%;
-            min-width: 860px; /* Guarantees complete monitor layout on mobile */
+            min-width: 860px;
             border-collapse: separate;
             border-spacing: 0;
             font-size: 0.875rem;
@@ -1280,36 +1180,7 @@ foreach ($allMembersList as $mem) {
                 </div>
             </div>
 
-            <!-- 3. School Filter Tabs (Clean Scrollable Strip - NO OVERLAPPING!) -->
-            <div class="school-tabs-wrapper">
-                <div class="school-tabs-header">
-                    <div class="school-tabs-title">
-                        <i class="fas fa-filter"></i> Filter By Affiliated Chapter
-                    </div>
-                    <span style="font-size:0.75rem; color:#64748B;">Scroll horizontally for all schools &rarr;</span>
-                </div>
-                <div class="school-tabs-scroll" id="schoolTabsContainer">
-                    <button type="button" class="school-pill-btn active" data-school="all" onclick="selectSchoolTab('all', this)">
-                        <i class="fas fa-globe"></i>
-                        <span>All Schools</span>
-                        <span class="school-pill-count"><?= $schoolCounts['all'] ?? $totalMembers ?></span>
-                    </button>
-                    <?php foreach ($schoolNamesMap as $sKey => $sVal): ?>
-                        <?php $count = $schoolCounts[$sKey] ?? 0; ?>
-                        <button type="button" 
-                                class="school-pill-btn" 
-                                data-school="<?= htmlspecialchars($sKey) ?>" 
-                                title="<?= htmlspecialchars($sVal['name']) ?>" 
-                                onclick="selectSchoolTab('<?= htmlspecialchars($sKey) ?>', this)">
-                            <i class="fas fa-building-columns"></i>
-                            <span><?= htmlspecialchars($sVal['acronym']) ?></span>
-                            <span class="school-pill-count"><?= $count ?></span>
-                        </button>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <!-- 4. Search and Filter Bar -->
+            <!-- 3. Search and Filter Bar -->
             <div class="white-controls-card">
                 <div class="filter-controls-left">
                     <div class="search-input-wrapper">
@@ -1347,7 +1218,7 @@ foreach ($allMembersList as $mem) {
                 </div>
             </div>
 
-            <!-- 5. Members Table Card -->
+            <!-- 4. Members Table Card -->
             <div class="white-table-card">
                 <div class="table-card-topbar">
                     <h3 class="table-card-heading">
@@ -1492,12 +1363,6 @@ foreach ($allMembersList as $mem) {
                             <?php endif; ?>
                         </tbody>
                     </table>
-                </div>
-
-                <div id="noResultsRow" style="display:none; padding:3.5rem 1.5rem; text-align:center; color:var(--text-muted);">
-                    <i class="fas fa-user-slash" style="font-size:2.5rem; color:#CBD5E1; margin-bottom:0.75rem;"></i>
-                    <h4 style="margin:0 0 0.25rem; color:var(--text-heading); font-weight:800;">No student members found</h4>
-                    <p style="margin:0; font-size:0.85rem;">Try adjusting your school chapter filter or search keywords.</p>
                 </div>
             </div>
 
@@ -1856,39 +1721,9 @@ foreach ($allMembersList as $mem) {
     <script>
         let currentSelectedSchool = 'all';
 
-        // Select School Tab
-        function selectSchoolTab(schoolId, tabElement) {
-            currentSelectedSchool = schoolId;
-            
-            // Update tabs active state
-            document.querySelectorAll('.school-pill-btn').forEach(btn => btn.classList.remove('active'));
-            if (tabElement) {
-                tabElement.classList.add('active');
-            }
-
-            // Sync with dropdown
-            const dropdown = document.getElementById('schoolDropdownFilter');
-            if (dropdown) {
-                dropdown.value = schoolId;
-            }
-
-            applyFilters();
-        }
-
         // On School Dropdown Change
         function onSchoolDropdownChange(schoolId) {
             currentSelectedSchool = schoolId;
-            
-            // Sync with tabs
-            document.querySelectorAll('.school-pill-btn').forEach(btn => {
-                if (btn.getAttribute('data-school') === schoolId) {
-                    btn.classList.add('active');
-                    btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-                } else {
-                    btn.classList.remove('active');
-                }
-            });
-
             applyFilters();
         }
 
@@ -1922,12 +1757,6 @@ foreach ($allMembersList as $mem) {
             // Update visible counter
             const countEl = document.getElementById('visibleMemberCount');
             if (countEl) countEl.textContent = visibleCount;
-
-            // Show/hide no results banner
-            const noResults = document.getElementById('noResultsRow');
-            if (noResults) {
-                noResults.style.display = (visibleCount === 0) ? 'table-row' : 'none';
-            }
         }
 
         // Profile Information Modal Logic
