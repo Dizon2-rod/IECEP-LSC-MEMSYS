@@ -375,8 +375,12 @@ if ($supabase && $institutionId) {
         }
 
         @media (max-width: 640px) {
-            .dash-kpi-grid { grid-template-columns: 1fr; }
-            .dash-header-banner { flex-direction: column; align-items: flex-start; }
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.5rem !important; }
+            .kpi-val { font-size: 1.1rem !important; }
+            .kpi-lbl { font-size: 0.66rem !important; }
+            .dash-kpi-card { padding: 0.5rem 0.65rem !important; gap: 0.5rem !important; }
+            .kpi-icon-pill { width: 32px !important; height: 32px !important; font-size: 0.9rem !important; }
+            .dash-header-banner { flex-direction: column; align-items: stretch; gap: 0.65rem; }
         }
     </style>
 </head>
