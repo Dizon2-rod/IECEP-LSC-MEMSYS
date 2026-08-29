@@ -136,12 +136,6 @@ $userRole = $_SESSION['role'] ?? '';
             </button>
         </div>
 
-        <!-- Status Indicator Pill -->
-        <div class="mobile-sentinel-pill">
-            <span class="sentinel-pulse-dot"></span>
-            <span class="sentinel-text">Official Student Chapter Portal • Active</span>
-        </div>
-
         <!-- Navigation Menu -->
         <nav class="mobile-menu-nav">
             <?php if (!$isLoggedIn): ?>
@@ -245,7 +239,6 @@ $userRole = $_SESSION['role'] ?? '';
                             <a href="<?php echo BASE_URL; ?>/public/merchandise.php">
                                 <span class="sub-dot"><i class="fas fa-shirt"></i></span>
                                 <span class="sub-text">Merchandise Store</span>
-                                <span class="sub-badge emerald">Catalog</span>
                             </a>
                         </li>
                     </ul>
@@ -431,44 +424,13 @@ $userRole = $_SESSION['role'] ?? '';
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.mobile-menu-close:hover {
-    background: #FEF2F2;
-    color: #DC2626;
-    border-color: #FECACA;
-    transform: rotate(90deg) scale(1.05);
-}
-
-/* Status Strip */
-.mobile-sentinel-pill {
+.mobile-menu-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background: #F0FDF4;
-    border: 1px solid rgba(34, 197, 94, 0.25);
-    border-radius: 50px;
-    margin-bottom: 1.25rem;
-}
-
-.sentinel-pulse-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #16A34A;
-    box-shadow: 0 0 6px rgba(22, 163, 74, 0.6);
-    animation: sentinelGlow 2s infinite ease-in-out;
-}
-
-@keyframes sentinelGlow {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.85); }
-}
-
-.sentinel-text {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: #166534;
-    letter-spacing: 0.02em;
+    justify-content: space-between;
+    padding: 0.25rem 0 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid #F1F5F9;
 }
 
 /* Navigation Groups */
