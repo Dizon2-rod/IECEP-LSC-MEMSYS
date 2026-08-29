@@ -900,17 +900,7 @@ a:hover {
     color: var(--primary-navy);
 }
 
-/* Sidebar */
-.sidebar {
-    background: white;
-    border-right: 1px solid var(--gray-200);
-    padding: var(--spacing-6);
-    min-height: 100vh;
-    position: sticky;
-    top: 0;
-}
-
-/* Legacy sidebar styles removed to prevent conflicts with unified dynamic sidebar */
+/* Sidebar styling is handled exclusively by includes/sidebar.php */
 
 /* Dashboard Layout */
 .dashboard-layout {
@@ -1381,10 +1371,6 @@ a:hover {
 @media (max-width: 1024px) {
     .dashboard-layout {
         grid-template-columns: 1fr;
-    }
-
-    .sidebar {
-        display: none;
     }
 
     .stats-grid {

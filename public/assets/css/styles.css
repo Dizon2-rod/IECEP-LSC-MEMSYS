@@ -532,51 +532,7 @@ label,
 }
 
 
-/* === 10. SIDEBAR REFINEMENTS === */
-
-.sidebar {
-    background: linear-gradient(180deg, #0B1D4A 0%, #132a5e 100%);
-}
-
-.sidebar ul,
-.sidebar-nav {
-    list-style: none;
-}
-
-.sidebar a,
-.sidebar-link,
-.sidebar-nav a {
-    padding: 12px 20px;
-    border-radius: 8px;
-    margin: 4px 8px;
-    color: rgba(255, 255, 255, 0.8);
-    transition: all 0.2s ease;
-    font-size: 0.95rem;
-    display: block;
-    text-decoration: none;
-}
-
-.sidebar a:hover,
-.sidebar-link:hover,
-.sidebar-nav a:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-}
-
-.sidebar a.active,
-.sidebar-link.active,
-.sidebar-nav a.active {
-    background: #D4AF37;
-    color: #0B1D4A;
-    font-weight: 600;
-}
-
-.sidebar-user-info,
-.user-info-section {
-    padding: 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    margin-bottom: 12px;
-}
+/* === 10. SIDEBAR (Managed by includes/sidebar.php) === */
 
 
 /* === 11. PROGRESS BARS === */
@@ -1852,34 +1808,7 @@ textarea:focus,
 }
 
 
-/* The included sidebar uses an ID, so these declarations keep the shared
-   polish consistent with the class-based dashboard layout. */
-
-#sidebar,
-.sidebar {
-    width: 260px;
-    background: linear-gradient(180deg, #0B1D4A 0%, #132a5e 100%);
-}
-
-#sidebar .nav-menu a,
-.sidebar-nav a {
-    border-radius: 8px;
-    transition: all 0.2s ease;
-}
-
-#sidebar .nav-menu a:hover,
-.sidebar-nav a:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #fff;
-}
-
-#sidebar .nav-menu a.active,
-.sidebar-nav a.active {
-    background: var(--memsys-gold) !important;
-    color: var(--memsys-navy) !important;
-    font-weight: 600 !important;
-    border-left-color: var(--memsys-navy) !important;
-}
+/* Legacy sidebar styling removed - unified sidebar is loaded from includes/sidebar.php */
 
 @media (max-width: 576px) {
     h1 {
@@ -2378,15 +2307,7 @@ textarea:hover,
     box-shadow: 0 3px 10px rgba(212, 175, 55, 0.2);
 }
 
-#sidebar .nav-menu a:hover,
-.sidebar-nav a:hover {
-    transform: translateX(3px);
-}
 
-#sidebar .nav-menu a.active,
-.sidebar-nav a.active {
-    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
-}
 
 body.dark-mode .content-wrapper,
 body.dark-mode .card,
