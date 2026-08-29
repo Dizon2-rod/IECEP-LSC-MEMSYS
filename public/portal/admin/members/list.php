@@ -320,7 +320,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             width: 100%;
         }
 
-        /* 1. Header Banner (Clean White Theme & Mobile Responsive) */
+        /* 1. Header Banner */
         .white-page-header {
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
@@ -430,7 +430,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             box-shadow: 0 6px 16px rgba(11, 29, 74, 0.22);
         }
 
-        /* 2. KPI Cards Grid */
+        /* 2. KPI Cards Grid - Left-to-Right layout on Desktop AND Mobile */
         .white-kpi-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -448,6 +448,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             gap: 1.15rem;
             box-shadow: var(--shadow-card);
             transition: all 0.2s ease;
+            min-width: 0;
         }
         .kpi-card:hover {
             border-color: var(--border-hover);
@@ -572,7 +573,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             color: var(--color-navy);
         }
 
-        /* 4. Main Member Table Card */
+        /* 4. Main Member Table Card (Compact & Fitted - NO HORIZONTAL SCROLL) */
         .white-table-card {
             background: #FFFFFF;
             border: 1px solid var(--border-subtle);
@@ -580,6 +581,8 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             overflow: hidden;
             box-shadow: var(--shadow-card);
             margin-bottom: 1.75rem;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .table-card-topbar {
@@ -603,24 +606,23 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             gap: 0.5rem;
         }
 
-        /* Responsive Viewport for Table */
         .table-responsive-viewport {
             width: 100%;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
+            box-sizing: border-box;
+            overflow-x: hidden; /* No forced scroll bar */
         }
 
         .roster-white-table {
             width: 100%;
-            min-width: 860px;
             border-collapse: separate;
             border-spacing: 0;
             font-size: 0.875rem;
+            table-layout: auto;
         }
 
         .roster-white-table th {
             background: #F8FAFC;
-            padding: 0.9rem 1.25rem;
+            padding: 0.9rem 1rem;
             font-size: 0.72rem;
             font-weight: 800;
             text-transform: uppercase;
@@ -633,7 +635,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         }
 
         .roster-white-table td {
-            padding: 0.95rem 1.25rem;
+            padding: 0.85rem 1rem;
             border-bottom: 1px solid #F1F5F9;
             color: var(--text-body);
             vertical-align: middle;
@@ -652,12 +654,13 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .member-info-cell {
             display: flex;
             align-items: center;
-            gap: 0.85rem;
+            gap: 0.75rem;
+            min-width: 0;
         }
 
         .member-avatar-thumb {
-            width: 40px;
-            height: 40px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             background: #EFF6FF;
             color: var(--color-navy);
@@ -665,7 +668,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             align-items: center;
             justify-content: center;
             font-weight: 800;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             flex-shrink: 0;
             border: 2px solid #DBEAFE;
             overflow: hidden;
@@ -679,24 +682,28 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .member-name-text {
             font-weight: 700;
             color: var(--text-heading);
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             line-height: 1.25;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .member-email-text {
-            font-size: 0.76rem;
+            font-size: 0.74rem;
             color: var(--text-muted);
             line-height: 1.2;
             font-family: 'JetBrains Mono', monospace;
             white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .school-tag-badge {
             display: inline-flex;
             align-items: center;
             gap: 0.35rem;
-            padding: 0.25rem 0.65rem;
+            padding: 0.25rem 0.6rem;
             border-radius: 6px;
             font-size: 0.74rem;
             font-weight: 700;
@@ -704,6 +711,9 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             color: #1E3A8A;
             border: 1px solid #DBEAFE;
             white-space: nowrap;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .mono-id-tag {
@@ -719,7 +729,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             display: inline-flex;
             align-items: center;
             gap: 0.35rem;
-            padding: 0.25rem 0.65rem;
+            padding: 0.22rem 0.6rem;
             border-radius: 9999px;
             font-size: 0.72rem;
             font-weight: 700;
@@ -747,133 +757,225 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
         .btn-row-action {
             display: inline-flex;
             align-items: center;
-            gap: 0.4rem;
-            padding: 0.42rem 0.85rem;
+            gap: 0.35rem;
+            padding: 0.4rem 0.8rem;
             border-radius: 7px;
             font-size: 0.78rem;
             font-weight: 700;
-            background: #FFFFFF;
-            color: var(--text-heading);
-            border: 1px solid var(--border-hover);
+            background: var(--color-navy);
+            color: #FFFFFF;
+            border: 1px solid var(--color-navy);
             cursor: pointer;
             transition: all 0.15s ease;
             box-shadow: var(--shadow-sm);
             white-space: nowrap;
         }
         .btn-row-action:hover {
-            background: var(--color-navy);
-            color: #FFFFFF;
-            border-color: var(--color-navy);
-            transform: translateY(-1px);
-        }
-        .btn-row-action.view-btn {
-            background: var(--color-navy);
-            color: #FFFFFF;
-            border-color: var(--color-navy);
-        }
-        .btn-row-action.view-btn:hover {
             background: var(--color-navy-hover);
             color: #FDE047;
-        }
-
-        /* Mobile Scroll Prompt */
-        .mobile-scroll-hint {
-            display: none;
-            font-size: 0.74rem;
-            font-weight: 600;
-            color: #64748B;
-            background: #F1F5F9;
-            padding: 3px 8px;
-            border-radius: 6px;
+            transform: translateY(-1px);
         }
 
         /* =========================================================================
-           MOBILE SPECIFIC BREAKPOINTS & ADAPTIVE STYLES
+           MOBILE COMPACT ADAPTIVE STYLES (FITS 100% WITHOUT SCROLLING)
            ========================================================================= */
-        @media (max-width: 991px) {
+        @media (max-width: 768px) {
             .white-theme-wrap {
-                padding: 1rem 1.25rem;
-            }
-            .white-kpi-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 0.75rem;
-            }
-        }
-
-        @media (max-width: 640px) {
-            .white-theme-wrap {
-                padding: 0.75rem;
+                padding: 0.6rem;
             }
             .white-page-header {
-                padding: 1.15rem;
-                gap: 1rem;
+                padding: 1rem;
+                gap: 0.85rem;
+                border-radius: 12px;
+                margin-bottom: 0.85rem;
             }
             .header-title-box {
-                gap: 0.75rem;
+                gap: 0.65rem;
             }
             .header-icon-circle {
-                width: 44px;
-                height: 44px;
-                font-size: 1.2rem;
+                width: 40px;
+                height: 40px;
+                font-size: 1.15rem;
+                border-radius: 10px;
             }
             .header-main-title {
-                font-size: 1.2rem;
+                font-size: 1.15rem;
+            }
+            .header-subtitle {
+                font-size: 0.78rem;
             }
             .header-btn-group {
                 width: 100%;
                 display: flex;
                 flex-direction: row;
-                gap: 0.5rem;
+                gap: 0.4rem;
                 overflow-x: auto;
                 -webkit-overflow-scrolling: touch;
-                padding-bottom: 4px;
+                padding-bottom: 2px;
             }
             .btn-white, .btn-primary-navy {
-                padding: 0.5rem 0.85rem;
-                font-size: 0.8rem;
+                padding: 0.45rem 0.75rem;
+                font-size: 0.76rem;
                 flex-shrink: 0;
             }
+
+            /* Left-to-Right 4 KPI cards in a single row on Mobile */
             .white-kpi-grid {
-                grid-template-columns: repeat(2, 1fr);
-                gap: 0.6rem;
+                grid-template-columns: repeat(4, 1fr) !important;
+                gap: 0.35rem !important;
+                margin-bottom: 0.85rem !important;
             }
             .kpi-card {
-                padding: 0.85rem;
-                gap: 0.75rem;
+                padding: 0.45rem 0.25rem !important;
+                gap: 0.3rem !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                text-align: center !important;
+                border-radius: 10px !important;
+                box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
             }
             .kpi-icon-pill {
-                width: 40px;
-                height: 40px;
-                font-size: 1.15rem;
+                width: 26px !important;
+                height: 26px !important;
+                font-size: 0.8rem !important;
+                border-radius: 6px !important;
             }
             .kpi-number {
-                font-size: 1.3rem;
+                font-size: 0.98rem !important;
+                line-height: 1 !important;
             }
             .kpi-label {
-                font-size: 0.72rem;
+                font-size: 0.58rem !important;
+                line-height: 1.1 !important;
+                margin-top: 1px !important;
             }
+
+            /* Filter Controls on Mobile */
             .white-controls-card {
-                padding: 0.85rem;
+                padding: 0.75rem;
                 flex-direction: column;
                 align-items: stretch;
+                gap: 0.5rem;
+                border-radius: 12px;
+                margin-bottom: 0.85rem;
             }
             .filter-controls-left {
                 flex-direction: column;
                 align-items: stretch;
-                gap: 0.65rem;
+                gap: 0.5rem;
             }
             .search-input-wrapper {
                 min-width: 100%;
                 max-width: 100%;
             }
+            .search-input-field {
+                padding: 0.5rem 0.75rem 0.5rem 2rem;
+                font-size: 0.8rem;
+            }
             .select-filter-box {
                 width: 100%;
+                padding: 0.5rem 1.75rem 0.5rem 0.75rem;
+                font-size: 0.8rem;
             }
             .filter-controls-right {
                 justify-content: space-between;
             }
-            .mobile-scroll-hint {
-                display: inline-block;
+            .showing-counter-badge {
+                font-size: 0.76rem;
+            }
+
+            /* Compact Mobile Table Layout (NO HORIZONTAL SCROLL) */
+            .white-table-card {
+                border-radius: 12px;
+                margin-bottom: 1rem;
+            }
+            .table-card-topbar {
+                padding: 0.75rem 0.9rem;
+            }
+            .table-card-heading {
+                font-size: 0.86rem;
+            }
+            .table-card-topbar div {
+                font-size: 0.72rem !important;
+            }
+            .roster-white-table {
+                table-layout: fixed;
+                width: 100% !important;
+                min-width: 0 !important;
+            }
+            .roster-white-table th {
+                padding: 0.55rem 0.4rem;
+                font-size: 0.64rem;
+            }
+            .roster-white-table td {
+                padding: 0.55rem 0.4rem;
+                font-size: 0.74rem;
+            }
+
+            /* Column Sizing for Mobile View */
+            .col-checkbox {
+                width: 22px !important;
+                padding-left: 0.4rem !important;
+                padding-right: 0.2rem !important;
+            }
+            .col-member {
+                width: 44% !important;
+            }
+            .col-school {
+                width: 26% !important;
+            }
+            .col-status {
+                width: 16% !important;
+            }
+            .col-actions {
+                width: 14% !important;
+                text-align: right !important;
+                padding-right: 0.4rem !important;
+            }
+
+            /* Hide verbose columns on compact mobile view */
+            .col-student-id, .col-program {
+                display: none !important;
+            }
+
+            .member-info-cell {
+                gap: 0.35rem;
+            }
+            .member-avatar-thumb {
+                width: 26px;
+                height: 26px;
+                font-size: 0.7rem;
+            }
+            .member-name-text {
+                font-size: 0.75rem;
+            }
+            .member-email-text {
+                font-size: 0.64rem;
+            }
+            .school-tag-badge {
+                font-size: 0.64rem;
+                padding: 1px 4px;
+            }
+            .school-tag-badge i {
+                display: none;
+            }
+            .school-sub-text {
+                display: none;
+            }
+            .pill-status {
+                font-size: 0.62rem;
+                padding: 1px 5px;
+            }
+            .pill-status-dot {
+                width: 4px;
+                height: 4px;
+            }
+            .btn-row-action {
+                padding: 0.25rem 0.45rem;
+                font-size: 0.68rem;
+            }
+            .btn-row-action .btn-action-text {
+                display: none;
             }
         }
 
@@ -1137,7 +1239,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                 </div>
             <?php endif; ?>
 
-            <!-- 2. KPI Cards Grid -->
+            <!-- 2. KPI Cards Grid (4 Columns Across - Same on Desktop & Mobile) -->
             <div class="white-kpi-grid">
                 <div class="kpi-card">
                     <div class="kpi-icon-pill blue">
@@ -1218,18 +1320,15 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                 </div>
             </div>
 
-            <!-- 4. Members Table Card -->
+            <!-- 4. Members Table Card (Compact & Perfectly Fitted without Horizontal Scrolling) -->
             <div class="white-table-card">
                 <div class="table-card-topbar">
                     <h3 class="table-card-heading">
                         <i class="fas fa-address-book" style="color:var(--color-navy);"></i>
                         <span>Student Member Ledger</span>
                     </h3>
-                    <div style="display:flex; align-items:center; gap:0.6rem;">
-                        <span class="mobile-scroll-hint"><i class="fas fa-arrows-left-right"></i> Scroll table &rarr;</span>
-                        <div style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">
-                            Click <span style="background:var(--color-navy); color:#FFFFFF; padding:3px 8px; border-radius:5px; font-size:0.72rem; font-weight:800;">👁️ View</span> for details
-                        </div>
+                    <div style="font-size:0.8rem; font-weight:600; color:var(--text-muted);">
+                        Click <span style="background:var(--color-navy); color:#FFFFFF; padding:2px 7px; border-radius:4px; font-size:0.72rem; font-weight:800;">👁️ View</span> to inspect profile info
                     </div>
                 </div>
 
@@ -1237,25 +1336,25 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                     <table class="roster-white-table" id="membersMainTable">
                         <thead>
                             <tr>
-                                <th style="width:40px;"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this)"></th>
-                                <th>Student Member</th>
-                                <th>Enrolled School</th>
-                                <th>Student ID</th>
-                                <th>Program & Year</th>
-                                <th>Status</th>
-                                <th style="text-align:right;">Actions</th>
+                                <th class="col-checkbox"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this)"></th>
+                                <th class="col-member">Student Member</th>
+                                <th class="col-school">Enrolled School</th>
+                                <th class="col-student-id">Student ID</th>
+                                <th class="col-program">Program & Year</th>
+                                <th class="col-status">Status</th>
+                                <th class="col-actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="membersTableBody">
                             <?php if (empty($allMembersList)): ?>
                                 <tr id="emptyDbRow">
-                                    <td colspan="7" style="text-align:center; padding:4rem 1.5rem; color:#64748B;">
-                                        <i class="fas fa-folder-open" style="font-size:3rem; color:#CBD5E1; margin-bottom:1rem; display:block;"></i>
-                                        <h4 style="margin:0 0 0.4rem; color:#0F172A; font-weight:800; font-size:1.15rem;">No Member Directories Submitted Yet</h4>
-                                        <p style="margin:0 0 1.25rem; font-size:0.88rem; color:#64748B;">
+                                    <td colspan="7" style="text-align:center; padding:3.5rem 1rem; color:#64748B;">
+                                        <i class="fas fa-folder-open" style="font-size:2.5rem; color:#CBD5E1; margin-bottom:0.75rem; display:block;"></i>
+                                        <h4 style="margin:0 0 0.35rem; color:#0F172A; font-weight:800; font-size:1.05rem;">No Member Directories Submitted Yet</h4>
+                                        <p style="margin:0 0 1rem; font-size:0.84rem; color:#64748B;">
                                             There are currently no member records in the database. Use <strong>"Bulk CSV Import"</strong> or wait for affiliated school chapters to submit rosters.
                                         </p>
-                                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="btn-primary-navy">
+                                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/members/batch-process.php" class="btn-primary-navy" style="font-size:0.82rem; padding:0.5rem 1rem;">
                                             <i class="fas fa-file-import"></i> Upload Member Directory CSV
                                         </a>
                                     </td>
@@ -1310,8 +1409,8 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                                         data-status="<?= htmlspecialchars($pStatus) ?>"
                                         data-year="<?= htmlspecialchars(strtolower($yr)) ?>"
                                         data-search="<?= htmlspecialchars(strtolower($fName . ' ' . $email . ' ' . $sId . ' ' . $memCode . ' ' . $instData['name'] . ' ' . $instData['acronym'])) ?>">
-                                        <td><input type="checkbox" class="row-checkbox"></td>
-                                        <td>
+                                        <td class="col-checkbox"><input type="checkbox" class="row-checkbox"></td>
+                                        <td class="col-member">
                                             <div class="member-info-cell">
                                                 <div class="member-avatar-thumb">
                                                     <?php if (!empty($avatar)): ?>
@@ -1321,41 +1420,42 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
                                                         <span><?= strtoupper(substr($fName, 0, 1)) ?></span>
                                                     <?php endif; ?>
                                                 </div>
-                                                <div>
+                                                <div style="min-width:0;">
                                                     <div class="member-name-text"><?= htmlspecialchars($fName) ?></div>
                                                     <div class="member-email-text"><?= htmlspecialchars($email) ?></div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td>
+                                        <td class="col-school">
                                             <span class="school-tag-badge">
                                                 <i class="fas fa-building-columns"></i>
                                                 <?= htmlspecialchars($instData['acronym']) ?>
                                             </span>
-                                            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;"><?= htmlspecialchars($instData['name']) ?></div>
+                                            <div class="school-sub-text" style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;"><?= htmlspecialchars($instData['name']) ?></div>
                                         </td>
-                                        <td>
+                                        <td class="col-student-id">
                                             <span class="mono-id-tag">
                                                 <?= htmlspecialchars($sId) ?>
                                             </span>
                                         </td>
-                                        <td>
+                                        <td class="col-program">
                                             <strong style="color:var(--text-heading); font-size:0.84rem;"><?= htmlspecialchars($yr) ?></strong>
                                             <div style="font-size:0.74rem; color:var(--text-muted);"><?= htmlspecialchars($prog) ?></div>
                                         </td>
-                                        <td>
+                                        <td class="col-status">
                                             <?php if ($pStatus === 'paid' || $pStatus === 'active'): ?>
                                                 <span class="pill-status paid"><span class="pill-status-dot"></span> Paid</span>
                                             <?php else: ?>
                                                 <span class="pill-status pending"><span class="pill-status-dot"></span> Pending</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td style="text-align:right;">
+                                        <td class="col-actions" style="text-align:right;">
                                             <button type="button" 
-                                                    class="btn-row-action view-btn" 
+                                                    class="btn-row-action" 
                                                     data-member='<?= $memberJson ?>' 
-                                                    onclick="openProfileModal(this)">
-                                                <i class="fas fa-eye"></i> View
+                                                    onclick="openProfileModal(this)"
+                                                    title="View Profile">
+                                                <i class="fas fa-eye"></i><span class="btn-action-text"> View</span>
                                             </button>
                                         </td>
                                     </tr>
@@ -1871,7 +1971,7 @@ $issuedIds = count(array_filter($allMembersList, fn($m) => !empty($m['membership
             rows.forEach(r => {
                 if (r.style.display !== 'none') {
                     try {
-                        const btn = r.querySelector('.btn-row-action.view-btn');
+                        const btn = r.querySelector('.btn-row-action');
                         const data = JSON.parse(btn.getAttribute('data-member'));
                         csv += `"${data.name}","${data.email}","${data.student_id}","${data.membership_id}","${data.school_name}","${data.program}","${data.year_level}","${data.phone}","${data.address}","${data.payment_status}"\n`;
                     } catch(e) {}
