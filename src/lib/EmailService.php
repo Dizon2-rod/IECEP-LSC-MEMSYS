@@ -111,18 +111,90 @@ class EmailService
         try {
             $mail = $this->createMailer();
             $mail->addAddress($to);
-            $mail->Subject = 'IECEP-LSC Email Verification Code';
+            $logoUrl = 'https://raw.githubusercontent.com/Dizon2-rod/IECEP-LSC-MEMSYS/main/public/assets/icons/iecep-logo.png';
+            $mail->Subject = 'Your IECEP-LSC Email Verification Code: ' . $code;
+            
+            // Format 6-digit code with spacing
+            $formattedCode = implode(' ', str_split($code));
+
             $mail->Body = "
-                <div style='font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:24px'>
-                    <h2 style='color:#0A2F6C'>Email Verification</h2>
-                    <p>Your IECEP-LSC verification code is:</p>
-                    <div style='background:#f8f9fa;padding:20px;border-radius:8px;text-align:center;margin:20px 0'>
-                        <span style='font-size:32px;font-weight:bold;color:#0A2F6C;letter-spacing:4px'>{$code}</span>
-                    </div>
-                    <p style='color:#6c757d'>This code expires in 10 minutes.</p>
-                    <p style='color:#dc3545;font-size:14px'>If you didn't request this code, please ignore this email.</p>
-                </div>";
-            $mail->AltBody = "Your IECEP-LSC verification code is: {$code}. It expires in 10 minutes.";
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>Email Verification Code</title>
+</head>
+<body style='margin:0;padding:0;background-color:#F0F4F8;font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;'>
+    <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#F0F4F8;padding:30px 15px;'>
+        <tr>
+            <td align='center'>
+                <table border='0' cellpadding='0' cellspacing='0' width='100%' style='max-width:560px;background-color:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(11,29,74,0.12);border:1px solid #E2E8F0;'>
+                    
+                    <!-- Header -->
+                    <tr>
+                        <td align='center' style='background:linear-gradient(135deg,#07122E 0%,#0B1D4A 50%,#142B67 100%);padding:35px 25px 25px;border-bottom:4px solid #D4AF37;'>
+                            <img src='{$logoUrl}' alt='IECEP-LSC' width='64' height='64' style='display:block;margin:0 auto 12px;border-radius:10px;border:2px solid #D4AF37;background:#0B1D4A;object-fit:contain;'>
+                            <h1 style='color:#FFFFFF;font-size:20px;font-weight:800;margin:0 0 6px;letter-spacing:0.5px;'>IECEP &ndash; Laguna Student Chapter</h1>
+                            <p style='color:#F8E7A2;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0;'>Membership Management System</p>
+                        </td>
+                    </tr>
+
+                    <!-- Body Content -->
+                    <tr>
+                        <td style='padding:35px 30px;'>
+                            <h2 style='color:#0B1D4A;font-size:22px;font-weight:700;margin:0 0 12px;'>Email Verification Code</h2>
+                            <p style='color:#475569;font-size:15px;line-height:1.6;margin:0 0 24px;'>
+                                Hello! We received a request to verify this email address (<strong>" . htmlspecialchars($to) . "</strong>) for your IECEP-LSC application. Use the one-time verification code below to proceed:
+                            </p>
+
+                            <!-- OTP Box -->
+                            <table border='0' cellpadding='0' cellspacing='0' width='100%' style='margin:0 0 28px;'>
+                                <tr>
+                                    <td align='center' style='background:linear-gradient(135deg,#0B1D4A 0%,#17306D 100%);border-radius:12px;padding:22px 20px;border:2px solid #D4AF37;box-shadow:0 6px 18px rgba(11,29,74,0.15);'>
+                                        <span style='color:#F8E7A2;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:8px;'>Your 6-Digit One-Time Code</span>
+                                        <span style='color:#FFFFFF;font-family:Courier,monospace;font-size:36px;font-weight:800;letter-spacing:10px;display:inline-block;padding-left:10px;'>{$code}</span>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Expiry & Security Notice -->
+                            <div style='background-color:#FFFBEB;border-left:4px solid #F59E0B;border-radius:6px;padding:14px 16px;margin:0 0 24px;'>
+                                <table border='0' cellpadding='0' cellspacing='0' width='100%'>
+                                    <tr>
+                                        <td style='color:#92400E;font-size:13px;line-height:1.5;'>
+                                            <strong>&#9200; Code Validity:</strong> This code is valid for <strong>10 minutes</strong> and can only be used once. Never share this code with anyone.
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <p style='color:#64748B;font-size:13px;line-height:1.5;margin:0;'>
+                                If you did not initiate this request, you can safely ignore this email. No changes will be made to your account.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td align='center' style='background-color:#F8FAFC;padding:24px 20px;border-top:1px solid #E2E8F0;'>
+                            <p style='color:#64748B;font-size:12px;margin:0 0 6px;'>
+                                &copy; " . date('Y') . " <strong>IECEP - Laguna Student Chapter</strong>. All rights reserved.
+                            </p>
+                            <p style='color:#94A3B8;font-size:11px;margin:0;'>
+                                Institute of Electronics Engineers of the Philippines &bull; MEMSYS Portal
+                            </p>
+                        </td>
+                    </tr>
+
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>";
+
+            $mail->AltBody = "IECEP - Laguna Student Chapter (MEMSYS)\n\nEmail Verification Code\n\nYour 6-digit one-time verification code is: {$code}\n\nThis code expires in 10 minutes. Do not share this code with anyone.\n\nIf you did not request this code, please ignore this email.\n\n© " . date('Y') . " IECEP-LSC";
 
             $result = $mail->send();
             if (!$result) {
