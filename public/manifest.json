@@ -1,10 +1,10 @@
 {
-  "id": "/IECEP-LSC-MEMSYS/",
+  "id": "/",
   "name": "IECEP - LSC MEMSYS",
   "short_name": "IECEP - LSC MEMSYS",
   "description": "Institute of Electronics Engineers of the Philippines - Laguna Student Chapter Membership Management System.",
-  "start_url": "/IECEP-LSC-MEMSYS/index.php",
-  "scope": "/IECEP-LSC-MEMSYS/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "background_color": "#0B1D4A",
@@ -15,67 +15,109 @@
   "categories": ["education", "productivity", "business"],
   "icons": [
     {
-      "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-72x72.png",
+      "src": "assets/icons/icon-72x72.png",
       "sizes": "72x72",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-96x96.png",
+      "src": "assets/icons/icon-72x72-maskable.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icons/icon-96x96.png",
       "sizes": "96x96",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-128x128.png",
+      "src": "assets/icons/icon-96x96-maskable.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icons/icon-128x128.png",
       "sizes": "128x128",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-144x144.png",
+      "src": "assets/icons/icon-128x128-maskable.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icons/icon-144x144.png",
       "sizes": "144x144",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-152x152.png",
+      "src": "assets/icons/icon-144x144-maskable.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icons/icon-152x152.png",
       "sizes": "152x152",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-192x192.png",
+      "src": "assets/icons/icon-152x152-maskable.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icons/icon-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/icons/icon-180x180-maskable.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "assets/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-192x192-maskable.png",
+      "src": "assets/icons/icon-192x192-maskable.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-384x384.png",
+      "src": "assets/icons/icon-384x384.png",
       "sizes": "384x384",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-384x384-maskable.png",
+      "src": "assets/icons/icon-384x384-maskable.png",
       "sizes": "384x384",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-512x512.png",
+      "src": "assets/icons/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-512x512-maskable.png",
+      "src": "assets/icons/icon-512x512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
@@ -86,34 +128,22 @@
       "name": "Member Login",
       "short_name": "Login",
       "description": "Log in to your IECEP - LSC MEMSYS account",
-      "url": "/IECEP-LSC-MEMSYS/login.php",
+      "url": "./login.php",
       "icons": [
         {
-          "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-192x192.png",
+          "src": "assets/icons/icon-192x192.png",
           "sizes": "192x192"
         }
       ]
     },
     {
-      "name": "Blockchain Explorer",
-      "short_name": "Explorer",
-      "description": "Verify cryptographic receipts and block ledgers",
-      "url": "/IECEP-LSC-MEMSYS/public/blockchain-explorer.php",
+      "name": "Member Portal",
+      "short_name": "Portal",
+      "description": "Access member dashboard and features",
+      "url": "./portal/member/dashboard.php",
       "icons": [
         {
-          "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-192x192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Chapter Events",
-      "short_name": "Events",
-      "description": "View upcoming regional chapter events and seminars",
-      "url": "/IECEP-LSC-MEMSYS/public/portal/member/events.php",
-      "icons": [
-        {
-          "src": "/IECEP-LSC-MEMSYS/public/assets/icons/icon-192x192.png",
+          "src": "assets/icons/icon-192x192.png",
           "sizes": "192x192"
         }
       ]

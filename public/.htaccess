@@ -25,3 +25,13 @@ php_value memory_limit 256M
     # Route unmatched requests to index.php for SPA compatibility
     RewriteRule ^(.*)$ index.php [QSA,L]
 </IfModule>
+
+<IfModule mod_headers.c>
+    <Files "sw.js">
+        Header set Service-Worker-Allowed "/"
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </Files>
+    <Files "manifest.json">
+        Header set Access-Control-Allow-Origin "*"
+    </Files>
+</IfModule>

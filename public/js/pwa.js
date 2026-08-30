@@ -15,12 +15,37 @@ const PWA = {
         // Register Service Worker
         window.addEventListener('load', async () => {
             try {
-                const basePath = window.IECEP_CONFIG && window.IECEP_CONFIG.PUBLIC_URL 
-                    ? window.IECEP_CONFIG.PUBLIC_URL 
-                    : (window.location.pathname.includes('/IECEP-LSC-MEMSYS') ? '/IECEP-LSC-MEMSYS/public' : '/public');
+                let basePath = '';
+                if (window.IECEP_CONFIG && window.IECEP_CONFIG.PUBLIC_URL) {
+                    basePath = window.IECEP_CONFIG.PUBLIC_URL;
+                } else if (window.location.pathname.includes('/IECEP-LSC-MEMSYS')) {
+                    basePath = '/IECEP-LSC-MEMSYS/public';
+                } else {
+                    basePath = '/public';
+                }
+
+                // Determine appropriate app root scope
+                let appScope = '/';
+                if (window.IECEP_CONFIG && window.IECEP_CONFIG.APP_URL) {
+                    try {
+                        const parsed = new URL(window.IECEP_CONFIG.APP_URL);
+                        const pName = parsed.pathname.replace(/\/+$/, '');
+                        appScope = pName ? `${pName}/` : '/';
+                    } catch (e) {
+                        appScope = window.location.pathname.includes('/IECEP-LSC-MEMSYS') ? '/IECEP-LSC-MEMSYS/' : '/';
+                    }
+                } else {
+                    appScope = window.location.pathname.includes('/IECEP-LSC-MEMSYS') ? '/IECEP-LSC-MEMSYS/' : '/';
+                }
 
                 const swUrl = `${basePath}/sw.js`;
-                const reg = await navigator.serviceWorker.register(swUrl, { scope: '/IECEP-LSC-MEMSYS/' });
+                let reg;
+                try {
+                    reg = await navigator.serviceWorker.register(swUrl, { scope: appScope });
+                } catch (scopeErr) {
+                    // Fallback to registering without explicit scope (uses Service Worker file directory)
+                    reg = await navigator.serviceWorker.register(swUrl);
+                }
                 console.log('[PWA] Service Worker registered with scope:', reg.scope);
 
                 // If permission already granted, ensure push subscription
@@ -93,11 +118,15 @@ const PWA = {
     showInstallBanner() {
         if (document.getElementById('pwaFloatingBanner')) return;
 
+        const logoUrl = (window.IECEP_CONFIG && window.IECEP_CONFIG.ASSETS_URL) 
+            ? `${window.IECEP_CONFIG.ASSETS_URL}/icons/iecep-logo.png`
+            : (window.location.pathname.includes('/IECEP-LSC-MEMSYS') ? '/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png' : '/public/assets/icons/iecep-logo.png');
+
         const banner = document.createElement('div');
         banner.id = 'pwaFloatingBanner';
         banner.innerHTML = `
             <div style="position:fixed;bottom:20px;right:20px;z-index:99999;background:linear-gradient(135deg,#07122E 0%,#0B1D4A 100%);color:#FFFFFF;border:1px solid rgba(212,175,55,0.4);box-shadow:0 12px 35px rgba(0,0,0,0.35);border-radius:14px;padding:14px 18px;max-width:360px;display:flex;align-items:center;gap:14px;font-family:'DM Sans',sans-serif;animation:slideUp 0.4s ease-out;">
-                <img src="/IECEP-LSC-MEMSYS/public/assets/icons/iecep-logo.png" style="width:42px;height:42px;border-radius:8px;border:1px solid #D4AF37;object-fit:contain;background:#0B1D4A;" alt="Logo">
+                <img src="${logoUrl}" style="width:42px;height:42px;border-radius:8px;border:1px solid #D4AF37;object-fit:contain;background:#0B1D4A;" alt="Logo">
                 <div style="flex:1;">
                     <strong style="display:block;font-size:0.9rem;color:#F8E7A2;">Install IECEP-LSC App</strong>
                     <span style="font-size:0.75rem;color:rgba(255,255,255,0.8);line-height:1.3;display:block;">Fast offline access & instant updates on your home screen.</span>
