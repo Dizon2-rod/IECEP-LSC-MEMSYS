@@ -1342,7 +1342,9 @@ class EmailService
      */
     public function sendAffiliationRevisionRequest(string $toEmail, string $institutionName, string $contactPerson, array $requestedFiles, string $instructions, string $revisionUrl): bool
     {
+        $toEmail = trim($toEmail);
         try {
+            error_log("Preparing to send affiliation revision request email to: {$toEmail} for '{$institutionName}'");
             $mail = $this->createMailer();
             $mail->addAddress($toEmail, $contactPerson ?: $institutionName);
             $mail->Subject = "Action Required: Revisions Requested for {$institutionName} Affiliation Application";
@@ -1389,9 +1391,17 @@ class EmailService
                     </div>
                 </div>";
 
-            return $mail->send();
+            $result = $mail->send();
+            if (!$result) {
+                $this->lastError = $mail->ErrorInfo ?: 'Unknown PHPMailer error';
+                error_log("Revision email to {$toEmail} failed: " . $this->lastError);
+            } else {
+                error_log("Revision email successfully sent to {$toEmail}");
+            }
+            return $result;
         } catch (\Throwable $e) {
-            error_log("Email error (send affiliation revision): " . $e->getMessage());
+            $this->lastError = $e->getMessage();
+            error_log("Email error (send affiliation revision) to {$toEmail}: " . $e->getMessage());
             return false;
         }
     }
@@ -1401,7 +1411,9 @@ class EmailService
      */
     public function sendAffiliationRejectionNotice(string $toEmail, string $institutionName, string $contactPerson, string $reason): bool
     {
+        $toEmail = trim($toEmail);
         try {
+            error_log("Preparing to send affiliation rejection email to: {$toEmail} for '{$institutionName}'");
             $mail = $this->createMailer();
             $mail->addAddress($toEmail, $contactPerson ?: $institutionName);
             $mail->Subject = "Update on {$institutionName} Affiliation Application - IECEP-LSC";
@@ -1426,9 +1438,17 @@ class EmailService
                     </div>
                 </div>";
 
-            return $mail->send();
+            $result = $mail->send();
+            if (!$result) {
+                $this->lastError = $mail->ErrorInfo ?: 'Unknown PHPMailer error';
+                error_log("Rejection email to {$toEmail} failed: " . $this->lastError);
+            } else {
+                error_log("Rejection email successfully sent to {$toEmail}");
+            }
+            return $result;
         } catch (\Throwable $e) {
-            error_log("Email error (send affiliation rejection): " . $e->getMessage());
+            $this->lastError = $e->getMessage();
+            error_log("Email error (send affiliation rejection) to {$toEmail}: " . $e->getMessage());
             return false;
         }
     }

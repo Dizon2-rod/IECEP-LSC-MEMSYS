@@ -395,16 +395,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 // Fetch application info for email delivery
                 $appRes = $supabase->select('pending_affiliations', ['id' => 'eq.' . $appId]);
                 if (!empty($appRes)) {
-                    $appRow = $appRes[0];
-                    $applicantEmail = $appRow['contact_email'] ?? $appRow['email'] ?? $email;
-                    $applicantName = $appRow['contact_person'] ?? $contactPerson;
-                    $applicantSchool = $appRow['institution_name'] ?? $instName;
+                    $appData = normalize_pending_affiliation_app($appRes[0]);
+                    $applicantEmail = trim($appData['contact_email'] ?: ($appData['email'] ?: $email));
+                    $applicantName = trim($appData['contact_person'] ?: ($contactPerson ?: 'School Chapter Representative'));
+                    $applicantSchool = trim($appData['institution_name'] ?: ($appData['school_name'] ?: ($instName ?: 'Affiliated Institution')));
                     
                     $emailService = new \App\Lib\EmailService();
                     $revisionUrl = BASE_URL . '/public/revise-affiliation.php?id=' . urlencode($appId);
                     
-                    if ($applicantEmail) {
-                        $emailService->sendAffiliationRevisionRequest(
+                    if (!empty($applicantEmail)) {
+                        $sent = $emailService->sendAffiliationRevisionRequest(
                             $applicantEmail,
                             $applicantSchool,
                             $applicantName,
@@ -412,11 +412,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             $instructions,
                             $revisionUrl
                         );
+                        if (!$sent) {
+                            $lastErr = $emailService->getLastError() ?: 'SMTP delivery issue';
+                            throw new \Exception("Revision status saved, but email sending to '{$applicantEmail}' failed: {$lastErr}");
+                        }
+                    } else {
+                        throw new \Exception("Revision status saved, but applicant email could not be found.");
                     }
                 }
             }
             
-            $feedbackMsg = "📩 Revision Request successfully sent to {$email}! The applicant has received the link in their Gmail to re-upload the requested file(s).";
+            $feedbackMsg = "📩 Revision Request successfully sent to {$applicantEmail}! The applicant has received the link in their Gmail to re-upload the requested file(s).";
             $feedbackType = 'info';
         } catch (\Throwable $e) {
             error_log("Revision request error: " . $e->getMessage());
@@ -439,14 +445,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 
                 $appRes = $supabase->select('pending_affiliations', ['id' => 'eq.' . $appId]);
                 if (!empty($appRes)) {
-                    $appRow = $appRes[0];
-                    $applicantEmail = $appRow['contact_email'] ?? $appRow['email'] ?? $email;
-                    $applicantName = $appRow['contact_person'] ?? $contactPerson;
-                    $applicantSchool = $appRow['institution_name'] ?? $instName;
+                    $appData = normalize_pending_affiliation_app($appRes[0]);
+                    $applicantEmail = trim($appData['contact_email'] ?: ($appData['email'] ?: $email));
+                    $applicantName = trim($appData['contact_person'] ?: ($contactPerson ?: 'School Representative'));
+                    $applicantSchool = trim($appData['institution_name'] ?: ($appData['school_name'] ?: ($instName ?: 'Affiliated Institution')));
                     
                     $emailService = new \App\Lib\EmailService();
-                    if ($applicantEmail) {
-                        $emailService->sendAffiliationRejectionNotice($applicantEmail, $applicantSchool, $applicantName, $reason);
+                    if (!empty($applicantEmail)) {
+                        $sent = $emailService->sendAffiliationRejectionNotice($applicantEmail, $applicantSchool, $applicantName, $reason);
+                        if (!$sent) {
+                            $lastErr = $emailService->getLastError() ?: 'SMTP delivery issue';
+                            throw new \Exception("Rejection status saved, but email notice to '{$applicantEmail}' failed: {$lastErr}");
+                        }
                     }
                 }
             }
