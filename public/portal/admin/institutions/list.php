@@ -16,6 +16,15 @@ $supabase = getSupabaseClient();
 $feedbackMsg = '';
 $feedbackType = 'success';
 
+if (!function_exists('uuid_v4')) {
+    function uuid_v4(): string {
+        $data = random_bytes(16);
+        $data[6] = chr(ord($data[6]) & 0x0f | 0x40); // set version to 0100
+        $data[8] = chr(ord($data[8]) & 0x3f | 0x80); // set bits 6-7 to 10
+        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+    }
+}
+
 // Handle POST actions: Approve, Request Revision, or Reject
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
@@ -29,7 +38,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($action === 'approve_charter') {
         try {
             $timestamp = date('c');
-            $instId = bin2hex(random_bytes(16));
             $membersCount = 0;
             $appData = null;
 
@@ -45,12 +53,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
             }
 
+            if (empty($instName)) {
+                throw new \Exception("Institution name is required to approve charter.");
+            }
+
             // Derive acronym
             $words = explode(' ', $instName);
             $acronym = count($words) > 1 ? implode('', array_map(fn($w) => strtoupper(substr($w, 0, 1)), array_slice($words, 0, 4))) : substr($instName, 0, 8);
 
-            // 2. Insert into institutions table
-            if ($instName) {
+            // 2. Insert or update institutions table
+            $instId = null;
+            if ($email) {
+                $existingInst = $supabase->select('institutions', ['email' => 'eq.' . $email]);
+                if (!empty($existingInst) && isset($existingInst[0]['id'])) {
+                    $instId = $existingInst[0]['id'];
+                }
+            }
+            if (!$instId) {
+                $existingInstName = $supabase->select('institutions', ['name' => 'eq.' . $instName]);
+                if (!empty($existingInstName) && isset($existingInstName[0]['id'])) {
+                    $instId = $existingInstName[0]['id'];
+                }
+            }
+
+            if ($instId) {
+                $supabase->update('institutions', [
+                    'name' => $instName,
+                    'acronym' => $acronym,
+                    'status' => 'active',
+                    'compliance_status' => 'compliant',
+                    'affiliation_fee_paid' => true,
+                    'updated_at' => $timestamp
+                ], $instId);
+            } else {
+                $instId = uuid_v4();
                 $supabase->insert('institutions', [[
                     'id' => $instId,
                     'name' => $instName,
@@ -72,37 +108,55 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             // Initialize Email Service
             $emailService = new \App\Lib\EmailService();
 
-            // 3. Auto-Create School Officer Portal Account & Send Credentials
+            // 3. Auto-Create / Update School Officer Portal Account & Send Credentials
             $officerTempPass = 'LSC-' . rand(1000, 9999) . '-' . substr(strtoupper(bin2hex(random_bytes(2))), 0, 4);
             if ($email) {
-                $officerUserId = bin2hex(random_bytes(16));
-                
-                // Insert into users table
-                $supabase->insert('users', [[
-                    'id' => $officerUserId,
-                    'email' => $email,
-                    'password' => password_hash($officerTempPass, PASSWORD_BCRYPT),
-                    'full_name' => $contactPerson ?: "$acronym Officer",
-                    'role' => 'school_officer',
-                    'institution_id' => $instId,
-                    'is_active' => true,
-                    'must_change_password' => true,
-                    'created_at' => $timestamp,
-                    'updated_at' => $timestamp
-                ]]);
+                $existingUser = $supabase->select('users', ['email' => 'eq.' . $email]);
+                if (!empty($existingUser) && isset($existingUser[0]['id'])) {
+                    $officerUserId = $existingUser[0]['id'];
+                    $supabase->update('users', [
+                        'password' => password_hash($officerTempPass, PASSWORD_BCRYPT),
+                        'full_name' => $contactPerson ?: "$acronym Officer",
+                        'role' => 'school_officer',
+                        'institution_id' => $instId,
+                        'is_active' => true,
+                        'must_change_password' => true,
+                        'updated_at' => $timestamp
+                    ], $officerUserId);
 
-                // Insert into user_profiles
-                $supabase->insert('user_profiles', [[
-                    'id' => $officerUserId,
-                    'user_id' => $officerUserId,
-                    'email' => $email,
-                    'full_name' => $contactPerson ?: "$acronym Officer",
-                    'role' => 'school_officer',
-                    'institution_id' => $instId,
-                    'membership_status' => 'active',
-                    'created_at' => $timestamp,
-                    'updated_at' => $timestamp
-                ]]);
+                    $supabase->update('user_profiles', [
+                        'role' => 'school_officer',
+                        'institution_id' => $instId,
+                        'membership_status' => 'active',
+                        'updated_at' => $timestamp
+                    ], $officerUserId);
+                } else {
+                    $officerUserId = uuid_v4();
+                    $supabase->insert('users', [[
+                        'id' => $officerUserId,
+                        'email' => $email,
+                        'password' => password_hash($officerTempPass, PASSWORD_BCRYPT),
+                        'full_name' => $contactPerson ?: "$acronym Officer",
+                        'role' => 'school_officer',
+                        'institution_id' => $instId,
+                        'is_active' => true,
+                        'must_change_password' => true,
+                        'created_at' => $timestamp,
+                        'updated_at' => $timestamp
+                    ]]);
+
+                    $supabase->insert('user_profiles', [[
+                        'id' => $officerUserId,
+                        'user_id' => $officerUserId,
+                        'email' => $email,
+                        'full_name' => $contactPerson ?: "$acronym Officer",
+                        'role' => 'school_officer',
+                        'institution_id' => $instId,
+                        'membership_status' => 'active',
+                        'created_at' => $timestamp,
+                        'updated_at' => $timestamp
+                    ]]);
+                }
 
                 try {
                     $emailService->sendSchoolAccountCredentials($email, $instName, $officerTempPass, $contactPerson ?: "$acronym Officer");
@@ -153,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                     try {
                         if (class_exists('PhpOffice\PhpSpreadsheet\IOFactory')) {
-                            $spreadsheet = IOFactory::load($tempRosterPath);
+                            $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($tempRosterPath);
                             $worksheet = $spreadsheet->getActiveSheet();
                             $memberRows = $worksheet->toArray(null, true, true, false);
                         } else {
@@ -194,11 +248,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
                                 if (!empty($sEmail) && filter_var($sEmail, FILTER_VALIDATE_EMAIL) && !empty($name)) {
                                     $baseCount++;
-                                    $memId = bin2hex(random_bytes(16));
+                                    $memId = uuid_v4();
                                     $membershipId = date('Y') . str_pad($baseCount, 4, '0', STR_PAD_LEFT);
                                     $hash = hash('sha256', $memId . $name . $sEmail . $timestamp);
 
-                                    // Insert into members table
+                                    // Insert or update member
                                     $supabase->insert('members', [[
                                         'id' => $memId,
                                         'full_name' => $name,
@@ -211,37 +265,39 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                         'member_type' => 'regular',
                                         'payment_status' => 'paid',
                                         'digital_id_hash' => $hash,
-                                        'digital_id_url' => 'DID-2026-LSC-' . strtoupper(substr($memId, 0, 4)),
+                                        'digital_id_url' => 'DID-2026-LSC-' . strtoupper(substr(str_replace('-', '', $memId), 0, 4)),
                                         'created_at' => $timestamp,
                                         'updated_at' => $timestamp
                                     ]]);
 
-                                    // Insert into users table
-                                    $supabase->insert('users', [[
-                                        'id' => $memId,
-                                        'email' => $sEmail,
-                                        'password' => password_hash($memberTempPass, PASSWORD_BCRYPT),
-                                        'full_name' => $name,
-                                        'role' => 'member',
-                                        'institution_id' => $instId,
-                                        'is_active' => true,
-                                        'must_change_password' => true,
-                                        'created_at' => $timestamp,
-                                        'updated_at' => $timestamp
-                                    ]]);
+                                    // Check if user already exists
+                                    $existingStudentUser = $supabase->select('users', ['email' => 'eq.' . $sEmail]);
+                                    if (empty($existingStudentUser)) {
+                                        $supabase->insert('users', [[
+                                            'id' => $memId,
+                                            'email' => $sEmail,
+                                            'password' => password_hash($memberTempPass, PASSWORD_BCRYPT),
+                                            'full_name' => $name,
+                                            'role' => 'member',
+                                            'institution_id' => $instId,
+                                            'is_active' => true,
+                                            'must_change_password' => true,
+                                            'created_at' => $timestamp,
+                                            'updated_at' => $timestamp
+                                        ]]);
 
-                                    // Insert into user_profiles table
-                                    $supabase->insert('user_profiles', [[
-                                        'id' => $memId,
-                                        'user_id' => $memId,
-                                        'email' => $sEmail,
-                                        'full_name' => $name,
-                                        'role' => 'member',
-                                        'institution_id' => $instId,
-                                        'membership_status' => 'active',
-                                        'created_at' => $timestamp,
-                                        'updated_at' => $timestamp
-                                    ]]);
+                                        $supabase->insert('user_profiles', [[
+                                            'id' => $memId,
+                                            'user_id' => $memId,
+                                            'email' => $sEmail,
+                                            'full_name' => $name,
+                                            'role' => 'member',
+                                            'institution_id' => $instId,
+                                            'membership_status' => 'active',
+                                            'created_at' => $timestamp,
+                                            'updated_at' => $timestamp
+                                        ]]);
+                                    }
 
                                     // Send credential email to student's Gmail
                                     try {
@@ -271,31 +327,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
 
             // 6. Anchor blockchain proof
-            $certHash = hash('sha256', $instName . '|CHARTER|' . $timestamp);
-            $supabase->insert('blockchain_records', [[
-                'entity_type' => 'institution_charter',
-                'entity_id' => $instId,
-                'record_type' => 'charter_endorsement',
-                'transaction_hash' => $certHash,
-                'record_hash' => $certHash,
-                'data_hash' => $certHash,
-                'confirmed' => true,
-                'data_json' => [
-                    'institution_name' => $instName,
-                    'action' => 'Charter Endorsed & Members Ingested',
-                    'academic_year' => '2026-2027',
-                    'members_ingested' => $ingestedCount,
-                    'approved_by' => 'IECEP-LSC Secretariat'
-                ],
-                'created_at' => $timestamp
-            ]]);
+            try {
+                $certHash = hash('sha256', $instName . '|CHARTER|' . $timestamp);
+                $supabase->insert('blockchain_records', [[
+                    'entity_type' => 'institution_charter',
+                    'entity_id' => $instId,
+                    'record_type' => 'charter_endorsement',
+                    'transaction_hash' => $certHash,
+                    'record_hash' => $certHash,
+                    'data_hash' => $certHash,
+                    'confirmed' => true,
+                    'data_json' => [
+                        'institution_name' => $instName,
+                        'action' => 'Charter Endorsed & Members Ingested',
+                        'academic_year' => '2026-2027',
+                        'members_ingested' => $ingestedCount,
+                        'approved_by' => 'IECEP-LSC Secretariat'
+                    ],
+                    'created_at' => $timestamp
+                ]]);
+            } catch (\Throwable $bcEx) {
+                error_log("Blockchain record insertion warning: " . $bcEx->getMessage());
+            }
 
-            $feedbackMsg = "🎉 Successfully Approved Affiliation for '{$instName}'! Chapter active, School Officer created, and {$ingestedCount} student members ingested.";
+            $feedbackMsg = "🎉 Successfully Approved Affiliation for '{$instName}'! Chapter active, School Officer account created, and {$ingestedCount} student members ingested.";
             $feedbackType = 'success';
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Approval error: " . $e->getMessage());
-            $feedbackMsg = "Affiliation approved for '{$instName}'.";
-            $feedbackType = 'success';
+            $feedbackMsg = "❌ Error approving affiliation: " . $e->getMessage();
+            $feedbackType = 'danger';
         }
     } elseif ($action === 'request_revision') {
         try {
@@ -322,11 +382,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
             
             if ($appId) {
-                $supabase->update('pending_affiliations', [
+                $updatePayload = [
                     'status' => 'requires_revision',
-                    'rejection_reason' => $instructions ?: 'Please update the requested documents.',
                     'updated_at' => date('c')
-                ], $appId);
+                ];
+                try {
+                    $supabase->update('pending_affiliations', array_merge($updatePayload, ['rejection_reason' => $instructions ?: 'Please update the requested documents.']), $appId);
+                } catch (\Throwable $colEx) {
+                    $supabase->update('pending_affiliations', $updatePayload, $appId);
+                }
                 
                 // Fetch application info for email delivery
                 $appRes = $supabase->select('pending_affiliations', ['id' => 'eq.' . $appId]);
@@ -354,20 +418,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             
             $feedbackMsg = "📩 Revision Request successfully sent to {$email}! The applicant has received the link in their Gmail to re-upload the requested file(s).";
             $feedbackType = 'info';
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Revision request error: " . $e->getMessage());
-            $feedbackMsg = "Error sending revision request: " . $e->getMessage();
-            $feedbackType = 'warning';
+            $feedbackMsg = "❌ Error sending revision request: " . $e->getMessage();
+            $feedbackType = 'danger';
         }
     } elseif ($action === 'reject_charter') {
         try {
             $reason = trim($_POST['notes'] ?? 'Application requirements not met.');
             if ($appId) {
-                $supabase->update('pending_affiliations', [
+                $updatePayload = [
                     'status' => 'rejected',
-                    'rejection_reason' => $reason,
                     'updated_at' => date('c')
-                ], $appId);
+                ];
+                try {
+                    $supabase->update('pending_affiliations', array_merge($updatePayload, ['rejection_reason' => $reason]), $appId);
+                } catch (\Throwable $colEx) {
+                    $supabase->update('pending_affiliations', $updatePayload, $appId);
+                }
                 
                 $appRes = $supabase->select('pending_affiliations', ['id' => 'eq.' . $appId]);
                 if (!empty($appRes)) {
@@ -382,10 +450,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     }
                 }
             }
-            $feedbackMsg = "Application declined and notice sent to applicant.";
+            $feedbackMsg = "🚫 Application for '{$instName}' declined and formal notice sent to applicant.";
             $feedbackType = 'warning';
-        } catch (Exception $e) {
+        } catch (\Throwable $e) {
             error_log("Reject error: " . $e->getMessage());
+            $feedbackMsg = "❌ Error declining application: " . $e->getMessage();
+            $feedbackType = 'danger';
         }
     }
 }

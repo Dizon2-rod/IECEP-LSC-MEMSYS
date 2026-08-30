@@ -1,7 +1,7 @@
 <?php
+require_once dirname(__DIR__, 3) . '/bootstrap.php';
 require_once __DIR__ . '/../auth_check.php';
 
-require_once __DIR__ . '/../bootstrap.php';
 $current_page = basename(__FILE__, '.php');
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -35,14 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['action'])) {
 }
 
 try {
-    require_once __DIR__ . '/../../../includes/config.php';
-    $configPath = __DIR__ . '/../../../includes/supabase.php';
-    if (!file_exists($configPath)) {
-        sendResponse(false, '', 'Supabase configuration not found');
-    }
-    $config = require $configPath;
-    require_once __DIR__ . '/../../../src/lib/SupabaseClient.php';
-    $supabase = new SupabaseClient($config['url'], $config['anon_key']);
+    $supabase = getSupabaseClient();
 
     $applicationId = $_POST['application_id'] ?? '';
     $action = $_POST['action'] ?? '';
