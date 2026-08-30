@@ -233,15 +233,23 @@ try {
     $documentHashes = [];
     foreach ($required_files as $file_key) {
         $file = $_FILES[$file_key];
-        $fileName = uniqid() . '_' . basename($file['name']);
-        $mimeType = mime_content_type($file['tmp_name']) ?: $file['type'];
+        $origName = basename($file['name']);
+        $baseName = pathinfo($origName, PATHINFO_FILENAME);
+        $ext = pathinfo($origName, PATHINFO_EXTENSION);
+        $cleanBase = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $baseName);
+        $fileName = uniqid() . '_' . $cleanBase . ($ext ? '.' . strtolower($ext) : '');
+        
+        $mimeType = (!empty($file['tmp_name']) && file_exists($file['tmp_name']))
+            ? (mime_content_type($file['tmp_name']) ?: ($file['type'] ?: 'application/octet-stream'))
+            : ($file['type'] ?: 'application/octet-stream');
+            
         $supabaseUrl = uploadToSupabaseStorage('affiliations', 'applications/' . $fileName, $file['tmp_name'], $mimeType);
         if ($supabaseUrl) {
             $uploadedFiles[$file_key] = $supabaseUrl;
         } else {
             throw new Exception("Failed to upload file: $file_key");
         }
-        $documentHashes[$file_key] = hash_file('sha256', $file['tmp_name']);
+        $documentHashes[$file_key] = file_exists($file['tmp_name']) ? hash_file('sha256', $file['tmp_name']) : hash('sha256', $fileName);
     }
     
     $totalMembers = intval($_POST['total_members'] ?? 0);

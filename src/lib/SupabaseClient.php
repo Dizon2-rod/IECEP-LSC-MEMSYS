@@ -562,15 +562,23 @@ class SupabaseClient {
             return null;
         }
 
-        // 1. Try Supabase Storage
+        // Sanitize path segments to avoid invalid HTTP characters (spaces, quotes, etc.)
+        $segments = explode('/', $path);
+        $cleanSegments = array_map(function($seg) {
+            return preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $seg);
+        }, $segments);
+        $safePath = implode('/', $cleanSegments);
+        $encodedPath = implode('/', array_map('rawurlencode', $cleanSegments));
+
+        // 1. Try Supabase Storage (Cloud CDN)
         try {
-            $endpoint = $this->url . "/storage/v1/object/$bucket/$path";
+            $endpoint = $this->url . "/storage/v1/object/$bucket/$encodedPath";
             $ch = curl_init($endpoint);
             curl_setopt_array($ch, [
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_POST => true,
                 CURLOPT_POSTFIELDS => $fileContent,
-                CURLOPT_TIMEOUT => 15,
+                CURLOPT_TIMEOUT => 20,
                 CURLOPT_HTTPHEADER => [
                     'apikey: ' . $this->key,
                     'Authorization: Bearer ' . $this->key,
@@ -583,7 +591,7 @@ class SupabaseClient {
             curl_close($ch);
 
             if ($httpCode >= 200 && $httpCode < 300) {
-                return $this->url . "/storage/v1/object/public/$bucket/$path";
+                return $this->url . "/storage/v1/object/public/$bucket/$encodedPath";
             }
             error_log("SupabaseClient uploadFile notice ($httpCode): $response");
         } catch (\Throwable $e) {
@@ -593,14 +601,14 @@ class SupabaseClient {
         // 2. Seamless local fallback
         try {
             $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
-            $targetDir = $baseDir . "/public/uploads/$bucket/" . dirname($path);
+            $targetDir = $baseDir . "/public/uploads/$bucket/" . dirname($safePath);
             if (!is_dir($targetDir)) {
                 @mkdir($targetDir, 0777, true);
             }
-            $targetFile = $baseDir . "/public/uploads/$bucket/$path";
+            $targetFile = $baseDir . "/public/uploads/$bucket/$safePath";
             if (copy($tmpFilePath, $targetFile) || move_uploaded_file($tmpFilePath, $targetFile)) {
                 $baseWebUrl = defined('BASE_URL') ? BASE_URL : (defined('APP_URL') ? APP_URL : '');
-                return rtrim($baseWebUrl, '/') . "/public/uploads/$bucket/$path";
+                return rtrim($baseWebUrl, '/') . "/public/uploads/$bucket/$safePath";
             }
         } catch (\Throwable $le) {
             error_log("SupabaseClient local upload fallback error: " . $le->getMessage());
