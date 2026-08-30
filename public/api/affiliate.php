@@ -1,8 +1,9 @@
 <?php
-require_once __DIR__ . '/bootstrap.php';
 // Suppress PHP errors to prevent HTML warnings in JSON response
 error_reporting(0);
 ini_set('display_errors', 0);
+
+require_once __DIR__ . '/bootstrap.php';
 
 // Clean any existing output buffer
 if (ob_get_length()) ob_clean();
@@ -18,19 +19,30 @@ header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 
-// Start session for verification storage
-session_start();
+// Start session for verification storage if not active
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 require_once __DIR__ . '/../../autoload.php';
 require_once __DIR__ . '/../../includes/supabase.php';
 require_once __DIR__ . '/../../includes/paths.php';
+require_once __DIR__ . '/../../src/lib/EmailService.php';
+require_once __DIR__ . '/../../src/lib/SupabaseClient.php';
 
-$emailService = new \App\Lib\EmailService();
-$action = $_GET['action'] ?? '';
+use App\Lib\EmailService;
+use App\Lib\SupabaseClient;
+
+$emailService = new EmailService();
+
+$rawBody = file_get_contents('php://input');
+$jsonInput = json_decode($rawBody, true);
+$input = is_array($jsonInput) ? array_merge($_POST, $jsonInput) : $_POST;
+
+$action = $_GET['action'] ?? ($input['action'] ?? '');
 
 if ($action === 'send-code') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    $email = $input['email'] ?? '';
+    $email = filter_var($input['email'] ?? ($_GET['email'] ?? ''), FILTER_SANITIZE_EMAIL);
 
     error_log("Send-code request received for email: $email");
 
@@ -40,7 +52,6 @@ if ($action === 'send-code') {
     }
 
     try {
-        require_once __DIR__ . '/../../src/lib/SupabaseClient.php';
         $config = require __DIR__ . '/../../includes/supabase.php';
         $supabase = new SupabaseClient($config['url'], $config['anon_key']);
 
@@ -132,9 +143,8 @@ if ($action === 'send-code') {
 }
 
 if ($action === 'verify-code') {
-    $input = json_decode(file_get_contents('php://input'), true);
-    $email = $input['email'] ?? '';
-    $code = $input['code'] ?? '';
+    $email = filter_var($input['email'] ?? ($_GET['email'] ?? ''), FILTER_SANITIZE_EMAIL);
+    $code = trim($input['code'] ?? ($_GET['code'] ?? ''));
 
     if (empty($email) || empty($code)) {
         echo json_encode(['success' => false, 'message' => 'Email and code are required']);

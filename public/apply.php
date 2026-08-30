@@ -650,9 +650,11 @@ if (!empty($resubmitId)) {
 
     <!-- Load XLSX library for parsing -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <script src="/IECEP-LSC-MEMSYS/public/js/member-directory-parser.js"></script>
-    <script src="/js/app.js"></script>
+    <script src="<?php echo PUBLIC_URL; ?>/js/member-directory-parser.js"></script>
+    <script src="<?php echo PUBLIC_URL; ?>/assets/js/app.js"></script>
     <script>
+        const API_URL = '<?php echo API_URL; ?>';
+        const BASE_URL = '<?php echo BASE_URL; ?>';
         let verifiedEmail = '';
         let verificationToken = '';
         let countdownInterval;
@@ -693,7 +695,7 @@ if (!empty($resubmitId)) {
             this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
 
             try {
-                const response = await fetch('/api/email.php?action=send', {
+                const response = await fetch(API_URL + '/email.php?action=send', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -715,6 +717,11 @@ if (!empty($resubmitId)) {
                     document.getElementById('sent-email').textContent = email;
                     document.getElementById('email-form').classList.add('hidden');
                     document.getElementById('code-form').classList.remove('hidden');
+                    if (result.code) {
+                        showSuccess(result.message || `Verification code: ${result.code} (Test mode)`);
+                    } else {
+                        showSuccess(result.message || 'Verification code sent to your email! Please check your inbox and spam folder.');
+                    }
                     startCountdown();
                     setupCodeInputs();
                 } else {
@@ -724,10 +731,10 @@ if (!empty($resubmitId)) {
                             showResubmitModal(result.message, result.application_id);
                         } else {
                             // Email is approved - show error without resubmit option
-                            showError(result.message);
+                            showError(result.message || result.error);
                         }
                     } else {
-                        showError(result.error || 'Failed to send verification code');
+                        showError(result.error || result.message || 'Failed to send verification code');
                     }
                     this.disabled = false;
                     this.innerHTML = 'Send Verification Code';
@@ -794,7 +801,7 @@ if (!empty($resubmitId)) {
             this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying...';
 
             try {
-                const response = await fetch('/api/email.php?action=verify', {
+                const response = await fetch(API_URL + '/email.php?action=verify', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -856,9 +863,9 @@ if (!empty($resubmitId)) {
                 this.textContent = 'Sending...';
 
                 try {
-                    console.log('Sending resend request to: /api/affiliate.php?action=send-code with email:', email);
+                    console.log('Sending resend request to: ' + API_URL + '/email.php?action=send with email:', email);
 
-                    const response = await fetch('/api/affiliate.php?action=send-code', {
+                    const response = await fetch(API_URL + '/email.php?action=send', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -1198,8 +1205,8 @@ if (!empty($resubmitId)) {
             }
             
             try {
-                console.log('Sending submission request to /api/submit-affiliation.php');
-                const response = await fetch('/IECEP-LSC-MEMSYS/public/api/submit-affiliation.php', {
+                console.log('Sending submission request to ' + API_URL + '/submit-affiliation.php');
+                const response = await fetch(API_URL + '/submit-affiliation.php', {
                     method: 'POST',
                     body: formData
                 });

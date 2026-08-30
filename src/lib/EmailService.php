@@ -125,6 +125,10 @@ class EmailService
             $mail->AltBody = "Your IECEP-LSC verification code is: {$code}. It expires in 10 minutes.";
 
             $result = $mail->send();
+            if (!$result) {
+                $this->lastError = $mail->ErrorInfo ?: 'Unknown mailer error';
+                error_log("PHPMailer Error Info: " . $this->lastError);
+            }
             error_log("Email verification sent to $to: " . ($result ? 'SUCCESS' : 'FAILED'));
             return $result;
         } catch (\Throwable $e) {

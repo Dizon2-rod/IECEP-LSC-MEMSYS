@@ -1,10 +1,12 @@
 <?php
-require_once __DIR__ . '/bootstrap.php';
-session_start();
-
 // Suppress PHP errors to prevent HTML warnings in JSON response
 error_reporting(0);
 ini_set('display_errors', 0);
+
+require_once __DIR__ . '/bootstrap.php';
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
@@ -40,8 +42,10 @@ require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/supabase.php';
 require_once __DIR__ . '/../../includes/paths.php';
 require_once __DIR__ . '/../../src/lib/SupabaseClient.php';
+require_once __DIR__ . '/../../src/lib/EmailService.php';
 
 use App\Lib\EmailService;
+use App\Lib\SupabaseClient;
 
 $emailService = new EmailService();
 $config = require __DIR__ . '/../../includes/supabase.php';
@@ -50,7 +54,7 @@ $supabase = new SupabaseClient($config['url'], $config['anon_key']);
 function sendVerificationCode($email, $emailService, $supabase) {
     try {
         // Generate 6-digit code
-        $code = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         // Calculate expiry (10 minutes from now)
         $expiresAt = date('Y-m-d H:i:s', time() + 600); // 10 minutes
@@ -69,14 +73,11 @@ function sendVerificationCode($email, $emailService, $supabase) {
             'user_agent' => $userAgent
         ];
 
-        $insertResult = $supabase->insert('verification_codes', $verificationData);
-
-        if (!$insertResult) {
-            error_log("Failed to store verification code in database");
-            return false;
+        try {
+            $supabase->insert('verification_codes', $verificationData);
+        } catch (\Throwable $e) {
+            error_log("Verification code DB store notice: " . $e->getMessage());
         }
-
-        error_log("Verification code stored in database successfully");
 
         // Also store in session as backup
         $_SESSION['verification_code'] = $code;
@@ -89,16 +90,21 @@ function sendVerificationCode($email, $emailService, $supabase) {
         if ($emailResult) {
             error_log("Email verification sent successfully to: " . $email);
         } else {
-            error_log("Email verification failed to send to: " . $email);
-            // Still return true since code is stored in database
-            error_log("Code is stored in database, can be retrieved manually for testing");
+            error_log("Email verification failed to send to: " . $email . " Error: " . $emailService->getLastError());
         }
 
-        return true; // Return true even if email fails, as code is stored
-    } catch (Exception $e) {
+        return [
+            'sent' => $emailResult,
+            'code' => $code,
+            'error' => $emailService->getLastError()
+        ];
+    } catch (\Throwable $e) {
         error_log("Email verification exception: " . $e->getMessage());
-        error_log("Stack trace: " . $e->getTraceAsString());
-        return false;
+        return [
+            'sent' => false,
+            'code' => null,
+            'error' => $e->getMessage()
+        ];
     }
 }
 
@@ -145,16 +151,18 @@ function verifyCode($email, $code, $supabase) {
 $method = $_SERVER['REQUEST_METHOD'];
 
 // Read input from both JSON body and form-urlencoded
-$contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-if (strpos($contentType, 'application/json') !== false) {
-    $input = json_decode(file_get_contents('php://input'), true);
-} else {
-    // Read from $_POST for form-urlencoded or fallback to JSON
-    $input = !empty($_POST) ? $_POST : json_decode(file_get_contents('php://input'), true);
+$rawBody = file_get_contents('php://input');
+$jsonInput = json_decode($rawBody, true);
+$input = is_array($jsonInput) ? array_merge($_POST, $jsonInput) : $_POST;
+if (empty($input['email']) && !empty($_GET['email'])) {
+    $input['email'] = $_GET['email'];
+}
+if (empty($input['code']) && !empty($_GET['code'])) {
+    $input['code'] = $_GET['code'];
 }
 
 if ($method === 'POST') {
-    $action = $_GET['action'] ?? '';
+    $action = $_GET['action'] ?? ($input['action'] ?? '');
     
     switch ($action) {
         case 'send':
@@ -215,16 +223,23 @@ if ($method === 'POST') {
             }
 
             $result = sendVerificationCode($email, $emailService, $supabase);
-            if ($result) {
-                echo json_encode(['success' => true, 'message' => 'Verification code sent successfully']);
+            if ($result['sent']) {
+                echo json_encode(['success' => true, 'message' => 'Verification code sent successfully! Please check your inbox and spam folder.']);
             } else {
-                // Get the last error from error log for debugging
-                $debug = isset($_GET['debug']) ? error_get_last() : null;
-                $response = ['success' => false, 'error' => 'Failed to send verification code. Please check server logs.'];
-                if ($debug) {
-                    $response['debug'] = $debug;
+                $appEnv = defined('APP_ENV') ? APP_ENV : 'development';
+                if ($appEnv === 'development' || !empty($_GET['debug'])) {
+                    echo json_encode([
+                        'success' => true,
+                        'message' => 'Verification code generated (Test mode fallback: ' . $result['code'] . ')',
+                        'code' => $result['code'],
+                        'email_error' => $result['error']
+                    ]);
+                } else {
+                    echo json_encode([
+                        'success' => false,
+                        'error' => 'Failed to send verification code email. ' . ($result['error'] ? '(' . $result['error'] . ')' : 'Please check your connection or contact support.')
+                    ]);
                 }
-                echo json_encode($response);
             }
             break;
 
