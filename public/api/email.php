@@ -53,24 +53,22 @@ $supabase = new SupabaseClient($config['url'], $config['anon_key']);
 
 function sendVerificationCode($email, $emailService, $supabase) {
     try {
-        // Generate 6-digit code
+        $cleanEmail = strtolower(trim($email));
         $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Calculate expiry (10 minutes from now)
-        $expiresAt = date('Y-m-d H:i:s', time() + 600); // 10 minutes
+        $expiresAt = date('c', time() + 600); // 10 minutes ISO 8601
         $ipAddress = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
         $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? 'unknown';
 
-        error_log("Attempting to send verification code to: " . $email);
-        error_log("Generated code: " . $code . " for email: " . $email);
+        error_log("Attempting to send verification code to: " . $cleanEmail);
+        error_log("Generated code: " . $code . " for email: " . $cleanEmail);
 
         // Store in Supabase
         $verificationData = [
-            'email' => $email,
-            'code' => $code,
+            'email'      => $cleanEmail,
+            'code'       => $code,
+            'purpose'    => 'affiliation',
             'expires_at' => $expiresAt,
-            'ip_address' => $ipAddress,
-            'user_agent' => $userAgent
+            'used'       => false
         ];
 
         try {
@@ -81,16 +79,16 @@ function sendVerificationCode($email, $emailService, $supabase) {
 
         // Also store in session as backup
         $_SESSION['verification_code'] = $code;
-        $_SESSION['verification_email'] = $email;
+        $_SESSION['verification_email'] = $cleanEmail;
         $_SESSION['code_sent_time'] = time();
 
         // Send email
-        $emailResult = $emailService->sendVerificationCode($email, $code);
+        $emailResult = $emailService->sendVerificationCode($cleanEmail, $code);
 
         if ($emailResult) {
-            error_log("Email verification sent successfully to: " . $email);
+            error_log("Email verification sent successfully to: " . $cleanEmail);
         } else {
-            error_log("Email verification failed to send to: " . $email . " Error: " . $emailService->getLastError());
+            error_log("Email verification failed to send to: " . $cleanEmail . " Error: " . $emailService->getLastError());
         }
 
         return [
@@ -109,41 +107,82 @@ function sendVerificationCode($email, $emailService, $supabase) {
 }
 
 function verifyCode($email, $code, $supabase) {
+    $cleanEmail = strtolower(trim($email));
+    $cleanCode = trim($code);
+
+    if (empty($cleanEmail) || empty($cleanCode)) {
+        return false;
+    }
+
     try {
-        // Check in Supabase first
-        $result = $supabase->select('verification_codes', [
-            'email' => 'eq.' . $email,
-            'code' => 'eq.' . $code,
-            'expires_at' => 'gte.' . date('Y-m-d H:i:s'),
-            'used_at' => 'is.null'
+        // 1. Check in Supabase first
+        $records = $supabase->select('verification_codes', [
+            'email' => 'eq.' . $cleanEmail,
+            'code'  => 'eq.' . $cleanCode,
+            'order' => 'created_at.desc',
+            'limit' => 5
         ]);
 
-        if (!empty($result) && is_array($result)) {
-            // Mark code as used
-            $supabase->update('verification_codes', ['used_at' => date('Y-m-d H:i:s')], $result[0]['id']);
+        if (!empty($records) && is_array($records)) {
+            foreach ($records as $row) {
+                if (($row['code'] ?? '') === $cleanCode) {
+                    $isUsed = !empty($row['used']) || !empty($row['used_at']);
+                    if ($isUsed) {
+                        continue;
+                    }
 
-            // Clear session
-            unset($_SESSION['verification_code']);
-            unset($_SESSION['verification_email']);
-            unset($_SESSION['code_sent_time']);
+                    $expiresAtStr = $row['expires_at'] ?? '';
+                    $expiresTimestamp = !empty($expiresAtStr) ? strtotime($expiresAtStr) : 0;
+                    $createdTimestamp = !empty($row['created_at']) ? strtotime($row['created_at']) : 0;
+                    
+                    // Valid if expiration timestamp is in future or created within last 11 minutes
+                    $isNotExpired = ($expiresTimestamp > time() - 30) || ($createdTimestamp > 0 && (time() - $createdTimestamp) < 660);
 
-            return true;
+                    if ($isNotExpired) {
+                        try {
+                            $supabase->update('verification_codes', ['used' => true], $row['id']);
+                        } catch (\Throwable $ue) {
+                            error_log("Failed to mark code used in Supabase: " . $ue->getMessage());
+                        }
+
+                        // Clear session OTP
+                        unset($_SESSION['verification_code']);
+                        unset($_SESSION['verification_email']);
+                        unset($_SESSION['code_sent_time']);
+
+                        $_SESSION['verified_email'] = $cleanEmail;
+                        return true;
+                    }
+                }
+            }
         }
 
-        // Fallback to session check
-        if (isset($_SESSION['verification_code']) &&
-            isset($_SESSION['verification_email']) &&
-            time() - $_SESSION['code_sent_time'] < 600) {
+        // 2. Fallback to session check
+        if (isset($_SESSION['verification_code'], $_SESSION['verification_email'])) {
+            $sessCode = trim((string)$_SESSION['verification_code']);
+            $sessEmail = strtolower(trim((string)$_SESSION['verification_email']));
+            $sentTime = (int)($_SESSION['code_sent_time'] ?? 0);
 
-            if ($_SESSION['verification_code'] === $code && $_SESSION['verification_email'] === $email) {
+            if ($sessCode === $cleanCode && $sessEmail === $cleanEmail && (time() - $sentTime < 660)) {
                 unset($_SESSION['verification_code']);
+                unset($_SESSION['verification_email']);
+                unset($_SESSION['code_sent_time']);
+                $_SESSION['verified_email'] = $cleanEmail;
                 return true;
             }
         }
 
         return false;
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         error_log("Verify code exception: " . $e->getMessage());
+        if (isset($_SESSION['verification_code'], $_SESSION['verification_email'])) {
+            if (trim((string)$_SESSION['verification_code']) === $cleanCode && strtolower(trim((string)$_SESSION['verification_email'])) === $cleanEmail) {
+                unset($_SESSION['verification_code']);
+                unset($_SESSION['verification_email']);
+                $_SESSION['verified_email'] = $cleanEmail;
+                return true;
+            }
+        }
         return false;
     }
 }

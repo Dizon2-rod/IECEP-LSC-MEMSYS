@@ -177,17 +177,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             // Generate & store 6-digit code
             $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $cleanEmail = strtolower(trim($email));
             $_SESSION['verification_code']  = $code;
-            $_SESSION['verification_email'] = $email;
+            $_SESSION['verification_email'] = $cleanEmail;
             $_SESSION['code_sent_time']     = time();
 
             try {
                 $supabaseClient->insert('verification_codes', [
-                    'email'      => $email,
+                    'email'      => $cleanEmail,
                     'code'       => $code,
-                    'expires_at' => date('Y-m-d H:i:s', time() + 600),
-                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown',
-                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'unknown',
+                    'purpose'    => 'affiliation',
+                    'expires_at' => date('c', time() + 600),
+                    'used'       => false
                 ]);
             } catch (Exception $e) {
                 error_log("Supabase store fallback: " . $e->getMessage());
@@ -199,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 require_once __DIR__ . '/includes/config.php';
                 require_once __DIR__ . '/src/lib/EmailService.php';
                 $emailService = new \App\Lib\EmailService();
-                $emailSent    = $emailService->sendVerificationCode($email, $code);
+                $emailSent    = $emailService->sendVerificationCode($cleanEmail, $code);
                 if (!$emailSent) {
                     $emailError = $emailService->getLastError() ?: 'SMTP connection error.';
                 }
@@ -236,18 +237,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             exit;
         }
 
-        $email    = filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL);
-        $code     = $_POST['code'] ?? '';
+        $email    = strtolower(trim(filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL)));
+        $code     = trim($_POST['code'] ?? '');
         $verified = false;
 
         // 1. Session check
         if (
             isset($_SESSION['verification_code'], $_SESSION['verification_email']) &&
-            time() - ($_SESSION['code_sent_time'] ?? 0) < 600 &&
-            $_SESSION['verification_code'] === $code &&
-            $_SESSION['verification_email'] === $email
+            time() - ($_SESSION['code_sent_time'] ?? 0) < 660 &&
+            trim((string)$_SESSION['verification_code']) === $code &&
+            strtolower(trim((string)$_SESSION['verification_email'])) === $email
         ) {
             unset($_SESSION['verification_code']);
+            unset($_SESSION['verification_email']);
+            unset($_SESSION['code_sent_time']);
             $verified = true;
         }
 
@@ -256,16 +259,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             try {
                 $supabaseConfig = require __DIR__ . '/includes/supabase.php';
                 $supabaseClient = new SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
-                $result = $supabaseClient->select('verification_codes', [
-                    'email'      => 'eq.' . $email,
-                    'code'       => 'eq.' . $code,
-                    'expires_at' => 'gte.' . date('Y-m-d H:i:s'),
-                    'used_at'    => 'is.null',
+                $records = $supabaseClient->select('verification_codes', [
+                    'email' => 'eq.' . $email,
+                    'code'  => 'eq.' . $code,
+                    'order' => 'created_at.desc',
+                    'limit' => 5
                 ]);
-                if (!empty($result) && is_array($result)) {
-                    $supabaseClient->update('verification_codes', ['used_at' => date('Y-m-d H:i:s')], $result[0]['id']);
-                    unset($_SESSION['verification_code']);
-                    $verified = true;
+                if (!empty($records) && is_array($records)) {
+                    foreach ($records as $row) {
+                        if (($row['code'] ?? '') === $code) {
+                            $isUsed = !empty($row['used']) || !empty($row['used_at']);
+                            if ($isUsed) {
+                                continue;
+                            }
+
+                            $expiresAtStr = $row['expires_at'] ?? '';
+                            $expiresTimestamp = !empty($expiresAtStr) ? strtotime($expiresAtStr) : 0;
+                            $createdTimestamp = !empty($row['created_at']) ? strtotime($row['created_at']) : 0;
+
+                            if (($expiresTimestamp > time() - 30) || ($createdTimestamp > 0 && (time() - $createdTimestamp) < 660)) {
+                                try {
+                                    $supabaseClient->update('verification_codes', ['used' => true], $row['id']);
+                                } catch (\Throwable $ue) {
+                                    error_log("Failed to update verification_codes used: " . $ue->getMessage());
+                                }
+                                unset($_SESSION['verification_code']);
+                                unset($_SESSION['verification_email']);
+                                unset($_SESSION['code_sent_time']);
+                                $verified = true;
+                                break;
+                            }
+                        }
+                    }
                 }
             } catch (Exception $e) {
                 error_log("Supabase verify fallback: " . $e->getMessage());
@@ -2857,8 +2882,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Verify Code ───────────────────────────────────────────────────────────
     document.getElementById('modal-verify-code-btn')?.addEventListener('click', async function () {
-        const code  = Array.from(document.querySelectorAll('.code-input')).map(i => i.value).join('');
-        const email = document.getElementById('modal-verification-email').value.trim();
+        const codeInputs = document.querySelectorAll('#modal-code-form .code-input, .code-input');
+        const code  = Array.from(codeInputs).map(i => i.value.trim()).join('');
+        const email = (document.getElementById('modal-verification-email')?.value || '').trim();
         if (code.length !== 6) { showModalError('Please enter the complete 6-digit code'); return; }
         this.disabled = true;
         this.innerHTML = '<span class="spinner"></span> Verifying...';
@@ -2874,9 +2900,9 @@ document.addEventListener('DOMContentLoaded', function () {
             if (result.success) {
                 verifiedEmail = email;
                 showModalSuccess('Email verified successfully! Proceeding to application form...');
-                setTimeout(moveToStep2, 1500);
+                setTimeout(moveToStep2, 1200);
             } else {
-                showModalError(result.message || 'Invalid verification code');
+                showModalError(result.message || 'Invalid or expired verification code');
                 this.disabled = false;
                 this.innerHTML = 'Verify Code';
             }
@@ -2888,19 +2914,54 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function setupCodeInputs() {
-        const inputs = document.querySelectorAll('.code-input');
+        const inputs = document.querySelectorAll('#modal-code-form .code-input, .code-input');
         inputs.forEach((input, idx) => {
-            input.addEventListener('input', () => { if (input.value && idx < inputs.length - 1) inputs[idx + 1].focus(); });
-            input.addEventListener('keydown', e => { if (e.key === 'Backspace' && !input.value && idx > 0) inputs[idx - 1].focus(); });
+            input.addEventListener('input', (e) => {
+                const val = e.target.value;
+                if (val.length > 1) {
+                    const cleanDigits = val.replace(/\D/g, '').split('');
+                    cleanDigits.forEach((d, i) => {
+                        if (inputs[i]) inputs[i].value = d;
+                    });
+                    const nextIdx = Math.min(cleanDigits.length, inputs.length - 1);
+                    inputs[nextIdx].focus();
+                    if (cleanDigits.length >= 6) {
+                        document.getElementById('modal-verify-code-btn')?.click();
+                    }
+                    return;
+                }
+                if (val && idx < inputs.length - 1) {
+                    inputs[idx + 1].focus();
+                }
+                const fullCode = Array.from(inputs).map(i => i.value.trim()).join('');
+                if (fullCode.length === 6) {
+                    document.getElementById('modal-verify-code-btn')?.click();
+                }
+            });
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Backspace' && !input.value && idx > 0) {
+                    inputs[idx - 1].focus();
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    document.getElementById('modal-verify-code-btn')?.click();
+                }
+            });
             input.addEventListener('paste', e => {
                 e.preventDefault();
-                e.clipboardData.getData('text').slice(0, 6).split('').forEach((d, i) => {
-                    if (i < inputs.length && /^\d$/.test(d)) inputs[i].value = d;
+                const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+                const digits = pasted.split('');
+                digits.forEach((d, i) => {
+                    if (i < inputs.length) inputs[i].value = d;
                 });
-                if (e.clipboardData.getData('text').length >= inputs.length) inputs[inputs.length - 1].focus();
+                if (digits.length >= inputs.length) {
+                    inputs[inputs.length - 1].focus();
+                    document.getElementById('modal-verify-code-btn')?.click();
+                } else if (digits.length > 0 && inputs[digits.length]) {
+                    inputs[digits.length].focus();
+                }
             });
         });
-        inputs[0].focus();
+        if (inputs[0]) inputs[0].focus();
     }
 
     // ── Fee computation (Constitution Art. IV Sec. 2) ────────────────────────

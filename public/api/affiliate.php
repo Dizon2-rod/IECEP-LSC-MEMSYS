@@ -111,7 +111,21 @@ if ($action === 'send-code') {
         }
 
         // Generate 6-digit code
-        $code = sprintf("%06d", mt_rand(0, 999999));
+        $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt = date('c', time() + 600); // 10 minutes ISO 8601
+
+        // Store in Supabase
+        try {
+            $supabase->insert('verification_codes', [
+                'email'      => $email,
+                'code'       => $code,
+                'purpose'    => 'affiliation',
+                'expires_at' => $expiresAt,
+                'used'       => false
+            ]);
+        } catch (\Throwable $e) {
+            error_log("Affiliate verification code DB store notice: " . $e->getMessage());
+        }
 
         // Store in session for immediate verification
         $_SESSION['verification_code'] = $code;
@@ -119,7 +133,6 @@ if ($action === 'send-code') {
         $_SESSION['code_sent_time'] = time();
 
         error_log("Generated code: $code for email: $email");
-        error_log("SMTP Config - Host: " . SMTP_HOST . ", Port: " . SMTP_PORT . ", User: " . SMTP_USERNAME);
 
         // Send email using EmailService
         $sent = $emailService->sendVerificationCode($email, $code);
@@ -127,23 +140,34 @@ if ($action === 'send-code') {
         error_log("Email send result: " . ($sent ? 'SUCCESS' : 'FAILED'));
 
         if ($sent) {
-            echo json_encode(['success' => true, 'message' => 'Verification code sent successfully']);
+            echo json_encode(['success' => true, 'message' => 'Verification code sent successfully! Please check your email.']);
         } else {
-            // Return code in response for testing since email is not configured
-            error_log("Email failed, returning code in response for testing: $code");
-            echo json_encode(['success' => true, 'message' => "Verification code: $code (Email not configured - use this code for testing)", 'code' => $code]);
+            $lastErr = $emailService->getLastError();
+            $appEnv = defined('APP_ENV') ? APP_ENV : 'development';
+            if ($appEnv === 'development' || !empty($_GET['debug'])) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => "Verification code generated (Test mode fallback: $code)",
+                    'code' => $code,
+                    'email_error' => $lastErr
+                ]);
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Failed to send verification code email. ' . ($lastErr ? "($lastErr)" : 'Please check your connection or contact support.')
+                ]);
+            }
         }
 
     } catch (Exception $e) {
         error_log("Send code error: " . $e->getMessage());
-        error_log("Send code error trace: " . $e->getTraceAsString());
         echo json_encode(['success' => false, 'message' => 'Server error occurred: ' . $e->getMessage()]);
     }
     exit;
 }
 
 if ($action === 'verify-code') {
-    $email = filter_var($input['email'] ?? ($_GET['email'] ?? ''), FILTER_SANITIZE_EMAIL);
+    $email = strtolower(trim(filter_var($input['email'] ?? ($_GET['email'] ?? ''), FILTER_SANITIZE_EMAIL)));
     $code = trim($input['code'] ?? ($_GET['code'] ?? ''));
 
     if (empty($email) || empty($code)) {
@@ -153,24 +177,68 @@ if ($action === 'verify-code') {
 
     try {
         error_log("Verifying code: $code for email: $email");
+        $verified = false;
 
-        // Check session-based verification
-        if (isset($_SESSION['verification_code']) &&
-            isset($_SESSION['verification_email']) &&
-            time() - $_SESSION['code_sent_time'] < 600) { // 10 minutes expiry
+        // 1. Supabase check
+        try {
+            $config = require __DIR__ . '/../../includes/supabase.php';
+            $supabase = new SupabaseClient($config['url'], $config['anon_key']);
+            $records = $supabase->select('verification_codes', [
+                'email' => 'eq.' . $email,
+                'code'  => 'eq.' . $code,
+                'order' => 'created_at.desc',
+                'limit' => 5
+            ]);
 
-            if ($_SESSION['verification_code'] === $code && $_SESSION['verification_email'] === $email) {
-                // Clear session
-                unset($_SESSION['verification_code']);
-                unset($_SESSION['verification_email']);
-                unset($_SESSION['code_sent_time']);
+            if (!empty($records) && is_array($records)) {
+                foreach ($records as $row) {
+                    if (($row['code'] ?? '') === $code) {
+                        $isUsed = !empty($row['used']) || !empty($row['used_at']);
+                        if ($isUsed) {
+                            continue;
+                        }
 
-                echo json_encode(['success' => true, 'message' => 'Email verified successfully']);
-                exit;
+                        $expiresAtStr = $row['expires_at'] ?? '';
+                        $expiresTimestamp = !empty($expiresAtStr) ? strtotime($expiresAtStr) : 0;
+                        $createdTimestamp = !empty($row['created_at']) ? strtotime($row['created_at']) : 0;
+                        
+                        if (($expiresTimestamp > time() - 30) || ($createdTimestamp > 0 && (time() - $createdTimestamp) < 660)) {
+                            try {
+                                $supabase->update('verification_codes', ['used' => true], $row['id']);
+                            } catch (\Throwable $ue) {
+                                error_log("Failed to mark code used in Supabase: " . $ue->getMessage());
+                            }
+                            $verified = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $se) {
+            error_log("Supabase verify-code check notice: " . $se->getMessage());
+        }
+
+        // 2. Session check fallback
+        if (!$verified && isset($_SESSION['verification_code'], $_SESSION['verification_email'])) {
+            $sessCode = trim((string)$_SESSION['verification_code']);
+            $sessEmail = strtolower(trim((string)$_SESSION['verification_email']));
+            $sentTime = (int)($_SESSION['code_sent_time'] ?? 0);
+
+            if ($sessCode === $code && $sessEmail === $email && (time() - $sentTime < 660)) {
+                $verified = true;
             }
         }
 
-        echo json_encode(['success' => false, 'message' => 'Invalid or expired verification code']);
+        if ($verified) {
+            unset($_SESSION['verification_code']);
+            unset($_SESSION['verification_email']);
+            unset($_SESSION['code_sent_time']);
+            $_SESSION['verified_email'] = $email;
+
+            echo json_encode(['success' => true, 'message' => 'Email verified successfully']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Invalid or expired verification code']);
+        }
 
     } catch (Exception $e) {
         error_log("Verify code error: " . $e->getMessage());

@@ -9,9 +9,11 @@ class SupabaseClient {
     private $headers;
     
     public function __construct($url = null, $key = null) {
-        // Load from environment or config
-        $this->url = $url ?? getenv('SUPABASE_URL') ?? 'https://your-project.supabase.co';
-        $this->key = $key ?? getenv('SUPABASE_ANON_KEY') ?? 'your-anon-key';
+        $rawUrl = $url ?: (getenv('SUPABASE_URL') ?: 'https://kfvlbjvtwtxnpmmswadf.supabase.co');
+        $rawKey = $key ?: (getenv('SUPABASE_ANON_KEY') ?: '');
+        
+        $this->url = rtrim(trim($rawUrl, "\"' \t\n\r\0\x0B"), '/');
+        $this->key = trim($rawKey, "\"' \t\n\r\0\x0B");
         
         $this->headers = [
             'apikey: ' . $this->key,

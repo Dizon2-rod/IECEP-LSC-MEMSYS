@@ -752,50 +752,76 @@ if (!empty($resubmitId)) {
         });
 
         function setupCodeInputs() {
-            const inputs = document.querySelectorAll('.code-input');
+            const inputs = document.querySelectorAll('#code-form .code-input, .code-input');
             
             inputs.forEach((input, index) => {
                 input.addEventListener('input', function(e) {
-                    if (e.target.value && index < inputs.length - 1) {
+                    const val = e.target.value;
+                    if (val.length > 1) {
+                        // Multi-character input (e.g. autofill or fast paste)
+                        const cleanDigits = val.replace(/\D/g, '').split('');
+                        cleanDigits.forEach((digit, i) => {
+                            if (inputs[i]) inputs[i].value = digit;
+                        });
+                        const nextIndex = Math.min(cleanDigits.length, inputs.length - 1);
+                        inputs[nextIndex].focus();
+                        if (cleanDigits.length >= 6) {
+                            document.getElementById('verify-code-btn')?.click();
+                        }
+                        return;
+                    }
+                    if (val && index < inputs.length - 1) {
                         inputs[index + 1].focus();
+                    }
+                    // Auto-submit if last input is filled and code is complete
+                    const fullCode = Array.from(inputs).map(i => i.value.trim()).join('');
+                    if (fullCode.length === 6) {
+                        document.getElementById('verify-code-btn')?.click();
                     }
                 });
                 
                 input.addEventListener('keydown', function(e) {
                     if (e.key === 'Backspace' && !e.target.value && index > 0) {
                         inputs[index - 1].focus();
+                    } else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        document.getElementById('verify-code-btn')?.click();
                     }
                 });
                 
                 input.addEventListener('paste', function(e) {
                     e.preventDefault();
-                    const pastedData = e.clipboardData.getData('text').slice(0, 6);
+                    const pastedData = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
                     const digits = pastedData.split('');
                     
                     digits.forEach((digit, i) => {
-                        if (i < inputs.length && /^\d$/.test(digit)) {
+                        if (i < inputs.length) {
                             inputs[i].value = digit;
                         }
                     });
                     
                     if (digits.length >= inputs.length) {
                         inputs[inputs.length - 1].focus();
+                        document.getElementById('verify-code-btn')?.click();
+                    } else if (digits.length > 0 && inputs[digits.length]) {
+                        inputs[digits.length].focus();
                     }
                 });
             });
             
-            inputs[0].focus();
+            if (inputs[0]) inputs[0].focus();
         }
 
         document.getElementById('verify-code-btn').addEventListener('click', async function() {
-            const code = Array.from(document.querySelectorAll('.code-input')).map(input => input.value).join('');
+            const codeInputs = document.querySelectorAll('#code-form .code-input, .code-input');
+            const code = Array.from(codeInputs).map(input => input.value.trim()).join('');
 
             if (code.length !== 6) {
                 showError('Please enter the complete 6-digit code');
                 return;
             }
 
-            const email = document.getElementById('verification-email').value.trim();
+            const email = (document.getElementById('verification-email')?.value || currentEmail || '').trim();
 
             this.disabled = true;
             this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying...';
@@ -809,7 +835,6 @@ if (!empty($resubmitId)) {
                     body: JSON.stringify({ email: email, code: code })
                 });
 
-                // Check if response is ok
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('Server returned non-OK status:', response.status, errorText);
@@ -820,25 +845,20 @@ if (!empty($resubmitId)) {
 
                 if (result.success) {
                     verifiedEmail = email;
-                    verificationToken = result.token;
+                    verificationToken = result.token || '';
                     showSuccess('Email verified successfully! Proceeding to application form...');
 
                     setTimeout(() => {
                         moveToStep2();
-                    }, 1500);
+                    }, 1200);
                 } else {
-                    showError(result.error || 'Invalid or expired verification code');
+                    showError(result.error || result.message || 'Invalid or expired verification code');
                     this.disabled = false;
                     this.innerHTML = 'Verify Code';
                 }
             } catch (error) {
                 console.error('Verify code error:', error);
-                if (error.message.includes('Server error')) {
-                    showError('Server error: ' + error.message);
-                } else {
-                    showError('Cannot connect to the server. Please check your internet connection.');
-                }
-            } finally {
+                showError(error.message.includes('Server error') ? error.message : 'Cannot connect to the server. Please check your internet connection.');
                 this.disabled = false;
                 this.innerHTML = 'Verify Code';
             }
