@@ -2021,13 +2021,16 @@ try {
 
         function openRevisionModal(app) {
             if (!app) return;
-            document.getElementById('revAppId').value = app.id || '';
-            document.getElementById('revInstName').value = app.institution_name || '';
+            const instName = app.institution_name || app.school_name || '';
             const email = app.contact_email || app.email || '';
+            const contactPerson = app.contact_person || '';
+
+            document.getElementById('revAppId').value = app.id || '';
+            document.getElementById('revInstName').value = instName;
             document.getElementById('revEmail').value = email;
-            document.getElementById('revEmailDisplay').textContent = email;
-            document.getElementById('revContactPerson').value = app.contact_person || '';
-            document.getElementById('revSchoolNameDisplay').textContent = app.institution_name || 'the school';
+            document.getElementById('revEmailDisplay').textContent = email || 'No email registered';
+            document.getElementById('revContactPerson').value = contactPerson;
+            document.getElementById('revSchoolNameDisplay').textContent = instName || 'the school';
             
             const checkboxes = document.querySelectorAll('#revisionModal input[type="checkbox"]');
             checkboxes.forEach(cb => cb.checked = false);
@@ -2039,11 +2042,11 @@ try {
         }
 
         function openDeclineModal(appId, schoolName, email, contactPerson) {
-            document.getElementById('declineAppId').value = appId;
-            document.getElementById('declineSchoolName').textContent = schoolName;
-            document.getElementById('declineEmail').value = email;
-            document.getElementById('declineContactPerson').value = contactPerson;
-            document.getElementById('declineInstName').value = schoolName;
+            document.getElementById('declineAppId').value = appId || '';
+            document.getElementById('declineSchoolName').textContent = schoolName || 'Institution';
+            document.getElementById('declineEmail').value = email || '';
+            document.getElementById('declineContactPerson').value = contactPerson || '';
+            document.getElementById('declineInstName').value = schoolName || '';
             document.getElementById('declineModal').classList.add('active');
         }
         function closeDeclineModal() {
