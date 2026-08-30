@@ -44,11 +44,15 @@ if (!function_exists('loadEnv')) {
 if (!function_exists('env')) {
     function env(string $name, $default = null)
     {
-        if (array_key_exists($name, $_ENV) && $_ENV[$name] !== null) {
+        if (array_key_exists($name, $_ENV) && $_ENV[$name] !== null && $_ENV[$name] !== '') {
             return $_ENV[$name];
         }
-        if (array_key_exists($name, $_SERVER) && $_SERVER[$name] !== null) {
+        if (array_key_exists($name, $_SERVER) && $_SERVER[$name] !== null && $_SERVER[$name] !== '') {
             return $_SERVER[$name];
+        }
+        $getenvVal = getenv($name);
+        if ($getenvVal !== false && $getenvVal !== '') {
+            return $getenvVal;
         }
         return $default;
     }
@@ -87,7 +91,7 @@ if (!defined('APP_ENV')) {
 
 // Supabase Configuration
 if (!defined('SUPABASE_URL')) {
-    define('SUPABASE_URL', env('SUPABASE_URL', ''));
+    define('SUPABASE_URL', env('SUPABASE_URL', 'https://kfvlbjvtwtxnpmmswadf.supabase.co'));
 }
 if (!defined('SUPABASE_ANON_KEY')) {
     define('SUPABASE_ANON_KEY', env('SUPABASE_ANON_KEY', ''));
@@ -98,22 +102,22 @@ if (!defined('SUPABASE_SERVICE_ROLE_KEY')) {
 
 // Email Configuration
 if (!defined('SMTP_HOST')) {
-    define('SMTP_HOST', env('SMTP_HOST', 'smtp.gmail.com'));
+    define('SMTP_HOST', env('SMTP_HOST', 'smtp.gmail.com') ?: 'smtp.gmail.com');
 }
 if (!defined('SMTP_PORT')) {
-    define('SMTP_PORT', (int)env('SMTP_PORT', 587));
+    define('SMTP_PORT', (int)(env('SMTP_PORT', 587) ?: 587));
 }
 if (!defined('SMTP_USERNAME')) {
-    define('SMTP_USERNAME', env('SMTP_USERNAME', ''));
+    define('SMTP_USERNAME', env('SMTP_USERNAME', 'rasheddizon7@gmail.com') ?: 'rasheddizon7@gmail.com');
 }
 if (!defined('SMTP_PASSWORD')) {
-    define('SMTP_PASSWORD', env('SMTP_PASSWORD', ''));
+    define('SMTP_PASSWORD', env('SMTP_PASSWORD', 'yaxp jbky xfub cvuq') ?: 'yaxp jbky xfub cvuq');
 }
 if (!defined('SMTP_FROM_NAME')) {
-    define('SMTP_FROM_NAME', env('SMTP_FROM_NAME', 'IECEP-LSC-MEMSYS'));
+    define('SMTP_FROM_NAME', env('SMTP_FROM_NAME', 'IECEP Laguna Student Chapter') ?: 'IECEP Laguna Student Chapter');
 }
 if (!defined('SMTP_FROM_EMAIL')) {
-    define('SMTP_FROM_EMAIL', env('SMTP_FROM_EMAIL', ''));
+    define('SMTP_FROM_EMAIL', env('SMTP_FROM_EMAIL', 'rasheddizon7@gmail.com') ?: 'rasheddizon7@gmail.com');
 }
 
 // Security
@@ -137,23 +141,6 @@ if (!defined('ALLOWED_FILE_TYPES')) {
 if (!defined('ALLOWED_FILE_TYPES_ARRAY')) {
     define('ALLOWED_FILE_TYPES_ARRAY', array_filter(array_map('trim', explode(',', ALLOWED_FILE_TYPES))));
 }
-
-// XAMPP MySQL Configuration — DISABLED for Railway (Supabase only)
-// if (!defined('DB_HOST')) {
-//     define('DB_HOST', env('DB_HOST', 'localhost'));
-// }
-// if (!defined('DB_PORT')) {
-//     define('DB_PORT', env('DB_PORT', '3306'));
-// }
-// if (!defined('DB_NAME')) {
-//     define('DB_NAME', env('DB_NAME', 'iecep_lsc_memsys'));
-// }
-// if (!defined('DB_USER')) {
-//     define('DB_USER', env('DB_USER', 'root'));
-// }
-// if (!defined('DB_PASS')) {
-//     define('DB_PASS', env('DB_PASS', ''));
-// }
 
 // Database Table Names
 if (!defined('TABLE_USERS')) {
@@ -273,13 +260,6 @@ $config = [
 // Function to output frontend SUPABASE configuration as JavaScript
 if (!function_exists('outputFrontendConfig')) {
     function outputFrontendConfig() {
-        $config = [
-            'SUPABASE_URL' => SUPABASE_URL,
-            'SUPABASE_ANON_KEY' => SUPABASE_ANON_KEY,
-            'APP_URL' => APP_URL,
-            'APP_ENV' => APP_ENV,
-            'PORTAL_URL' => PORTAL_URL ?? APP_URL . '/portal'
-        ];
         ?>
         <script>
             // Frontend Configuration (populated from server config)

@@ -381,45 +381,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $fileListForEmail = $fileLabelMap;
             }
             
-            if ($appId) {
-                $updatePayload = [
-                    'status' => 'requires_revision',
-                    'updated_at' => date('c')
-                ];
-                try {
-                    $supabase->update('pending_affiliations', array_merge($updatePayload, ['rejection_reason' => $instructions ?: 'Please update the requested documents.']), $appId);
-                } catch (\Throwable $colEx) {
-                    $supabase->update('pending_affiliations', $updatePayload, $appId);
-                }
-                
-                // Fetch application info for email delivery
-                $appRes = $supabase->select('pending_affiliations', ['id' => 'eq.' . $appId]);
-                if (!empty($appRes)) {
-                    $appData = normalize_pending_affiliation_app($appRes[0]);
-                    $applicantEmail = trim($appData['contact_email'] ?: ($appData['email'] ?: $email));
-                    $applicantName = trim($appData['contact_person'] ?: ($contactPerson ?: 'School Chapter Representative'));
-                    $applicantSchool = trim($appData['institution_name'] ?: ($appData['school_name'] ?: ($instName ?: 'Affiliated Institution')));
-                    
-                    $emailService = new \App\Lib\EmailService();
-                    $revisionUrl = BASE_URL . '/public/revise-affiliation.php?id=' . urlencode($appId);
-                    
-                    if (!empty($applicantEmail)) {
-                        $sent = $emailService->sendAffiliationRevisionRequest(
-                            $applicantEmail,
-                            $applicantSchool,
-                            $applicantName,
-                            $fileListForEmail,
-                            $instructions,
-                            $revisionUrl
-                        );
-                        if (!$sent) {
-                            $lastErr = $emailService->getLastError() ?: 'SMTP delivery issue';
-                            throw new \Exception("Revision status saved, but email sending to '{$applicantEmail}' failed: {$lastErr}");
-                        }
-                    } else {
-                        throw new \Exception("Revision status saved, but applicant email could not be found.");
-                    }
-                }
+            if (empty($appId)) {
+                throw new \Exception("Application ID is required to request document revisions.");
+            }
+            
+            $updatePayload = [
+                'status' => 'requires_revision',
+                'updated_at' => date('c')
+            ];
+            try {
+                $supabase->update('pending_affiliations', array_merge($updatePayload, ['rejection_reason' => $instructions ?: 'Please update the requested documents.']), $appId);
+            } catch (\Throwable $colEx) {
+                $supabase->update('pending_affiliations', $updatePayload, $appId);
+            }
+            
+            // Fetch application info for email delivery
+            $appRes = $supabase->select('pending_affiliations', ['id' => 'eq.' . $appId]);
+            if (empty($appRes)) {
+                throw new \Exception("Application record with ID '{$appId}' not found in database.");
+            }
+            
+            $appData = normalize_pending_affiliation_app($appRes[0]);
+            $applicantEmail = trim($appData['contact_email'] ?: ($appData['email'] ?: $email));
+            $applicantName = trim($appData['contact_person'] ?: ($contactPerson ?: 'School Chapter Representative'));
+            $applicantSchool = trim($appData['institution_name'] ?: ($appData['school_name'] ?: ($instName ?: 'Affiliated Institution')));
+            
+            if (empty($applicantEmail)) {
+                throw new \Exception("Applicant email is missing from this affiliation record. Cannot send revision request via Gmail.");
+            }
+            
+            $emailService = new \App\Lib\EmailService();
+            $revisionUrl = rtrim(BASE_URL, '/') . '/public/revise-affiliation.php?id=' . urlencode($appId);
+            
+            $sent = $emailService->sendAffiliationRevisionRequest(
+                $applicantEmail,
+                $applicantSchool,
+                $applicantName,
+                $fileListForEmail,
+                $instructions,
+                $revisionUrl
+            );
+            if (!$sent) {
+                $lastErr = $emailService->getLastError() ?: 'SMTP delivery issue';
+                throw new \Exception("Revision status saved in database, but sending Gmail to '{$applicantEmail}' failed: {$lastErr}");
             }
             
             $feedbackMsg = "📩 Revision Request successfully sent to {$applicantEmail}! The applicant has received the link in their Gmail to re-upload the requested file(s).";
