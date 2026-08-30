@@ -383,6 +383,7 @@ try {
     <link rel="stylesheet" href="/IECEP-LSC-MEMSYS/public/assets/css/admin-portal.css">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
     <style>
         :root {
@@ -931,6 +932,42 @@ try {
         }
         .excel-grid-table tr:hover td {
             background: #EFF6FF;
+        }
+
+        .pdf-viewer-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: #525659;
+            overflow: hidden;
+        }
+        .pdf-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.45rem 1rem;
+            background: #323639;
+            color: #FFFFFF;
+            font-size: 0.76rem;
+            flex-shrink: 0;
+            border-bottom: 1px solid #202224;
+        }
+        .pdf-canvas-wrapper {
+            flex: 1;
+            overflow: auto;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.25rem;
+            box-sizing: border-box;
+        }
+        .pdf-page-canvas {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            background: #FFFFFF;
+            border-radius: 4px;
+            max-width: 100%;
         }
 
         .revision-check-list {
@@ -1816,9 +1853,110 @@ try {
             if (isExcel) {
                 renderExcelLivePreview(doc.url, canvas);
             } else {
-                // PDF / Image / Fallback View
-                canvas.innerHTML = `
-                    <iframe src="${doc.url}#toolbar=1&navpanes=0" style="width:100%; height:100%; border:none; background:#525659;" title="${escapeHtml(doc.label)}"></iframe>
+                renderPdfLivePreview(doc.url, canvas, doc.label);
+            }
+        }
+
+        async function renderPdfLivePreview(url, container, label) {
+            container.innerHTML = `
+                <div class="pdf-viewer-container">
+                    <div class="pdf-toolbar">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span id="pdfPageNumDisplay" style="font-weight:700;">Loading Document...</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.4rem;">
+                            <button type="button" id="pdfZoomOut" class="btn-white" style="padding:0.2rem 0.5rem; font-size:0.7rem; background:#494e52; color:#fff; border:none; cursor:pointer;" title="Zoom Out"><i class="fas fa-magnifying-glass-minus"></i></button>
+                            <span id="pdfZoomVal" style="font-weight:600; min-width:38px; text-align:center;">115%</span>
+                            <button type="button" id="pdfZoomIn" class="btn-white" style="padding:0.2rem 0.5rem; font-size:0.7rem; background:#494e52; color:#fff; border:none; cursor:pointer;" title="Zoom In"><i class="fas fa-magnifying-glass-plus"></i></button>
+                        </div>
+                    </div>
+                    <div class="pdf-canvas-wrapper" id="pdfCanvasWrapper">
+                        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#CBD5E1; padding:3rem;">
+                            <i class="fas fa-spinner fa-spin" style="font-size:2.5rem; color:#FDE047; margin-bottom:0.85rem;"></i>
+                            <span style="font-weight:700;">Rendering Document Pages...</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            try {
+                if (typeof pdfjsLib === 'undefined') {
+                    throw new Error('PDF.js not available');
+                }
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+                const loadingTask = pdfjsLib.getDocument({
+                    url: url,
+                    cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+                    cMapPacked: true
+                });
+
+                const pdfDoc = await loadingTask.promise;
+                const totalPages = pdfDoc.numPages;
+                let currentScale = 1.15;
+
+                const wrapper = document.getElementById('pdfCanvasWrapper');
+                wrapper.innerHTML = '';
+
+                async function renderAllPages() {
+                    wrapper.innerHTML = '';
+                    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+                        const page = await pdfDoc.getPage(pageNum);
+                        const viewport = page.getViewport({ scale: currentScale });
+
+                        const canvas = document.createElement('canvas');
+                        canvas.className = 'pdf-page-canvas';
+                        canvas.id = `pdfPage_${pageNum}`;
+                        const context = canvas.getContext('2d');
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+
+                        wrapper.appendChild(canvas);
+                        await page.render({ canvasContext: context, viewport: viewport }).promise;
+                    }
+                }
+
+                await renderAllPages();
+
+                // Update Toolbar
+                document.getElementById('pdfPageNumDisplay').textContent = `${totalPages} Page${totalPages > 1 ? 's' : ''}`;
+                document.getElementById('pdfZoomVal').textContent = `${Math.round(currentScale * 100)}%`;
+
+                // Zoom Handlers
+                document.getElementById('pdfZoomIn').onclick = async () => {
+                    if (currentScale >= 2.5) return;
+                    currentScale += 0.2;
+                    document.getElementById('pdfZoomVal').textContent = `${Math.round(currentScale * 100)}%`;
+                    await renderAllPages();
+                };
+                document.getElementById('pdfZoomOut').onclick = async () => {
+                    if (currentScale <= 0.6) return;
+                    currentScale -= 0.2;
+                    document.getElementById('pdfZoomVal').textContent = `${Math.round(currentScale * 100)}%`;
+                    await renderAllPages();
+                };
+
+            } catch (err) {
+                console.warn('PDF.js rendering note:', err);
+                // Graceful fallback for non-standard / raw test files or iframe embed
+                container.innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#64748B; text-align:center; padding:2rem; background:#F8FAFC;">
+                        <div style="width:68px; height:68px; border-radius:14px; background:#EFF6FF; color:#2563EB; display:flex; align-items:center; justify-content:center; font-size:2rem; margin-bottom:1rem; border:1px solid #DBEAFE;">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <h4 style="color:#0F172A; margin:0 0 0.4rem; font-size:1.1rem; font-weight:800;">${escapeHtml(label)}</h4>
+                        <p style="font-size:0.82rem; margin:0 0 1.25rem; max-width:380px; color:#64748B;">
+                            This document is securely stored on cloud storage and is ready for inspection.
+                        </p>
+                        <div style="display:flex; gap:0.6rem; flex-wrap:wrap; justify-content:center;">
+                            <a href="${url}" target="_blank" class="btn-primary-navy" style="padding:0.55rem 1.25rem; font-size:0.82rem;">
+                                <i class="fas fa-arrow-up-right-from-square"></i> Open in New Window
+                            </a>
+                            <a href="${url}" download class="btn-white" style="padding:0.55rem 1.15rem; font-size:0.82rem;">
+                                <i class="fas fa-download"></i> Download Document
+                            </a>
+                        </div>
+                    </div>
                 `;
             }
         }
