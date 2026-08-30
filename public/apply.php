@@ -510,12 +510,12 @@ if (!empty($resubmitId)) {
                             </div>
                             <?php
                             $documents = [
-                                'letter_of_intent' => ['name' => 'Letter of Intent', 'accept' => '.pdf,.doc,.docx,.jpg,.jpeg,.png'],
-                                'endorsement_letter' => ['name' => 'Endorsement Letter', 'accept' => '.pdf,.doc,.docx,.jpg,.jpeg,.png'],
-                                'constitution_by_laws' => ['name' => 'Constitution and By-Laws', 'accept' => '.pdf,.doc,.docx'],
-                                'officers_cvs' => ['name' => 'List of Officers with CVs', 'accept' => '.pdf,.doc,.docx'],
-                                'organizational_chart' => ['name' => 'Organizational Chart', 'accept' => '.pdf,.doc,.docx,.jpg,.jpeg,.png'],
-                                'member_directory' => ['name' => 'Member Directory', 'accept' => '.pdf,.doc,.docx,.xls,.xlsx,.csv']
+                                'letter_of_intent'     => ['name' => 'Letter of Intent (Official PDF)', 'accept' => '.pdf,application/pdf'],
+                                'endorsement_letter'   => ['name' => 'Endorsement Letter (Signed PDF)', 'accept' => '.pdf,application/pdf'],
+                                'constitution_by_laws' => ['name' => 'Constitution and By-Laws (PDF)', 'accept' => '.pdf,application/pdf'],
+                                'officers_cvs'         => ['name' => 'List of Officers with CVs (PDF)', 'accept' => '.pdf,application/pdf'],
+                                'organizational_chart' => ['name' => 'Organizational Chart (PDF)', 'accept' => '.pdf,application/pdf'],
+                                'member_directory'     => ['name' => 'Member Directory (Excel / CSV)', 'accept' => '.xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv']
                             ];
                             $existingDocs = !empty($existingApplication['documents']) ? json_decode($existingApplication['documents'], true) : [];
                             error_log("Resubmit mode - Existing documents loaded: " . json_encode($existingDocs));
@@ -971,12 +971,12 @@ if (!empty($resubmitId)) {
         function setupDocumentUpload() {
             const uploadSection = document.getElementById('document-upload-section');
             const documents = [
-                { key: 'letter_of_intent', name: 'Letter of Intent', accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png' },
-                { key: 'endorsement_letter', name: 'Endorsement Letter', accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png' },
-                { key: 'constitution_by_laws', name: 'Constitution and By-Laws', accept: '.pdf,.doc,.docx' },
-                { key: 'officers_cvs', name: 'List of Officers with CVs', accept: '.pdf,.doc,.docx' },
-                { key: 'organizational_chart', name: 'Organizational Chart', accept: '.pdf,.doc,.docx,.jpg,.jpeg,.png' },
-                { key: 'member_directory', name: 'Member Directory', accept: '.pdf,.doc,.docx,.xls,.xlsx,.csv' }
+                { key: 'letter_of_intent', name: 'Letter of Intent (PDF)', accept: '.pdf,application/pdf' },
+                { key: 'endorsement_letter', name: 'Endorsement Letter (PDF)', accept: '.pdf,application/pdf' },
+                { key: 'constitution_by_laws', name: 'Constitution and By-Laws (PDF)', accept: '.pdf,application/pdf' },
+                { key: 'officers_cvs', name: 'List of Officers with CVs (PDF)', accept: '.pdf,application/pdf' },
+                { key: 'organizational_chart', name: 'Organizational Chart (PDF)', accept: '.pdf,application/pdf' },
+                { key: 'member_directory', name: 'Member Directory (Excel / CSV)', accept: '.xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv' }
             ];
 
             const existingDocs = <?php echo !empty($existingApplication['documents']) ? json_encode(json_decode($existingApplication['documents'], true) ?: []) : '[]'; ?>;
@@ -1014,6 +1014,22 @@ if (!empty($resubmitId)) {
             uploadSection.style.display = 'block';
 
             console.log('Document upload section set up, display:', uploadSection.style.display);
+
+            // Add live validation listeners
+            ['letter_of_intent', 'endorsement_letter', 'constitution_by_laws', 'officers_cvs', 'organizational_chart'].forEach(k => {
+                const el = document.getElementById(`file-${k}`);
+                if (el) {
+                    el.addEventListener('change', function() {
+                        if (this.files && this.files[0]) {
+                            const fn = this.files[0].name.toLowerCase();
+                            if (!fn.endsWith('.pdf') && this.files[0].type !== 'application/pdf') {
+                                alert('⚠️ Invalid File Type!\n\nOnly official PDF (.pdf) documents are accepted for this field.');
+                                this.value = '';
+                            }
+                        }
+                    });
+                }
+            });
 
             // Add Member Directory file listener
             const memberDirectoryInput = document.getElementById('file-member_directory');

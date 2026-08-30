@@ -181,13 +181,40 @@ try {
         throw new Exception('All fields are required.');
     }
     
-    // File Validation
-    $required_files = ['letter_of_intent', 'endorsement_letter', 'constitution_by_laws', 'officers_cvs', 'organizational_chart', 'member_directory'];
-    foreach ($required_files as $file_key) {
-        if (!isset($_FILES[$file_key]) || $_FILES[$file_key]['error'] !== UPLOAD_ERR_OK) {
-            throw new Exception("File '$file_key' is missing or corrupted.");
+    // Strict File Validation (PDF for documents 1-5, Excel/CSV for Member Directory)
+    $pdf_docs = [
+        'letter_of_intent'     => 'Letter of Intent',
+        'endorsement_letter'   => 'Endorsement Letter',
+        'constitution_by_laws' => 'Constitution & By-Laws',
+        'officers_cvs'         => 'Officers Curriculum Vitae (CVs)',
+        'organizational_chart' => 'Organizational Chart'
+    ];
+
+    foreach ($pdf_docs as $fkey => $flabel) {
+        if (!isset($_FILES[$fkey]) || $_FILES[$fkey]['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception("Document '{$flabel}' is required and was not uploaded.");
+        }
+        $ext = strtolower(pathinfo($_FILES[$fkey]['name'], PATHINFO_EXTENSION));
+        if ($ext !== 'pdf') {
+            throw new Exception("Invalid file format for '{$flabel}'. Only PDF (.pdf) documents are accepted.");
+        }
+        if (file_exists($_FILES[$fkey]['tmp_name'])) {
+            $header = file_get_contents($_FILES[$fkey]['tmp_name'], false, null, 0, 4);
+            if (strpos($header, '%PDF') !== 0) {
+                throw new Exception("The uploaded file for '{$flabel}' is not a valid PDF document.");
+            }
         }
     }
+
+    if (!isset($_FILES['member_directory']) || $_FILES['member_directory']['error'] !== UPLOAD_ERR_OK) {
+        throw new Exception("Member Directory spreadsheet is required.");
+    }
+    $mExt = strtolower(pathinfo($_FILES['member_directory']['name'], PATHINFO_EXTENSION));
+    if (!in_array($mExt, ['xlsx', 'xls', 'csv'])) {
+        throw new Exception("Invalid file format for Member Directory. Only Excel (.xlsx, .xls) or CSV (.csv) spreadsheets are accepted.");
+    }
+
+    $required_files = array_merge(array_keys($pdf_docs), ['member_directory']);
     
     // Database Logic
     $config = require __DIR__ . '/../../includes/supabase.php';

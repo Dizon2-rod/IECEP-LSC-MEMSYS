@@ -58,13 +58,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $file = $_FILES[$fieldKey];
                 $origName = basename($file['name']);
                 $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
-                $safeName = 'REV_' . $fieldKey . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
-                $destPath = $uploadDir . $safeName;
 
-                if (move_uploaded_file($file['tmp_name'], $destPath)) {
-                    $webUrl = PUBLIC_URL . '/storage/affiliations/' . $safeName;
-                    $updatedDocs[$fieldKey] = $webUrl;
+                if ($fieldKey === 'member_directory') {
+                    if (!in_array($ext, ['xlsx', 'xls', 'csv'])) {
+                        throw new Exception("Invalid file for Member Directory. Only Excel (.xlsx, .xls) or CSV (.csv) spreadsheets are accepted.");
+                    }
+                } else {
+                    if ($ext !== 'pdf') {
+                        throw new Exception("Invalid file for {$fieldLabel}. Only official PDF (.pdf) documents are accepted.");
+                    }
+                    if (file_exists($file['tmp_name'])) {
+                        $hdr = file_get_contents($file['tmp_name'], false, null, 0, 4);
+                        if (strpos($hdr, '%PDF') !== 0) {
+                            throw new Exception("The uploaded file for {$fieldLabel} is not a valid PDF document.");
+                        }
+                    }
+                }
+
+                $cleanBase = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', pathinfo($origName, PATHINFO_FILENAME));
+                $safeName = 'REV_' . $fieldKey . '_' . uniqid() . '_' . $cleanBase . '.' . $ext;
+                $mimeType = (!empty($file['tmp_name']) && file_exists($file['tmp_name']))
+                    ? (mime_content_type($file['tmp_name']) ?: ($file['type'] ?: 'application/octet-stream'))
+                    : ($file['type'] ?: 'application/octet-stream');
+
+                $cloudUrl = uploadToSupabaseStorage('affiliations', 'applications/' . $safeName, $file['tmp_name'], $mimeType);
+                if ($cloudUrl) {
+                    $updatedDocs[$fieldKey] = $cloudUrl;
                     $filesReplacedCount++;
+                } else {
+                    throw new Exception("Failed to upload {$fieldLabel} to cloud storage.");
                 }
             }
         }
@@ -379,13 +401,13 @@ if (!empty($affiliation['revision_files'])) {
                         <div class="doc-upload-header">
                             <div class="doc-name">
                                 <i class="fas fa-file-lines" style="color:var(--color-navy);"></i>
-                                1. Letter of Intent
+                                1. Letter of Intent (.pdf)
                             </div>
                             <span class="doc-badge <?= $isReq1 ? 'needs-fix' : 'current-ok' ?>">
                                 <?= $isReq1 ? 'Update File' : 'Current File Attached' ?>
                             </span>
                         </div>
-                        <input type="file" name="letter_of_intent" class="file-input-field" accept=".pdf,.doc,.docx">
+                        <input type="file" name="letter_of_intent" class="file-input-field pdf-only" accept=".pdf,application/pdf" data-name="Letter of Intent">
                         <?php if (!empty($affiliation['letter_of_intent'])): ?>
                             <div style="font-size:0.72rem; color:#64748B; margin-top:4px;">
                                 Current: <a href="<?= htmlspecialchars($affiliation['letter_of_intent']) ?>" target="_blank" style="color:#2563EB;">View previously uploaded file</a>
@@ -399,13 +421,13 @@ if (!empty($affiliation['revision_files'])) {
                         <div class="doc-upload-header">
                             <div class="doc-name">
                                 <i class="fas fa-certificate" style="color:var(--color-navy);"></i>
-                                2. Endorsement Letter (from Dean/Chair)
+                                2. Endorsement Letter (.pdf)
                             </div>
                             <span class="doc-badge <?= $isReq2 ? 'needs-fix' : 'current-ok' ?>">
                                 <?= $isReq2 ? 'Update File' : 'Current File Attached' ?>
                             </span>
                         </div>
-                        <input type="file" name="endorsement_letter" class="file-input-field" accept=".pdf,.doc,.docx">
+                        <input type="file" name="endorsement_letter" class="file-input-field pdf-only" accept=".pdf,application/pdf" data-name="Endorsement Letter">
                         <?php if (!empty($affiliation['endorsement_letter'])): ?>
                             <div style="font-size:0.72rem; color:#64748B; margin-top:4px;">
                                 Current: <a href="<?= htmlspecialchars($affiliation['endorsement_letter']) ?>" target="_blank" style="color:#2563EB;">View previously uploaded file</a>
@@ -419,13 +441,13 @@ if (!empty($affiliation['revision_files'])) {
                         <div class="doc-upload-header">
                             <div class="doc-name">
                                 <i class="fas fa-scale-balanced" style="color:var(--color-navy);"></i>
-                                3. Chapter Constitution & By-Laws
+                                3. Chapter Constitution & By-Laws (.pdf)
                             </div>
                             <span class="doc-badge <?= $isReq3 ? 'needs-fix' : 'current-ok' ?>">
                                 <?= $isReq3 ? 'Update File' : 'Current File Attached' ?>
                             </span>
                         </div>
-                        <input type="file" name="constitution_by_laws" class="file-input-field" accept=".pdf,.doc,.docx">
+                        <input type="file" name="constitution_by_laws" class="file-input-field pdf-only" accept=".pdf,application/pdf" data-name="Constitution & By-Laws">
                         <?php if (!empty($affiliation['constitution_by_laws'])): ?>
                             <div style="font-size:0.72rem; color:#64748B; margin-top:4px;">
                                 Current: <a href="<?= htmlspecialchars($affiliation['constitution_by_laws']) ?>" target="_blank" style="color:#2563EB;">View previously uploaded file</a>
@@ -439,13 +461,13 @@ if (!empty($affiliation['revision_files'])) {
                         <div class="doc-upload-header">
                             <div class="doc-name">
                                 <i class="fas fa-user-tie" style="color:var(--color-navy);"></i>
-                                4. Officers Curriculum Vitae (CVs)
+                                4. Officers Curriculum Vitae (.pdf)
                             </div>
                             <span class="doc-badge <?= $isReq4 ? 'needs-fix' : 'current-ok' ?>">
                                 <?= $isReq4 ? 'Update File' : 'Current File Attached' ?>
                             </span>
                         </div>
-                        <input type="file" name="officers_cvs" class="file-input-field" accept=".pdf,.doc,.docx">
+                        <input type="file" name="officers_cvs" class="file-input-field pdf-only" accept=".pdf,application/pdf" data-name="Officers Curriculum Vitae">
                         <?php if (!empty($affiliation['officers_cvs'])): ?>
                             <div style="font-size:0.72rem; color:#64748B; margin-top:4px;">
                                 Current: <a href="<?= htmlspecialchars($affiliation['officers_cvs']) ?>" target="_blank" style="color:#2563EB;">View previously uploaded file</a>
@@ -459,13 +481,13 @@ if (!empty($affiliation['revision_files'])) {
                         <div class="doc-upload-header">
                             <div class="doc-name">
                                 <i class="fas fa-sitemap" style="color:var(--color-navy);"></i>
-                                5. Organizational Chart
+                                5. Organizational Chart (.pdf)
                             </div>
                             <span class="doc-badge <?= $isReq5 ? 'needs-fix' : 'current-ok' ?>">
                                 <?= $isReq5 ? 'Update File' : 'Current File Attached' ?>
                             </span>
                         </div>
-                        <input type="file" name="organizational_chart" class="file-input-field" accept=".pdf,.doc,.docx,.png,.jpg">
+                        <input type="file" name="organizational_chart" class="file-input-field pdf-only" accept=".pdf,application/pdf" data-name="Organizational Chart">
                         <?php if (!empty($affiliation['organizational_chart'])): ?>
                             <div style="font-size:0.72rem; color:#64748B; margin-top:4px;">
                                 Current: <a href="<?= htmlspecialchars($affiliation['organizational_chart']) ?>" target="_blank" style="color:#2563EB;">View previously uploaded file</a>
@@ -479,13 +501,13 @@ if (!empty($affiliation['revision_files'])) {
                         <div class="doc-upload-header">
                             <div class="doc-name">
                                 <i class="fas fa-file-excel" style="color:#107C41;"></i>
-                                6. Official Member Directory Spreadsheet (.xlsx / .csv)
+                                6. Official Member Directory (.xlsx / .xls / .csv)
                             </div>
                             <span class="doc-badge <?= $isReq6 ? 'needs-fix' : 'current-ok' ?>">
                                 <?= $isReq6 ? 'Update File' : 'Current File Attached' ?>
                             </span>
                         </div>
-                        <input type="file" name="member_directory" class="file-input-field" accept=".xlsx,.xls,.csv">
+                        <input type="file" name="member_directory" id="revMemberDirectoryInput" class="file-input-field" accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv">
                         <?php if (!empty($affiliation['member_directory'])): ?>
                             <div style="font-size:0.72rem; color:#64748B; margin-top:4px;">
                                 Current: <a href="<?= htmlspecialchars($affiliation['member_directory']) ?>" target="_blank" style="color:#107C41;">View current spreadsheet roster</a>
@@ -501,5 +523,37 @@ if (!empty($affiliation['revision_files'])) {
         </div>
     </div>
 
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.pdf-only').forEach(function(input) {
+            input.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    const docName = this.getAttribute('data-name') || 'Document';
+                    const fileName = file.name.toLowerCase();
+                    if (!fileName.endsWith('.pdf') && file.type !== 'application/pdf') {
+                        alert('⚠️ Invalid File Type!\n\nOnly official PDF (.pdf) documents are accepted for ' + docName + '.\nWord documents (.doc/.docx) or images (.png/.jpg) must be exported or saved as PDF before uploading.');
+                        this.value = '';
+                    }
+                }
+            });
+        });
+
+        const memberInput = document.getElementById('revMemberDirectoryInput');
+        if (memberInput) {
+            memberInput.addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    const fileName = file.name.toLowerCase();
+                    const isValidExt = fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.csv');
+                    if (!isValidExt) {
+                        alert('⚠️ Invalid File Type!\n\nOnly Excel (.xlsx, .xls) or CSV (.csv) spreadsheets are accepted for the Member Directory.');
+                        this.value = '';
+                    }
+                }
+            });
+        }
+    });
+    </script>
 </body>
 </html>
