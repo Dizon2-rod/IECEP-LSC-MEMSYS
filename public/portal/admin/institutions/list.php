@@ -324,8 +324,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if ($appId) {
                 $supabase->update('pending_affiliations', [
                     'status' => 'requires_revision',
-                    'notes' => $instructions ?: 'Please update the requested documents.',
-                    'revision_files' => implode(',', array_keys($fileListForEmail)),
+                    'rejection_reason' => $instructions ?: 'Please update the requested documents.',
                     'updated_at' => date('c')
                 ], $appId);
                 
@@ -366,7 +365,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if ($appId) {
                 $supabase->update('pending_affiliations', [
                     'status' => 'rejected',
-                    'notes' => $reason,
+                    'rejection_reason' => $reason,
                     'updated_at' => date('c')
                 ], $appId);
                 
