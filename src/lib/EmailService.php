@@ -19,18 +19,23 @@ class EmailService
 
     public function __construct()
     {
-        // Use constants directly from config.php (global namespace)
-        // Use defined() and constant() functions to safely get global constants
+        $user = (defined('SMTP_USERNAME') && SMTP_USERNAME !== '') ? SMTP_USERNAME : (getenv('SMTP_USERNAME') ?: ($_ENV['SMTP_USERNAME'] ?? ($_SERVER['SMTP_USERNAME'] ?? 'rasheddizon7@gmail.com')));
+        $pass = (defined('SMTP_PASSWORD') && SMTP_PASSWORD !== '') ? SMTP_PASSWORD : (getenv('SMTP_PASSWORD') ?: ($_ENV['SMTP_PASSWORD'] ?? ($_SERVER['SMTP_PASSWORD'] ?? 'yaxp jbky xfub cvuq')));
+        $host = (defined('SMTP_HOST') && SMTP_HOST !== '') ? SMTP_HOST : (getenv('SMTP_HOST') ?: ($_ENV['SMTP_HOST'] ?? ($_SERVER['SMTP_HOST'] ?? 'smtp.gmail.com')));
+        $port = (defined('SMTP_PORT') && SMTP_PORT !== '') ? (int)SMTP_PORT : ((int)(getenv('SMTP_PORT') ?: ($_ENV['SMTP_PORT'] ?? ($_SERVER['SMTP_PORT'] ?? 587))));
+        $fromEmail = (defined('SMTP_FROM_EMAIL') && SMTP_FROM_EMAIL !== '') ? SMTP_FROM_EMAIL : (getenv('SMTP_FROM_EMAIL') ?: ($_ENV['SMTP_FROM_EMAIL'] ?? ($_SERVER['SMTP_FROM_EMAIL'] ?? $user)));
+        $fromName = (defined('SMTP_FROM_NAME') && SMTP_FROM_NAME !== '') ? SMTP_FROM_NAME : (getenv('SMTP_FROM_NAME') ?: ($_ENV['SMTP_FROM_NAME'] ?? ($_SERVER['SMTP_FROM_NAME'] ?? 'IECEP-LSC-MEMSYS')));
+
         $this->config = [
-            'app_env' => defined('APP_ENV') ? constant('APP_ENV') : 'production',
-            'app_url' => defined('APP_URL') ? constant('APP_URL') : '',
+            'app_env' => defined('APP_ENV') ? constant('APP_ENV') : (getenv('APP_ENV') ?: 'production'),
+            'app_url' => defined('APP_URL') ? constant('APP_URL') : (getenv('APP_URL') ?: ''),
             'email' => [
-                'host' => defined('SMTP_HOST') ? constant('SMTP_HOST') : 'smtp.gmail.com',
-                'port' => defined('SMTP_PORT') ? constant('SMTP_PORT') : 587,
-                'username' => defined('SMTP_USERNAME') ? constant('SMTP_USERNAME') : '',
-                'password' => defined('SMTP_PASSWORD') ? constant('SMTP_PASSWORD') : '',
-                'from_email' => defined('SMTP_FROM_EMAIL') ? constant('SMTP_FROM_EMAIL') : '',
-                'from_name' => defined('SMTP_FROM_NAME') ? constant('SMTP_FROM_NAME') : 'IECEP-LSC-MEMSYS'
+                'host' => $host,
+                'port' => $port,
+                'username' => $user,
+                'password' => $pass,
+                'from_email' => $fromEmail,
+                'from_name' => $fromName
             ]
         ];
 

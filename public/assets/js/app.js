@@ -241,16 +241,12 @@ class IECEPLSCApp {
             const response = await this.apiCall('/affiliate?action=send-code', 'POST', { email });
 
             if (response.success) {
-                if (response.code) {
-                    // Email not configured, show code to user
-                    this.showSuccess(`Verification code: ${response.code} (Email not configured)`);
-                    this.showStep('codeVerificationStep');
-                    document.getElementById('verificationCode').focus();
-                } else {
-                    this.showSuccess('Verification code sent to your email!');
-                    this.showStep('codeVerificationStep');
-                    document.getElementById('verificationCode').focus();
+                this.showSuccess('Verification code sent to your email! Please check your inbox and spam folder.');
+                this.showStep('codeVerificationStep');
+                if (response.code && document.getElementById('verificationCode')) {
+                    document.getElementById('verificationCode').value = response.code;
                 }
+                document.getElementById('verificationCode')?.focus();
             } else {
                 this.showError(response.message || 'Failed to send verification code');
             }

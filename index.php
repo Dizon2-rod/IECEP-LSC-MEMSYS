@@ -2859,13 +2859,18 @@ document.addEventListener('DOMContentLoaded', function () {
             if (!res.ok) throw new Error(`Server error: ${res.status}`);
             const result = await res.json();
             if (result.success) {
-                result.code
-                    ? showModalSuccess(`Verification code: ${result.code} (Email not configured — use this code)`)
-                    : showModalSuccess('Verification code sent to your email!');
+                showModalSuccess('Verification code sent to your email! Please check your inbox and spam folder.');
                 document.getElementById('modal-sent-email').textContent = email;
                 document.getElementById('modal-email-form').style.display = 'none';
                 document.getElementById('modal-code-form').style.display  = 'block';
                 setupCodeInputs();
+                if (result.code) {
+                    const inputs = document.querySelectorAll('#modal-code-form .code-input');
+                    const digits = String(result.code).split('');
+                    digits.forEach((d, idx) => {
+                        if (inputs[idx]) inputs[idx].value = d;
+                    });
+                }
             } else {
                 showNotification('error', result.message || 'Failed to send verification code');
                 this.disabled = false;
