@@ -821,21 +821,116 @@ try {
             overflow: hidden;
             border: 1px solid var(--border-color);
         }
-
-        .packet-doc-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.65rem;
-            margin: 0.85rem 0 1.25rem;
+        .modal-inner-box.inspect-wide-box {
+            max-width: 1200px;
+            width: 96vw;
+            height: 90vh;
+            max-height: 880px;
+            display: flex;
+            flex-direction: column;
+            border-radius: 14px;
         }
-        .packet-doc-card {
+
+        .inspect-layout {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+        .inspect-sidebar {
+            width: 330px;
+            background: #F8FAFC;
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+            flex-shrink: 0;
+        }
+        .inspect-doc-item {
+            padding: 0.65rem 0.8rem;
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            padding: 0.65rem 0.85rem;
+            background: #FFFFFF;
+            cursor: pointer;
+            transition: all 0.18s ease;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            gap: 0.5rem;
+        }
+        .inspect-doc-item:hover {
+            border-color: #CBD5E1;
+            background: #F1F5F9;
+        }
+        .inspect-doc-item.active {
+            border-color: var(--color-navy);
+            background: rgba(11, 29, 74, 0.05);
+            box-shadow: 0 0 0 2px rgba(11, 29, 74, 0.15);
+        }
+        .inspect-preview-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: #FFFFFF;
+        }
+        .inspect-preview-header {
+            padding: 0.65rem 1.15rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #FFFFFF;
+            flex-shrink: 0;
+        }
+        .inspect-preview-body {
+            flex: 1;
+            min-height: 0;
+            position: relative;
             background: #F8FAFC;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .excel-table-container {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            padding: 1rem;
+            box-sizing: border-box;
+            background: #FFFFFF;
+        }
+        .excel-grid-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.76rem;
+        }
+        .excel-grid-table th {
+            position: sticky;
+            top: 0;
+            background: #0B1D4A;
+            color: #FFFFFF;
+            font-weight: 700;
+            padding: 0.55rem 0.75rem;
+            text-align: left;
+            border: 1px solid #1e3a8a;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        .excel-grid-table td {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #E2E8F0;
+            color: #1E293B;
+            white-space: nowrap;
+        }
+        .excel-grid-table tr:nth-child(even) td {
+            background: #F8FAFC;
+        }
+        .excel-grid-table tr:hover td {
+            background: #EFF6FF;
         }
 
         .revision-check-list {
@@ -1214,22 +1309,98 @@ try {
         </div>
     </main>
 
-    <!-- 1. Inspect Requirements Packet Modal -->
+    <!-- 1. Inspect Requirements Packet & Live Document Viewer Modal -->
     <div id="inspectModal" class="doc-modal">
-        <div class="modal-inner-box">
-            <div class="ap-card-header">
-                <h3 class="ap-card-title" id="inspectSchoolTitle"><i class="fas fa-folder-open"></i> Affiliation Requirements Packet</h3>
-                <button class="btn-white" style="border:none; padding:0.25rem 0.5rem;" onclick="closeInspectModal()">&times;</button>
-            </div>
-            <div style="padding:1rem;">
-                <p style="font-size:0.8rem; color:#64748B; margin:0 0 0.85rem;">
-                    Official accreditation submission documents uploaded by the school chapter applicant:
-                </p>
-                <div class="packet-doc-grid" id="inspectDocsGrid">
-                    <!-- Dynamic docs rendered via JS -->
+        <div class="modal-inner-box inspect-wide-box">
+            <div class="ap-card-header" style="background:#0B1D4A; color:#FFFFFF; padding:0.8rem 1.25rem; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+                <div style="display:flex; align-items:center; gap:0.65rem;">
+                    <div style="width:36px; height:36px; border-radius:8px; background:rgba(255,255,255,0.12); display:flex; align-items:center; justify-content:center; color:#FDE047; font-size:1.1rem;">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                    <div>
+                        <h3 class="ap-card-title" id="inspectSchoolTitle" style="color:#FFFFFF; margin:0; font-size:1.05rem; font-weight:800;">
+                            Affiliation Application Packet
+                        </h3>
+                        <div id="inspectSchoolSubtitle" style="font-size:0.75rem; color:#94A3B8; margin-top:2px;">
+                            Applicant Verification & Live Document Audit
+                        </div>
+                    </div>
                 </div>
-                <div style="display:flex; justify-content:flex-end; gap:0.65rem;">
-                    <button type="button" class="btn-white" onclick="closeInspectModal()">Close</button>
+                <button type="button" class="btn-white" style="border:none; padding:0.3rem 0.65rem; background:rgba(255,255,255,0.15); color:#FFFFFF; font-size:1.1rem; cursor:pointer;" onclick="closeInspectModal()">&times;</button>
+            </div>
+
+            <div class="inspect-layout">
+                <!-- Left Sidebar: Documents Tabs & Quick Actions -->
+                <div class="inspect-sidebar">
+                    <div>
+                        <div style="font-size:0.7rem; text-transform:uppercase; font-weight:800; color:#64748B; letter-spacing:0.04em; margin-bottom:0.5rem; display:flex; justify-content:space-between; align-items:center;">
+                            <span>Submission Packet</span>
+                            <span id="inspectDocsCountBadge" style="font-size:0.68rem; background:#E2E8F0; color:#0F172A; padding:1px 6px; border-radius:10px; font-weight:700;">6 Files</span>
+                        </div>
+                        <div id="inspectDocList" style="display:flex; flex-direction:column; gap:0.45rem;">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Application Assessment Meta -->
+                    <div style="background:#FFFFFF; border:1px solid var(--border-color); border-radius:8px; padding:0.85rem; font-size:0.75rem;">
+                        <div style="font-weight:800; color:#0F172A; margin-bottom:0.45rem; display:flex; align-items:center; gap:0.4rem;">
+                            <i class="fas fa-receipt" style="color:var(--color-navy);"></i> Application Summary
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem; color:#64748B;">
+                            <span>Contact Officer:</span>
+                            <strong id="inspectOfficerName" style="color:#0F172A;">-</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem; color:#64748B;">
+                            <span>Email:</span>
+                            <span id="inspectOfficerEmail" style="color:#0F172A; word-break:break-all;">-</span>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem; color:#64748B;">
+                            <span>Total Students:</span>
+                            <strong id="inspectTotalStudents" style="color:var(--color-navy);">-</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; margin-bottom:0.25rem; color:#64748B;">
+                            <span>Assessment Fee:</span>
+                            <strong id="inspectTotalFee" style="color:#059669;">-</strong>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; color:#64748B;">
+                            <span>Receipt Tracking:</span>
+                            <code id="inspectReceiptNo" style="color:#0B1D4A; font-weight:700;">-</code>
+                        </div>
+                    </div>
+
+                    <!-- Quick Review Actions -->
+                    <div style="margin-top:auto; display:flex; flex-direction:column; gap:0.45rem;">
+                        <div id="inspectApprovalFormContainer"></div>
+                        <button type="button" id="inspectRequestEditBtn" class="btn-act-amber" style="width:100%; justify-content:center; padding:0.5rem; font-size:0.78rem;">
+                            <i class="fas fa-pen-to-square"></i> Request Revision / Edit
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Pane: Live Document Preview Canvas -->
+                <div class="inspect-preview-pane">
+                    <div class="inspect-preview-header">
+                        <div style="display:flex; align-items:center; gap:0.55rem;">
+                            <i id="inspectCurrentDocIcon" class="fas fa-file-pdf" style="font-size:1.15rem; color:var(--color-navy);"></i>
+                            <div>
+                                <strong id="inspectCurrentDocLabel" style="font-size:0.88rem; color:#0F172A;">Document Preview</strong>
+                                <span id="inspectCurrentDocStatus" class="ap-pill" style="margin-left:0.4rem; font-size:0.68rem;"></span>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.45rem;">
+                            <a id="inspectNewTabLink" href="#" target="_blank" class="btn-white" style="font-size:0.74rem; padding:0.32rem 0.7rem; text-decoration:none; display:none;">
+                                <i class="fas fa-arrow-up-right-from-square"></i> Open in New Tab
+                            </a>
+                            <a id="inspectDownloadLink" href="#" download class="btn-white" style="font-size:0.74rem; padding:0.32rem 0.7rem; text-decoration:none; display:none;">
+                                <i class="fas fa-download"></i> Download
+                            </a>
+                        </div>
+                    </div>
+
+                    <div id="inspectPreviewCanvas" class="inspect-preview-body">
+                        <!-- Rendered dynamically: iframe / SheetJS Excel table / image / empty state -->
+                    </div>
                 </div>
             </div>
         </div>
@@ -1496,40 +1667,275 @@ try {
             document.getElementById('declineModal').classList.remove('active');
         }
 
-        function openInspectModal(app) {
-            document.getElementById('inspectSchoolTitle').innerHTML = `<i class="fas fa-folder-open"></i> Packet: ${app.institution_name || 'Application'}`;
-            const grid = document.getElementById('inspectDocsGrid');
-            grid.innerHTML = '';
+        let currentInspectApp = null;
+        let currentDocList = [];
 
-            const docItems = [
-                { key: 'letter_of_intent', label: 'Letter of Intent', icon: 'fa-file-lines' },
-                { key: 'endorsement_letter', label: 'Endorsement Letter', icon: 'fa-certificate' },
-                { key: 'constitution_by_laws', label: 'Constitution & By-Laws', icon: 'fa-scale-balanced' },
-                { key: 'officers_cvs', label: 'Officers Curriculum Vitae', icon: 'fa-user-tie' },
-                { key: 'organizational_chart', label: 'Organizational Chart', icon: 'fa-sitemap' },
-                { key: 'member_directory', label: 'Member Directory (Excel)', icon: 'fa-file-excel', color: '#107C41' }
+        function openInspectModal(app) {
+            currentInspectApp = app;
+            
+            // Header Info
+            const instName = app.institution_name || app.school_name || 'Application Packet';
+            document.getElementById('inspectSchoolTitle').innerHTML = `<i class="fas fa-folder-open" style="color:#FDE047; margin-right:0.4rem;"></i> Packet: ${escapeHtml(instName)}`;
+            document.getElementById('inspectSchoolSubtitle').textContent = `${app.institution_address || 'Laguna, Philippines'} • Ref ID: ${app.id || 'N/A'}`;
+            
+            // Sidebar Summary
+            document.getElementById('inspectOfficerName').textContent = app.contact_person || 'School Officer';
+            document.getElementById('inspectOfficerEmail').textContent = app.contact_email || app.email || 'N/A';
+            document.getElementById('inspectTotalStudents').textContent = `${app.total_members || 0} Students (${app.new_members || 0} New, ${app.old_members || 0} Old)`;
+            document.getElementById('inspectTotalFee').textContent = `PHP ${parseFloat(app.total_fee || app.affiliation_fee || 0).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+            document.getElementById('inspectReceiptNo').textContent = app.receipt_number || 'RCP-VERIFIED';
+
+            // Approval Form in Sidebar
+            const approvalContainer = document.getElementById('inspectApprovalFormContainer');
+            approvalContainer.innerHTML = `
+                <form method="POST" onsubmit="return confirm('Approve this affiliation? This will automatically create the School Officer account and ingest all attached student members into the Member Directory.');">
+                    <input type="hidden" name="action" value="approve_charter">
+                    <input type="hidden" name="application_id" value="${escapeHtml(app.id || '')}">
+                    <input type="hidden" name="institution_name" value="${escapeHtml(app.institution_name || app.school_name || '')}">
+                    <input type="hidden" name="email" value="${escapeHtml(app.contact_email || app.email || '')}">
+                    <input type="hidden" name="contact_person" value="${escapeHtml(app.contact_person || '')}">
+                    <input type="hidden" name="contact_phone" value="${escapeHtml(app.contact_phone || app.contact_number || '')}">
+                    <button type="submit" class="btn-act-green" style="width:100%; justify-content:center; padding:0.55rem; font-size:0.8rem;" title="Approve Affiliation">
+                        <i class="fas fa-check"></i> Approve Affiliation Packet
+                    </button>
+                </form>
+            `;
+
+            // Request Edit Button in Sidebar
+            document.getElementById('inspectRequestEditBtn').onclick = function() {
+                closeInspectModal();
+                openRevisionModal(app);
+            };
+
+            // Prepare 6 Documents
+            const docDefs = [
+                { key: 'letter_of_intent', num: 1, label: 'Letter of Intent', icon: 'fa-file-lines', color: 'var(--color-navy)', type: 'pdf' },
+                { key: 'endorsement_letter', num: 2, label: 'Endorsement Letter', icon: 'fa-certificate', color: 'var(--color-navy)', type: 'pdf' },
+                { key: 'constitution_by_laws', num: 3, label: 'Constitution & By-Laws', icon: 'fa-scale-balanced', color: 'var(--color-navy)', type: 'pdf' },
+                { key: 'officers_cvs', num: 4, label: 'Officers Curriculum Vitae', icon: 'fa-user-tie', color: 'var(--color-navy)', type: 'pdf' },
+                { key: 'organizational_chart', num: 5, label: 'Organizational Chart', icon: 'fa-sitemap', color: 'var(--color-navy)', type: 'pdf' },
+                { key: 'member_directory', num: 6, label: 'Member Directory (Excel)', icon: 'fa-file-excel', color: '#107C41', type: 'excel' }
             ];
 
-            docItems.forEach(doc => {
-                const url = app[doc.key] || (app.documents && app.documents[doc.key]);
-                const card = document.createElement('div');
-                card.className = 'packet-doc-card';
-                card.innerHTML = `
-                    <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.78rem; font-weight:700; color:#0F172A;">
-                        <i class="fas ${doc.icon}" style="color:${doc.color || 'var(--color-navy)'}; font-size:0.9rem;"></i>
-                        <span>${doc.label}</span>
-                    </div>
-                    <div>
-                        ${url ? `<a href="${url}" target="_blank" class="btn-white" style="padding:0.25rem 0.55rem; font-size:0.7rem;"><i class="fas fa-eye"></i> View</a>` : `<span style="font-size:0.7rem; color:#94A3B8;">Not Attached</span>`}
-                    </div>
-                `;
-                grid.appendChild(card);
+            let attachedCount = 0;
+            currentDocList = docDefs.map(doc => {
+                let url = app[doc.key] || (app.documents && app.documents[doc.key]) || null;
+                if (url && typeof url === 'string') {
+                    attachedCount++;
+                } else {
+                    url = null;
+                }
+                return { ...doc, url };
             });
 
+            document.getElementById('inspectDocsCountBadge').textContent = `${attachedCount}/6 Attached`;
+
+            // Render Sidebar List
+            const listEl = document.getElementById('inspectDocList');
+            listEl.innerHTML = '';
+            
+            let firstActiveIndex = 0;
+            currentDocList.forEach((doc, idx) => {
+                const item = document.createElement('div');
+                item.className = `inspect-doc-item ${idx === 0 ? 'active' : ''}`;
+                item.id = `inspectDocTab_${doc.key}`;
+                item.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:0.5rem; overflow:hidden;">
+                        <i class="fas ${doc.icon}" style="color:${doc.color}; font-size:0.95rem; width:16px; flex-shrink:0;"></i>
+                        <span style="font-size:0.76rem; font-weight:700; color:#0F172A; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${doc.num}. ${doc.label}</span>
+                    </div>
+                    <div>
+                        ${doc.url 
+                            ? `<span class="ap-pill active" style="font-size:0.65rem; padding:1px 5px;"><i class="fas fa-check"></i> Ready</span>` 
+                            : `<span style="font-size:0.65rem; color:#94A3B8;">Missing</span>`}
+                    </div>
+                `;
+                item.onclick = () => selectInspectDoc(idx);
+                listEl.appendChild(item);
+                if (doc.url && !currentDocList[firstActiveIndex].url) {
+                    firstActiveIndex = idx;
+                }
+            });
+
+            // Select initial document
+            selectInspectDoc(firstActiveIndex);
+
+            // Show Modal
             document.getElementById('inspectModal').classList.add('active');
         }
+
+        function selectInspectDoc(index) {
+            const doc = currentDocList[index];
+            if (!doc) return;
+
+            // Highlight Tab
+            document.querySelectorAll('.inspect-doc-item').forEach((el, idx) => {
+                el.classList.toggle('active', idx === index);
+            });
+
+            // Header Elements
+            document.getElementById('inspectCurrentDocIcon').className = `fas ${doc.icon}`;
+            document.getElementById('inspectCurrentDocIcon').style.color = doc.color || 'var(--color-navy)';
+            document.getElementById('inspectCurrentDocLabel').textContent = `${doc.num}. ${doc.label}`;
+            
+            const statusEl = document.getElementById('inspectCurrentDocStatus');
+            const newTabBtn = document.getElementById('inspectNewTabLink');
+            const downloadBtn = document.getElementById('inspectDownloadLink');
+            const canvas = document.getElementById('inspectPreviewCanvas');
+
+            if (!doc.url) {
+                statusEl.className = 'ap-pill';
+                statusEl.style.background = '#F1F5F9';
+                statusEl.style.color = '#64748B';
+                statusEl.textContent = 'Not Attached';
+                newTabBtn.style.display = 'none';
+                downloadBtn.style.display = 'none';
+                canvas.innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#94A3B8; text-align:center; padding:2rem;">
+                        <i class="fas fa-file-circle-xmark" style="font-size:3rem; margin-bottom:1rem; opacity:0.6;"></i>
+                        <h4 style="color:#475569; margin:0 0 0.4rem; font-size:1.05rem;">Document Not Attached</h4>
+                        <p style="font-size:0.82rem; margin:0; max-width:320px;">The applicant did not attach this requirement in their submission packet.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            statusEl.className = 'ap-pill active';
+            statusEl.style.background = '#ECFDF5';
+            statusEl.style.color = '#059669';
+            statusEl.textContent = 'Verified File';
+
+            newTabBtn.href = doc.url;
+            newTabBtn.style.display = 'inline-flex';
+            downloadBtn.href = doc.url;
+            downloadBtn.style.display = 'inline-flex';
+
+            // Check if Excel / XLSX
+            const isExcel = doc.key === 'member_directory' || doc.url.includes('.xlsx') || doc.url.includes('.xls') || doc.url.includes('.csv');
+
+            if (isExcel) {
+                renderExcelLivePreview(doc.url, canvas);
+            } else {
+                // PDF / Image / Fallback View
+                canvas.innerHTML = `
+                    <iframe src="${doc.url}#toolbar=1&navpanes=0" style="width:100%; height:100%; border:none; background:#525659;" title="${escapeHtml(doc.label)}"></iframe>
+                `;
+            }
+        }
+
+        async function renderExcelLivePreview(url, container) {
+            container.innerHTML = `
+                <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#64748B; padding:2rem;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:2.5rem; color:var(--color-navy); margin-bottom:1rem;"></i>
+                    <h4 style="color:#0F172A; margin:0 0 0.35rem; font-size:1rem;">Reading Student Member Directory...</h4>
+                    <p style="font-size:0.8rem; margin:0;">Parsing spreadsheet data via SheetJS engine</p>
+                </div>
+            `;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const arrayBuffer = await response.arrayBuffer();
+
+                if (typeof XLSX === 'undefined') {
+                    throw new Error('SheetJS library not loaded');
+                }
+
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+
+                if (!jsonData || jsonData.length === 0) {
+                    container.innerHTML = `
+                        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#94A3B8; text-align:center; padding:2rem;">
+                            <i class="fas fa-file-excel" style="font-size:3rem; color:#107C41; margin-bottom:1rem; opacity:0.6;"></i>
+                            <h4 style="color:#475569; margin:0 0 0.4rem;">Empty Member Roster</h4>
+                            <p style="font-size:0.8rem; margin:0;">No rows or records found inside this Excel file.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const headers = jsonData[0] || [];
+                const rows = jsonData.slice(1).filter(r => r.some(cell => String(cell).trim() !== ''));
+
+                let tableHtml = `
+                    <div class="excel-table-container">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem;">
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <span style="background:#ECFDF5; color:#059669; border:1px solid #A7F3D0; font-size:0.75rem; font-weight:800; padding:2px 8px; border-radius:6px;">
+                                    <i class="fas fa-users" style="margin-right:3px;"></i> ${rows.length} Enrolled Students
+                                </span>
+                                <span style="font-size:0.74rem; color:#64748B;">Sheet: <strong>${escapeHtml(firstSheetName)}</strong></span>
+                            </div>
+                            <input type="text" placeholder="Search student name or ID..." onkeyup="filterExcelPreview(this.value)" style="padding:0.35rem 0.75rem; font-size:0.75rem; border:1px solid var(--border-color); border-radius:6px; width:220px; outline:none;" />
+                        </div>
+                        <div style="overflow:auto; border:1px solid var(--border-color); border-radius:8px; max-height:calc(100% - 45px);">
+                            <table class="excel-grid-table" id="excelLiveGrid">
+                                <thead>
+                                    <tr>
+                                        <th style="width:40px; text-align:center;">#</th>
+                                        ${headers.map(h => `<th>${escapeHtml(String(h || 'Column'))}</th>`).join('')}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rows.map((row, rIdx) => `
+                                        <tr>
+                                            <td style="text-align:center; font-weight:700; color:#64748B; background:#F8FAFC;">${rIdx + 1}</td>
+                                            ${headers.map((_, cIdx) => `<td>${escapeHtml(String(row[cIdx] || ''))}</td>`).join('')}
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+
+                container.innerHTML = tableHtml;
+
+            } catch (err) {
+                console.warn('Excel parse fallback notice:', err);
+                container.innerHTML = `
+                    <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; color:#64748B; text-align:center; padding:2rem;">
+                        <i class="fas fa-file-excel" style="font-size:3.5rem; color:#107C41; margin-bottom:1rem;"></i>
+                        <h4 style="color:#0F172A; margin:0 0 0.4rem; font-size:1.1rem;">Official Member Directory (Excel)</h4>
+                        <p style="font-size:0.82rem; margin:0 0 1.25rem; max-width:380px; color:#64748B;">
+                            This spreadsheet contains the student roster submitted by the institution.
+                        </p>
+                        <div style="display:flex; gap:0.6rem;">
+                            <a href="${url}" download class="btn-primary-navy" style="padding:0.55rem 1.25rem; font-size:0.82rem;">
+                                <i class="fas fa-download"></i> Download Excel Roster (.xlsx)
+                            </a>
+                            <a href="${url}" target="_blank" class="btn-white" style="padding:0.55rem 1rem; font-size:0.82rem;">
+                                <i class="fas fa-arrow-up-right-from-square"></i> Open File
+                            </a>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function filterExcelPreview(query) {
+            const q = query.toLowerCase();
+            const table = document.getElementById('excelLiveGrid');
+            if (!table) return;
+            const rows = table.querySelectorAll('tbody tr');
+            rows.forEach(tr => {
+                const text = tr.textContent.toLowerCase();
+                tr.style.display = text.includes(q) ? '' : 'none';
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        }
+
         function closeInspectModal() {
             document.getElementById('inspectModal').classList.remove('active');
+            const canvas = document.getElementById('inspectPreviewCanvas');
+            if (canvas) canvas.innerHTML = '';
         }
     </script>
 </body>
