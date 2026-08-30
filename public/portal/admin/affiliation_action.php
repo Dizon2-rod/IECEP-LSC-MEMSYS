@@ -55,7 +55,7 @@ try {
     if (empty($application)) {
         sendResponse(false, '', 'Application not found in Supabase');
     }
-    $appData = $application[0];
+    $appData = normalize_pending_affiliation_app($application[0]);
 
     // ---------- VERIFY DOCUMENT ----------
     if ($action === 'verify_document') {
@@ -125,7 +125,7 @@ try {
                 $results[] = ['id' => $id, 'success' => false, 'message' => 'Not found'];
                 continue;
             }
-            $appData = $application[0];
+            $appData = normalize_pending_affiliation_app($application[0]);
 
             // Skip if not in reviewable status
             if (!in_array($appData['status'] ?? '', ['pending', 'under_review', 'requires_revision'])) {

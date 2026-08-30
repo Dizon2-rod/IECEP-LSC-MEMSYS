@@ -111,4 +111,56 @@ function get_role_dashboard_url($role) {
         return PORTAL_URL . '/member/dashboard.php';
     }
 }
+
+/**
+ * Normalize and unpack a pending_affiliations record from Supabase
+ * Ensures institution_name, documents URLs, and roster counts are directly accessible
+ * @param array|null $app
+ * @return array
+ */
+function normalize_pending_affiliation_app($app) {
+    if (!is_array($app)) return [];
+    
+    $docs = [];
+    if (!empty($app['documents'])) {
+        if (is_string($app['documents'])) {
+            $decoded = json_decode($app['documents'], true);
+            if (is_array($decoded)) {
+                $docs = $decoded;
+            }
+        } elseif (is_array($app['documents'])) {
+            $docs = $app['documents'];
+        }
+    }
+
+    $instName = !empty($app['school_name']) ? $app['school_name'] : ($docs['institution_name'] ?? ($app['institution_name'] ?? 'School Application'));
+    $app['institution_name'] = $instName;
+    $app['school_name'] = $instName;
+    $app['institution_address'] = $docs['institution_address'] ?? ($app['institution_address'] ?? 'Laguna, Philippines');
+    $app['contact_position'] = $docs['contact_position'] ?? ($app['contact_position'] ?? 'School Officer');
+    $app['contact_email'] = $app['email'] ?? ($docs['contact_email'] ?? ($app['contact_email'] ?? ''));
+    $app['email'] = $app['contact_email'];
+    $app['contact_phone'] = $app['contact_number'] ?? ($docs['contact_phone'] ?? ($app['contact_phone'] ?? ''));
+    $app['contact_number'] = $app['contact_phone'];
+
+    $app['letter_of_intent'] = $docs['letter_of_intent'] ?? ($app['letter_of_intent'] ?? null);
+    $app['endorsement_letter'] = $docs['endorsement_letter'] ?? ($app['endorsement_letter'] ?? null);
+    $app['constitution_by_laws'] = $docs['constitution_by_laws'] ?? ($app['constitution_by_laws'] ?? null);
+    $app['officers_cvs'] = $docs['officers_cvs'] ?? ($app['officers_cvs'] ?? null);
+    $app['organizational_chart'] = $docs['organizational_chart'] ?? ($app['organizational_chart'] ?? null);
+    $app['member_directory'] = $docs['member_directory'] ?? ($app['member_directory'] ?? null);
+
+    $app['total_members'] = intval($docs['total_members'] ?? ($app['total_members'] ?? 0));
+    $app['new_members'] = intval($docs['new_members'] ?? ($app['new_members'] ?? 0));
+    $app['old_members'] = intval($docs['old_members'] ?? ($app['old_members'] ?? 0));
+    $app['affiliation_fee'] = floatval($docs['affiliation_fee'] ?? ($app['affiliation_fee'] ?? 0));
+    $app['membership_total'] = floatval($docs['membership_total'] ?? ($app['membership_total'] ?? 0));
+    $app['total_fee'] = floatval($docs['total_fee'] ?? ($app['total_fee'] ?? 0));
+    $app['receipt_number'] = $docs['receipt_number'] ?? ($app['receipt_number'] ?? '');
+    
+    // Also keep parsed array in documents field
+    $app['documents_parsed'] = $docs;
+
+    return $app;
+}
 ?>

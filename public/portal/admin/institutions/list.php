@@ -34,11 +34,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             if ($appId) {
                 $appRes = $supabase->select('pending_affiliations', ['id' => 'eq.' . $appId]);
                 if (!empty($appRes)) {
-                    $appData = $appRes[0];
-                    $instName = $appData['institution_name'] ?? $instName;
-                    $email = $appData['contact_email'] ?? ($appData['email'] ?? $email);
-                    $contactPerson = $appData['contact_person'] ?? $contactPerson;
-                    $contactPhone = $appData['contact_phone'] ?? $contactPhone;
+                    $appData = normalize_pending_affiliation_app($appRes[0]);
+                    $instName = $appData['institution_name'] ?: $instName;
+                    $email = $appData['contact_email'] ?: ($appData['email'] ?: $email);
+                    $contactPerson = $appData['contact_person'] ?: $contactPerson;
+                    $contactPhone = $appData['contact_phone'] ?: $contactPhone;
                 }
             }
 
@@ -355,7 +355,8 @@ try {
 
     $rawAllApps = $supabase->select('pending_affiliations', ['select' => '*', 'order' => 'created_at.desc']);
     if (is_array($rawAllApps)) {
-        foreach ($rawAllApps as $app) {
+        foreach ($rawAllApps as $rawApp) {
+            $app = normalize_pending_affiliation_app($rawApp);
             $st = strtolower($app['status'] ?? 'pending');
             if ($st === 'approved') {
                 $approvedApps[] = $app;

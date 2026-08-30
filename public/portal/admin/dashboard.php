@@ -52,8 +52,12 @@ $issuedDigitalIds = count(array_filter($membersList, fn($m) => !empty($m['member
 $pendingAffiliationsList = [];
 try {
     if ($supabase) {
-        $pendRes = $supabase->select('pending_affiliations', ['status' => 'in.(pending,submitted,pending_review)', 'order' => 'created_at.desc']);
-        if (is_array($pendRes)) $pendingAffiliationsList = $pendRes;
+        $pendRes = $supabase->select('pending_affiliations', ['status' => 'in.(pending,submitted,pending_review,requires_revision,resubmitted)', 'order' => 'created_at.desc']);
+        if (is_array($pendRes)) {
+            foreach ($pendRes as $pr) {
+                $pendingAffiliationsList[] = normalize_pending_affiliation_app($pr);
+            }
+        }
     }
 } catch (\Throwable $e) {
     error_log("Dashboard pending affiliations query: " . $e->getMessage());
