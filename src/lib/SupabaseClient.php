@@ -572,6 +572,7 @@ class SupabaseClient {
 
         // 1. Try Supabase Storage (Cloud CDN)
         try {
+            $effectiveKey = !empty($this->serviceRoleKey) ? $this->serviceRoleKey : $this->key;
             $endpoint = $this->url . "/storage/v1/object/$bucket/$encodedPath";
             $ch = curl_init($endpoint);
             curl_setopt_array($ch, [
@@ -580,8 +581,8 @@ class SupabaseClient {
                 CURLOPT_POSTFIELDS => $fileContent,
                 CURLOPT_TIMEOUT => 20,
                 CURLOPT_HTTPHEADER => [
-                    'apikey: ' . $this->key,
-                    'Authorization: Bearer ' . $this->key,
+                    'apikey: ' . $effectiveKey,
+                    'Authorization: Bearer ' . $effectiveKey,
                     'Content-Type: ' . ($mimeType ?: 'application/octet-stream'),
                     'x-upsert: true',
                 ],
