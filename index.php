@@ -2627,7 +2627,7 @@ try {
 
 <!-- Success Notification Modal -->
 <div id="successNotificationModal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width:500px;padding:0;overflow:hidden;">
+    <div class="modal-content" style="max-width:500px;width:min(500px, 92%);padding:0;overflow:hidden;margin:auto;">
         <div style="background:linear-gradient(135deg,#10b981,#059669);padding:2rem;text-align:center;">
             <div style="width:80px;height:80px;margin:0 auto 1rem;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;animation:scaleIn 0.5s ease;">
                 <i class="fas fa-check" style="color:white;font-size:2.5rem;"></i>
@@ -2653,6 +2653,42 @@ try {
 </div>
 
 <style>
+#successNotificationModal {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(11, 29, 74, 0.5) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 1.5rem !important;
+    z-index: 10000 !important;
+    overflow-y: auto !important;
+    box-sizing: border-box !important;
+}
+#successNotificationModal[style*="display: flex"],
+#successNotificationModal[style*="display:flex"],
+#successNotificationModal.active {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+#successNotificationModal .modal-content {
+    background: white !important;
+    border-radius: 20px !important;
+    width: min(500px, 92%) !important;
+    margin: auto !important;
+    position: relative !important;
+    box-shadow: 0 25px 70px rgba(0,0,0,0.35) !important;
+    animation: successModalPop 0.35s cubic-bezier(0.16, 1, 0.3, 1) both !important;
+    overflow: hidden !important;
+    align-self: center !important;
+}
+@keyframes successModalPop {
+    from { opacity: 0; transform: scale(0.9) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
 @keyframes scaleIn {
     from { transform: scale(0) rotate(-180deg); opacity: 0; }
     to { transform: scale(1) rotate(0deg); opacity: 1; }
@@ -3416,7 +3452,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 // Show success notification modal
                 const successModal = document.getElementById('successNotificationModal');
                 if (successModal) {
+                    successModal.classList.add('active');
                     successModal.style.display = 'flex';
+                    document.body.style.overflow = 'hidden';
                 }
             } else {
                 showNotification('error', result.message || 'Failed to submit application. Please try again.');
@@ -3469,8 +3507,10 @@ document.addEventListener('DOMContentLoaded', function () {
 function closeSuccessNotification() {
     const modal = document.getElementById('successNotificationModal');
     if (modal) {
+        modal.classList.remove('active');
         modal.style.display = 'none';
     }
+    document.body.style.overflow = '';
     // Reload page to reset everything
     window.location.reload();
 }
