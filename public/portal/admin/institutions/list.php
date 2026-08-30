@@ -1,9 +1,12 @@
 <?php
-require_once __DIR__ . '/../../bootstrap.php';
+require_once dirname(__DIR__, 4) . '/bootstrap.php';
 $current_page = 'institutions';
 
-require_once __DIR__ . '/../../auth_check.php';
+require_once dirname(__DIR__, 2) . '/auth_check.php';
 require_role(['admin', 'super_admin', 'registration', 'committee_registration']);
+
+require_once dirname(__DIR__, 4) . '/src/lib/EmailService.php';
+require_once dirname(__DIR__, 4) . '/includes/paths.php';
 
 use PhpOffice\PhpSpreadsheet\IOFactory;
 
@@ -67,7 +70,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
 
             // Initialize Email Service
-            require_once __DIR__ . '/../../../src/lib/EmailService.php';
             $emailService = new \App\Lib\EmailService();
 
             // 3. Auto-Create School Officer Portal Account & Send Credentials
@@ -335,7 +337,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $applicantName = $appRow['contact_person'] ?? $contactPerson;
                     $applicantSchool = $appRow['institution_name'] ?? $instName;
                     
-                    require_once __DIR__ . '/../../../src/lib/EmailService.php';
                     $emailService = new \App\Lib\EmailService();
                     $revisionUrl = BASE_URL . '/public/revise-affiliation.php?id=' . urlencode($appId);
                     
@@ -376,7 +377,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $applicantName = $appRow['contact_person'] ?? $contactPerson;
                     $applicantSchool = $appRow['institution_name'] ?? $instName;
                     
-                    require_once __DIR__ . '/../../../src/lib/EmailService.php';
                     $emailService = new \App\Lib\EmailService();
                     if ($applicantEmail) {
                         $emailService->sendAffiliationRejectionNotice($applicantEmail, $applicantSchool, $applicantName, $reason);
@@ -398,6 +398,7 @@ $approvedApps = [];
 $rejectedApps = [];
 $totalMembersCount = 0;
 
+$allAppsMap = [];
 try {
     $rawInst = $supabase->select('institutions', ['select' => '*', 'order' => 'created_at.desc']);
     if (is_array($rawInst)) {
@@ -413,6 +414,9 @@ try {
     if (is_array($rawAllApps)) {
         foreach ($rawAllApps as $rawApp) {
             $app = normalize_pending_affiliation_app($rawApp);
+            if (!empty($app['id'])) {
+                $allAppsMap[$app['id']] = $app;
+            }
             $st = strtolower($app['status'] ?? 'pending');
             if ($st === 'approved') {
                 $approvedApps[] = $app;
@@ -1398,7 +1402,7 @@ try {
                                             <?php endif; ?>
                                         </td>
                                         <td>
-                                            <button type="button" class="btn-white" style="padding:0.25rem 0.6rem; font-size:0.72rem;" onclick='openInspectModal(<?= $appJson ?>)'>
+                                            <button type="button" class="btn-white" style="padding:0.25rem 0.6rem; font-size:0.72rem;" onclick="openInspectModalById('<?= htmlspecialchars($app['id']) ?>')">
                                                 <i class="fas fa-folder-open" style="color:var(--color-navy);"></i> <?= $docsCount ?>/6 Documents
                                             </button>
                                         </td>
@@ -1446,12 +1450,12 @@ try {
                                                 </form>
 
                                                 <!-- 2. REQUEST TO EDIT / REVISION -->
-                                                <button type="button" class="btn-act-amber" onclick='openRevisionModal(<?= $appJson ?>)' title="Request Specific File Revisions via Gmail">
+                                                <button type="button" class="btn-act-amber" onclick="openRevisionModalById('<?= htmlspecialchars($app['id']) ?>')" title="Request Specific File Revisions via Gmail">
                                                     <i class="fas fa-pen-to-square"></i> Request Edit
                                                 </button>
 
                                                 <!-- 3. REJECT / DECLINE -->
-                                                <button type="button" class="btn-act-red" onclick="openDeclineModal('<?= htmlspecialchars($app['id']) ?>', '<?= htmlspecialchars($app['institution_name'] ?? 'Institution') ?>', '<?= htmlspecialchars($app['contact_email'] ?? $app['email'] ?? '') ?>', '<?= htmlspecialchars($app['contact_person'] ?? '') ?>')" title="Decline Application">
+                                                <button type="button" class="btn-act-red" onclick="openDeclineModalById('<?= htmlspecialchars($app['id']) ?>')" title="Decline Application">
                                                     <i class="fas fa-times"></i> Reject
                                                 </button>
                                             </div>
@@ -1904,6 +1908,30 @@ try {
             }
         }
 
+        // Centralized Application Data Store
+        window.allAffiliationsData = <?= json_encode($allAppsMap, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES) ?> || {};
+
+        function openInspectModalById(id) {
+            const app = window.allAffiliationsData[id];
+            if (app) {
+                openInspectModal(app);
+            }
+        }
+
+        function openRevisionModalById(id) {
+            const app = window.allAffiliationsData[id];
+            if (app) {
+                openRevisionModal(app);
+            }
+        }
+
+        function openDeclineModalById(id) {
+            const app = window.allAffiliationsData[id];
+            if (app) {
+                openDeclineModal(app.id, app.institution_name || app.school_name || 'Institution', app.contact_email || app.email || '', app.contact_person || '');
+            }
+        }
+
         // Modals
         function openCharterModal() {
             document.getElementById('charterModal').classList.add('active');
@@ -1913,6 +1941,7 @@ try {
         }
 
         function openRevisionModal(app) {
+            if (!app) return;
             document.getElementById('revAppId').value = app.id || '';
             document.getElementById('revInstName').value = app.institution_name || '';
             const email = app.contact_email || app.email || '';
