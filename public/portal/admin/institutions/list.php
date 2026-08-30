@@ -74,14 +74,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $officerTempPass = 'LSC-' . rand(1000, 9999) . '-' . substr(strtoupper(bin2hex(random_bytes(2))), 0, 4);
             if ($email) {
                 $officerUserId = bin2hex(random_bytes(16));
+                
+                // Insert into users table
+                $supabase->insert('users', [[
+                    'id' => $officerUserId,
+                    'email' => $email,
+                    'password' => password_hash($officerTempPass, PASSWORD_BCRYPT),
+                    'full_name' => $contactPerson ?: "$acronym Officer",
+                    'role' => 'school_officer',
+                    'institution_id' => $instId,
+                    'is_active' => true,
+                    'must_change_password' => true,
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp
+                ]]);
+
+                // Insert into user_profiles
                 $supabase->insert('user_profiles', [[
                     'id' => $officerUserId,
                     'user_id' => $officerUserId,
+                    'email' => $email,
                     'full_name' => $contactPerson ?: "$acronym Officer",
                     'role' => 'school_officer',
                     'institution_id' => $instId,
                     'membership_status' => 'active',
-                    'created_at' => $timestamp
+                    'created_at' => $timestamp,
+                    'updated_at' => $timestamp
                 ]]);
 
                 try {
@@ -102,24 +120,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $baseCount = is_array($existingMembers) ? count($existingMembers) : 100;
             } catch (\Throwable $e) {}
 
-            // If a member directory file was uploaded, parse it
+            // If a member directory file was uploaded, fetch and parse it (supports Cloud CDN URLs & local paths)
             if ($memberDirectoryUrl) {
-                $localPath = str_replace('/IECEP-LSC-MEMSYS/public/', __DIR__ . '/../../', $memberDirectoryUrl);
-                if (!file_exists($localPath) && strpos($memberDirectoryUrl, 'http') === false) {
-                    $localPath = dirname(__DIR__, 3) . '/' . ltrim($memberDirectoryUrl, '/');
+                $tempRosterPath = tempnam(sys_get_temp_dir(), 'roster_') . '.xlsx';
+                $fileBytes = false;
+
+                if (strpos($memberDirectoryUrl, 'http') === 0) {
+                    $fileBytes = @file_get_contents($memberDirectoryUrl);
+                    if ($fileBytes === false && function_exists('curl_init')) {
+                        $ch = curl_init($memberDirectoryUrl);
+                        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+                        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+                        $fileBytes = curl_exec($ch);
+                        curl_close($ch);
+                    }
+                } else {
+                    $localPath = str_replace('/IECEP-LSC-MEMSYS/public/', __DIR__ . '/../../', $memberDirectoryUrl);
+                    if (!file_exists($localPath)) {
+                        $localPath = dirname(__DIR__, 3) . '/' . ltrim($memberDirectoryUrl, '/');
+                    }
+                    if (file_exists($localPath)) {
+                        $fileBytes = file_get_contents($localPath);
+                    }
                 }
 
-                if (file_exists($localPath)) {
-                    $ext = strtolower(pathinfo($localPath, PATHINFO_EXTENSION));
+                if ($fileBytes && strlen($fileBytes) > 0) {
+                    file_put_contents($tempRosterPath, $fileBytes);
                     $memberRows = [];
 
                     try {
-                        if (in_array($ext, ['xlsx', 'xls']) && class_exists('PhpOffice\PhpSpreadsheet\IOFactory')) {
-                            $spreadsheet = IOFactory::load($localPath);
+                        if (class_exists('PhpOffice\PhpSpreadsheet\IOFactory')) {
+                            $spreadsheet = IOFactory::load($tempRosterPath);
                             $worksheet = $spreadsheet->getActiveSheet();
                             $memberRows = $worksheet->toArray(null, true, true, false);
                         } else {
-                            $content = file_get_contents($localPath);
+                            $content = file_get_contents($tempRosterPath);
                             $lines = preg_split('/\r\n|\r|\n/', trim($content));
                             foreach ($lines as $l) {
                                 if (trim($l)) $memberRows[] = str_getcsv($l);
@@ -160,6 +196,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                     $membershipId = date('Y') . str_pad($baseCount, 4, '0', STR_PAD_LEFT);
                                     $hash = hash('sha256', $memId . $name . $sEmail . $timestamp);
 
+                                    // Insert into members table
                                     $supabase->insert('members', [[
                                         'id' => $memId,
                                         'full_name' => $name,
@@ -177,14 +214,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                                         'updated_at' => $timestamp
                                     ]]);
 
+                                    // Insert into users table
+                                    $supabase->insert('users', [[
+                                        'id' => $memId,
+                                        'email' => $sEmail,
+                                        'password' => password_hash($memberTempPass, PASSWORD_BCRYPT),
+                                        'full_name' => $name,
+                                        'role' => 'member',
+                                        'institution_id' => $instId,
+                                        'is_active' => true,
+                                        'must_change_password' => true,
+                                        'created_at' => $timestamp,
+                                        'updated_at' => $timestamp
+                                    ]]);
+
+                                    // Insert into user_profiles table
                                     $supabase->insert('user_profiles', [[
                                         'id' => $memId,
                                         'user_id' => $memId,
+                                        'email' => $sEmail,
                                         'full_name' => $name,
                                         'role' => 'member',
                                         'institution_id' => $instId,
                                         'membership_status' => 'active',
-                                        'created_at' => $timestamp
+                                        'created_at' => $timestamp,
+                                        'updated_at' => $timestamp
                                     ]]);
 
                                     // Send credential email to student's Gmail
@@ -200,6 +254,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         }
                     } catch (\Throwable $ex) {
                         error_log("Directory parse error during affiliation approval: " . $ex->getMessage());
+                    } finally {
+                        @unlink($tempRosterPath);
                     }
                 }
             }
