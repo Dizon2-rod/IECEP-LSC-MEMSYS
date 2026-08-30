@@ -524,16 +524,46 @@ $chartSchoolData = array_values($schoolMemberDistribution);
 
         /* Responsive Breakpoints */
         @media (max-width: 1024px) {
-            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
-            .dash-shortcuts-bar { grid-template-columns: repeat(3, 1fr); }
-            .dash-charts-grid { grid-template-columns: 1fr; }
-            .dash-tables-grid { grid-template-columns: 1fr; }
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+            .dash-shortcuts-bar { grid-template-columns: repeat(3, 1fr) !important; }
+            .dash-charts-grid { grid-template-columns: 1fr !important; }
+            .dash-tables-grid { grid-template-columns: 1fr !important; }
         }
 
-        @media (max-width: 640px) {
-            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
-            .dash-shortcuts-bar { grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
-            .dash-header-banner { padding: 0.65rem 0.85rem; }
+        @media (max-width: 768px) {
+            .main-content { padding: 0.65rem !important; }
+            .dash-header-banner {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                padding: 0.85rem !important;
+                gap: 0.65rem;
+            }
+            .dash-header-title { font-size: 1.1rem !important; }
+            .dash-header-btn-group {
+                width: 100% !important;
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 0.45rem;
+            }
+            .dash-header-btn-group a {
+                width: 100% !important;
+                justify-content: center !important;
+                padding: 0.48rem 0.5rem !important;
+                font-size: 0.74rem !important;
+            }
+            .dash-shortcuts-bar {
+                grid-template-columns: repeat(3, 1fr) !important;
+                gap: 0.45rem !important;
+            }
+            .dash-chart-card, .table-card-box {
+                padding: 0.75rem !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .dash-kpi-grid { grid-template-columns: 1fr !important; gap: 0.45rem !important; }
+            .dash-header-btn-group { grid-template-columns: 1fr !important; }
+            .dash-shortcuts-bar { grid-template-columns: repeat(2, 1fr) !important; }
         }
     </style>
 </head>

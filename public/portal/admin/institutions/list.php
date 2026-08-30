@@ -995,13 +995,182 @@ try {
             border-color: #93C5FD;
         }
 
+        /* Mobile Tabs for Inspector */
+        .inspect-mobile-tabs {
+            display: none;
+            background: #F1F5F9;
+            padding: 0.35rem 0.65rem;
+            border-bottom: 1px solid var(--border-color);
+            gap: 0.45rem;
+            flex-shrink: 0;
+        }
+        .inspect-mobile-tab-btn {
+            flex: 1;
+            padding: 0.45rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.76rem;
+            font-weight: 700;
+            border: 1px solid #CBD5E1;
+            background: #FFFFFF;
+            color: #475569;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            transition: all 0.18s ease;
+        }
+        .inspect-mobile-tab-btn.active {
+            background: var(--color-navy);
+            color: #FFFFFF;
+            border-color: var(--color-navy);
+            box-shadow: 0 2px 5px rgba(11,29,74,0.15);
+        }
+
+        /* ── Comprehensive Mobile & Tablet Responsive Media Queries ── */
         @media (max-width: 1024px) {
-            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.6rem; }
             .packet-doc-grid { grid-template-columns: 1fr; }
         }
-        @media (max-width: 640px) {
-            .dash-kpi-grid { grid-template-columns: repeat(2, 1fr); gap: 0.4rem; }
-            .dash-header-banner { padding: 0.65rem 0.85rem; }
+
+        @media (max-width: 860px) {
+            .inspect-mobile-tabs {
+                display: flex !important;
+            }
+            .modal-inner-box.inspect-wide-box {
+                width: 100vw !important;
+                height: 100vh !important;
+                max-height: 100vh !important;
+                max-width: 100vw !important;
+                border-radius: 0 !important;
+                border: none !important;
+            }
+            .doc-modal {
+                padding: 0 !important;
+            }
+            .inspect-layout {
+                flex-direction: column !important;
+                position: relative;
+            }
+            .inspect-sidebar {
+                width: 100% !important;
+                border-right: none !important;
+                border-bottom: 1px solid var(--border-color);
+                padding: 0.85rem !important;
+                max-height: calc(100vh - 120px);
+                overflow-y: auto;
+            }
+            .inspect-preview-pane {
+                width: 100% !important;
+                height: calc(100vh - 120px);
+                max-height: calc(100vh - 120px);
+            }
+            .inspect-mobile-back-btn {
+                display: inline-flex !important;
+            }
+
+            /* Responsive view toggle classes */
+            .inspect-layout.mobile-view-docs .inspect-sidebar {
+                display: flex !important;
+                flex: 1 !important;
+            }
+            .inspect-layout.mobile-view-docs .inspect-preview-pane {
+                display: none !important;
+            }
+            .inspect-layout.mobile-view-preview .inspect-sidebar {
+                display: none !important;
+            }
+            .inspect-layout.mobile-view-preview .inspect-preview-pane {
+                display: flex !important;
+                flex: 1 !important;
+            }
+
+            .inspect-preview-header {
+                padding: 0.5rem 0.75rem !important;
+                flex-wrap: wrap;
+                gap: 0.4rem;
+            }
+            .inspect-preview-header > div {
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 0.65rem !important;
+            }
+            .dash-header-banner {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                padding: 0.85rem !important;
+                gap: 0.65rem;
+            }
+            .dash-header-title {
+                font-size: 1.1rem !important;
+            }
+            .dash-header-btn-group {
+                width: 100% !important;
+                display: grid !important;
+                grid-template-columns: 1fr 1fr !important;
+                gap: 0.45rem;
+            }
+            .dash-header-btn-group button,
+            .dash-header-btn-group a {
+                width: 100% !important;
+                justify-content: center !important;
+                padding: 0.48rem 0.5rem !important;
+                font-size: 0.74rem !important;
+            }
+
+            .ap-filter-bar {
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 0.55rem !important;
+                padding: 0.65rem !important;
+            }
+            .ap-tab-nav {
+                overflow-x: auto !important;
+                white-space: nowrap !important;
+                padding-bottom: 4px;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                width: 100%;
+                display: flex;
+            }
+            .ap-tab-nav::-webkit-scrollbar {
+                display: none;
+            }
+            .ap-search-input-box {
+                max-width: 100% !important;
+                width: 100% !important;
+            }
+
+            .ap-card-header {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+                gap: 0.4rem;
+                padding: 0.65rem 0.85rem !important;
+            }
+
+            .modal-inner-box {
+                width: 95vw !important;
+                max-height: 90vh !important;
+                margin: auto !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .dash-kpi-grid {
+                grid-template-columns: 1fr !important;
+                gap: 0.45rem !important;
+            }
+            .dash-header-btn-group {
+                grid-template-columns: 1fr !important;
+            }
+            .pdf-toolbar {
+                padding: 0.35rem 0.5rem !important;
+                font-size: 0.7rem !important;
+            }
         }
     </style>
 </head>
@@ -1366,7 +1535,17 @@ try {
                 <button type="button" class="btn-white" style="border:none; padding:0.3rem 0.65rem; background:rgba(255,255,255,0.15); color:#FFFFFF; font-size:1.1rem; cursor:pointer;" onclick="closeInspectModal()">&times;</button>
             </div>
 
-            <div class="inspect-layout">
+            <!-- Mobile View Switcher Tabs -->
+            <div class="inspect-mobile-tabs" id="inspectMobileTabs">
+                <button type="button" class="inspect-mobile-tab-btn active" id="btnMobileTabDocs" onclick="switchInspectMobileView('docs')">
+                    <i class="fas fa-list-check"></i> Documents &amp; Info
+                </button>
+                <button type="button" class="inspect-mobile-tab-btn" id="btnMobileTabPreview" onclick="switchInspectMobileView('preview')">
+                    <i class="fas fa-eye"></i> Live Document Preview
+                </button>
+            </div>
+
+            <div class="inspect-layout mobile-view-docs" id="inspectLayoutContainer">
                 <!-- Left Sidebar: Documents Tabs & Quick Actions -->
                 <div class="inspect-sidebar">
                     <div>
@@ -1418,7 +1597,10 @@ try {
                 <!-- Right Pane: Live Document Preview Canvas -->
                 <div class="inspect-preview-pane">
                     <div class="inspect-preview-header">
-                        <div style="display:flex; align-items:center; gap:0.55rem;">
+                        <div style="display:flex; align-items:center; gap:0.45rem;">
+                            <button type="button" class="btn-white inspect-mobile-back-btn" onclick="switchInspectMobileView('docs')" style="display:none; font-size:0.72rem; padding:0.28rem 0.55rem;" title="Back to Document List">
+                                <i class="fas fa-arrow-left"></i>
+                            </button>
                             <i id="inspectCurrentDocIcon" class="fas fa-file-pdf" style="font-size:1.15rem; color:var(--color-navy);"></i>
                             <div>
                                 <strong id="inspectCurrentDocLabel" style="font-size:0.88rem; color:#0F172A;">Document Preview</strong>
@@ -1787,18 +1969,45 @@ try {
                             : `<span style="font-size:0.65rem; color:#94A3B8;">Missing</span>`}
                     </div>
                 `;
-                item.onclick = () => selectInspectDoc(idx);
+                item.onclick = () => {
+                    selectInspectDoc(idx);
+                    if (window.innerWidth <= 860) {
+                        switchInspectMobileView('preview');
+                    }
+                };
                 listEl.appendChild(item);
                 if (doc.url && !currentDocList[firstActiveIndex].url) {
                     firstActiveIndex = idx;
                 }
             });
 
+            // Reset to docs view on mobile initially
+            switchInspectMobileView('docs');
+
             // Select initial document
             selectInspectDoc(firstActiveIndex);
 
             // Show Modal
             document.getElementById('inspectModal').classList.add('active');
+        }
+
+        function switchInspectMobileView(view) {
+            const container = document.getElementById('inspectLayoutContainer');
+            const btnDocs = document.getElementById('btnMobileTabDocs');
+            const btnPreview = document.getElementById('btnMobileTabPreview');
+            if (!container) return;
+
+            if (view === 'preview') {
+                container.classList.remove('mobile-view-docs');
+                container.classList.add('mobile-view-preview');
+                if (btnDocs) btnDocs.classList.remove('active');
+                if (btnPreview) btnPreview.classList.add('active');
+            } else {
+                container.classList.remove('mobile-view-preview');
+                container.classList.add('mobile-view-docs');
+                if (btnDocs) btnDocs.classList.add('active');
+                if (btnPreview) btnPreview.classList.remove('active');
+            }
         }
 
         function selectInspectDoc(index) {
