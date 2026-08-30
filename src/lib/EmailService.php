@@ -1,8 +1,6 @@
 <?php
 namespace App\Lib;
 
-require_once __DIR__ . '/../../bootstrap.php';
-
 if (file_exists(__DIR__ . '/../../vendor/phpmailer/phpmailer/src/PHPMailer.php')) {
     require_once __DIR__ . '/../../vendor/phpmailer/phpmailer/src/PHPMailer.php';
     require_once __DIR__ . '/../../vendor/phpmailer/phpmailer/src/Exception.php';
@@ -218,72 +216,48 @@ class EmailService
     public function sendSchoolAccountCredentials(string $to, string $institutionName, string $password, string $contactPerson = '', ?string $loginUrl = null): bool
     {
         try {
-            error_log("Preparing to send school account credentials email to: $to with password: $password");
-            
-            // Validate Gmail App Password format
-            $emailPassword = $this->config['email']['password'];
-            if (strlen($emailPassword) !== 16 || !preg_match('/^[a-z0-9]{16}$/', $emailPassword)) {
-                error_log("WARNING: SMTP_PASSWORD does not appear to be a Gmail App Password. Gmail will reject it.");
-                error_log("Please generate a Gmail App Password from Google Account Settings > Security > 2-Step Verification > App Passwords");
-            }
-            
+            error_log("Preparing to send school account credentials email to: $to");
             $mail = $this->createMailer();
-            $mail->addAddress($to);
-            $loginUrl = $loginUrl ?: $this->config['app_url'] . '/login.php';
-            $logoUrl = $this->config['app_url'] . '/public/assets/icons/iecep-logo.png';
-            $mail->Subject = 'IECEP-LSC Affiliation Approved – Your Portal Account Details';
-            
-            $mail->Body = '
-<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-    <div style="background-color: #0B1D4A; padding: 20px; text-align: center;">
-        <img src="' . $logoUrl . '" alt="IECEP-LSC Logo" style="width: 60px; height: auto;">
-        <h1 style="color: #C49A00; margin: 10px 0 0;">IECEP-LSC MEMSYS</h1>
-    </div>
-    <div style="padding: 30px;">
-        <h2 style="color: #0B1D4A;">Affiliation Approved!</h2>
-        <p>Dear ' . htmlspecialchars($contactPerson ?: 'Representative') . ',</p>
-        <p>Congratulations! Your affiliation application for <strong>' . htmlspecialchars($institutionName) . '</strong> has been approved. You can now access the IECEP-LSC Member Portal.</p>
-        
-        <div style="background-color: #fef3c7; border: 2px solid #f59e0b; border-radius: 6px; padding: 20px; margin: 20px 0;">
-            <h3 style="color: #92400e; margin-top: 0;">Your Account Credentials</h3>
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                    <td style="padding: 10px; font-weight: bold; color: #0B1D4A; background: #fff; border: 1px solid #f59e0b;">Email (Username):</td>
-                    <td style="padding: 10px; background: #fff; border: 1px solid #f59e0b; font-family: monospace;">' . htmlspecialchars($to) . '</td>
-                </tr>
-                <tr>
-                    <td style="padding: 10px; font-weight: bold; color: #0B1D4A; background: #fff; border: 1px solid #f59e0b;">Temporary Password:</td>
-                    <td style="padding: 10px; background: #fff; border: 1px solid #f59e0b; font-family: monospace; font-size: 16px; font-weight: bold; color: #c0392b;">' . htmlspecialchars($password) . '</td>
-                </tr>
-            </table>
-        </div>
+            $mail->addAddress($to, $contactPerson ?: $institutionName);
+            $mail->Subject = "🎉 Affiliation Approved: {$institutionName} Officer Account Credentials - IECEP-LSC";
 
-        <p style="background-color: #fef2f2; border: 1px solid #ef4444; border-radius: 6px; padding: 15px; color: #991b1b;"><strong>⚠ Important:</strong> For security reasons, you must change your password immediately after logging in.</p>
-        
-        <p>If you have any questions, please contact the Registration Committee.</p>
-        <p>Sincerely,<br>IECEP-LSC Registration Committee</p>
-    </div>
-    <div style="background-color: #f0f0f0; padding: 15px; text-align: center; font-size: 12px; color: #666;">
-        &copy; 2025 IECEP-LSC MEMSYS &ndash; All rights reserved<br>
-        Institute of Electronics Engineers of the Philippines – Laguna State Chapter
-    </div>
-</div>';
-            
-            $mail->AltBody = "IECEP-LSC Affiliation Approved - Your Portal Account Details\n\nDear " . ($contactPerson ?: 'Representative') . ",\n\nCongratulations! Your affiliation application for $institutionName has been approved. You can now access the IECEP-LSC Member Portal.\n\nYOUR ACCOUNT CREDENTIALS:\n\nEmail (Username): $to\nTemporary Password: $password\n\nIMPORTANT: For security reasons, you must change your password immediately after logging in.\n\nIf you have any questions, please contact the Registration Committee.\n\nSincerely,\nIECEP-LSC Registration Committee\n\n© 2025 IECEP-LSC MEMSYS";
-            
-            $result = $mail->send();
-            error_log("School account credentials email send result to $to: " . ($result ? 'SUCCESS' : 'FAILED'));
-            
-            if (!$result) {
-                error_log("PHPMailer Error Info: " . $mail->ErrorInfo);
-            }
-            
-            return $result;
+            $loginUrl = $loginUrl ?: (defined('BASE_URL') ? BASE_URL . '/login.php' : 'https://iecep-lsc-memsys.up.railway.app/login.php');
+
+            $mail->Body = "
+                <div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:600px;margin:0 auto;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);'>
+                    <div style='background:linear-gradient(135deg,#07122E 0%,#0B1D4A 50%,#142B67 100%);padding:28px 24px;text-align:center;'>
+                        <h2 style='color:#FFFFFF;margin:0;font-size:22px;font-weight:800;'>IECEP Laguna Student Chapter</h2>
+                        <p style='color:#D4AF37;margin:6px 0 0;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;'>Institutional Chapter Accreditation Granted</p>
+                    </div>
+                    <div style='padding:28px 24px;color:#334155;font-size:15px;line-height:1.6;'>
+                        <p style='margin-top:0;'>Dear <strong>" . htmlspecialchars($contactPerson ?: 'Chapter Representative') . "</strong>,</p>
+                        <p>Congratulations! The Chapter Affiliation Application for <strong>" . htmlspecialchars($institutionName) . "</strong> has been officially <strong>Approved and Chartered</strong> by the IECEP Laguna Student Chapter Secretariat.</p>
+                        
+                        <div style='background:#F8FAFC;border:1.5px solid #CBD5E1;border-radius:10px;padding:18px 20px;margin:20px 0;'>
+                            <h4 style='color:#0B1D4A;margin:0 0 12px;font-size:15px;font-weight:800;border-bottom:1px solid #E2E8F0;padding-bottom:8px;'>🔑 Your School Officer Portal Login Credentials:</h4>
+                            <p style='margin:6px 0;'><strong>Portal Email:</strong> <code style='background:#E2E8F0;padding:2px 6px;border-radius:4px;color:#0F172A;font-size:14px;'>" . htmlspecialchars($to) . "</code></p>
+                            <p style='margin:6px 0;'><strong>Temporary Password:</strong> <code style='background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:4px;font-weight:700;font-size:15px;'>" . htmlspecialchars($password) . "</code></p>
+                            <p style='margin:6px 0;'><strong>Assigned Role:</strong> <span style='background:#EFF6FF;color:#2563EB;padding:2px 6px;border-radius:4px;font-weight:700;'>School Officer</span></p>
+                            <p style='margin:6px 0;'><strong>Institution:</strong> " . htmlspecialchars($institutionName) . "</p>
+                        </div>
+
+                        <div style='text-align:center;margin:26px 0;'>
+                            <a href='{$loginUrl}' style='display:inline-block;padding:14px 34px;background:#0B1D4A;color:#FFFFFF;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;box-shadow:0 4px 12px rgba(11,29,74,0.2);'>
+                                🚀 Access School Officer Portal
+                            </a>
+                        </div>
+
+                        <div style='background:#FFFBEB;border-left:4px solid #F59E0B;padding:12px 16px;border-radius:4px;font-size:13px;color:#92400E;margin-bottom:20px;'>
+                            <strong>Note:</strong> For security, you will be prompted to set your personal permanent password upon your first login.
+                        </div>
+
+                        <p style='font-size:13px;color:#64748B;margin-bottom:0;'>If you have any questions, please contact the IECEP-LSC Secretariat at <a href='mailto:lspuscc.adminece@gmail.com' style='color:#2563EB;'>lspuscc.adminece@gmail.com</a>.</p>
+                    </div>
+                </div>";
+
+            return $mail->send();
         } catch (\Throwable $e) {
-            error_log("Email error (school credentials): " . $e->getMessage());
-            if (isset($mail)) {
-                error_log("PHPMailer Error Info: " . $mail->ErrorInfo);
-            }
+            error_log("Email error (send school credentials): " . $e->getMessage());
             return false;
         }
     }
@@ -1490,101 +1464,7 @@ class EmailService
 
             return $mail->send();
         } catch (\Throwable $e) {
-    /**
-     * Send School Officer Login Credentials upon Affiliation Approval
-     */
-    public function sendSchoolAccountCredentials(string $toEmail, string $institutionName, string $temporaryPassword, string $officerName): bool
-    {
-        try {
-            $mail = $this->createMailer();
-            $mail->addAddress($toEmail, $officerName ?: $institutionName);
-            $mail->Subject = "🎉 Affiliation Approved: {$institutionName} Officer Account Credentials - IECEP-LSC";
-
-            $loginUrl = defined('BASE_URL') ? BASE_URL . '/login.php' : 'https://iecep-lsc-memsys.up.railway.app/login.php';
-
-            $mail->Body = "
-                <div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:600px;margin:0 auto;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);'>
-                    <div style='background:linear-gradient(135deg,#07122E 0%,#0B1D4A 50%,#142B67 100%);padding:28px 24px;text-align:center;'>
-                        <h2 style='color:#FFFFFF;margin:0;font-size:22px;font-weight:800;'>IECEP Laguna Student Chapter</h2>
-                        <p style='color:#D4AF37;margin:6px 0 0;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;'>Institutional Chapter Accreditation Granted</p>
-                    </div>
-                    <div style='padding:28px 24px;color:#334155;font-size:15px;line-height:1.6;'>
-                        <p style='margin-top:0;'>Dear <strong>" . htmlspecialchars($officerName ?: 'Chapter Representative') . "</strong>,</p>
-                        <p>Congratulations! The Chapter Affiliation Application for <strong>" . htmlspecialchars($institutionName) . "</strong> has been officially <strong>Approved and Chartered</strong> by the IECEP Laguna Student Chapter Secretariat.</p>
-                        
-                        <div style='background:#F8FAFC;border:1.5px solid #CBD5E1;border-radius:10px;padding:18px 20px;margin:20px 0;'>
-                            <h4 style='color:#0B1D4A;margin:0 0 12px;font-size:15px;font-weight:800;border-bottom:1px solid #E2E8F0;padding-bottom:8px;'>🔑 Your School Officer Portal Login Credentials:</h4>
-                            <p style='margin:6px 0;'><strong>Portal Email:</strong> <code style='background:#E2E8F0;padding:2px 6px;border-radius:4px;color:#0F172A;font-size:14px;'>" . htmlspecialchars($toEmail) . "</code></p>
-                            <p style='margin:6px 0;'><strong>Temporary Password:</strong> <code style='background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:4px;font-weight:700;font-size:15px;'>" . htmlspecialchars($temporaryPassword) . "</code></p>
-                            <p style='margin:6px 0;'><strong>Assigned Role:</strong> <span style='background:#EFF6FF;color:#2563EB;padding:2px 6px;border-radius:4px;font-weight:700;'>School Officer</span></p>
-                            <p style='margin:6px 0;'><strong>Institution:</strong> " . htmlspecialchars($institutionName) . "</p>
-                        </div>
-
-                        <div style='text-align:center;margin:26px 0;'>
-                            <a href='{$loginUrl}' style='display:inline-block;padding:14px 34px;background:#0B1D4A;color:#FFFFFF;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;box-shadow:0 4px 12px rgba(11,29,74,0.2);'>
-                                🚀 Access School Officer Portal
-                            </a>
-                        </div>
-
-                        <div style='background:#FFFBEB;border-left:4px solid #F59E0B;padding:12px 16px;border-radius:4px;font-size:13px;color:#92400E;margin-bottom:20px;'>
-                            <strong>Note:</strong> For security, you will be prompted to set your personal permanent password upon your first login.
-                        </div>
-
-                        <p style='font-size:13px;color:#64748B;margin-bottom:0;'>If you have any questions, please contact the IECEP-LSC Secretariat at <a href='mailto:lspuscc.adminece@gmail.com' style='color:#2563EB;'>lspuscc.adminece@gmail.com</a>.</p>
-                    </div>
-                </div>";
-
-            return $mail->send();
-        } catch (\Throwable $e) {
-            error_log("Email error (send school credentials): " . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Send Member Welcome Email with Portal Credentials upon Affiliation Approval
-     */
-    public function sendMemberWelcomeEmail(string $toEmail, string $fullName, string $membershipId, string $temporaryPassword, string $institutionName): bool
-    {
-        try {
-            $mail = $this->createMailer();
-            $mail->addAddress($toEmail, $fullName);
-            $mail->Subject = "Welcome to IECEP-LSC! Your Student Membership ID: {$membershipId}";
-
-            $loginUrl = defined('BASE_URL') ? BASE_URL . '/login.php' : 'https://iecep-lsc-memsys.up.railway.app/login.php';
-
-            $mail->Body = "
-                <div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:600px;margin:0 auto;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);'>
-                    <div style='background:linear-gradient(135deg,#07122E 0%,#0B1D4A 50%,#142B67 100%);padding:28px 24px;text-align:center;'>
-                        <h2 style='color:#FFFFFF;margin:0;font-size:22px;font-weight:800;'>IECEP Laguna Student Chapter</h2>
-                        <p style='color:#D4AF37;margin:6px 0 0;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;'>Official Membership Confirmation</p>
-                    </div>
-                    <div style='padding:28px 24px;color:#334155;font-size:15px;line-height:1.6;'>
-                        <p style='margin-top:0;'>Dear <strong>" . htmlspecialchars($fullName) . "</strong>,</p>
-                        <p>Welcome to the <strong>Institute of Electronics Engineers of the Philippines &ndash; Laguna Student Chapter (IECEP-LSC)</strong>!</p>
-                        <p>Your student membership submitted via <strong>" . htmlspecialchars($institutionName) . "</strong> has been officially approved and verified in the national register.</p>
-                        
-                        <div style='background:#F8FAFC;border:1.5px solid #CBD5E1;border-radius:10px;padding:18px 20px;margin:20px 0;'>
-                            <h4 style='color:#0B1D4A;margin:0 0 12px;font-size:15px;font-weight:800;border-bottom:1px solid #E2E8F0;padding-bottom:8px;'>🪪 Your Membership & Portal Credentials:</h4>
-                            <p style='margin:6px 0;'><strong>Official Membership ID:</strong> <code style='background:#EFF6FF;color:#1E40AF;padding:2px 8px;border-radius:4px;font-weight:800;font-size:15px;'>" . htmlspecialchars($membershipId) . "</code></p>
-                            <p style='margin:6px 0;'><strong>Registered Email:</strong> " . htmlspecialchars($toEmail) . "</p>
-                            <p style='margin:6px 0;'><strong>Temporary Password:</strong> <code style='background:#FEF3C7;color:#92400E;padding:2px 8px;border-radius:4px;font-weight:700;'>" . htmlspecialchars($temporaryPassword) . "</code></p>
-                            <p style='margin:6px 0;'><strong>Institution:</strong> " . htmlspecialchars($institutionName) . "</p>
-                        </div>
-
-                        <div style='text-align:center;margin:26px 0;'>
-                            <a href='{$loginUrl}' style='display:inline-block;padding:14px 34px;background:#059669;color:#FFFFFF;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;box-shadow:0 4px 12px rgba(5,150,105,0.25);'>
-                                📲 Claim Digital ID & Login
-                            </a>
-                        </div>
-
-                        <p style='font-size:13px;color:#64748B;margin-bottom:0;'>You can now access exclusive chapter webinars, technical conferences, and download your cryptographically verified Digital ID.</p>
-                    </div>
-                </div>";
-
-            return $mail->send();
-        } catch (\Throwable $e) {
-            error_log("Email error (send member welcome): " . $e->getMessage());
+            error_log("Affiliation resubmission email error: " . $e->getMessage());
             return false;
         }
     }
