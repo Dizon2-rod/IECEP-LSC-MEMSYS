@@ -7,54 +7,32 @@ require_once __DIR__ . '/../../src/lib/EmailService.php';
 require_once __DIR__ . '/../../src/lib/BlockchainService.php';
 require_once __DIR__ . '/../../vendor/autoload.php';
 
-/**
- * Upload a file to Supabase Storage
- */
-function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
-    $config = require __DIR__ . '/../../includes/supabase.php';
-    $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
-    $fileContent = file_get_contents($tmpFile);
-    if ($fileContent === false) return null;
-    $ch = curl_init($url);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $fileContent,
-        CURLOPT_HTTPHEADER => [
-            'apikey: ' . $config['service_role_key'],
-            'Authorization: Bearer ' . $config['service_role_key'],
-            'Content-Type: ' . $mimeType,
-            'x-upsert: true',
-        ],
-    ]);
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-    if ($httpCode >= 200 && $httpCode < 300) {
-        return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+if (!function_exists('uploadToSupabaseStorage')) {
+    function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+        $supabaseClient = getSupabaseClient();
+        if ($supabaseClient && method_exists($supabaseClient, 'uploadFile')) {
+            $url = $supabaseClient->uploadFile($bucket, $path, $tmpFile, $mimeType);
+            if ($url) return $url;
+        }
+        return null;
     }
-    error_log("Supabase Storage upload failed ($httpCode): $response");
-    return null;
 }
 
 header('Content-Type: application/json');
 
 try {
     $input = json_decode(file_get_contents('php://input'), true);
-    
     if (!isset($input['member_ids']) || !is_array($input['member_ids'])) {
         throw new Exception('Invalid request: member_ids array required');
     }
     
     $memberIds = $input['member_ids'];
-    
     if (empty($memberIds)) {
         throw new Exception('No members selected');
     }
     
     $user = get_user_info();
     $institution_id = $_SESSION['institution_id'] ?? $user['institution_id'] ?? null;
-    
     if (!$institution_id) {
         throw new Exception('Institution ID not found in session');
     }

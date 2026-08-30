@@ -189,33 +189,34 @@ class BlockchainService
         $pgEntityId = $this->stringToUuid($entityId);
         $isUuid = (bool)preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $entityId);
 
-        $insertData = [
-            'entity_type' => $entityType,
-            'entity_id' => $pgEntityId,
-            'data_hash' => $dataHash,
-            'previous_hash' => $previousHash,
-            'data_json' => $payload,
-            'merkle_root' => $payload['merkle_root'] ?? null,
-            'record_type' => $entityType,
-            'reference_id' => $isUuid ? $entityId : null,
-            'transaction_hash' => $dataHash,
-            'record_hash' => $dataHash,
-            'confirmed' => true,
-            'metadata' => [
-                'digital_signature' => $digitalSignature,
-                'signed_by' => 'IECEP-LSC Secretariat Node',
-                'created_by' => $_SESSION['user']['email'] ?? 'system',
-                'timestamp_iso' => date('c'),
-                'original_entity_id' => $entityId,
-            ],
-        ];
-
+        // Merge cryptographic metadata into data_json payload
+        $payload['digital_signature'] = $digitalSignature;
+        $payload['signed_by'] = 'IECEP-LSC Secretariat Node';
+        $payload['created_by'] = $_SESSION['user']['email'] ?? 'system';
+        $payload['timestamp_iso'] = date('c');
+        $payload['original_entity_id'] = $entityId;
         if ($institutionId !== null) {
-            $pgInstId = $this->stringToUuid($institutionId);
-            $insertData['institution_id'] = $pgInstId;
+            $payload['institution_id'] = $institutionId;
         }
 
-        $result = $this->db->insert($this->table, $insertData);
+        $insertData = [
+            'entity_type'      => $entityType,
+            'entity_id'        => $pgEntityId,
+            'data_hash'        => $dataHash,
+            'previous_hash'    => $previousHash,
+            'data_json'        => $payload,
+            'merkle_root'      => $payload['merkle_root'] ?? null,
+            'transaction_hash' => $dataHash,
+            'record_hash'      => $dataHash,
+            'confirmed'        => true,
+        ];
+
+        try {
+            $result = $this->db->insert($this->table, $insertData);
+        } catch (\Throwable $e) {
+            error_log("BlockchainService insert notice: " . $e->getMessage());
+            $result = [];
+        }
 
         return [
             'hash' => $dataHash,

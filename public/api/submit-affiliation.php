@@ -109,33 +109,64 @@ try {
     ob_end_clean();
 
     /**
-     * Upload a file to Supabase Storage
+     * Upload a file to Supabase Storage with local disk fallback
      */
-    function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
-        $config = require __DIR__ . '/../../includes/supabase.php';
-        $url = rtrim($config['url'], '/') . "/storage/v1/object/$bucket/$path";
-        $fileContent = file_get_contents($tmpFile);
-        if ($fileContent === false) return null;
-        $ch = curl_init($url);
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => $fileContent,
-            CURLOPT_HTTPHEADER => [
-                'apikey: ' . $config['service_role_key'],
-                'Authorization: Bearer ' . $config['service_role_key'],
-                'Content-Type: ' . $mimeType,
-                'x-upsert: true',
-            ],
-        ]);
-        $response = curl_exec($ch);
-        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        curl_close($ch);
-        if ($httpCode >= 200 && $httpCode < 300) {
-            return $config['url'] . "/storage/v1/object/public/$bucket/$path";
+    if (!function_exists('uploadToSupabaseStorage')) {
+        function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
+            if (!file_exists($tmpFile)) return null;
+            $fileContent = file_get_contents($tmpFile);
+            if ($fileContent === false) return null;
+
+            $config = require __DIR__ . '/../../includes/supabase.php';
+            $rawUrl = $config['url'];
+            $cleanUrl = rtrim(trim($rawUrl, "\"' \t\n\r\0\x0B"), '/');
+            $key = trim($config['service_role_key'] ?: $config['anon_key'], "\"' \t\n\r\0\x0B");
+
+            // 1. Try Supabase Storage
+            try {
+                $url = "$cleanUrl/storage/v1/object/$bucket/$path";
+                $ch = curl_init($url);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $fileContent,
+                    CURLOPT_TIMEOUT => 15,
+                    CURLOPT_HTTPHEADER => [
+                        'apikey: ' . $key,
+                        'Authorization: Bearer ' . $key,
+                        'Content-Type: ' . ($mimeType ?: 'application/octet-stream'),
+                        'x-upsert: true',
+                    ],
+                ]);
+                $response = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                
+                if ($httpCode >= 200 && $httpCode < 300) {
+                    return "$cleanUrl/storage/v1/object/public/$bucket/$path";
+                }
+                error_log("Supabase Storage upload returned code $httpCode: $response");
+            } catch (\Throwable $se) {
+                error_log("Supabase Storage upload error: " . $se->getMessage());
+            }
+
+            // 2. Seamless local disk storage fallback
+            try {
+                $uploadBaseDir = dirname(__DIR__, 2) . "/public/uploads/$bucket/" . dirname($path);
+                if (!is_dir($uploadBaseDir)) {
+                    @mkdir($uploadBaseDir, 0777, true);
+                }
+                $targetLocalPath = dirname(__DIR__, 2) . "/public/uploads/$bucket/$path";
+                if (copy($tmpFile, $targetLocalPath) || move_uploaded_file($tmpFile, $targetLocalPath)) {
+                    $baseWebUrl = defined('BASE_URL') ? BASE_URL : (defined('APP_URL') ? APP_URL : '');
+                    return rtrim($baseWebUrl, '/') . "/public/uploads/$bucket/$path";
+                }
+            } catch (\Throwable $le) {
+                error_log("Local storage upload fallback error: " . $le->getMessage());
+            }
+
+            return null;
         }
-        error_log("Supabase Storage upload failed ($httpCode): $response");
-        return null;
     }
 
     // Field Validation
@@ -221,17 +252,33 @@ try {
     $totalFee = floatval($_POST['total_fee'] ?? 0);
     $receiptNumber = $_SESSION['affiliation_payment']['receipt_number'] ?? 'RCP-GEN-' . uniqid();
     
+    $documentsData = [
+        'institution_name'     => $institution_name,
+        'institution_address'  => $institution_address,
+        'contact_position'     => $contact_position,
+        'letter_of_intent'     => $uploadedFiles['letter_of_intent'],
+        'endorsement_letter'   => $uploadedFiles['endorsement_letter'],
+        'constitution_by_laws' => $uploadedFiles['constitution_by_laws'],
+        'officers_cvs'         => $uploadedFiles['officers_cvs'],
+        'organizational_chart' => $uploadedFiles['organizational_chart'],
+        'member_directory'     => $uploadedFiles['member_directory'],
+        'total_members'        => $totalMembers,
+        'new_members'          => $newMembers,
+        'old_members'          => $oldMembers,
+        'affiliation_fee'      => $affiliationFee,
+        'membership_total'     => $membershipTotal,
+        'total_fee'            => $totalFee,
+        'receipt_number'       => $receiptNumber,
+        'submitted_at'         => date('c')
+    ];
+
     $affiliationData = [
-        'institution_name' => $institution_name, 'institution_address' => $institution_address,
-        'contact_person' => $contact_person, 'contact_position' => $contact_position,
-        'contact_email' => $contact_email, 'email' => $contact_email, 'contact_phone' => $contact_phone,
-        'letter_of_intent' => $uploadedFiles['letter_of_intent'], 'endorsement_letter' => $uploadedFiles['endorsement_letter'],
-        'constitution_by_laws' => $uploadedFiles['constitution_by_laws'], 'officers_cvs' => $uploadedFiles['officers_cvs'],
-        'organizational_chart' => $uploadedFiles['organizational_chart'], 'member_directory' => $uploadedFiles['member_directory'],
-        'status' => 'pending', 'submitted_at' => date('Y-m-d H:i:s'), 'created_at' => date('Y-m-d H:i:s'),
-        'ip_address' => $_SERVER['REMOTE_ADDR'] ?? 'unknown', 'total_members' => $totalMembers,
-        'new_members' => $newMembers, 'old_members' => $oldMembers, 'affiliation_fee' => $affiliationFee,
-        'membership_total' => $membershipTotal, 'total_fee' => $totalFee, 'receipt_number' => $receiptNumber
+        'school_name'    => $institution_name,
+        'email'          => $contact_email,
+        'contact_person' => $contact_person,
+        'contact_number' => $contact_phone,
+        'status'         => 'pending',
+        'documents'      => json_encode($documentsData)
     ];
     
     $result = $sb->insert('pending_affiliations', $affiliationData);

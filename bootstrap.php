@@ -253,6 +253,43 @@ function supabase() {
     return getSupabaseClient();
 }
 
+/**
+ * Upload a file to Supabase Storage with automatic local disk fallback
+ */
+if (!function_exists('uploadToSupabaseStorage')) {
+    function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType = 'application/octet-stream'): ?string {
+        if (!file_exists($tmpFile)) return null;
+        $fileContent = file_get_contents($tmpFile);
+        if ($fileContent === false) return null;
+
+        $supabaseClient = getSupabaseClient();
+        if ($supabaseClient && method_exists($supabaseClient, 'uploadFile')) {
+            $uploadedUrl = $supabaseClient->uploadFile($bucket, $path, $tmpFile, $mimeType);
+            if ($uploadedUrl) {
+                return $uploadedUrl;
+            }
+        }
+
+        // Direct local disk fallback
+        try {
+            $baseDir = defined('BASE_PATH') ? BASE_PATH : PROJECT_ROOT;
+            $targetDir = $baseDir . "/public/uploads/$bucket/" . dirname($path);
+            if (!is_dir($targetDir)) {
+                @mkdir($targetDir, 0777, true);
+            }
+            $targetFile = $baseDir . "/public/uploads/$bucket/$path";
+            if (copy($tmpFile, $targetFile) || move_uploaded_file($tmpFile, $targetFile)) {
+                $baseWebUrl = defined('BASE_URL') ? BASE_URL : (defined('APP_URL') ? APP_URL : '');
+                return rtrim($baseWebUrl, '/') . "/public/uploads/$bucket/$path";
+            }
+        } catch (\Throwable $le) {
+            error_log("uploadToSupabaseStorage local upload fallback error: " . $le->getMessage());
+        }
+
+        return null;
+    }
+}
+
 // ============================================================================
 // 12. HELPER FUNCTIONS FOR COMMON OPERATIONS
 // ============================================================================

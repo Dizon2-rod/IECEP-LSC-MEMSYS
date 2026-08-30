@@ -549,6 +549,65 @@ class SupabaseClient {
             return false;
         }
     }
+
+    /**
+     * Upload a file to Supabase Storage with seamless local fallback
+     */
+    public function uploadFile(string $bucket, string $path, string $tmpFilePath, string $mimeType = 'application/octet-stream'): ?string {
+        if (!file_exists($tmpFilePath)) {
+            return null;
+        }
+        $fileContent = file_get_contents($tmpFilePath);
+        if ($fileContent === false) {
+            return null;
+        }
+
+        // 1. Try Supabase Storage
+        try {
+            $endpoint = $this->url . "/storage/v1/object/$bucket/$path";
+            $ch = curl_init($endpoint);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $fileContent,
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_HTTPHEADER => [
+                    'apikey: ' . $this->key,
+                    'Authorization: Bearer ' . $this->key,
+                    'Content-Type: ' . ($mimeType ?: 'application/octet-stream'),
+                    'x-upsert: true',
+                ],
+            ]);
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($httpCode >= 200 && $httpCode < 300) {
+                return $this->url . "/storage/v1/object/public/$bucket/$path";
+            }
+            error_log("SupabaseClient uploadFile notice ($httpCode): $response");
+        } catch (\Throwable $e) {
+            error_log("SupabaseClient uploadFile error: " . $e->getMessage());
+        }
+
+        // 2. Seamless local fallback
+        try {
+            $baseDir = defined('BASE_PATH') ? BASE_PATH : dirname(__DIR__, 2);
+            $targetDir = $baseDir . "/public/uploads/$bucket/" . dirname($path);
+            if (!is_dir($targetDir)) {
+                @mkdir($targetDir, 0777, true);
+            }
+            $targetFile = $baseDir . "/public/uploads/$bucket/$path";
+            if (copy($tmpFilePath, $targetFile) || move_uploaded_file($tmpFilePath, $targetFile)) {
+                $baseWebUrl = defined('BASE_URL') ? BASE_URL : (defined('APP_URL') ? APP_URL : '');
+                return rtrim($baseWebUrl, '/') . "/public/uploads/$bucket/$path";
+            }
+        } catch (\Throwable $le) {
+            error_log("SupabaseClient local upload fallback error: " . $le->getMessage());
+        }
+
+        return null;
+    }
 }
 
 if (!class_exists('SupabaseClient', false)) {
