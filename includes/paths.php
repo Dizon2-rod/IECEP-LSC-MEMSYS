@@ -113,6 +113,31 @@ function get_role_dashboard_url($role) {
 }
 
 /**
+ * Helper to ensure an affiliation document URL points to the permanent Supabase Cloud CDN
+ * @param string|null $url
+ * @return string|null
+ */
+function fix_affiliation_doc_url($url) {
+    if (empty($url) || !is_string($url)) return null;
+    $url = trim($url);
+    if (strpos($url, 'supabase.co/storage/v1/object/public/') !== false) {
+        return $url;
+    }
+    if (strpos($url, '/uploads/affiliations/') !== false || strpos($url, 'up.railway.app') !== false) {
+        $pathAfterBucket = preg_replace('#^.*?/uploads/affiliations/#', '', $url);
+        $pathAfterBucket = ltrim($pathAfterBucket, '/');
+        $segments = explode('/', $pathAfterBucket);
+        $cleanSegments = array_map(function($s) {
+            $cleaned = preg_replace('/[^a-zA-Z0-9_\.-]/', '_', $s);
+            return rawurlencode($cleaned);
+        }, $segments);
+        $safePath = implode('/', $cleanSegments);
+        return "https://kfvlbjvtwtxnpmmswadf.supabase.co/storage/v1/object/public/affiliations/" . $safePath;
+    }
+    return $url;
+}
+
+/**
  * Normalize and unpack a pending_affiliations record from Supabase
  * Ensures institution_name, documents URLs, and roster counts are directly accessible
  * @param array|null $app
@@ -143,12 +168,12 @@ function normalize_pending_affiliation_app($app) {
     $app['contact_phone'] = $app['contact_number'] ?? ($docs['contact_phone'] ?? ($app['contact_phone'] ?? ''));
     $app['contact_number'] = $app['contact_phone'];
 
-    $app['letter_of_intent'] = $docs['letter_of_intent'] ?? ($app['letter_of_intent'] ?? null);
-    $app['endorsement_letter'] = $docs['endorsement_letter'] ?? ($app['endorsement_letter'] ?? null);
-    $app['constitution_by_laws'] = $docs['constitution_by_laws'] ?? ($app['constitution_by_laws'] ?? null);
-    $app['officers_cvs'] = $docs['officers_cvs'] ?? ($app['officers_cvs'] ?? null);
-    $app['organizational_chart'] = $docs['organizational_chart'] ?? ($app['organizational_chart'] ?? null);
-    $app['member_directory'] = $docs['member_directory'] ?? ($app['member_directory'] ?? null);
+    $app['letter_of_intent'] = fix_affiliation_doc_url($docs['letter_of_intent'] ?? ($app['letter_of_intent'] ?? null));
+    $app['endorsement_letter'] = fix_affiliation_doc_url($docs['endorsement_letter'] ?? ($app['endorsement_letter'] ?? null));
+    $app['constitution_by_laws'] = fix_affiliation_doc_url($docs['constitution_by_laws'] ?? ($app['constitution_by_laws'] ?? null));
+    $app['officers_cvs'] = fix_affiliation_doc_url($docs['officers_cvs'] ?? ($app['officers_cvs'] ?? null));
+    $app['organizational_chart'] = fix_affiliation_doc_url($docs['organizational_chart'] ?? ($app['organizational_chart'] ?? null));
+    $app['member_directory'] = fix_affiliation_doc_url($docs['member_directory'] ?? ($app['member_directory'] ?? null));
 
     $app['total_members'] = intval($docs['total_members'] ?? ($app['total_members'] ?? 0));
     $app['new_members'] = intval($docs['new_members'] ?? ($app['new_members'] ?? 0));

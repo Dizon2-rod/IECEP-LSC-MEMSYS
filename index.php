@@ -376,17 +376,13 @@ header('Expires: 0');
 $contactSuccess = isset($_GET['contact']) && $_GET['contact'] === 'success';
 $contactError   = isset($_GET['contact']) && $_GET['contact'] === 'error';
 
-// Role-based redirect for logged-in users
-if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
-    $currentPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-    if (strpos($currentPath, 'apply.php') === false) {
-        $role = $_SESSION['user']['role'] ?? ($_SESSION['role'] ?? 'member');
-        $redirectUrl = function_exists('get_role_dashboard_url')
-            ? get_role_dashboard_url($role)
-            : PORTAL_URL . '/member/dashboard.php';
-        header('Location: ' . $redirectUrl);
-        exit;
-    }
+// If an asset, upload, or static file was routed to index.php because it does not exist on disk, return 404 immediately
+$reqPath = parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH) ?? '';
+if (preg_match('/\.(pdf|xlsx|xls|docx|csv|png|jpg|jpeg|gif|svg|ico|css|js|map|txt)$/i', $reqPath) || strpos($reqPath, '/uploads/') !== false) {
+    http_response_code(404);
+    header('Content-Type: text/plain; charset=utf-8');
+    echo "404 Not Found: The requested document or asset was not found on this server.";
+    exit;
 }
 
 // ============================================================

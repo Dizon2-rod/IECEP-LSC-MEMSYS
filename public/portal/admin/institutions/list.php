@@ -1936,9 +1936,24 @@ try {
                 { key: 'member_directory', num: 6, label: 'Member Directory (Excel)', icon: 'fa-file-excel', color: '#107C41', type: 'excel' }
             ];
 
+            function fixDocUrl(url) {
+                if (!url || typeof url !== 'string') return null;
+                url = url.trim();
+                if (url.includes('supabase.co/storage/v1/object/public/')) {
+                    return url;
+                }
+                if (url.includes('/uploads/affiliations/') || url.includes('up.railway.app')) {
+                    let pathAfter = url.replace(/^.*?\/uploads\/affiliations\//, '').replace(/^\/+/, '');
+                    let parts = pathAfter.split('/').map(p => encodeURIComponent(p.replace(/[^a-zA-Z0-9_\.-]/g, '_')));
+                    return `https://kfvlbjvtwtxnpmmswadf.supabase.co/storage/v1/object/public/affiliations/${parts.join('/')}`;
+                }
+                return url;
+            }
+
             let attachedCount = 0;
             currentDocList = docDefs.map(doc => {
-                let url = app[doc.key] || (app.documents && app.documents[doc.key]) || null;
+                let rawUrl = app[doc.key] || (app.documents && app.documents[doc.key]) || null;
+                let url = fixDocUrl(rawUrl);
                 if (url && typeof url === 'string') {
                     attachedCount++;
                 } else {
