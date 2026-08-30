@@ -47,13 +47,10 @@ if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
         session_write_close();
         setcookie(session_name(), '', time() - 42000, '/');
     } else {
-        $role = $_SESSION['role'] ?? '';
-        $redirectMap = [
-            'admin'          => PORTAL_URL . '/admin/dashboard.php',
-            'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
-            'member'         => PORTAL_URL . '/member/dashboard.php',
-        ];
-        $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php';
+        $role = $_SESSION['role'] ?? ($_SESSION['user']['role'] ?? 'member');
+        $redirectUrl = function_exists('get_role_dashboard_url')
+            ? get_role_dashboard_url($role)
+            : PORTAL_URL . '/admin/dashboard.php';
         header('Location: ' . $redirectUrl);
         exit;
     }
@@ -108,20 +105,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             if (empty($profiles)) {
                                 $profiles = $supabaseService->select('user_profiles', ['email' => 'eq.' . $email]);
                             }
-                            if (empty($profiles)) {
-                                $profile = [
-                                    'role' => $user['role'] ?? 'member',
-                                    'institution_id' => null,
-                                    'full_name' => $user['full_name'] ?? ''
-                                ];
+
+                            $uRole = !empty($user['role']) ? $user['role'] : null;
+                            $pRole = !empty($profiles[0]['role']) ? $profiles[0]['role'] : null;
+
+                            // Elevated roles take priority if either users or user_profiles has admin/officer
+                            $resolvedRole = 'member';
+                            if (in_array(strtolower((string)$uRole), ['super_admin', 'superadmin', 'admin', 'administrator'])) {
+                                $resolvedRole = $uRole;
+                            } elseif (in_array(strtolower((string)$pRole), ['super_admin', 'superadmin', 'admin', 'administrator'])) {
+                                $resolvedRole = $pRole;
+                            } elseif (in_array(strtolower((string)$uRole), ['school_officer', 'school_admin', 'officer'])) {
+                                $resolvedRole = $uRole;
+                            } elseif (in_array(strtolower((string)$pRole), ['school_officer', 'school_admin', 'officer'])) {
+                                $resolvedRole = $pRole;
                             } else {
-                                $profile = $profiles[0];
+                                $resolvedRole = $pRole ?: ($uRole ?: 'member');
                             }
+
+                            $profile = [
+                                'role' => $resolvedRole,
+                                'institution_id' => $profiles[0]['institution_id'] ?? ($user['institution_id'] ?? null),
+                                'full_name' => !empty($user['full_name']) ? $user['full_name'] : ($profiles[0]['full_name'] ?? '')
+                            ];
+
                             $loginSuccess = true;
                             $mustChangePassword = !empty($user['must_change_password']);
                             $userId = $user['id'];
                             $userEmail = $user['email'];
-                            $fullName = !empty($user['full_name']) ? $user['full_name'] : ($profile['full_name'] ?? '');
+                            $fullName = $profile['full_name'];
                         }
                     } else {
                         error_log("Password verification: FAILED for email=" . $email);
@@ -153,19 +165,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         }
                         error_log("Login: Supabase auth user_id=$userId profile query result=" . json_encode($profiles));
 
-                        if (!empty($profiles) && is_array($profiles)) {
-                            $profile = $profiles[0];
-                            $loginSuccess = true;
-                            $mustChangePassword = !empty($profile['force_password_change']) || 
-                                                !empty($authUser['user_metadata']['must_change_password']);
+                        $metaRole = $authUser['user_metadata']['role'] ?? null;
+                        $pRole = !empty($profiles[0]['role']) ? $profiles[0]['role'] : null;
+
+                        $resolvedRole = 'member';
+                        if (in_array(strtolower((string)$metaRole), ['super_admin', 'superadmin', 'admin', 'administrator'])) {
+                            $resolvedRole = $metaRole;
+                        } elseif (in_array(strtolower((string)$pRole), ['super_admin', 'superadmin', 'admin', 'administrator'])) {
+                            $resolvedRole = $pRole;
+                        } elseif (in_array(strtolower((string)$metaRole), ['school_officer', 'school_admin', 'officer'])) {
+                            $resolvedRole = $metaRole;
+                        } elseif (in_array(strtolower((string)$pRole), ['school_officer', 'school_admin', 'officer'])) {
+                            $resolvedRole = $pRole;
                         } else {
-                            $profile = [
-                                'role' => $authUser['user_metadata']['role'] ?? 'member',
-                                'institution_id' => null,
-                                'full_name' => $fullName
-                            ];
-                            $loginSuccess = true;
+                            $resolvedRole = $pRole ?: ($metaRole ?: 'member');
                         }
+
+                        $profile = [
+                            'role' => $resolvedRole,
+                            'institution_id' => $profiles[0]['institution_id'] ?? null,
+                            'full_name' => !empty($fullName) ? $fullName : ($profiles[0]['full_name'] ?? '')
+                        ];
+
+                        $loginSuccess = true;
+                        $mustChangePassword = !empty($profiles[0]['force_password_change']) || 
+                                            !empty($authUser['user_metadata']['must_change_password']);
                     } else {
                         error_log('Login: Supabase authSignIn returned no user object for email=' . $email . ' response=' . json_encode($authResult));
                         $error = 'Invalid email or password. Please try again.';
@@ -214,13 +238,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     exit;
                 }
 
-                $redirectMap = [
-                    'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
-                    'admin'          => PORTAL_URL . '/admin/dashboard.php',
-                    'member'         => PORTAL_URL . '/member/dashboard.php',
-                ];
-                $role = $profile['role'] ?? 'school_officer';
-                $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/school-officer/dashboard.php';
+                $redirectUrl = function_exists('get_role_dashboard_url')
+                    ? get_role_dashboard_url($profile['role'])
+                    : PORTAL_URL . '/admin/dashboard.php';
                 header('Location: ' . $redirectUrl);
                 exit;
             }
@@ -254,13 +274,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         clearRememberMeCookie(false);
                     }
 
-                    $redirectMap = [
-                        'admin'          => PORTAL_URL . '/admin/dashboard.php',
-                        'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
-                        'member'         => PORTAL_URL . '/member/dashboard.php',
-                    ];
-                    $role = $localFallbackAccounts[$email]['role'];
-                    $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php';
+                    $redirectUrl = function_exists('get_role_dashboard_url')
+                        ? get_role_dashboard_url($localFallbackAccounts[$email]['role'])
+                        : PORTAL_URL . '/admin/dashboard.php';
                     header('Location: ' . $redirectUrl);
                     exit;
                 }

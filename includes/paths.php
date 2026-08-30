@@ -37,6 +37,38 @@ if (!defined('JS_PATH')) {
 }
 
 /**
+ * Normalize any role alias or casing to standard role key: 'super_admin' | 'admin' | 'school_officer' | 'member'
+ * @param string|null $role
+ * @return string
+ */
+function normalize_user_role($role) {
+    $r = strtolower(trim((string)$role));
+    
+    // Super Admin
+    if (in_array($r, ['super_admin', 'superadmin', 'super_administrator'])) {
+        return 'super_admin';
+    }
+    
+    // Admin / Executive Board
+    if (in_array($r, [
+        'admin', 'administrator', 'regional_admin',
+        'eb_president', 'eb_vp_internal', 'eb_treasurer', 'eb_auditor',
+        'eb_pro_1', 'eb_pro_2', 'eb_secretary_general',
+        'committee_registration', 'committee_creatives', 'committee_marketing', 'committee_logistics'
+    ])) {
+        return 'admin';
+    }
+    
+    // School Officer
+    if (in_array($r, ['school_officer', 'school_admin', 'officer', 'school-officer'])) {
+        return 'school_officer';
+    }
+    
+    // Member / Student
+    return 'member';
+}
+
+/**
  * Get portal URL for a role-specific page
  * @param string $role - User role
  * @param string $page - Page name (e.g., 'dashboard.php')
@@ -44,7 +76,7 @@ if (!defined('JS_PATH')) {
  */
 function get_portal_url($role, $page = 'dashboard.php') {
     $rolePath = get_role_path($role);
-    return PORTAL_URL . '/' . $rolePath . '/' . $page;
+    return PORTAL_URL . '/' . $rolePath . '/' . ltrim($page, '/');
 }
 
 /**
@@ -53,13 +85,30 @@ function get_portal_url($role, $page = 'dashboard.php') {
  * @return string - Directory path
  */
 function get_role_path($role) {
+    $normalized = normalize_user_role($role);
     $rolePaths = [
-        'super_admin' => 'admin',
-        'admin' => 'admin',
+        'super_admin'    => 'admin',
+        'admin'          => 'admin',
         'school_officer' => 'school-officer',
-        'member' => 'member',
+        'member'         => 'member',
     ];
     
-    return $rolePaths[$role] ?? 'member';
+    return $rolePaths[$normalized] ?? 'member';
+}
+
+/**
+ * Get the appropriate dashboard URL for any user role
+ * @param string|null $role
+ * @return string
+ */
+function get_role_dashboard_url($role) {
+    $normalized = normalize_user_role($role);
+    if ($normalized === 'super_admin' || $normalized === 'admin') {
+        return PORTAL_URL . '/admin/dashboard.php';
+    } elseif ($normalized === 'school_officer') {
+        return PORTAL_URL . '/school-officer/dashboard.php';
+    } else {
+        return PORTAL_URL . '/member/dashboard.php';
+    }
 }
 ?>

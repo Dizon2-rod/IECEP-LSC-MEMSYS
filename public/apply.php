@@ -10,14 +10,11 @@ if (isset($_GET['resubmit'])) {
     error_log("Resubmit mode detected - bypassing auth checks");
 } elseif (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     // If not resubmitting and logged in, redirect to dashboard
-    $role = $_SESSION['user']['role'] ?? '';
-    $redirectMap = [
-        'eb_president' => '/IECEP-LSC-MEMSYS/public/portal/super-admin/dashboard.php',
-        'admin' => '/IECEP-LSC-MEMSYS/public/portal/admin/dashboard.php',
-        'school_officer' => '/IECEP-LSC-MEMSYS/public/portal/school-officer/dashboard.php',
-        'member' => '/IECEP-LSC-MEMSYS/public/portal/member/dashboard.php',
-    ];
-    $redirectUrl = $redirectMap[$role] ?? '/IECEP-LSC-MEMSYS/public/portal/member/dashboard.php';
+    require_once dirname(__DIR__) . '/includes/paths.php';
+    $role = $_SESSION['user']['role'] ?? ($_SESSION['role'] ?? 'member');
+    $redirectUrl = function_exists('get_role_dashboard_url')
+        ? get_role_dashboard_url($role)
+        : PORTAL_URL . '/member/dashboard.php';
     header('Location: ' . $redirectUrl);
     exit;
 }

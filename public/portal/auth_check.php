@@ -12,7 +12,7 @@ require_once dirname(dirname(__DIR__)) . '/includes/paths.php';
 
 /**
  * require_role - Check if current user has required role
- * @param array $allowed_roles - Array of allowed role strings
+ * @param array|string $allowed_roles - Array of allowed role strings
  * @param bool $redirect - Whether to redirect unauthorized users (default: true)
  * @return bool - True if authorized, false otherwise
  */
@@ -23,9 +23,9 @@ function require_role($allowed_roles, $redirect = true) {
     }
 
     $user = $_SESSION['user'] ?? [];
-    $user_role = $_SESSION['role'] ?? $user['role'] ?? $user['user_metadata']['role'] ?? null;
+    $raw_role = $_SESSION['role'] ?? $user['role'] ?? $user['user_metadata']['role'] ?? null;
 
-    if (!$user_role) {
+    if (!$raw_role) {
         if ($redirect) {
             header('Location: ' . (defined('BASE_URL') ? BASE_URL : '') . '/login.php');
             exit;
@@ -33,18 +33,37 @@ function require_role($allowed_roles, $redirect = true) {
         return false;
     }
 
-    // Normalize allowed roles to array if a single string or other type is provided
+    // Normalize user role
+    $normalized_user_role = function_exists('normalize_user_role') ? normalize_user_role($raw_role) : strtolower(trim($raw_role));
+
+    // Normalize allowed roles to array
     if (is_string($allowed_roles)) {
         $allowed_roles = [$allowed_roles];
     } elseif (!is_array($allowed_roles)) {
         $allowed_roles = (array)$allowed_roles;
     }
 
-    // Check if user role is in allowed roles
-    if (!in_array($user_role, $allowed_roles, true)) {
+    $normalized_allowed = array_map(function($r) {
+        return function_exists('normalize_user_role') ? normalize_user_role($r) : strtolower(trim($r));
+    }, $allowed_roles);
+
+    // If allowed_roles includes 'admin', also allow 'super_admin' and vice-versa
+    if (in_array('admin', $normalized_allowed, true) || in_array('super_admin', $normalized_allowed, true)) {
+        $normalized_allowed[] = 'admin';
+        $normalized_allowed[] = 'super_admin';
+    }
+
+    // Check if user role matches allowed roles
+    $is_authorized = in_array($normalized_user_role, $normalized_allowed, true) ||
+                     in_array(strtolower(trim($raw_role)), array_map('strtolower', $allowed_roles), true);
+
+    if (!$is_authorized) {
         if ($redirect) {
             // Redirect to user's appropriate dashboard or show access denied
-            $user_dashboard = get_role_dashboard($user_role);
+            $user_dashboard = function_exists('get_role_dashboard_url')
+                ? get_role_dashboard_url($raw_role)
+                : (function_exists('get_role_dashboard') ? get_role_dashboard($raw_role) : null);
+
             if ($user_dashboard) {
                 header('Location: ' . $user_dashboard);
             } else {

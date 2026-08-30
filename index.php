@@ -380,13 +380,11 @@ $contactError   = isset($_GET['contact']) && $_GET['contact'] === 'error';
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
     $currentPath = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
     if (strpos($currentPath, 'apply.php') === false) {
-        $role = $_SESSION['user']['role'] ?? '';
-        $redirectMap = [
-            'admin'          => PORTAL_URL . '/admin/dashboard.php',
-            'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
-            'member'         => PORTAL_URL . '/member/dashboard.php',
-        ];
-        header('Location: ' . ($redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php'));
+        $role = $_SESSION['user']['role'] ?? ($_SESSION['role'] ?? 'member');
+        $redirectUrl = function_exists('get_role_dashboard_url')
+            ? get_role_dashboard_url($role)
+            : PORTAL_URL . '/member/dashboard.php';
+        header('Location: ' . $redirectUrl);
         exit;
     }
 }

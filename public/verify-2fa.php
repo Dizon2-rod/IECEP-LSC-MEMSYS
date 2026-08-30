@@ -25,25 +25,17 @@ try {
 
 // If 2FA is not enabled, redirect to dashboard
 if (!$mfaEnabled) {
-    $role = $user['role'] ?? '';
-    $redirectMap = [
-        'admin' => '/portal/admin/dashboard.php',
-        'school_officer' => '/portal/school-officer/dashboard.php',
-        'member' => '/portal/member/dashboard.php'
-    ];
-    header('Location: ' . ($redirectMap[$role] ?? '/portal/member/dashboard.php'));
+    require_once dirname(__DIR__) . '/includes/paths.php';
+    $role = $user['role'] ?? ($_SESSION['role'] ?? 'member');
+    header('Location: ' . get_role_dashboard_url($role));
     exit;
 }
 
 // Check if already verified in this session
 if (isset($_SESSION['2fa_verified']) && $_SESSION['2fa_verified'] === true) {
-    $role = $user['role'] ?? '';
-    $redirectMap = [
-        'admin' => '/portal/admin/dashboard.php',
-        'school_officer' => '/portal/school-officer/dashboard.php',
-        'member' => '/portal/member/dashboard.php'
-    ];
-    header('Location: ' . ($redirectMap[$role] ?? '/portal/member/dashboard.php'));
+    require_once dirname(__DIR__) . '/includes/paths.php';
+    $role = $user['role'] ?? ($_SESSION['role'] ?? 'member');
+    header('Location: ' . get_role_dashboard_url($role));
     exit;
 }
 ?>

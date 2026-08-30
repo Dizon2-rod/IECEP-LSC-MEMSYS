@@ -13,17 +13,11 @@ header('Expires: 0');
 
 // If already logged in, redirect to dashboard
 if (isset($_SESSION['logged_in']) && $_SESSION['logged_in'] === true) {
-    $role = $_SESSION['role'] ?? 'member';
-    $redirectMap = [
-        'eb_president'           => PORTAL_URL . '/super-admin/dashboard.php',
-        'super_admin'            => PORTAL_URL . '/super-admin/dashboard.php',
-        'admin'                  => PORTAL_URL . '/admin/dashboard.php',
-        'school_officer'         => PORTAL_URL . '/school-officer/dashboard.php',
-        'member'                 => PORTAL_URL . '/member/dashboard.php',
-        'committee_creatives'    => PORTAL_URL . '/creatives/dashboard.php',
-        'committee_registration' => PORTAL_URL . '/registration/dashboard.php',
-    ];
-    $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php';
+    require_once dirname(__DIR__) . '/includes/paths.php';
+    $role = $_SESSION['role'] ?? ($_SESSION['user']['role'] ?? 'member');
+    $redirectUrl = function_exists('get_role_dashboard_url')
+        ? get_role_dashboard_url($role)
+        : PORTAL_URL . '/member/dashboard.php';
     header('Location: ' . $redirectUrl);
     exit;
 }

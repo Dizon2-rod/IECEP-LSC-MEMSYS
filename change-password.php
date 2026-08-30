@@ -22,21 +22,11 @@ $mustChangePassword = $_SESSION['user']['must_change_password'] ?? false;
 
 // If not required, redirect to dashboard
 if (!$isFirstLogin && !$requirePasswordChange && !$mustChangePassword) {
-    $role = $_SESSION['user']['role'] ?? '';
-    $redirectMap = [
-        'eb_president' => PORTAL_URL . '/super-admin/dashboard.php',
-        'admin' => PORTAL_URL . '/admin/dashboard.php',
-        'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
-        'member' => PORTAL_URL . '/member/dashboard.php',
-        'eb_pro_1' => PORTAL_URL . '/creatives/dashboard.php',
-        'committee_creatives' => PORTAL_URL . '/creatives/dashboard.php',
-        'eb_pro_2' => PORTAL_URL . '/logistics/dashboard.php',
-        'eb_treasurer' => PORTAL_URL . '/treasurer/dashboard.php',
-        'eb_auditor' => PORTAL_URL . '/auditor/dashboard.php',
-        'eb_secretary_general' => PORTAL_URL . '/secretary/dashboard.php',
-    ];
-    
-    $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php';
+    require_once __DIR__ . '/includes/paths.php';
+    $role = $_SESSION['user']['role'] ?? ($_SESSION['role'] ?? 'member');
+    $redirectUrl = function_exists('get_role_dashboard_url')
+        ? get_role_dashboard_url($role)
+        : PORTAL_URL . '/member/dashboard.php';
     header('Location: ' . $redirectUrl);
     exit;
 }
@@ -80,15 +70,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $success = 'Password changed successfully! Redirecting to your dashboard...';
         
         // Redirect after success
-        $role = $_SESSION['user']['role'] ?? '';
-        $redirectMap = [
-            'school_officer' => PORTAL_URL . '/school-officer/dashboard.php',
-            'admin' => PORTAL_URL . '/admin/dashboard.php',
-            'eb_president' => PORTAL_URL . '/super-admin/dashboard.php',
-            'member' => PORTAL_URL . '/member/dashboard.php',
-        ];
-        
-        $redirectUrl = $redirectMap[$role] ?? PORTAL_URL . '/member/dashboard.php';
+        $role = $_SESSION['user']['role'] ?? ($_SESSION['role'] ?? 'member');
+        $redirectUrl = function_exists('get_role_dashboard_url')
+            ? get_role_dashboard_url($role)
+            : PORTAL_URL . '/member/dashboard.php';
         
         header('Refresh: 2; URL=' . $redirectUrl);
     }

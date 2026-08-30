@@ -59,17 +59,13 @@ try {
     $_SESSION['2fa_verified'] = true;
     
     // Determine redirect based on role
-    $role = $_SESSION['user']['role'] ?? '';
-    $redirectMap = [
-        'admin' => '/portal/admin/dashboard.php',
-        'school_officer' => '/portal/school-officer/dashboard.php',
-        'member' => '/portal/member/dashboard.php'
-    ];
+    require_once dirname(__DIR__, 2) . '/includes/paths.php';
+    $role = $_SESSION['user']['role'] ?? ($_SESSION['role'] ?? 'member');
     
     echo json_encode([
         'success' => true, 
         'message' => '2FA verified successfully',
-        'redirect' => $redirectMap[$role] ?? '/portal/member/dashboard.php'
+        'redirect' => function_exists('get_role_dashboard_url') ? get_role_dashboard_url($role) : PORTAL_URL . '/member/dashboard.php'
     ]);
     
 } catch (Exception $e) {
