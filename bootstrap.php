@@ -136,8 +136,8 @@ if (!defined('APP_URL')) {
     $isCli = (php_sapi_name() === 'cli' || defined('STDIN'));
     $httpHost = $_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? '';
     
-    // Auto-detect production / live host if env contains localhost but user is visiting live domain
-    if (!$isCli && !empty($httpHost) && (empty($envAppUrl) || (str_contains($envAppUrl, 'localhost') && !str_contains($httpHost, 'localhost') && !str_contains($httpHost, '127.0.0.1')))) {
+    // Dynamically detect scheme, host, and port for web requests
+    if (!$isCli && !empty($httpHost)) {
         $isHttps = (isset($_SERVER['HTTPS']) && strtolower($_SERVER['HTTPS']) === 'on') ||
                    (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strtolower($_SERVER['HTTP_X_FORWARDED_PROTO']) === 'https') ||
                    (isset($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443);

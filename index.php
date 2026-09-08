@@ -2810,7 +2810,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // ── Modal setup ────────────────────────────────────────────────────────────
-    const API_BASE_URL = '<?php echo BASE_URL; ?>';
+    const API_BASE_URL = window.location.pathname.startsWith('/IECEP-LSC-MEMSYS') ? '/IECEP-LSC-MEMSYS' : '';
     let verifiedEmail = '';
 
     const overlay = document.createElement('div');
