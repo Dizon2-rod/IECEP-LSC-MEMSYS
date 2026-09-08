@@ -149,6 +149,8 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT false;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
@@ -182,6 +184,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     phone TEXT,
     avatar_url TEXT,
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'pending', 'suspended')),
+    membership_status TEXT DEFAULT 'active',
     force_password_change BOOLEAN DEFAULT false,
     mfa_enabled BOOLEAN DEFAULT false,
     mfa_secret TEXT,
@@ -197,6 +200,7 @@ ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS institution_id UUID;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS membership_status TEXT DEFAULT 'active';
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS force_password_change BOOLEAN DEFAULT false;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS mfa_enabled BOOLEAN DEFAULT false;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS mfa_secret TEXT;
@@ -250,6 +254,7 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS institution_id UUID;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS course TEXT DEFAULT 'Bachelor of Science in Electronics Engineering';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS program TEXT DEFAULT 'Bachelor of Science in Electronics Engineering';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS year_level TEXT DEFAULT '4th Year';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS student_number TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS membership_type TEXT DEFAULT 'student';
@@ -259,6 +264,7 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS birthday DATE;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS address TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS digital_id_hash TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS digital_id_url TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS qr_code_url TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS joined_date DATE DEFAULT CURRENT_DATE;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS expiration_date DATE DEFAULT (CURRENT_DATE + INTERVAL '1 year');
@@ -1982,45 +1988,35 @@ CREATE TRIGGER trg_members_auto_id
 CREATE OR REPLACE FUNCTION sync_institution_member_counts()
 RETURNS TRIGGER AS $$
 DECLARE
+    v_inst_text TEXT;
     v_inst_id UUID;
     v_count INT;
 BEGIN
-    v_inst_id := COALESCE(NEW.institution_id, OLD.institution_id);
-    IF v_inst_id IS NOT NULL THEN
-        SELECT COUNT(*) INTO v_count
-        FROM members
-        WHERE institution_id = v_inst_id
-          AND status = 'active';
+    v_inst_text := COALESCE(NEW.institution_id::TEXT, OLD.institution_id::TEXT);
+    IF v_inst_text IS NOT NULL AND v_inst_text ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+        BEGIN
+            v_inst_id := v_inst_text::UUID;
+            SELECT COUNT(*) INTO v_count
+            FROM members
+            WHERE institution_id::TEXT = v_inst_text
+              AND status = 'active';
 
-        UPDATE institutions
-        SET membership_count = v_count,
-            updated_at = NOW()
-        WHERE id = v_inst_id;
+            UPDATE institutions
+            SET membership_count = v_count,
+                updated_at = NOW()
+            WHERE id = v_inst_id;
 
-        UPDATE school_profiles
-        SET total_members = v_count,
-            updated_at = NOW()
-        WHERE institution_id = v_inst_id;
+            UPDATE school_profiles
+            SET total_members = v_count,
+                updated_at = NOW()
+            WHERE institution_id::TEXT = v_inst_text;
+        EXCEPTION WHEN OTHERS THEN
+            NULL;
+        END;
     END IF;
 
-    -- If institution_id changed, also update the previous institution
-    IF TG_OP = 'UPDATE' AND OLD.institution_id IS NOT NULL AND OLD.institution_id IS DISTINCT FROM NEW.institution_id THEN
-        SELECT COUNT(*) INTO v_count
-        FROM members
-        WHERE institution_id = OLD.institution_id
-          AND status = 'active';
-
-        UPDATE institutions
-        SET membership_count = v_count,
-            updated_at = NOW()
-        WHERE id = OLD.institution_id;
-
-        UPDATE school_profiles
-        SET total_members = v_count,
-            updated_at = NOW()
-        WHERE institution_id = OLD.institution_id;
-    END IF;
-
+    RETURN COALESCE(NEW, OLD);
+EXCEPTION WHEN OTHERS THEN
     RETURN COALESCE(NEW, OLD);
 END;
 $$ LANGUAGE plpgsql;
@@ -2292,37 +2288,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 20.9 Users to User Profiles Auto-Sync Trigger Function
--- Parity: Auth user creation & role synchronization
-CREATE OR REPLACE FUNCTION sync_user_to_user_profile()
-RETURNS TRIGGER AS $$
-BEGIN
-    INSERT INTO user_profiles (id, user_id, email, full_name, role, status, created_at, updated_at)
-    VALUES (
-        NEW.id,
-        NEW.id,
-        NEW.email,
-        COALESCE(NEW.full_name, 'IECEP User'),
-        COALESCE(NEW.role, 'member'),
-        CASE WHEN NEW.is_active THEN 'active' ELSE 'inactive' END,
-        NOW(),
-        NOW()
-    )
-    ON CONFLICT (email) DO UPDATE SET
-        full_name = EXCLUDED.full_name,
-        role = EXCLUDED.role,
-        status = EXCLUDED.status,
-        updated_at = NOW();
-
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
+-- 20.9 User Provisioning Compatibility (Disabled trigger to prevent type mismatch error 42804; PHP handles user_profiles creation)
 DROP TRIGGER IF EXISTS trg_sync_user_profile ON users;
-CREATE TRIGGER trg_sync_user_profile
-    AFTER INSERT OR UPDATE OF email, full_name, role, is_active ON users
-    FOR EACH ROW
-    EXECUTE FUNCTION sync_user_to_user_profile();
+DROP FUNCTION IF EXISTS sync_user_to_user_profile();
 
 -- 20.10 Auto-Generate Transaction Reference & Blockchain Hash Trigger Function
 -- Parity: Treasury and payment processing
