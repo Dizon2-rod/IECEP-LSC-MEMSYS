@@ -229,6 +229,7 @@ CREATE TABLE IF NOT EXISTS members (
     year_level TEXT DEFAULT '4th Year',
     student_number TEXT,
     membership_type TEXT DEFAULT 'student' CHECK (membership_type IN ('student', 'associate', 'regular', 'senior', 'fellow', 'honorary')),
+    member_type TEXT DEFAULT 'new',
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'pending', 'expired', 'suspended')),
     payment_status TEXT DEFAULT 'paid' CHECK (payment_status IN ('paid', 'pending', 'waived', 'unpaid', 'overdue')),
     avatar_url TEXT,
@@ -258,6 +259,7 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS program TEXT DEFAULT 'Bachelor of S
 ALTER TABLE members ADD COLUMN IF NOT EXISTS year_level TEXT DEFAULT '4th Year';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS student_number TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS membership_type TEXT DEFAULT 'student';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS member_type TEXT DEFAULT 'new';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'paid';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS avatar_url TEXT;
@@ -745,6 +747,8 @@ ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS constitution_by_laws T
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS officers_cvs TEXT;
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS organizational_chart TEXT;
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS member_directory TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS institution_id UUID REFERENCES institutions(id) ON DELETE SET NULL;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS member_count INTEGER DEFAULT 0;
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS total_members INTEGER DEFAULT 0;
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS new_members INTEGER DEFAULT 0;
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS old_members INTEGER DEFAULT 0;
@@ -763,6 +767,27 @@ ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ
 CREATE INDEX IF NOT EXISTS idx_pending_aff_status ON pending_affiliations(status);
 CREATE INDEX IF NOT EXISTS idx_pending_aff_email ON pending_affiliations(email);
 CREATE INDEX IF NOT EXISTS idx_pending_aff_contact_email ON pending_affiliations(contact_email);
+CREATE INDEX IF NOT EXISTS idx_pending_aff_institution ON pending_affiliations(institution_id);
+
+CREATE TABLE IF NOT EXISTS institution_documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID NOT NULL REFERENCES institutions(id) ON DELETE CASCADE,
+    application_id UUID REFERENCES pending_affiliations(id) ON DELETE SET NULL,
+    document_type TEXT NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    uploaded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE institution_documents ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE institution_documents ADD COLUMN IF NOT EXISTS application_id UUID;
+ALTER TABLE institution_documents ADD COLUMN IF NOT EXISTS document_type TEXT;
+ALTER TABLE institution_documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);
+ALTER TABLE institution_documents ADD COLUMN IF NOT EXISTS file_path VARCHAR(500);
+ALTER TABLE institution_documents ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_institution_documents_inst ON institution_documents(institution_id);
+CREATE INDEX IF NOT EXISTS idx_institution_documents_app ON institution_documents(application_id);
 
 DO $$
 BEGIN
@@ -838,7 +863,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     receipt_url TEXT,
     receipt_path TEXT,
     blockchain_hash TEXT,
-    status TEXT DEFAULT 'completed' CHECK (status IN ('pending', 'completed', 'verified', 'rejected', 'refunded')),
+    status TEXT DEFAULT 'completed' CHECK (status IN ('pending', 'paid', 'completed', 'verified', 'rejected', 'refunded', 'cancelled', 'canceled', 'failed')),
     notes TEXT,
     verified_by UUID,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -862,6 +887,7 @@ ALTER TABLE transactions ADD COLUMN IF NOT EXISTS receipt_url TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS receipt_path TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS blockchain_hash TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'completed';
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS synchronized_at TIMESTAMPTZ NULL;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS verified_by UUID;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
@@ -871,6 +897,81 @@ CREATE INDEX IF NOT EXISTS idx_tx_status ON transactions(status);
 CREATE INDEX IF NOT EXISTS idx_tx_member ON transactions(member_id);
 CREATE INDEX IF NOT EXISTS idx_tx_receipt_number ON transactions(receipt_number);
 CREATE INDEX IF NOT EXISTS idx_tx_event_id ON transactions(event_id);
+CREATE INDEX IF NOT EXISTS idx_tx_institution_status ON transactions(institution_id, status);
+
+DO $$
+BEGIN
+    ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_status_check;
+    ALTER TABLE transactions ADD CONSTRAINT transactions_status_check
+        CHECK (status IN ('pending', 'paid', 'completed', 'verified', 'rejected', 'refunded', 'cancelled', 'canceled', 'failed'));
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+CREATE TABLE IF NOT EXISTS institution_financial_totals (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID NOT NULL UNIQUE REFERENCES institutions(id) ON DELETE CASCADE,
+    total_paid NUMERIC(12,2) NOT NULL DEFAULT 0,
+    total_pending NUMERIC(12,2) NOT NULL DEFAULT 0,
+    total_refunded NUMERIC(12,2) NOT NULL DEFAULT 0,
+    total_cancelled NUMERIC(12,2) NOT NULL DEFAULT 0,
+    grand_total_all_time NUMERIC(12,2) NOT NULL DEFAULT 0,
+    current_year_total NUMERIC(12,2) NOT NULL DEFAULT 0,
+    transaction_count INTEGER NOT NULL DEFAULT 0,
+    last_synced_at TIMESTAMPTZ NULL
+);
+
+CREATE TABLE IF NOT EXISTS financial_audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID REFERENCES institutions(id) ON DELETE SET NULL,
+    transaction_id TEXT,
+    action TEXT NOT NULL,
+    old_value JSONB,
+    new_value JSONB,
+    performed_by UUID,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_fin_audit_institution ON financial_audit_logs(institution_id);
+CREATE INDEX IF NOT EXISTS idx_fin_audit_transaction ON financial_audit_logs(transaction_id);
+
+CREATE OR REPLACE FUNCTION audit_transaction_financial_change()
+RETURNS TRIGGER AS $$
+DECLARE
+    old_payload JSONB;
+    new_payload JSONB;
+    audit_action TEXT;
+BEGIN
+    IF TG_OP = 'DELETE' THEN
+        old_payload := jsonb_build_object('amount', OLD.amount, 'status', OLD.status, 'institution_id', OLD.institution_id, 'event_id', OLD.event_id);
+        INSERT INTO financial_audit_logs (institution_id, transaction_id, action, old_value, new_value, performed_by)
+        VALUES (OLD.institution_id, OLD.transaction_id, 'deleted', old_payload, NULL, COALESCE(OLD.verified_by, auth.uid()));
+        RETURN OLD;
+    END IF;
+
+    new_payload := jsonb_build_object('amount', NEW.amount, 'status', NEW.status, 'institution_id', NEW.institution_id, 'event_id', NEW.event_id);
+    IF TG_OP = 'INSERT' THEN
+        audit_action := 'created';
+    ELSIF OLD.status IS DISTINCT FROM NEW.status AND NEW.status IN ('paid', 'completed', 'verified') THEN
+        audit_action := 'marked_paid';
+    ELSIF OLD.status IS DISTINCT FROM NEW.status AND NEW.status = 'refunded' THEN
+        audit_action := 'refunded';
+    ELSE
+        audit_action := 'updated';
+    END IF;
+
+    IF TG_OP = 'INSERT' OR OLD.amount IS DISTINCT FROM NEW.amount OR OLD.status IS DISTINCT FROM NEW.status OR OLD.institution_id IS DISTINCT FROM NEW.institution_id OR OLD.event_id IS DISTINCT FROM NEW.event_id THEN
+        old_payload := CASE WHEN TG_OP = 'UPDATE' THEN jsonb_build_object('amount', OLD.amount, 'status', OLD.status, 'institution_id', OLD.institution_id, 'event_id', OLD.event_id) ELSE NULL END;
+        INSERT INTO financial_audit_logs (institution_id, transaction_id, action, old_value, new_value, performed_by)
+        VALUES (NEW.institution_id, NEW.transaction_id, audit_action, old_payload, new_payload, COALESCE(NEW.verified_by, auth.uid()));
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_audit_transaction_financial_change ON transactions;
+CREATE TRIGGER trg_audit_transaction_financial_change
+AFTER INSERT OR UPDATE OR DELETE ON transactions
+FOR EACH ROW EXECUTE FUNCTION audit_transaction_financial_change();
 
 CREATE TABLE IF NOT EXISTS financial_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -33,6 +33,7 @@ $ROLE_NAVIGATION = [
                 ['icon' => 'fa-chart-bar', 'label' => 'Financial Reports', 'url' => 'portal/admin/financial/reports.php'],
                 ['icon' => 'fa-receipt', 'label' => 'Receipt Verification', 'url' => 'portal/admin/financial/receipt.php'],
                 ['icon' => 'fa-scale-balanced', 'label' => 'Transparency Ledger', 'url' => 'portal/admin/financial/transparency.php'],
+                ['icon' => 'fa-arrows-rotate', 'label' => 'Financial Audit & Sync', 'url' => 'portal/admin/financial/audit-sync.php'],
             ]],
 
             ['icon' => 'fa-folder-open', 'label' => 'Documents', 'url' => 'portal/admin/documents/repository.php', 'children' => [
@@ -99,6 +100,7 @@ $ROLE_NAVIGATION = [
                 ['icon' => 'fa-chart-bar', 'label' => 'Financial Reports', 'url' => 'portal/admin/financial/reports.php'],
                 ['icon' => 'fa-receipt', 'label' => 'Receipt Verification', 'url' => 'portal/admin/financial/receipt.php'],
                 ['icon' => 'fa-scale-balanced', 'label' => 'Transparency Ledger', 'url' => 'portal/admin/financial/transparency.php'],
+                ['icon' => 'fa-arrows-rotate', 'label' => 'Financial Audit & Sync', 'url' => 'portal/admin/financial/audit-sync.php'],
             ]],
 
             ['icon' => 'fa-folder-open', 'label' => 'Documents', 'url' => 'portal/admin/documents/repository.php', 'children' => [

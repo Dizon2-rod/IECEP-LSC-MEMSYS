@@ -19,6 +19,8 @@ if (!function_exists('uploadToSupabaseStorage')) {
 }
 
 header('Content-Type: application/json');
+
+try {
     $method = $_SERVER['REQUEST_METHOD'];
     $action = $_GET['action'] ?? '';
     
@@ -92,7 +94,13 @@ header('Content-Type: application/json');
                 
                 // Record on blockchain
                 if (isset($GLOBALS['blockchain'])) {
-                    $GLOBALS['blockchain']->hashDocument($supabaseUrl, $fileName, $documentId);
+                    $GLOBALS['blockchain']->record('document_hash', $documentId, [
+                        'document_id' => $documentId,
+                        'file_name' => $fileName,
+                        'file_path' => $supabaseUrl,
+                        'file_hash' => $fileHash,
+                        'action' => 'uploaded'
+                    ]);
                 }
                 
                 echo json_encode([
@@ -286,7 +294,6 @@ header('Content-Type: application/json');
         default:
             throw new Exception('Method not allowed');
     }
-    
 } catch (Exception $e) {
     http_response_code(400);
     echo json_encode([

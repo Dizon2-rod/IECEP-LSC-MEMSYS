@@ -36,6 +36,7 @@ if ($supabase) {
             if (is_array($institutions) && isset($institutions[0]['name'])) {
                 $schoolName = $institutions[0]['name'];
                 $schoolAcronym = $institutions[0]['acronym'] ?? 'IECEP-SC';
+                $institutionMembershipCount = (int)($institutions[0]['membership_count'] ?? 0);
             }
         } else {
             $institutions = $supabase->select('institutions', ['status' => 'eq.active', 'limit' => 1]);
@@ -43,6 +44,7 @@ if ($supabase) {
                 $institutionId = $institutions[0]['id'];
                 $schoolName = $institutions[0]['name'] ?? $schoolName;
                 $schoolAcronym = $institutions[0]['acronym'] ?? 'IECEP-SC';
+                $institutionMembershipCount = (int)($institutions[0]['membership_count'] ?? 0);
             }
         }
     } catch (Exception $e) {
@@ -60,6 +62,7 @@ $totalPaid = 0;
 $recentMembers = [];
 $recentBatches = [];
 $upcomingEvents = [];
+$institutionMembershipCount = null;
 
 if ($institutionId && $supabase) {
     // 1. Members
@@ -112,7 +115,7 @@ if ($institutionId && $supabase) {
     } catch (Exception $e) {}
 }
 
-$memberCount = count($membersList);
+$memberCount = $institutionMembershipCount ?? count($membersList);
 $activePaidMembers = count(array_filter($membersList, fn($m) => strtolower($m['payment_status'] ?? '') === 'paid' || !empty($m['is_paid'])));
 $complianceRate = ($memberCount > 0) ? round(($activePaidMembers / $memberCount) * 100) : 0;
 ?>

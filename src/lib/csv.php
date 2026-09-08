@@ -8,6 +8,72 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 require_once __DIR__ . '/../../bootstrap.php';
 class CsvService
 {
+    public function parseMemberDirectory(string $filePath): array
+    {
+        if (!file_exists($filePath)) {
+            return ['error' => true, 'message' => 'Member directory file not found'];
+        }
+
+        try {
+            $sheet = IOFactory::load($filePath)->getActiveSheet();
+            $rows = $sheet->toArray('', true, true, false);
+            if (empty($rows)) {
+                return ['error' => true, 'message' => 'Member directory is empty'];
+            }
+
+            $headerAliases = [
+                'full_name' => ['full_name', 'fullname', 'name', 'student_name', 'member_name'],
+                'email' => ['email', 'email_address', 'e_mail'],
+                'year_level' => ['year_level', 'year', 'level', 'yearlevel'],
+                'member_type' => ['member_type', 'membership_type', 'type'],
+                'student_number' => ['student_number', 'student_id', 'id_number', 'student_no'],
+                'course' => ['course', 'program', 'degree']
+            ];
+
+            $headers = array_map(static function ($header): string {
+                $header = strtolower(trim((string)$header));
+                return preg_replace('/[^a-z0-9]+/', '_', $header) ?: '';
+            }, $rows[0]);
+            $indexes = [];
+            foreach ($headerAliases as $field => $aliases) {
+                foreach ($headers as $index => $header) {
+                    if (in_array($header, $aliases, true)) {
+                        $indexes[$field] = $index;
+                        break;
+                    }
+                }
+            }
+
+            if (!isset($indexes['full_name'], $indexes['email'])) {
+                return ['error' => true, 'message' => 'Member directory must contain full name and email columns'];
+            }
+
+            $members = [];
+            $seenEmails = [];
+            foreach (array_slice($rows, 1) as $rowNumber => $row) {
+                $fullName = trim((string)($row[$indexes['full_name']] ?? ''));
+                $email = strtolower(trim((string)($row[$indexes['email']] ?? '')));
+                if ($fullName === '' || !filter_var($email, FILTER_VALIDATE_EMAIL) || isset($seenEmails[$email])) {
+                    continue;
+                }
+                $seenEmails[$email] = true;
+                $members[] = [
+                    'full_name' => $fullName,
+                    'email' => $email,
+                    'year_level' => trim((string)($row[$indexes['year_level']] ?? '')),
+                    'member_type' => strtolower(trim((string)($row[$indexes['member_type']] ?? 'new'))) ?: 'new',
+                    'student_number' => trim((string)($row[$indexes['student_number']] ?? '')),
+                    'course' => trim((string)($row[$indexes['course']] ?? ''))
+                ];
+            }
+
+            return ['error' => false, 'data' => $members, 'headers' => $headers];
+        } catch (\Throwable $e) {
+            error_log('Member directory parse error: ' . $e->getMessage());
+            return ['error' => true, 'message' => 'Unable to parse member directory: ' . $e->getMessage()];
+        }
+    }
+
     public function parse(string $filePath, bool $hasHeader = true): array
     {
         if (!file_exists($filePath)) {
