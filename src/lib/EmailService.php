@@ -57,22 +57,16 @@ class EmailService
             $mail = new PHPMailer(true);
             $mail->isSMTP();
             $rawHost = $options['host'] ?? $this->config['email']['host'];
-            // On Windows systems without working IPv6, connecting to smtp.gmail.com can fail or hang
-            // because PHP tries IPv6 first. Resolving IPv4 explicitly provides an instant connection.
-            if ($rawHost === 'smtp.gmail.com') {
-                $ipv4 = gethostbyname('smtp.gmail.com');
-                if (!empty($ipv4) && filter_var($ipv4, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-                    $mail->Host = $ipv4 . ';smtp.gmail.com';
-                } else {
-                    $mail->Host = $rawHost;
-                }
-            } else {
-                $mail->Host = $rawHost;
-            }
+            $mail->Host = $rawHost ?: 'smtp.gmail.com';
 
-            $mail->Port = (int)($options['port'] ?? $this->config['email']['port']);
+            $port = (int)($options['port'] ?? $this->config['email']['port']);
+            $mail->Port = $port;
             $mail->SMTPAuth = true;
-            $mail->SMTPSecure = $options['secure'] ?? PHPMailer::ENCRYPTION_STARTTLS;
+            if (isset($options['secure'])) {
+                $mail->SMTPSecure = $options['secure'];
+            } else {
+                $mail->SMTPSecure = ($port === 465) ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
+            }
             $mail->SMTPAutoTLS = $options['auto_tls'] ?? true;
             $mail->AuthType = $options['auth_type'] ?? 'LOGIN';
             $cleanPassword = trim(str_replace(' ', '', $this->config['email']['password']));
@@ -90,17 +84,20 @@ class EmailService
                 error_log("WARNING: Gmail password does not appear to be an App Password (length=" . strlen($cleanPassword) . "). Gmail will reject standard passwords. Use a 16-character App Password.");
             }
             
-            // Gmail-specific connection settings for better compatibility
+            // Comprehensive SSL context options for OpenSSL compatibility on Windows/XAMPP
             $mail->SMTPOptions = array(
                 'ssl' => array(
                     'verify_peer' => false,
                     'verify_peer_name' => false,
-                    'allow_self_signed' => true
+                    'allow_self_signed' => true,
+                    'peer_name' => 'smtp.gmail.com',
+                    'SNI_enabled' => true,
+                    'SNI_server_name' => 'smtp.gmail.com'
                 )
             );
             
-            // Set SMTP timeout
-            $mail->Timeout = 15;
+            // Fast timeout to enable rapid fallback between ports
+            $mail->Timeout = 10;
             $mail->SMTPKeepAlive = false;
             
             // Disable SMTP debugging to prevent HTML output in JSON responses
@@ -264,6 +261,94 @@ class EmailService
         return false;
     }
 
+    /**
+     * Send email with automatic dual-transport fallback:
+     * 1. Primary SMTP (Port 587 STARTTLS / Port 465 SSL)
+     * 2. Fallback SMTP (Port 465 SSL / Port 587 STARTTLS)
+     * 3. HTTPS REST API (Port 443 - e.g. for cloud hosts like Railway where raw SMTP is blocked)
+     */
+    public function sendMailWithFallback(string $to, string $subject, string $htmlBody, string $altBody = '', ?callable $customizer = null): bool
+    {
+        $to = trim($to);
+        if (empty($to) || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            $this->lastError = "Invalid recipient email address: '$to'";
+            error_log("EmailService: " . $this->lastError);
+            return false;
+        }
+
+        $altBody = $altBody ?: strip_tags($htmlBody);
+        $primaryPort = (int)($this->config['email']['port'] ?: 587);
+        $fallbackPort = ($primaryPort === 465) ? 587 : 465;
+
+        // Transport 1: Primary SMTP Port
+        try {
+            $mail = $this->createMailer(['port' => $primaryPort]);
+            $mail->addAddress($to);
+            $mail->Subject = $subject;
+            $mail->Body = $htmlBody;
+            $mail->AltBody = $altBody;
+            if (is_callable($customizer)) {
+                $customizer($mail);
+            }
+            if ($mail->send()) {
+                error_log("EmailService: Email successfully delivered to $to via SMTP port $primaryPort [SUCCESS]");
+                $this->lastError = '';
+                return true;
+            }
+            $this->lastError = $mail->ErrorInfo ?: "SMTP port $primaryPort delivery failed";
+            error_log("EmailService: Primary port $primaryPort failed: " . $this->lastError . ". Retrying via fallback port $fallbackPort...");
+        } catch (\Throwable $e1) {
+            $this->lastError = $e1->getMessage();
+            error_log("EmailService: Primary port $primaryPort error: " . $e1->getMessage() . ". Retrying via fallback port $fallbackPort...");
+        }
+
+        // Transport 2: Fallback SMTP Port (e.g. Port 465 SSL)
+        try {
+            $mailRetry = $this->createMailer([
+                'port' => $fallbackPort,
+                'secure' => ($fallbackPort === 465) ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS
+            ]);
+            $mailRetry->addAddress($to);
+            $mailRetry->Subject = $subject;
+            $mailRetry->Body = $htmlBody;
+            $mailRetry->AltBody = $altBody;
+            if (is_callable($customizer)) {
+                $customizer($mailRetry);
+            }
+            if ($mailRetry->send()) {
+                error_log("EmailService: Email successfully delivered to $to via fallback SMTP port $fallbackPort [SUCCESS]");
+                $this->lastError = '';
+                return true;
+            }
+            $this->lastError = $mailRetry->ErrorInfo ?: "Fallback port $fallbackPort delivery failed";
+            error_log("EmailService: Fallback port $fallbackPort failed: " . $this->lastError);
+        } catch (\Throwable $e2) {
+            $this->lastError = $e2->getMessage();
+            error_log("EmailService: Fallback port $fallbackPort error: " . $e2->getMessage());
+        }
+
+        // Transport 3: HTTPS REST API (Port 443)
+        if ($this->hasHttpsApiConfigured()) {
+            error_log("EmailService: Attempting HTTPS REST API fallback for $to...");
+            if ($this->sendViaHttpsRestApi($to, $subject, $htmlBody, $altBody)) {
+                error_log("EmailService: Email successfully delivered to $to via HTTPS REST API [SUCCESS]");
+                $this->lastError = '';
+                return true;
+            }
+        }
+
+        error_log("EmailService: All delivery transports failed for $to. Last error: " . $this->lastError);
+        return false;
+    }
+
+    /**
+     * Generic send method - required by affiliation-revision.php and background jobs
+     */
+    public function send(string $to, string $subject, string $body, string $altBody = ''): bool
+    {
+        return $this->sendMailWithFallback($to, $subject, $body, $altBody);
+    }
+
     public function sendVerificationCode(string $to, string $code): bool
     {
         $formattedCode = implode(' ', str_split($code));
@@ -314,76 +399,7 @@ class EmailService
 </body>
 </html>";
 
-        // 1. If HTTPS REST API is configured (e.g. on Railway where SMTP is blocked), use it
-        if ($this->hasHttpsApiConfigured()) {
-            if ($this->sendViaHttpsRestApi($to, $subject, $htmlBody, $altBody)) {
-                return true;
-            }
-        }
-
-        // 2. Otherwise use SMTP (works on localhost / standard servers)
-        try {
-            $mail = $this->createMailer();
-            $mail->addAddress($to);
-            $mail->Subject = $subject;
-            $mail->Body = $htmlBody;
-            $mail->AltBody = $altBody;
-
-            $result = $mail->send();
-            if (!$result) {
-                $this->lastError = $mail->ErrorInfo ?: 'Unknown mailer error';
-                error_log("PHPMailer Error Info: " . $this->lastError . ". Retrying via port 465 SMTPS...");
-                try {
-                    $retryMail = $this->createMailer([
-                        'port' => 465,
-                        'secure' => PHPMailer::ENCRYPTION_SMTPS
-                    ]);
-                    $retryMail->addAddress($to);
-                    $retryMail->Subject = $mail->Subject;
-                    $retryMail->Body = $mail->Body;
-                    $retryMail->AltBody = $mail->AltBody;
-                    $result = $retryMail->send();
-                    if ($result) {
-                        error_log("Email verification sent to $to via port 465: SUCCESS");
-                        return true;
-                    }
-                } catch (\Throwable $fbEx) {
-                    error_log("Port 465 fallback also failed: " . $fbEx->getMessage());
-                }
-            }
-            error_log("Email verification sent to $to: " . ($result ? 'SUCCESS' : 'FAILED'));
-            return (bool)$result;
-        } catch (\Throwable $e) {
-            $this->lastError = $e->getMessage();
-            error_log("Email verification primary attempt error: " . $e->getMessage() . ". Retrying via port 465 SMTPS...");
-            try {
-                $retryMail = $this->createMailer([
-                    'port' => 465,
-                    'secure' => PHPMailer::ENCRYPTION_SMTPS
-                ]);
-                $retryMail->addAddress($to);
-                $retryMail->Subject = 'Your IECEP-LSC Email Verification Code';
-                $formattedCode = implode(' ', str_split($code));
-                $retryMail->Body = "
-                <div style='background:#0B1D4A;padding:30px;text-align:center;color:#ffffff;font-family:Arial,sans-serif;'>
-                    <h2 style='color:#D4AF37;margin:0 0 10px;'>IECEP &ndash; Laguna Student Chapter</h2>
-                    <h3 style='margin:0 0 20px;color:#ffffff;'>Email Verification Code</h3>
-                    <div style='background:#ffffff;color:#0B1D4A;padding:15px;border-radius:8px;display:inline-block;font-size:28px;font-weight:bold;letter-spacing:6px;'>
-                        {$formattedCode}
-                    </div>
-                    <p style='color:#cbd5e1;font-size:13px;margin-top:20px;'>This code will expire in 10 minutes.</p>
-                </div>";
-                $retryMail->AltBody = "Your IECEP-LSC email verification code is: {$code} (Valid for 10 minutes)";
-                if ($retryMail->send()) {
-                    error_log("Email verification sent to $to via port 465 fallback: SUCCESS");
-                    return true;
-                }
-            } catch (\Throwable $fbEx2) {
-                error_log("Port 465 fallback also failed: " . $fbEx2->getMessage());
-                $this->lastError = $fbEx2->getMessage();
-            }
-            return false;
-        }
+        return $this->sendMailWithFallback($to, $subject, $htmlBody, $altBody);
     }
 
     public function sendSchoolAccountCredentials(string $to, string $institutionName, string $password, string $contactPerson = '', ?string $loginUrl = null): bool
@@ -1666,67 +1682,54 @@ class EmailService
     public function sendAffiliationRevisionRequest(string $toEmail, string $institutionName, string $contactPerson, array $requestedFiles, string $instructions, string $revisionUrl): bool
     {
         $toEmail = trim($toEmail);
-        try {
-            error_log("Preparing to send affiliation revision request email to: {$toEmail} for '{$institutionName}'");
-            $mail = $this->createMailer();
-            $mail->addAddress($toEmail, $contactPerson ?: $institutionName);
-            $mail->Subject = "Action Required: Revisions Requested for {$institutionName} Affiliation Application";
+        error_log("Preparing to send affiliation revision request email to: {$toEmail} for '{$institutionName}'");
+        $subject = "Action Required: Revisions Requested for {$institutionName} Affiliation Application";
 
-            $fileListHtml = '';
-            foreach ($requestedFiles as $fKey => $fLabel) {
-                $fileListHtml .= "<li style='margin-bottom:6px;'><strong>" . htmlspecialchars($fLabel) . "</strong></li>";
-            }
-
-            $instructionsHtml = !empty($instructions) ? "<div style='background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:14px 18px;margin:18px 0;'><strong style='color:#92400E;display:block;margin-bottom:4px;'>📌 Secretariat Notes & Instructions:</strong><p style='margin:0;color:#78350F;font-size:14px;line-height:1.5;'>" . nl2br(htmlspecialchars($instructions)) . "</p></div>" : "";
-
-            $mail->Body = "
-                <div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:600px;margin:0 auto;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);'>
-                    <div style='background:#0B1D4A;padding:24px;text-align:center;'>
-                        <h2 style='color:#FFFFFF;margin:0;font-size:20px;font-weight:700;'>IECEP Laguna Student Chapter</h2>
-                        <p style='color:#D4AF37;margin:4px 0 0;font-size:13px;font-weight:600;'>Institutional Affiliation Review Notice</p>
-                    </div>
-                    <div style='padding:28px 24px;color:#334155;font-size:15px;line-height:1.6;'>
-                        <p style='margin-top:0;'>Dear <strong>" . htmlspecialchars($contactPerson ?: 'School Chapter Representative') . "</strong>,</p>
-                        <p>Thank you for submitting the Chapter Affiliation Application for <strong>" . htmlspecialchars($institutionName) . "</strong>.</p>
-                        <p>Upon evaluation by the IECEP-LSC Registration Committee, some document(s) require your attention, correction, or updated re-upload:</p>
-                        
-                        <div style='background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:16px 20px;margin:18px 0;'>
-                            <strong style='color:#0F172A;font-size:14px;'>Documents Requiring Replacement / Update:</strong>
-                            <ul style='margin:10px 0 0;padding-left:20px;color:#0B1D4A;'>
-                                {$fileListHtml}
-                            </ul>
-                        </div>
-
-                        {$instructionsHtml}
-
-                        <p>Please click the button below to open your secure revision link and re-upload only the requested replacement file(s):</p>
-
-                        <div style='text-align:center;margin:28px 0;'>
-                            <a href='{$revisionUrl}' style='display:inline-block;padding:14px 32px;background:#0B1D4A;color:#FFFFFF;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;box-shadow:0 4px 12px rgba(11,29,74,0.2);'>
-                                📂 Re-Upload Corrected Documents
-                            </a>
-                        </div>
-
-                        <p style='font-size:13px;color:#64748B;text-align:center;'>Or copy and paste this link into your browser:<br><a href='{$revisionUrl}' style='color:#2563EB;word-break:break-all;'>{$revisionUrl}</a></p>
-                        
-                        <hr style='border:none;border-top:1px solid #E2E8F0;margin:24px 0;'>
-                        <p style='font-size:12px;color:#94A3B8;margin-bottom:0;'>Once resubmitted, the committee will re-evaluate your application for accreditation and membership provisioning.</p>
-                    </div>
-                </div>";
-
-            $result = $mail->send();
-            if (!$result) {
-                $this->lastError = $mail->ErrorInfo ?: 'Unknown PHPMailer error';
-                error_log("Revision email to {$toEmail} failed: " . $this->lastError);
-            } else {
-                error_log("Revision email successfully sent to {$toEmail}");
-            }
-            return $result;
-        } catch (\Throwable $e) {
-            $this->lastError = $e->getMessage();
-            error_log("Email error (send affiliation revision) to {$toEmail}: " . $e->getMessage());
-            return false;
+        $fileListHtml = '';
+        foreach ($requestedFiles as $fKey => $fLabel) {
+            $fileListHtml .= "<li style='margin-bottom:6px;'><strong>" . htmlspecialchars($fLabel) . "</strong></li>";
         }
+
+        $instructionsHtml = !empty($instructions) ? "<div style='background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:14px 18px;margin:18px 0;'><strong style='color:#92400E;display:block;margin-bottom:4px;'>📌 Secretariat Notes & Instructions:</strong><p style='margin:0;color:#78350F;font-size:14px;line-height:1.5;'>" . nl2br(htmlspecialchars($instructions)) . "</p></div>" : "";
+
+        $htmlBody = "
+            <div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:600px;margin:0 auto;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.05);'>
+                <div style='background:#0B1D4A;padding:24px;text-align:center;'>
+                    <h2 style='color:#FFFFFF;margin:0;font-size:20px;font-weight:700;'>IECEP Laguna Student Chapter</h2>
+                    <p style='color:#D4AF37;margin:4px 0 0;font-size:13px;font-weight:600;'>Institutional Affiliation Review Notice</p>
+                </div>
+                <div style='padding:28px 24px;color:#334155;font-size:15px;line-height:1.6;'>
+                    <p style='margin-top:0;'>Dear <strong>" . htmlspecialchars($contactPerson ?: 'School Chapter Representative') . "</strong>,</p>
+                    <p>Thank you for submitting the Chapter Affiliation Application for <strong>" . htmlspecialchars($institutionName) . "</strong>.</p>
+                    <p>Upon evaluation by the IECEP-LSC Registration Committee, some document(s) require your attention, correction, or updated re-upload:</p>
+                    
+                    <div style='background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;padding:16px 20px;margin:18px 0;'>
+                        <strong style='color:#0F172A;font-size:14px;'>Documents Requiring Replacement / Update:</strong>
+                        <ul style='margin:10px 0 0;padding-left:20px;color:#0B1D4A;'>
+                            {$fileListHtml}
+                        </ul>
+                    </div>
+
+                    {$instructionsHtml}
+
+                    <p>Please click the button below to open your secure revision link and re-upload only the requested replacement file(s):</p>
+
+                    <div style='text-align:center;margin:28px 0;'>
+                        <a href='{$revisionUrl}' style='display:inline-block;padding:14px 32px;background:#0B1D4A;color:#FFFFFF;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;box-shadow:0 4px 12px rgba(11,29,74,0.2);'>
+                            📂 Re-Upload Corrected Documents
+                        </a>
+                    </div>
+
+                    <p style='font-size:13px;color:#64748B;text-align:center;'>Or copy and paste this link into your browser:<br><a href='{$revisionUrl}' style='color:#2563EB;word-break:break-all;'>{$revisionUrl}</a></p>
+                    
+                    <hr style='border:none;border-top:1px solid #E2E8F0;margin:24px 0;'>
+                    <p style='font-size:12px;color:#94A3B8;margin-bottom:0;'>Once resubmitted, the committee will re-evaluate your application for accreditation and membership provisioning.</p>
+                </div>
+            </div>";
+
+        $altBody = "Action Required: Revisions Requested for {$institutionName} Affiliation Application\n\nDear {$contactPerson},\n\nPlease access your revision link to replace the requested files:\n{$revisionUrl}\n\nInstructions: " . strip_tags($instructions);
+
+        return $this->sendMailWithFallback($toEmail, $subject, $htmlBody, $altBody);
     }
 
     /**
@@ -1735,81 +1738,80 @@ class EmailService
     public function sendAffiliationRejectionNotice(string $toEmail, string $institutionName, string $contactPerson, string $reason): bool
     {
         $toEmail = trim($toEmail);
-        try {
-            error_log("Preparing to send affiliation rejection email to: {$toEmail} for '{$institutionName}'");
-            $mail = $this->createMailer();
-            $mail->addAddress($toEmail, $contactPerson ?: $institutionName);
-            $mail->Subject = "Update on {$institutionName} Affiliation Application - IECEP-LSC";
+        error_log("Preparing to send affiliation rejection email to: {$toEmail} for '{$institutionName}'");
+        $subject = "Update on {$institutionName} Affiliation Application - IECEP-LSC";
 
-            $mail->Body = "
-                <div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:600px;margin:0 auto;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;'>
-                    <div style='background:#0B1D4A;padding:24px;text-align:center;'>
-                        <h2 style='color:#FFFFFF;margin:0;font-size:20px;'>IECEP Laguna Student Chapter</h2>
-                        <p style='color:#D4AF37;margin:4px 0 0;font-size:13px;'>Affiliation Application Status</p>
+        $htmlBody = "
+            <div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:600px;margin:0 auto;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;'>
+                <div style='background:#0B1D4A;padding:24px;text-align:center;'>
+                    <h2 style='color:#FFFFFF;margin:0;font-size:20px;'>IECEP Laguna Student Chapter</h2>
+                    <p style='color:#D4AF37;margin:4px 0 0;font-size:13px;'>Affiliation Application Status</p>
+                </div>
+                <div style='padding:28px 24px;color:#334155;font-size:15px;line-height:1.6;'>
+                    <p>Dear <strong>" . htmlspecialchars($contactPerson ?: 'School Representative') . "</strong>,</p>
+                    <p>Thank you for your interest in affiliating <strong>" . htmlspecialchars($institutionName) . "</strong> with IECEP Laguna Student Chapter.</p>
+                    <p>After review by the Secretariat, we regret to inform you that your application cannot be approved at this time due to the following reason:</p>
+                    
+                    <div style='background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:16px 20px;margin:18px 0;color:#991B1B;'>
+                        <strong>Reason / Notes:</strong><br>
+                        " . nl2br(htmlspecialchars($reason ?: 'Incomplete credentials or ineligible academic term.')) . "
                     </div>
-                    <div style='padding:28px 24px;color:#334155;font-size:15px;line-height:1.6;'>
-                        <p>Dear <strong>" . htmlspecialchars($contactPerson ?: 'School Representative') . "</strong>,</p>
-                        <p>Thank you for your interest in affiliating <strong>" . htmlspecialchars($institutionName) . "</strong> with IECEP Laguna Student Chapter.</p>
-                        <p>After review by the Secretariat, we regret to inform you that your application cannot be approved at this time due to the following reason:</p>
-                        
-                        <div style='background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:16px 20px;margin:18px 0;color:#991B1B;'>
-                            <strong>Reason / Notes:</strong><br>
-                            " . nl2br(htmlspecialchars($reason ?: 'Incomplete credentials or ineligible academic term.')) . "
-                        </div>
 
-                        <p>If you believe this is in error or wish to re-apply, please contact the secretariat at <a href='mailto:lspuscc.adminece@gmail.com' style='color:#2563EB;'>lspuscc.adminece@gmail.com</a>.</p>
-                    </div>
-                </div>";
+                    <p>If you believe this is in error or wish to re-apply, please contact the secretariat at <a href='mailto:lspuscc.adminece@gmail.com' style='color:#2563EB;'>lspuscc.adminece@gmail.com</a>.</p>
+                </div>
+            </div>";
 
-            $result = $mail->send();
-            if (!$result) {
-                $this->lastError = $mail->ErrorInfo ?: 'Unknown PHPMailer error';
-                error_log("Rejection email to {$toEmail} failed: " . $this->lastError);
-            } else {
-                error_log("Rejection email successfully sent to {$toEmail}");
-            }
-            return $result;
-        } catch (\Throwable $e) {
-            $this->lastError = $e->getMessage();
-            error_log("Email error (send affiliation rejection) to {$toEmail}: " . $e->getMessage());
-            return false;
-        }
+        $altBody = "Affiliation Application Status - {$institutionName}\n\nDear {$contactPerson},\n\nYour application cannot be approved at this time.\nReason: " . strip_tags($reason);
+
+        return $this->sendMailWithFallback($toEmail, $subject, $htmlBody, $altBody);
     }
 
     /**
-     * Send Confirmation to applicant when they resubmit revised files
+     * Send Confirmation to applicant when they resubmit revised files and notify admin
      */
     public function sendAffiliationRevisionResubmitted(string $toEmail, string $institutionName, string $contactPerson): bool
     {
-        try {
-            $mail = $this->createMailer();
-            $mail->addAddress($toEmail, $contactPerson ?: $institutionName);
-            $mail->Subject = "Revised Documents Received: {$institutionName} Affiliation Application";
-
-            $mail->Body = "
-                <div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:600px;margin:0 auto;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;'>
-                    <div style='background:#0B1D4A;padding:24px;text-align:center;'>
-                        <h2 style='color:#FFFFFF;margin:0;font-size:20px;'>IECEP Laguna Student Chapter</h2>
-                        <p style='color:#D4AF37;margin:4px 0 0;font-size:13px;'>Affiliation Resubmission Acknowledged</p>
+        $subject = "Revised Documents Received: {$institutionName} Affiliation Application";
+        $htmlBody = "
+            <div style='font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,sans-serif;max-width:600px;margin:0 auto;background:#FFFFFF;border:1px solid #E2E8F0;border-radius:12px;overflow:hidden;'>
+                <div style='background:#0B1D4A;padding:24px;text-align:center;'>
+                    <h2 style='color:#FFFFFF;margin:0;font-size:20px;'>IECEP Laguna Student Chapter</h2>
+                    <p style='color:#D4AF37;margin:4px 0 0;font-size:13px;'>Affiliation Resubmission Acknowledged</p>
+                </div>
+                <div style='padding:28px 24px;color:#334155;font-size:15px;line-height:1.6;'>
+                    <p>Dear <strong>" . htmlspecialchars($contactPerson ?: 'School Representative') . "</strong>,</p>
+                    <p>We have successfully received your updated and replacement documents for <strong>" . htmlspecialchars($institutionName) . "</strong>.</p>
+                    <p>Your application status is now updated to <strong>Resubmitted / Under Re-Evaluation</strong>. The Registration Committee will review your updated submission shortly.</p>
+                    
+                    <div style='background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:14px 18px;margin:18px 0;color:#065F46;'>
+                        <i class='fas fa-check-circle'></i> <strong>Status:</strong> Documents received and queued for committee review.
                     </div>
-                    <div style='padding:28px 24px;color:#334155;font-size:15px;line-height:1.6;'>
-                        <p>Dear <strong>" . htmlspecialchars($contactPerson ?: 'School Representative') . "</strong>,</p>
-                        <p>We have successfully received your updated and replacement documents for <strong>" . htmlspecialchars($institutionName) . "</strong>.</p>
-                        <p>Your application status is now updated to <strong>Resubmitted / Under Re-Evaluation</strong>. The Registration Committee will review your updated submission shortly.</p>
-                        
-                        <div style='background:#ECFDF5;border:1px solid #A7F3D0;border-radius:8px;padding:14px 18px;margin:18px 0;color:#065F46;'>
-                            <i class='fas fa-check-circle'></i> <strong>Status:</strong> Documents received and queued for committee review.
-                        </div>
 
-                        <p>You will receive another update as soon as the final accreditation is granted.</p>
-                    </div>
+                    <p>You will receive another update as soon as the final accreditation is granted.</p>
+                </div>
+            </div>";
+
+        $altBody = "Revised Documents Received: {$institutionName}\n\nDear {$contactPerson},\n\nWe have received your resubmitted affiliation documents and queued them for committee re-evaluation.";
+
+        // Send confirmation to applicant
+        $res = $this->sendMailWithFallback($toEmail, $subject, $htmlBody, $altBody);
+
+        // Also notify the admin account
+        $adminEmail = defined('SMTP_FROM_EMAIL') ? SMTP_FROM_EMAIL : 'lspuscc.adminece@gmail.com';
+        if (!empty($adminEmail) && strtolower($adminEmail) !== strtolower($toEmail)) {
+            $adminSubject = "[Admin Alert] {$institutionName} Resubmitted Revised Affiliation Documents";
+            $adminHtml = "
+                <div style='font-family:Arial,sans-serif;padding:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;'>
+                    <h3 style='color:#0B1D4A;margin-top:0;'>Institutional Affiliation Resubmission</h3>
+                    <p><strong>Institution:</strong> " . htmlspecialchars($institutionName) . "</p>
+                    <p><strong>Contact Person:</strong> " . htmlspecialchars($contactPerson) . " (" . htmlspecialchars($toEmail) . ")</p>
+                    <p><strong>Timestamp:</strong> " . date('Y-m-d H:i:s T') . "</p>
+                    <p>The applicant has re-uploaded the requested documents. Please log in to the IECEP-LSC Admin Portal to re-evaluate and complete accreditation.</p>
                 </div>";
-
-            return $mail->send();
-        } catch (\Throwable $e) {
-            error_log("Affiliation resubmission email error: " . $e->getMessage());
-            return false;
+            $this->sendMailWithFallback($adminEmail, $adminSubject, $adminHtml, strip_tags($adminHtml));
         }
+
+        return $res;
     }
 }
 

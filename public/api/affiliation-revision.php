@@ -84,11 +84,14 @@ try {
         $email_body .= "{$revision_link}\n\n";
         $email_body .= "Best regards,\nIECEP-LSC Registration Committee";
         
-        $email->send(
-            $affiliation['contact_email'],
-            'Affiliation Application - Revision Required',
-            $email_body
-        );
+        $recipientEmail = $affiliation['contact_email'] ?: ($affiliation['email'] ?? '');
+        if (!empty($recipientEmail)) {
+            $email->send(
+                $recipientEmail,
+                'Affiliation Application - Revision Required',
+                $email_body
+            );
+        }
         
         // Blockchain record
         $blockchain->recordEvent('affiliation_revision_request', $affiliation_id, hash('sha256', json_encode($revision)));

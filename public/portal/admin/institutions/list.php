@@ -423,11 +423,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             );
             if (!$sent) {
                 $lastErr = $emailService->getLastError() ?: 'SMTP delivery issue';
-                throw new \Exception("Revision status saved in database, but sending Gmail to '{$applicantEmail}' failed: {$lastErr}");
+                $feedbackMsg = "⚠️ Revision status saved in database! However, sending Gmail to {$applicantEmail} encountered an issue: {$lastErr}. You may share this link directly with the school: " . htmlspecialchars($revisionUrl);
+                $feedbackType = 'warning';
+            } else {
+                $feedbackMsg = "📩 Revision Request successfully sent to {$applicantEmail}! The applicant has received the link in their Gmail to re-upload the requested file(s).";
+                $feedbackType = 'info';
             }
-            
-            $feedbackMsg = "📩 Revision Request successfully sent to {$applicantEmail}! The applicant has received the link in their Gmail to re-upload the requested file(s).";
-            $feedbackType = 'info';
         } catch (\Throwable $e) {
             error_log("Revision request error: " . $e->getMessage());
             $feedbackMsg = "❌ Error sending revision request: " . $e->getMessage();

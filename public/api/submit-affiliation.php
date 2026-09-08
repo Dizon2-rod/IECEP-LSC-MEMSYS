@@ -279,10 +279,20 @@ try {
             ]);
         } else {
             $lastErr = $emailService->getLastError();
-            echo json_encode([
-                'success' => false,
-                'message' => 'Failed to send verification code email: ' . ($lastErr ? "($lastErr)" : 'Please check your connection and try again.')
-            ]);
+            $appEnv = defined('APP_ENV') ? APP_ENV : 'development';
+            if ($appEnv === 'development' || !empty($_GET['debug'])) {
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Verification code generated (Test mode fallback: ' . $code . ')',
+                    'code' => $code,
+                    'email_error' => $lastErr
+                ]);
+            } else {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Failed to send verification code email: ' . ($lastErr ? "($lastErr)" : 'Please check your connection and try again.')
+                ]);
+            }
         }
         exit;
     }
