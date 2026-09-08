@@ -229,37 +229,82 @@ class SupabaseClient {
     }
     
     // DELETE - Delete record
-    public function delete($table, $id) {
-        // For integer IDs, use filter instead of direct ID endpoint
-        if (is_numeric($id)) {
-            $endpoint = $this->url . '/rest/v1/' . $table . '?id=eq.' . $id;
-            
-            // Check if curl is available
-            if (function_exists('curl_init')) {
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $endpoint);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
-                $response = curl_exec($ch);
-                curl_close($ch);
-            } else {
-                // Fallback to file_get_contents when curl is not available
-                $contextOptions = [
-                    'http' => [
-                        'method' => 'DELETE',
-                        'header' => implode("\r\n", $this->headers),
-                        'ignore_errors' => true
-                    ]
-                ];
-                
-                $context = stream_context_create($contextOptions);
-                $response = file_get_contents($endpoint, false, $context);
+    public function delete($table, $id = null, $filterColumn = 'id') {
+        $filterQuery = '';
+        
+        if (is_array($id)) {
+            // Array of filters provided: ['col' => 'val'] or ['col' => 'eq.val']
+            $filters = [];
+            foreach ($id as $key => $value) {
+                if (is_string($value) && preg_match('/^(eq|neq|gt|gte|lt|lte|like|ilike|in|is)\./', $value)) {
+                    $filters[$key] = $value;
+                } else {
+                    $filters[$key] = 'eq.' . $value;
+                }
             }
-            
-            return json_decode($response, true);
+            $filterQuery = http_build_query($filters);
+        } elseif (!empty($id)) {
+            // Single ID provided (UUID or integer)
+            $filterQuery = http_build_query([$filterColumn => 'eq.' . $id]);
+        } else {
+            throw new \Exception("Delete requires an ID or filter array");
         }
-        return $this->request('DELETE', $table, null, $id);
+        
+        $endpoint = $this->url . '/rest/v1/' . $table . '?' . $filterQuery;
+        error_log("Supabase Delete: URL = $endpoint");
+        
+        // Check if curl is available
+        if (function_exists('curl_init')) {
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $endpoint);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $this->headers);
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+            
+            error_log("Supabase Delete: HTTP Code = $httpCode, Response = $response");
+            if ($curlError) {
+                error_log("Supabase Delete cURL Error: $curlError");
+                throw new \Exception("Supabase Delete cURL Error: $curlError");
+            }
+        } else {
+            // Fallback to file_get_contents when curl is not available
+            $contextOptions = [
+                'http' => [
+                    'method' => 'DELETE',
+                    'header' => implode("\r\n", $this->headers),
+                    'ignore_errors' => true
+                ],
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false
+                ]
+            ];
+            
+            $context = stream_context_create($contextOptions);
+            $response = file_get_contents($endpoint, false, $context);
+            
+            $httpCode = 200;
+            if (isset($http_response_header[0])) {
+                preg_match('/HTTP\/\d\.\d\s+(\d+)/', $http_response_header[0], $matches);
+                if (isset($matches[1])) {
+                    $httpCode = (int)$matches[1];
+                }
+            }
+            error_log("Supabase Delete (fallback): HTTP Code = $httpCode, Response = $response");
+        }
+        
+        if ($httpCode >= 400) {
+            throw new \Exception("Supabase API Error: HTTP $httpCode - $response");
+        }
+        
+        return json_decode($response, true);
     }
     
     // Upsert (insert or update)
