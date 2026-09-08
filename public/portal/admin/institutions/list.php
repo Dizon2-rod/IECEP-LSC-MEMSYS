@@ -1655,12 +1655,6 @@ try {
                 </div>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip" style="margin-top:1.5rem;">
-                <div class="ap-sentinel-item"><i class="fas fa-university"></i><span><strong>Affiliation Protocol:</strong> National Constitution Compliance</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Proof-of-Charter:</strong> Cryptographically Anchored Verification</span></div>
-            </div>
-
         </div>
     </main>
 
