@@ -10,6 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') { http_response_code(204); exit; }
 require_once __DIR__ . '/../../includes/supabase.php';
 require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/middleware/auth.php';
+require_once __DIR__ . '/../../includes/auth_check.php';
 
 use App\Lib\Supabase;
 use App\Middleware\AuthMiddleware;
@@ -85,7 +86,18 @@ try {
             
         case 'submit':
             if ($method !== 'POST') { http_response_code(405); exit; }
-            $user = $auth->requireRole(['member']);
+            $sessionUser = $_SESSION['user'] ?? null;
+            if (is_array($sessionUser) && !empty($sessionUser['id'])) {
+                $sessionRole = strtolower(trim($_SESSION['role'] ?? $sessionUser['role'] ?? ''));
+                if (!in_array($sessionRole, ['member', 'admin', 'super_admin'], true)) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'error' => 'Only members can submit surveys']);
+                    exit;
+                }
+                $user = $sessionUser;
+            } else {
+                $user = $auth->requireRole(['member']);
+            }
             
             $data = json_decode(file_get_contents('php://input'), true);
             $surveyId = $data['survey_id'] ?? '';
@@ -101,8 +113,18 @@ try {
             // Get member ID from user profile
             $memberResult = $sb->from('members')
                 ->select('id')
-                ->eq('user_id', $_SESSION['user']['id'])
+                ->eq('user_id', $user['id'] ?? $user['user_id'] ?? '')
                 ->get(true);
+
+            if ($memberResult['error'] || empty($memberResult['data'])) {
+                $email = strtolower(trim($user['email'] ?? ''));
+                if (!empty($email)) {
+                    $memberResult = $sb->from('members')
+                        ->select('id')
+                        ->eq('email', $email)
+                        ->get(true);
+                }
+            }
             
             if ($memberResult['error'] || empty($memberResult['data'])) {
                 http_response_code(404);

@@ -26,6 +26,10 @@ if ($supabase) {
             if (is_array($mRes) && isset($mRes[0])) $member = $mRes[0];
         }
         if (empty($member) && !empty($userId)) {
+            $mRes = $supabase->select('members', ['user_id' => 'eq.' . $userId]);
+            if (is_array($mRes) && isset($mRes[0])) $member = $mRes[0];
+        }
+        if (empty($member) && !empty($userId)) {
             $mRes = $supabase->select('members', ['id' => 'eq.' . $userId]);
             if (is_array($mRes) && isset($mRes[0])) $member = $mRes[0];
         }
@@ -56,21 +60,6 @@ try {
     }
 } catch (Exception $e) {
     error_log("Member payments error: " . $e->getMessage());
-}
-
-// Fallback to official active membership fee record if empty
-if (empty($transactions)) {
-    $transactions = [
-        [
-            'id' => 'tx_' . substr(md5($userEmail ?: 'iecep'), 0, 12),
-            'reference_no' => 'OR-' . date('Y') . '-' . strtoupper(substr(md5($userEmail ?: 'tx'), 0, 6)),
-            'description' => 'IECEP-LSC Official Student Membership & Chapter Accreditation Fee',
-            'payment_type' => 'Institutional Assessment',
-            'amount' => 150.00,
-            'status' => strtolower($member['payment_status'] ?? 'paid'),
-            'created_at' => $member['created_at'] ?? date('Y-m-d H:i:s')
-        ]
-    ];
 }
 
 foreach ($transactions as $tx) {
@@ -277,7 +266,7 @@ foreach ($transactions as $tx) {
                         <?php foreach ($transactions as $tx): ?>
                             <?php 
                                 $isCompleted = in_array(strtolower($tx['status'] ?? ''), ['completed', 'paid']); 
-                                $ref = $tx['reference_no'] ?? ('OR-2026-' . strtoupper(substr(md5($tx['id'] ?? '1'), 0, 6)));
+                                $ref = $tx['reference_number'] ?? $tx['receipt_number'] ?? $tx['transaction_id'] ?? ($tx['id'] ?? 'N/A');
                             ?>
                             <tr>
                                 <td style="font-family:'JetBrains Mono', monospace; font-weight:700; color:#0B1D4A;">
@@ -289,7 +278,7 @@ foreach ($transactions as $tx) {
                                 </td>
                                 <td>
                                     <span style="font-size:0.76rem; color:#475569; background:#F1F5F9; padding:0.2rem 0.5rem; border-radius:4px;">
-                                        <?= htmlspecialchars($tx['payment_type'] ?? 'Annual Assessment') ?>
+                                        <?= htmlspecialchars($tx['payment_type'] ?? $tx['fee_type'] ?? $tx['transaction_type'] ?? 'Annual Assessment') ?>
                                     </span>
                                 </td>
                                 <td style="font-weight:800; color:#0F172A; font-size:0.9rem;">

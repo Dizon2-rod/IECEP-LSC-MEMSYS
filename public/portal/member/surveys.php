@@ -26,6 +26,10 @@ if ($supabase) {
             if (is_array($mRes) && isset($mRes[0])) $member = $mRes[0];
         }
         if (empty($member) && !empty($userId)) {
+            $mRes = $supabase->select('members', ['user_id' => 'eq.' . $userId]);
+            if (is_array($mRes) && isset($mRes[0])) $member = $mRes[0];
+        }
+        if (empty($member) && !empty($userId)) {
             $mRes = $supabase->select('members', ['id' => 'eq.' . $userId]);
             if (is_array($mRes) && isset($mRes[0])) $member = $mRes[0];
         }
@@ -355,9 +359,45 @@ if (empty($surveys)) {
 
         function handleSurveySubmit(e) {
             e.preventDefault();
-            alert('🎉 Thank you! Your feedback has been officially received and logged into the chapter evaluation ledger.');
-            closeSurveyModal();
-            location.reload();
+            if (!currentSurvey || !currentSurvey.id) return;
+
+            const form = e.target;
+            const answers = {};
+            new FormData(form).forEach((value, key) => {
+                answers[key] = value;
+            });
+
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Submitting...';
+            }
+
+            fetch('/IECEP-LSC-MEMSYS/public/api/surveys.php?action=submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    survey_id: currentSurvey.id,
+                    event_id: currentSurvey.event_id || null,
+                    answers: answers
+                })
+            })
+                .then(response => response.json().then(data => ({ ok: response.ok, data })))
+                .then(({ ok, data }) => {
+                    if (!ok || !data.success) {
+                        throw new Error(data.error || 'Unable to submit the survey.');
+                    }
+                    closeSurveyModal();
+                    location.reload();
+                })
+                .catch(error => {
+                    if (submitButton) {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = '<i class="fas fa-paper-plane me-1"></i> Submit Evaluation';
+                    }
+                    alert(error.message);
+                });
         }
     </script>
 </body>

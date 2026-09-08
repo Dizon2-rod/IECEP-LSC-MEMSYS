@@ -36,6 +36,12 @@ if ($supabase) {
             }
         }
         if (empty($member) && !empty($userId)) {
+            $mRes = $supabase->select('members', ['user_id' => 'eq.' . $userId]);
+            if (is_array($mRes) && isset($mRes[0])) {
+                $member = $mRes[0];
+            }
+        }
+        if (empty($member) && !empty($userId)) {
             $mRes = $supabase->select('members', ['id' => 'eq.' . $userId]);
             if (is_array($mRes) && isset($mRes[0])) {
                 $member = $mRes[0];

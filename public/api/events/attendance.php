@@ -382,7 +382,7 @@ if ($method === 'POST') {
             'id' => $attId,
             'event_id' => $eventId,
             'member_id' => $realMemberId,
-            'status' => 'present',
+            'status' => 'attended',
             'check_in_time' => $timestamp,
             'created_at' => $timestamp
         ]]);
@@ -394,7 +394,7 @@ if ($method === 'POST') {
             'data' => [
                 'student_name' => $studentName,
                 'attended_at' => $timestamp,
-                'status' => 'present'
+                'status' => 'attended'
             ]
         ]);
         exit;
