@@ -18,8 +18,8 @@ $supabase = getSupabaseClient();
 
 // Fetch Member Record Directly from Database
 $member = [];
-$schoolName = 'Affiliated Student Chapter';
-$schoolAcronym = 'IECEP-SC';
+$schoolName = '';
+$schoolAcronym = '';
 
 if ($supabase) {
     try {
@@ -54,7 +54,7 @@ if ($supabase) {
             $iRes = $supabase->select('institutions', ['id' => 'eq.' . $instId]);
             if (is_array($iRes) && isset($iRes[0]['name'])) {
                 $schoolName = $iRes[0]['name'];
-                $schoolAcronym = $iRes[0]['acronym'] ?? 'IECEP-SC';
+                $schoolAcronym = $iRes[0]['acronym'] ?? '';
             }
         } elseif (!empty($member['school_affiliate'])) {
             $schoolName = $member['school_affiliate'];
@@ -64,14 +64,14 @@ if ($supabase) {
     }
 }
 
-$realMemberId = $member['id'] ?? ($userId ?? 'mem_default');
-$membershipId = $member['membership_id'] ?? 'Pending Assignment';
-$courseName = !empty($member['course']) ? $member['course'] : (!empty($member['program']) ? $member['program'] : 'BS Electronics Engineering');
-$yearLevel = !empty($member['year_level']) ? $member['year_level'] : 'Undergraduate';
-$studentNumber = !empty($member['student_number']) ? $member['student_number'] : ($member['student_id'] ?? 'N/A');
-$digitalHash = $member['digital_id_hash'] ?? hash('sha256', $membershipId . ($userEmail ?: 'iecep'));
-$memberFullName = $member['full_name'] ?? $displayName;
-$avatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
+$realMemberId = $member['id'] ?? '';
+$membershipId = $member['membership_id'] ?? '';
+$courseName = $member['course'] ?? $member['program'] ?? '';
+$yearLevel = $member['year_level'] ?? '';
+$studentNumber = $member['student_number'] ?? $member['student_id'] ?? '';
+$digitalHash = $member['digital_id_hash'] ?? '';
+$memberFullName = $member['full_name'] ?? '';
+$avatarUrl = $member['avatar_url'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -421,7 +421,8 @@ $avatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
 
         async function fetchAndRenderMemberQr() {
             try {
-                const res = await fetch(`/IECEP-LSC-MEMSYS/public/api/events/attendance.php?action=generate_member_qr&member_id=${encodeURIComponent(realMemberId || 'mem_default')}`);
+                if (!realMemberId) return;
+                const res = await fetch(`/IECEP-LSC-MEMSYS/public/api/events/attendance.php?action=generate_member_qr&member_id=${encodeURIComponent(realMemberId)}`);
                 const data = await res.json();
                 if (data.success) {
                     memberQrSecondsLeft = data.seconds_left || 30;
@@ -494,23 +495,6 @@ $avatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
         document.addEventListener('DOMContentLoaded', () => {
             fetchAndRenderMemberQr();
             startTimer();
-
-            // Client-side avatar cache sync
-            const serverAvatar = <?= json_encode($avatarUrl) ?>;
-            const userEmailKey = 'iecep_avatar_' + <?= json_encode($userEmail) ?>;
-            if (!serverAvatar) {
-                try {
-                    const cached = localStorage.getItem(userEmailKey);
-                    if (cached) {
-                        const wrapper = document.querySelector('.id-photo-wrapper');
-                        if (wrapper) {
-                            wrapper.innerHTML = `<img src="${cached}" alt="Member Photo" style="width:100%; height:100%; object-fit:cover; border-radius:50%;">`;
-                        }
-                    }
-                } catch(e){}
-            } else {
-                try { localStorage.setItem(userEmailKey, serverAvatar); } catch(e){}
-            }
         });
     </script>
 </body>

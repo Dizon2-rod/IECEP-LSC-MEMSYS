@@ -18,8 +18,8 @@ $supabase = getSupabaseClient();
 
 // Fetch Member Record Strictly from Database
 $member = [];
-$schoolName = 'Affiliated Student Chapter';
-$schoolAcronym = 'IECEP-SC';
+$schoolName = '';
+$schoolAcronym = '';
 
 if ($supabase) {
     try {
@@ -40,15 +40,15 @@ if ($supabase) {
             $iRes = $supabase->select('institutions', ['id' => 'eq.' . $instId]);
             if (is_array($iRes) && isset($iRes[0]['name'])) {
                 $schoolName = $iRes[0]['name'];
-                $schoolAcronym = $iRes[0]['acronym'] ?? 'IECEP-SC';
+                $schoolAcronym = $iRes[0]['acronym'] ?? '';
             }
         }
     } catch (Exception $e) {}
 }
 
-$memberDbId = $member['id'] ?? $userId;
-$membershipId = $member['membership_id'] ?? 'Pending Assignment';
-$memberFullName = $member['full_name'] ?? $displayName;
+$memberDbId = $member['id'] ?? '';
+$membershipId = $member['membership_id'] ?? '';
+$memberFullName = $member['full_name'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="en">

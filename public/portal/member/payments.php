@@ -43,7 +43,7 @@ if ($supabase) {
     } catch (Exception $e) {}
 }
 
-$memberDbId = $member['id'] ?? $userId;
+$memberDbId = $member['id'] ?? '';
 $transactions = [];
 $totalPaid = 0;
 $totalPending = 0;
@@ -63,7 +63,7 @@ try {
 }
 
 foreach ($transactions as $tx) {
-    $st = strtolower($tx['status'] ?? 'paid');
+    $st = strtolower($tx['status'] ?? '');
     if ($st === 'completed' || $st === 'paid') {
         $totalPaid += floatval($tx['amount'] ?? 0);
     } else {
@@ -273,12 +273,12 @@ foreach ($transactions as $tx) {
                                     <?= htmlspecialchars($ref) ?>
                                 </td>
                                 <td>
-                                    <strong><?= htmlspecialchars($tx['description'] ?? 'Membership Fee') ?></strong>
+                                    <strong><?= htmlspecialchars($tx['description'] ?? '') ?></strong>
                                     <div style="font-size:0.72rem; color:#64748B;"><?= htmlspecialchars($schoolName) ?></div>
                                 </td>
                                 <td>
                                     <span style="font-size:0.76rem; color:#475569; background:#F1F5F9; padding:0.2rem 0.5rem; border-radius:4px;">
-                                        <?= htmlspecialchars($tx['payment_type'] ?? $tx['fee_type'] ?? $tx['transaction_type'] ?? 'Annual Assessment') ?>
+                                        <?= htmlspecialchars($tx['payment_type'] ?? $tx['fee_type'] ?? $tx['transaction_type'] ?? '') ?>
                                     </span>
                                 </td>
                                 <td style="font-weight:800; color:#0F172A; font-size:0.9rem;">

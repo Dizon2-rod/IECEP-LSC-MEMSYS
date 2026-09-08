@@ -33,7 +33,7 @@ if ($supabase) {
         }
     } catch (Exception $e) {}
 }
-$memberDbId = $member['id'] ?? $userId;
+$memberDbId = $member['id'] ?? '';
 
 $events = [];
 $myAttendanceMap = [];
@@ -213,7 +213,7 @@ try {
                         <div>
                             <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.75rem;">
                                 <span class="ap-pill gold">
-                                    <?= htmlspecialchars($ev['event_type'] ?? 'Regional Event') ?>
+                                    <?= htmlspecialchars($ev['event_type'] ?? '') ?>
                                 </span>
                                 <?php if ($isPresent): ?>
                                     <span class="ap-pill active"><i class="fas fa-circle-check me-1"></i> Attended</span>
@@ -223,11 +223,11 @@ try {
                             </div>
 
                             <h2 style="font-size:1.1rem; font-weight:800; color:#0F172A; margin:0 0 0.4rem 0; line-height:1.3;">
-                                <?= htmlspecialchars($ev['title'] ?? 'IECEP Event') ?>
+                                <?= htmlspecialchars($ev['title'] ?? '') ?>
                             </h2>
 
                             <p style="font-size:0.8rem; color:#475569; line-height:1.45; margin:0 0 1rem 0;">
-                                <?= htmlspecialchars($ev['description'] ?? 'Official gathering of electronics engineering delegates across the Laguna region.') ?>
+                                <?= htmlspecialchars($ev['description'] ?? '') ?>
                             </p>
 
                             <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.75rem; font-size:0.78rem; color:#334155; margin-bottom:1.15rem;">
@@ -237,7 +237,7 @@ try {
                                 </div>
                                 <div style="display:flex; align-items:center; gap:0.4rem;">
                                     <i class="fas fa-location-dot" style="color:var(--color-navy); width:16px;"></i>
-                                    <span><?= htmlspecialchars($ev['venue'] ?? 'Auditorium / Virtual Venue') ?></span>
+                                    <span><?= htmlspecialchars($ev['venue'] ?? '') ?></span>
                                 </div>
                             </div>
                         </div>

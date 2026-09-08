@@ -27,8 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $phone = trim($_POST['phone'] ?? '');
         $address = trim($_POST['address'] ?? '');
         $studentNumber = trim($_POST['student_number'] ?? '');
-        $yearLevel = trim($_POST['year_level'] ?? '3rd Year');
-        $course = trim($_POST['course'] ?? 'BS Electronics Engineering');
+        $yearLevel = trim($_POST['year_level'] ?? '');
+        $course = trim($_POST['course'] ?? '');
         $birthday = trim($_POST['birthday'] ?? '');
         $avatarDataUrl = trim($_POST['avatar_data_url'] ?? '');
 
@@ -172,8 +172,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
 // Fetch Fresh Member Record from Database
 $member = [];
-$schoolName = 'Affiliated Student Chapter';
-$schoolAcronym = 'IECEP-SC';
+$schoolName = '';
+$schoolAcronym = '';
 
 if ($supabase) {
     try {
@@ -198,24 +198,12 @@ if ($supabase) {
             }
         }
 
-        // Check if there is a disk avatar file for this user
-        $cleanUid = !empty($userId) ? preg_replace('/[^a-zA-Z0-9_-]/', '', $userId) : md5($userEmail);
-        if (empty($member['avatar_url']) && !empty($cleanUid)) {
-            $emailFile = __DIR__ . '/../../../public/uploads/avatars/avatar_' . md5($userEmail) . '.jpg';
-            $uidFile = __DIR__ . '/../../../public/uploads/avatars/avatar_' . $cleanUid . '.jpg';
-            if (file_exists($emailFile)) {
-                $member['avatar_url'] = '/IECEP-LSC-MEMSYS/public/uploads/avatars/avatar_' . md5($userEmail) . '.jpg?v=' . filemtime($emailFile);
-            } elseif (file_exists($uidFile)) {
-                $member['avatar_url'] = '/IECEP-LSC-MEMSYS/public/uploads/avatars/avatar_' . $cleanUid . '.jpg?v=' . filemtime($uidFile);
-            }
-        }
-
         $instId = $member['institution_id'] ?? ($_SESSION['institution_id'] ?? null);
         if ($instId) {
             $iRes = $supabase->select('institutions', ['id' => 'eq.' . $instId]);
             if (is_array($iRes) && isset($iRes[0]['name'])) {
                 $schoolName = $iRes[0]['name'];
-                $schoolAcronym = $iRes[0]['acronym'] ?? 'IECEP-SC';
+                $schoolAcronym = $iRes[0]['acronym'] ?? '';
             }
         } elseif (!empty($member['school_affiliate'])) {
             $schoolName = $member['school_affiliate'];
@@ -225,15 +213,15 @@ if ($supabase) {
     }
 }
 
-$membershipId = $member['membership_id'] ?? '20260001';
-$courseName = !empty($member['course']) ? $member['course'] : (!empty($member['program']) ? $member['program'] : 'BS Electronics Engineering');
-$yearLevel = !empty($member['year_level']) ? $member['year_level'] : '3rd Year';
-$studentNumber = !empty($member['student_number']) ? $member['student_number'] : ($member['student_id'] ?? '2022-00123');
-$phone = $member['phone'] ?? '09191234567';
-$address = $member['address'] ?? 'Santa Cruz, Laguna';
-$rawBirthday = $member['birthday'] ?? '2004-05-15';
-$memberFullName = $member['full_name'] ?? $displayName;
-$currentAvatarUrl = $uploadedAvatarUrl ?: ($member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? ''));
+$membershipId = $member['membership_id'] ?? '';
+$courseName = $member['course'] ?? $member['program'] ?? '';
+$yearLevel = $member['year_level'] ?? '';
+$studentNumber = $member['student_number'] ?? $member['student_id'] ?? '';
+$phone = $member['phone'] ?? '';
+$address = $member['address'] ?? '';
+$rawBirthday = $member['birthday'] ?? '';
+$memberFullName = $member['full_name'] ?? '';
+$currentAvatarUrl = $uploadedAvatarUrl ?: ($member['avatar_url'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1014,15 +1002,6 @@ $currentAvatarUrl = $uploadedAvatarUrl ?: ($member['avatar_url'] ?? ($_SESSION['
             if (serverAvatar) {
                 updateAvatarElements(serverAvatar);
                 try { localStorage.setItem(userEmailKey, serverAvatar); } catch(e){}
-            } else {
-                try {
-                    const cached = localStorage.getItem(userEmailKey);
-                    if (cached) {
-                        updateAvatarElements(cached);
-                        const dataInput = document.getElementById('avatarDataUrlInput');
-                        if (dataInput && !dataInput.value) dataInput.value = cached;
-                    }
-                } catch(e){}
             }
         });
     </script>

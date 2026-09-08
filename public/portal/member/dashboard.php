@@ -18,8 +18,8 @@ $supabase = getSupabaseClient();
 
 // Fetch Member Record Strictly from Database
 $member = [];
-$schoolName = 'Affiliated Student Chapter';
-$schoolAcronym = 'IECEP-SC';
+$schoolName = '';
+$schoolAcronym = '';
 
 if ($supabase) {
     try {
@@ -48,7 +48,7 @@ if ($supabase) {
             $iRes = $supabase->select('institutions', ['id' => 'eq.' . $instId]);
             if (is_array($iRes) && isset($iRes[0]['name'])) {
                 $schoolName = $iRes[0]['name'];
-                $schoolAcronym = $iRes[0]['acronym'] ?? 'IECEP-SC';
+                $schoolAcronym = $iRes[0]['acronym'] ?? '';
             }
         } elseif (!empty($member['school_affiliate'])) {
             $schoolName = $member['school_affiliate'];
@@ -88,12 +88,12 @@ try {
 }
 
 // Member Metrics
-$membershipId = $member['membership_id'] ?? 'Pending Assignment';
-$courseName = !empty($member['course']) ? $member['course'] : (!empty($member['program']) ? $member['program'] : 'BS Electronics Engineering');
-$yearLevel = !empty($member['year_level']) ? $member['year_level'] : 'Undergraduate';
-$isPaid = strtolower($member['payment_status'] ?? 'paid') === 'paid';
-$memberFullName = $member['full_name'] ?? $displayName;
-$avatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
+$membershipId = $member['membership_id'] ?? '';
+$courseName = $member['course'] ?? $member['program'] ?? '';
+$yearLevel = $member['year_level'] ?? '';
+$isPaid = strtolower($member['payment_status'] ?? '') === 'paid';
+$memberFullName = $member['full_name'] ?? '';
+$avatarUrl = $member['avatar_url'] ?? '';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -456,17 +456,17 @@ $avatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
                             <div class="event-feed-item">
                                 <div style="flex:1;">
                                     <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:0.25rem;">
-                                        <span class="ap-pill blue"><?= strtoupper(htmlspecialchars($ev['event_type'] ?? 'Regional Event')) ?></span>
+                                        <span class="ap-pill blue"><?= strtoupper(htmlspecialchars($ev['event_type'] ?? '')) ?></span>
                                         <span style="font-size:0.74rem; color:#64748B; font-family:'JetBrains Mono', monospace;">
                                             <i class="fas fa-clock me-1"></i><?= date('M d, Y • h:i A', strtotime($ev['start_date'] ?? 'now')) ?>
                                         </span>
                                     </div>
                                     <h3 style="margin:0 0 0.2rem 0; font-size:0.95rem; font-weight:700; color:#0F172A;">
-                                        <?= htmlspecialchars($ev['title'] ?? 'IECEP Event') ?>
+                                        <?= htmlspecialchars($ev['title'] ?? '') ?>
                                     </h3>
                                     <div style="font-size:0.78rem; color:#475569;">
                                         <i class="fas fa-location-dot me-1" style="color:var(--color-navy);"></i>
-                                        <?= htmlspecialchars($ev['venue'] ?? 'Chapter Campus') ?>
+                                        <?= htmlspecialchars($ev['venue'] ?? '') ?>
                                     </div>
                                 </div>
                                 <div>
@@ -537,24 +537,5 @@ $avatarUrl = $member['avatar_url'] ?? ($_SESSION['avatar_url'] ?? '');
         </div>
     </main>
 
-    <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const serverAvatar = <?= json_encode($avatarUrl) ?>;
-            const userEmailKey = 'iecep_avatar_' + <?= json_encode($userEmail) ?>;
-            if (!serverAvatar) {
-                try {
-                    const cached = localStorage.getItem(userEmailKey);
-                    if (cached) {
-                        const miniWidgetAvatar = document.querySelector('.dash-card .fa-user-graduate');
-                        if (miniWidgetAvatar && miniWidgetAvatar.parentElement) {
-                            miniWidgetAvatar.parentElement.innerHTML = `<img src="${cached}" alt="Avatar" style="width:100%; height:100%; object-fit:cover;">`;
-                        }
-                    }
-                } catch(e){}
-            } else {
-                try { localStorage.setItem(userEmailKey, serverAvatar); } catch(e){}
-            }
-        });
-    </script>
 </body>
 </html>

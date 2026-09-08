@@ -43,7 +43,7 @@ if ($supabase) {
     } catch (Exception $e) {}
 }
 
-$memberDbId = $member['id'] ?? $userId;
+$memberDbId = $member['id'] ?? '';
 $surveys = [];
 $submittedSurveyIds = [];
 
@@ -63,23 +63,6 @@ try {
     error_log("Surveys query error: " . $e->getMessage());
 }
 
-// Fallback Default Institutional Surveys if database has no active surveys
-if (empty($surveys)) {
-    $surveys = [
-        [
-            'id' => 'survey_ay2025_satisfaction',
-            'title' => 'AY 2024-2025 IECEP-LSC Chapter & Regional Activity Feedback',
-            'description' => 'Help us improve future engineering seminars, student conventions, and membership privileges across Laguna.',
-            'questions' => json_encode([
-                ['type' => 'rating', 'text' => 'How would you rate the overall technical quality of IECEP-LSC activities?'],
-                ['type' => 'rating', 'text' => 'How satisfied are you with the digital ID and chapter communication?'],
-                ['type' => 'yesno', 'text' => 'Would you recommend attending upcoming regional summits to your peers?'],
-                ['type' => 'text', 'text' => 'What topics or workshops would you like IECEP-LSC to organize next?']
-            ]),
-            'created_at' => date('Y-m-d H:i:s')
-        ]
-    ];
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">

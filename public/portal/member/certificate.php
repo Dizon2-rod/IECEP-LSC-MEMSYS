@@ -44,9 +44,9 @@ if ($supabase) {
     } catch (Exception $e) {}
 }
 
-$memberDbId = $member['id'] ?? $userId;
+$memberDbId = $member['id'] ?? '';
 
-// Fetch Attended Events
+// Fetch certificates issued in the database
 $attendedEvents = [];
 $allEventsMap = [];
 
@@ -60,18 +60,18 @@ try {
         }
 
         if (!empty($memberDbId)) {
-            $rawAtt = $supabase->select('event_attendees', [
+            $rawCerts = $supabase->select('certificates', [
                 'member_id' => 'eq.' . $memberDbId
             ]);
-            if (is_array($rawAtt)) {
-                foreach ($rawAtt as $a) {
-                    $evId = $a['event_id'] ?? '';
+            if (is_array($rawCerts)) {
+                foreach ($rawCerts as $cert) {
+                    $evId = $cert['event_id'] ?? '';
                     if (isset($allEventsMap[$evId])) {
                         $attendedEvents[] = [
                             'event' => $allEventsMap[$evId],
-                            'attendance' => $a,
-                            'cert_num' => 'IECEP-CERT-' . strtoupper(substr(md5($memberDbId . $evId), 0, 8)),
-                            'hash' => hash('sha256', $memberDbId . $evId . ($a['check_in_time'] ?? 'now'))
+                            'certificate' => $cert,
+                            'cert_num' => $cert['certificate_number'] ?? '',
+                            'hash' => $cert['blockchain_hash'] ?? ''
                         ];
                     }
                 }
@@ -293,7 +293,7 @@ if ($selectedEventId && !empty($attendedEvents)) {
                 <div style="max-width:580px; margin:0 auto 1.5rem; font-size:0.88rem; color:#334155; line-height:1.5;">
                     for active participation and successful completion of the chapter event entitled 
                     <strong style="color:#0B1D4A;"><?= htmlspecialchars($selectedCert['event']['title']) ?></strong>, 
-                    held on <?= date('F d, Y', strtotime($selectedCert['event']['start_date'] ?? 'now')) ?>.
+                    held on <?= !empty($selectedCert['event']['start_date']) ? date('F d, Y', strtotime($selectedCert['event']['start_date'])) : '' ?>.
                 </div>
 
                 <div style="display:flex; justify-content:space-around; align-items:center; margin-top:2rem; padding-top:1.5rem; border-top:1px solid #E2E8F0;">
@@ -347,7 +347,7 @@ if ($selectedEventId && !empty($attendedEvents)) {
                                 </div>
                                 <div style="padding:1rem;">
                                     <div style="font-size:0.78rem; color:#64748B; margin-bottom:0.5rem;">
-                                        <i class="fas fa-calendar-day me-1"></i> <?= date('F d, Y', strtotime($c['event']['start_date'] ?? 'now')) ?>
+                                        <i class="fas fa-calendar-day me-1"></i> <?= !empty($c['event']['start_date']) ? date('F d, Y', strtotime($c['event']['start_date'])) : '' ?>
                                     </div>
                                     <div style="font-family:'JetBrains Mono', monospace; font-size:0.72rem; color:#334155; background:#F8FAFC; padding:0.4rem 0.6rem; border-radius:6px; border:1px solid #E2E8F0; margin-bottom:0.75rem;">
                                         ID: <?= htmlspecialchars($c['cert_num']) ?>
