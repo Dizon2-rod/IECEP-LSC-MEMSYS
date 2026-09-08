@@ -20,7 +20,7 @@ class EmailService
         $user = (defined('SMTP_USERNAME') && SMTP_USERNAME !== '') ? SMTP_USERNAME : (getenv('SMTP_USERNAME') ?: ($_ENV['SMTP_USERNAME'] ?? ($_SERVER['SMTP_USERNAME'] ?? 'rasheddizon7@gmail.com')));
         $pass = (defined('SMTP_PASSWORD') && SMTP_PASSWORD !== '') ? SMTP_PASSWORD : (getenv('SMTP_PASSWORD') ?: ($_ENV['SMTP_PASSWORD'] ?? ($_SERVER['SMTP_PASSWORD'] ?? 'wqyvufrkrgoxfosk')));
         $host = (defined('SMTP_HOST') && SMTP_HOST !== '') ? SMTP_HOST : (getenv('SMTP_HOST') ?: ($_ENV['SMTP_HOST'] ?? ($_SERVER['SMTP_HOST'] ?? 'smtp.gmail.com')));
-        $port = (defined('SMTP_PORT') && SMTP_PORT !== '') ? (int)SMTP_PORT : ((int)(getenv('SMTP_PORT') ?: ($_ENV['SMTP_PORT'] ?? ($_SERVER['SMTP_PORT'] ?? 587))));
+        $port = (defined('SMTP_PORT') && SMTP_PORT !== '') ? (int)SMTP_PORT : ((int)(getenv('SMTP_PORT') ?: ($_ENV['SMTP_PORT'] ?? ($_SERVER['SMTP_PORT'] ?? 465))));
         $fromEmail = (defined('SMTP_FROM_EMAIL') && SMTP_FROM_EMAIL !== '') ? SMTP_FROM_EMAIL : (getenv('SMTP_FROM_EMAIL') ?: ($_ENV['SMTP_FROM_EMAIL'] ?? ($_SERVER['SMTP_FROM_EMAIL'] ?? $user)));
         $fromName = (defined('SMTP_FROM_NAME') && SMTP_FROM_NAME !== '') ? SMTP_FROM_NAME : (getenv('SMTP_FROM_NAME') ?: ($_ENV['SMTP_FROM_NAME'] ?? ($_SERVER['SMTP_FROM_NAME'] ?? 'IECEP-LSC-MEMSYS')));
 
@@ -104,9 +104,9 @@ class EmailService
                 )
             );
             
-            // Fast 5-second timeout to enable rapid fallback between ports and hosts
-            $mail->Timeout = 5;
-            $mail->SMTPKeepAlive = false;
+            // 15-second timeout to accommodate slow SSL handshakes on Windows/XAMPP networks
+            $mail->Timeout = 15;
+            $mail->SMTPKeepAlive = true;
             
             // Disable SMTP debugging to prevent HTML output in JSON responses
             $mail->SMTPDebug = 0;
