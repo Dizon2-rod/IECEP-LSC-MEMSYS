@@ -1360,7 +1360,7 @@ $isResubmit = !empty($existingApplication);
             console.log('Form validation passed, preparing submission...');
             
             this.disabled = true;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading requirements & submitting...';
             
             const formData = new FormData();
             console.log('Creating FormData...');

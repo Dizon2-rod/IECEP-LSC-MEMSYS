@@ -3481,7 +3481,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         const submitBtn = document.getElementById('modal-submit-application-btn');
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="spinner"></span> Submitting...';
+        submitBtn.innerHTML = '<span class="spinner"></span> Uploading requirements & submitting...';
         
         const formData = new FormData(this);
         formData.set('contact_email', verifiedEmail);

@@ -172,6 +172,88 @@ try {
         }
     }
 
+    /**
+     * Upload multiple files concurrently via cURL Multi for blazing fast speed
+     */
+    if (!function_exists('uploadMultipleFilesParallel')) {
+        function uploadMultipleFilesParallel(string $bucket, array $filesList): array {
+            $results = [];
+            $config = require __DIR__ . '/../../includes/supabase.php';
+            $rawUrl = $config['url'];
+            $cleanUrl = rtrim(trim($rawUrl, "\"' \t\n\r\0\x0B"), '/');
+            $key = trim($config['service_role_key'] ?: $config['anon_key'], "\"' \t\n\r\0\x0B");
+            $baseWebUrl = defined('BASE_URL') ? BASE_URL : (defined('APP_URL') ? APP_URL : '');
+
+            $mh = curl_multi_init();
+            $handles = [];
+
+            foreach ($filesList as $fileKey => $info) {
+                $tmpFile = $info['tmp_name'];
+                $path = $info['path'];
+                $mimeType = $info['mime'] ?: 'application/octet-stream';
+                if (!file_exists($tmpFile)) continue;
+                $fileContent = file_get_contents($tmpFile);
+                if ($fileContent === false) continue;
+
+                $url = "$cleanUrl/storage/v1/object/$bucket/$path";
+                $ch = curl_init($url);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_POST           => true,
+                    CURLOPT_POSTFIELDS     => $fileContent,
+                    CURLOPT_TIMEOUT        => 12,
+                    CURLOPT_HTTPHEADER     => [
+                        'apikey: ' . $key,
+                        'Authorization: Bearer ' . $key,
+                        'Content-Type: ' . $mimeType,
+                        'x-upsert: true',
+                    ],
+                ]);
+                curl_multi_add_handle($mh, $ch);
+                $handles[$fileKey] = [
+                    'ch'       => $ch,
+                    'path'     => $path,
+                    'tmp_name' => $tmpFile,
+                ];
+            }
+
+            if (!empty($handles)) {
+                $running = null;
+                do {
+                    $status = curl_multi_exec($mh, $running);
+                    if ($running) {
+                        curl_multi_select($mh, 0.05);
+                    }
+                } while ($running > 0 && $status === CURLM_OK);
+
+                foreach ($handles as $fileKey => $item) {
+                    $ch = $item['ch'];
+                    $path = $item['path'];
+                    $tmpFile = $item['tmp_name'];
+                    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    curl_multi_remove_handle($mh, $ch);
+                    curl_close($ch);
+
+                    if ($httpCode >= 200 && $httpCode < 300) {
+                        $results[$fileKey] = "$cleanUrl/storage/v1/object/public/$bucket/$path";
+                    } else {
+                        // Local storage fallback
+                        $uploadBaseDir = dirname(__DIR__, 2) . "/public/uploads/$bucket/" . dirname($path);
+                        if (!is_dir($uploadBaseDir)) @mkdir($uploadBaseDir, 0777, true);
+                        $targetLocalPath = dirname(__DIR__, 2) . "/public/uploads/$bucket/$path";
+                        if (copy($tmpFile, $targetLocalPath) || move_uploaded_file($tmpFile, $targetLocalPath)) {
+                            $results[$fileKey] = rtrim($baseWebUrl, '/') . "/public/uploads/$bucket/$path";
+                        } else {
+                            $results[$fileKey] = null;
+                        }
+                    }
+                }
+                curl_multi_close($mh);
+            }
+            return $results;
+        }
+    }
+
     // ============================================================
     // ACTION HANDLERS: send-verification-code & verify-code
     // ============================================================
@@ -492,7 +574,8 @@ try {
         }
     }
     
-    $uploadedFiles = [];
+    // Prepare all files for concurrent parallel upload
+    $filesToUpload = [];
     $documentHashes = [];
     foreach ($required_files as $file_key) {
         $file = $_FILES[$file_key];
@@ -506,13 +589,20 @@ try {
             ? (mime_content_type($file['tmp_name']) ?: ($file['type'] ?: 'application/octet-stream'))
             : ($file['type'] ?: 'application/octet-stream');
             
-        $supabaseUrl = uploadToSupabaseStorage('affiliations', 'applications/' . $fileName, $file['tmp_name'], $mimeType);
-        if ($supabaseUrl) {
-            $uploadedFiles[$file_key] = $supabaseUrl;
-        } else {
+        $filesToUpload[$file_key] = [
+            'path'     => 'applications/' . $fileName,
+            'tmp_name' => $file['tmp_name'],
+            'mime'     => $mimeType,
+        ];
+        $documentHashes[$file_key] = file_exists($file['tmp_name']) ? hash_file('sha256', $file['tmp_name']) : hash('sha256', $fileName);
+    }
+
+    // Execute all 6 uploads simultaneously in parallel via cURL multi
+    $uploadedFiles = uploadMultipleFilesParallel('affiliations', $filesToUpload);
+    foreach ($required_files as $file_key) {
+        if (empty($uploadedFiles[$file_key])) {
             throw new Exception("Failed to upload file: $file_key");
         }
-        $documentHashes[$file_key] = file_exists($file['tmp_name']) ? hash_file('sha256', $file['tmp_name']) : hash('sha256', $fileName);
     }
     
     $totalMembers = intval($_POST['total_members'] ?? 0);

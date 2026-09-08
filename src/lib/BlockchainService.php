@@ -254,21 +254,50 @@ class BlockchainService
      */
     public function recordAffiliation(string $applicationId, array $affiliationData, array $documentHashes, ?string $institutionId = null): array
     {
-        // 1. Record each uploaded document requirement individually
+        // 1. Build Merkle Root of all document hashes
+        $docsMerkleRoot = MerkleTree::buildRoot(array_values($documentHashes));
+
+        // 2. Prepare all document blocks for fast batch insertion (1 single network call instead of 12)
         $recordedDocs = [];
+        $batchInsert = [];
         foreach ($documentHashes as $fileKey => $hash) {
-            $docResult = $this->record('affiliation_document', $applicationId . ':' . $fileKey, [
-                'application_id' => $applicationId,
-                'document_type' => $fileKey,
-                'file_hash' => $hash,
+            $entityId = $applicationId . ':' . $fileKey;
+            $pgEntityId = $this->stringToUuid($entityId);
+            $docPayload = [
+                'application_id'   => $applicationId,
+                'document_type'    => $fileKey,
+                'file_hash'        => $hash,
                 'institution_name' => $affiliationData['institution_name'] ?? 'Unknown',
-                'submitted_at' => date('c'),
-            ], $institutionId);
-            $recordedDocs[$fileKey] = $docResult['hash'];
+                'submitted_at'     => date('c'),
+            ];
+            $this->jsonSort($docPayload);
+            $hashInput = 'affiliation_document' . $entityId . json_encode($docPayload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $dataHash = hash('sha256', $hashInput);
+            $sig = $this->signData($dataHash);
+            $docPayload['digital_signature'] = $sig;
+            $docPayload['signed_by'] = 'IECEP-LSC Secretariat Node';
+            $docPayload['timestamp_iso'] = date('c');
+
+            $batchInsert[] = [
+                'entity_type'      => 'affiliation_document',
+                'entity_id'        => $pgEntityId,
+                'data_hash'        => $dataHash,
+                'previous_hash'    => null,
+                'data_json'        => $docPayload,
+                'transaction_hash' => $dataHash,
+                'record_hash'      => $dataHash,
+                'confirmed'        => true,
+            ];
+            $recordedDocs[$fileKey] = $dataHash;
         }
 
-        // 2. Build Merkle Root of all document hashes
-        $docsMerkleRoot = MerkleTree::buildRoot(array_values($documentHashes));
+        if (!empty($batchInsert)) {
+            try {
+                $this->db->insert($this->table, $batchInsert);
+            } catch (\Throwable $be) {
+                error_log("Batch insert affiliation_document notice: " . $be->getMessage());
+            }
+        }
 
         // 3. Record master affiliation block
         $masterPayload = [
