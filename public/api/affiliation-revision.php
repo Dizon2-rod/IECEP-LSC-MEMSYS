@@ -120,21 +120,17 @@ try {
             throw new Exception('Revision deadline has passed');
         }
         
-        // Update affiliation with new data
-        $update_data = [];
-        if (!empty($_POST['institution_name'])) {
-            $update_data['institution_name'] = filter_var($_POST['institution_name'], FILTER_SANITIZE_STRING);
+        // Fetch current application to preserve existing documents
+        $affRow = $supabase->select('pending_affiliations', ['id' => 'eq.' . $revision['affiliation_id']]);
+        $currentDocs = [];
+        if (!empty($affRow[0]['documents'])) {
+            if (is_array($affRow[0]['documents'])) {
+                $currentDocs = $affRow[0]['documents'];
+            } elseif (is_string($affRow[0]['documents'])) {
+                $currentDocs = json_decode($affRow[0]['documents'], true) ?: [];
+            }
         }
-        if (!empty($_POST['contact_person'])) {
-            $update_data['contact_person'] = filter_var($_POST['contact_person'], FILTER_SANITIZE_STRING);
-        }
-        if (!empty($_POST['contact_email'])) {
-            $update_data['contact_email'] = filter_var($_POST['contact_email'], FILTER_VALIDATE_EMAIL);
-        }
-        if (!empty($_POST['contact_phone'])) {
-            $update_data['contact_phone'] = filter_var($_POST['contact_phone'], FILTER_SANITIZE_STRING);
-        }
-        
+
         // Handle file uploads (MOA, accreditation, etc.)
         if (!empty($_FILES)) {
             foreach ($_FILES as $key => $file) {
@@ -143,14 +139,33 @@ try {
                     $filename = uniqid() . '_' . basename($file['name']);
                     $supabaseUrl = uploadToSupabaseStorage('affiliations', 'revisions/' . $filename, $file['tmp_name'], $mimeType);
                     if ($supabaseUrl) {
-                        $update_data[$key] = $supabaseUrl;
+                        $currentDocs[$key] = $supabaseUrl;
                     }
                 }
             }
         }
-        
-        $update_data['status'] = 'pending';
-        $update_data['updated_at'] = date('Y-m-d H:i:s');
+
+        // Map data to valid pending_affiliations table columns
+        $update_data = [
+            'documents'  => json_encode($currentDocs),
+            'status'     => 'pending',
+            'updated_at' => date('c')
+        ];
+
+        if (!empty($_POST['institution_name'])) {
+            $update_data['school_name'] = filter_var($_POST['institution_name'], FILTER_SANITIZE_STRING);
+            $currentDocs['institution_name'] = $update_data['school_name'];
+            $update_data['documents'] = json_encode($currentDocs);
+        }
+        if (!empty($_POST['contact_person'])) {
+            $update_data['contact_person'] = filter_var($_POST['contact_person'], FILTER_SANITIZE_STRING);
+        }
+        if (!empty($_POST['contact_email'])) {
+            $update_data['email'] = filter_var($_POST['contact_email'], FILTER_VALIDATE_EMAIL);
+        }
+        if (!empty($_POST['contact_phone'])) {
+            $update_data['contact_number'] = filter_var($_POST['contact_phone'], FILTER_SANITIZE_STRING);
+        }
         
         $supabase->update('pending_affiliations', $update_data, ['id' => $revision['affiliation_id']]);
         

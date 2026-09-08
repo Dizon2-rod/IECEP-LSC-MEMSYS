@@ -1,6 +1,7 @@
 <?php
 require_once dirname(__DIR__) . '/bootstrap.php';
 require_once __DIR__ . '/../includes/config.php';
+require_once dirname(__DIR__) . '/includes/paths.php';
 
 $appId = trim($_GET['id'] ?? '');
 $token = trim($_GET['token'] ?? '');
@@ -20,7 +21,8 @@ if ($appId || $token) {
                 $res = $supabase->select('pending_affiliations', ['edit_token' => 'eq.' . $token]);
             }
             if (!empty($res) && is_array($res)) {
-                $affiliation = $res[0];
+                $rawRecord = $res[0];
+                $affiliation = function_exists('normalize_affiliation_record') ? normalize_affiliation_record($rawRecord) : $rawRecord;
             }
         }
     } catch (\Throwable $e) {
@@ -91,18 +93,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
         }
 
-        $updatePayload = [
-            'status' => 'resubmitted',
-            'resubmitted_at' => date('c'),
-            'updated_at' => date('c')
-        ];
-
-        foreach ($updatedDocs as $k => $val) {
-            $updatePayload[$k] = $val;
+        if (empty($updatedDocs)) {
+            throw new Exception("Please select at least one replacement file to upload.");
         }
 
-        if ($supabase && $appId) {
-            $supabase->update('pending_affiliations', $updatePayload, $appId);
+        // Unpack existing documents JSON
+        $currentDocs = [];
+        if (!empty($affiliation['documents'])) {
+            if (is_array($affiliation['documents'])) {
+                $currentDocs = $affiliation['documents'];
+            } elseif (is_string($affiliation['documents'])) {
+                $currentDocs = json_decode($affiliation['documents'], true) ?: [];
+            }
+        } elseif (!empty($affiliation['documents_parsed']) && is_array($affiliation['documents_parsed'])) {
+            $currentDocs = $affiliation['documents_parsed'];
+        }
+
+        // Merge newly uploaded replacement files into documents
+        foreach ($updatedDocs as $docKey => $url) {
+            $currentDocs[$docKey] = $url;
+        }
+
+        $now = date('c');
+        $currentDocs['resubmitted_at'] = $now;
+        $currentDocs['last_revision_at'] = $now;
+
+        // Try updating status (try 'resubmitted' first, fallback to 'pending' if schema check constraint fails)
+        $statusCandidates = ['resubmitted', 'pending', 'under_review'];
+        $updateSuccess = false;
+        $lastEx = null;
+
+        foreach ($statusCandidates as $statusCandidate) {
+            try {
+                $updatePayload = [
+                    'documents'  => json_encode($currentDocs),
+                    'status'     => $statusCandidate,
+                    'updated_at' => $now
+                ];
+                if ($supabase && $appId) {
+                    $supabase->update('pending_affiliations', $updatePayload, $appId);
+                    $updateSuccess = true;
+                    break;
+                }
+            } catch (\Throwable $statusEx) {
+                $lastEx = $statusEx;
+                if (stripos($statusEx->getMessage(), 'status') !== false || stripos($statusEx->getMessage(), '23514') !== false || stripos($statusEx->getMessage(), 'check constraint') !== false) {
+                    continue;
+                }
+                throw $statusEx;
+            }
+        }
+
+        if (!$updateSuccess && $lastEx) {
+            throw $lastEx;
         }
 
         // Send confirmation email
@@ -110,19 +153,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $emailService = new \App\Lib\EmailService();
         $contactEmail = $affiliation['contact_email'] ?? $affiliation['email'] ?? '';
         $contactPerson = $affiliation['contact_person'] ?? 'School Representative';
-        $instName = $affiliation['institution_name'] ?? 'School Chapter';
+        $instName = $affiliation['institution_name'] ?? $affiliation['school_name'] ?? 'School Chapter';
 
         try {
             if ($contactEmail) {
                 $emailService->sendAffiliationRevisionResubmitted($contactEmail, $instName, $contactPerson);
             }
-        } catch (\Throwable $emEx) {}
+        } catch (\Throwable $emEx) {
+            error_log("Revision confirmation email error: " . $emEx->getMessage());
+        }
 
         $successMsg = "🎉 Your revised document(s) have been successfully submitted! The IECEP-LSC Registration Committee has been notified and will proceed with the final review.";
 
         // Reload updated affiliation
         $res = $supabase->select('pending_affiliations', ['id' => 'eq.' . $appId]);
-        if (!empty($res)) $affiliation = $res[0];
+        if (!empty($res) && is_array($res)) {
+            $affiliation = function_exists('normalize_affiliation_record') ? normalize_affiliation_record($res[0]) : $res[0];
+        }
 
     } catch (\Throwable $e) {
         $error = "Failed to upload files: " . $e->getMessage();

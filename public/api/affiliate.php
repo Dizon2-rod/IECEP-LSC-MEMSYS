@@ -395,35 +395,54 @@ if ($action === 'submit' || $action === 'submit_application') {
             }
         }
 
-        // Prepare application data
+        // Prepare documents JSON payload containing all application metadata and file URLs
+        $documentsPayload = array_merge([
+            'institution_name'    => $institutionName,
+            'institution_address' => $institutionAddress,
+            'contact_position'    => $contactPosition,
+            'contact_phone'       => $contactPhone,
+            'submitted_at'        => date('c')
+        ], $documents);
+
+        // Prepare application data conforming to pending_affiliations schema
         $applicationData = [
-            'institution_name' => $institutionName,
-            'address' => $institutionAddress,
+            'school_name'    => $institutionName,
+            'email'          => $contactEmail,
             'contact_person' => $contactName,
-            'contact_position' => $contactPosition,
-            'contact_phone' => $contactPhone,
-            'email' => $contactEmail,
-            'documents' => json_encode($documents),
-            'submitted_at' => date('c'),
-            'created_at' => date('c'),
-            'updated_at' => date('c'),
-            'status' => 'pending'
+            'contact_number' => $contactPhone,
+            'documents'      => json_encode($documentsPayload),
+            'status'         => 'pending',
+            'updated_at'     => date('c')
         ];
 
         // Handle resubmission or new submission
         if (!empty($resubmitId)) {
-            // Update existing record
-            $applicationData['resubmitted_at'] = date('c');
-            $applicationData['status'] = 'resubmitted';
-            // Remove changes_instructions from documents
+            // Remove changes_instructions from documents if present
             if (!empty($existingDocuments['changes_instructions'])) {
                 unset($existingDocuments['changes_instructions']);
             }
-            $applicationData['documents'] = json_encode(array_merge($existingDocuments, $documents));
+            $mergedDocs = array_merge($existingDocuments, $documentsPayload);
+            $mergedDocs['resubmitted_at'] = date('c');
+            $applicationData['documents'] = json_encode($mergedDocs);
 
-            $result = $supabase->update('pending_affiliations', $applicationData, $resubmitId);
+            // Attempt status update (try 'resubmitted' then fallback to 'pending' if schema check fails)
+            $updateSuccess = false;
+            $statusCandidates = ['resubmitted', 'pending', 'under_review'];
+            foreach ($statusCandidates as $stCandidate) {
+                try {
+                    $applicationData['status'] = $stCandidate;
+                    $result = $supabase->update('pending_affiliations', $applicationData, $resubmitId);
+                    $updateSuccess = true;
+                    break;
+                } catch (\Throwable $stEx) {
+                    if (stripos($stEx->getMessage(), 'status') !== false || stripos($stEx->getMessage(), '23514') !== false || stripos($stEx->getMessage(), 'check constraint') !== false) {
+                        continue;
+                    }
+                    throw $stEx;
+                }
+            }
 
-            if ($result) {
+            if ($updateSuccess) {
                 // Send notification to registration committee about resubmission
                 $emailService->sendAffiliationResubmitted($contactEmail, $institutionName, $resubmitId);
 
