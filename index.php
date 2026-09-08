@@ -25,49 +25,6 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once __DIR__ . '/bootstrap.php';
 require_once __DIR__ . '/includes/csrf.php';
 
-$facebookPageUrl = 'https://www.facebook.com/IECEPLSC';
-$featuredCards = [];
-try {
-    $supabaseClient = getSupabaseClient();
-    if ($supabaseClient) {
-        $settings = $supabaseClient->select('system_settings', [
-            'key' => 'eq.facebook_page_url',
-            'limit' => '1'
-        ]);
-        if (!empty($settings[0]['value'])) {
-            $facebookPageUrl = $settings[0]['value'];
-        }
-
-        $supabaseConfig = require INCLUDES_PATH . 'supabase.php';
-        if (!empty($supabaseConfig['service_role_key'])) {
-            $supabaseClient->setServiceRoleKey($supabaseConfig['service_role_key']);
-        }
-
-        $rawCards = $supabaseClient->select('featured_cards');
-        if (is_array($rawCards) && !empty($rawCards) && isset($rawCards[0]['is_active'])) {
-            $featuredCards = array_values(array_filter($rawCards, function ($card) {
-                return !empty($card['is_active']);
-            }));
-            usort($featuredCards, function ($left, $right) {
-                $leftOrder = (int)($left['sort_order'] ?? 0);
-                $rightOrder = (int)($right['sort_order'] ?? 0);
-                if ($leftOrder !== $rightOrder) {
-                    return $leftOrder <=> $rightOrder;
-                }
-                return strcmp(($right['created_at'] ?? ''), ($left['created_at'] ?? ''));
-            });
-        } elseif (is_array($rawCards) && !empty($rawCards) && isset($rawCards['message'])) {
-            error_log('Featured cards query error: ' . ($rawCards['message'] ?? 'Unknown error'));
-            $featuredCards = [];
-        } else {
-            error_log('Featured cards: no active cards found or empty table');
-            $featuredCards = [];
-        }
-    }
-} catch (Exception $e) {
-    error_log('Featured cards exception: ' . $e->getMessage());
-}
-
 // ============================================================
 //  Helper: check required PHP extensions
 // ============================================================
@@ -79,20 +36,40 @@ function checkRequiredExtensions(array $extensions): ?string {
 }
 
 // ============================================================
-//  AJAX Handlers  (POST with action param)
+//  AJAX Handlers  (POST with action param or JSON body)
 // ============================================================
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+$isPostRequest = ($_SERVER['REQUEST_METHOD'] === 'POST');
+$postAction = $_POST['action'] ?? '';
+
+if ($isPostRequest && empty($postAction)) {
+    $rawInput = file_get_contents('php://input');
+    if (!empty($rawInput)) {
+        $jsonInput = json_decode($rawInput, true);
+        if (is_array($jsonInput) && !empty($jsonInput['action'])) {
+            $postAction = $jsonInput['action'];
+            $_POST = array_merge($_POST, $jsonInput);
+        }
+    }
+}
+
+if ($isPostRequest && !empty($postAction)) {
     error_reporting(E_ALL);
     ini_set('display_errors', 0);
     ini_set('log_errors', 1);
     ini_set('error_log', __DIR__ . '/logs/error.log');
+    
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
     ob_start();
 
     register_shutdown_function(function () {
         $error = error_get_last();
         if ($error && in_array($error['type'], [E_ERROR, E_PARSE, E_COMPILE_ERROR, E_CORE_ERROR])) {
             error_log("FATAL ERROR: {$error['message']} in {$error['file']} on line {$error['line']}");
-            ob_end_clean();
+            while (ob_get_level()) {
+                ob_end_clean();
+            }
             echo json_encode(['success' => false, 'message' => 'Server fatal error: ' . $error['message']]);
         }
     });
@@ -101,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     require_once __DIR__ . '/src/lib/SupabaseClient.php';
 
-    $action = $_POST['action'];
+    $action = $postAction;
 
     // ----------------------------------------------------------
     //  Action: send_code
@@ -381,6 +358,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 // ============================================================
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/supabase.php';
+
+$facebookPageUrl = 'https://www.facebook.com/IECEPLSC';
+$featuredCards = [];
+try {
+    $supabaseClient = getSupabaseClient();
+    if ($supabaseClient) {
+        $settings = $supabaseClient->select('system_settings', [
+            'key' => 'eq.facebook_page_url',
+            'limit' => '1'
+        ]);
+        if (!empty($settings[0]['value'])) {
+            $facebookPageUrl = $settings[0]['value'];
+        }
+
+        $supabaseConfig = require INCLUDES_PATH . 'supabase.php';
+        if (!empty($supabaseConfig['service_role_key'])) {
+            $supabaseClient->setServiceRoleKey($supabaseConfig['service_role_key']);
+        }
+
+        $rawCards = $supabaseClient->select('featured_cards');
+        if (is_array($rawCards) && !empty($rawCards) && isset($rawCards[0]['is_active'])) {
+            $featuredCards = array_values(array_filter($rawCards, function ($card) {
+                return !empty($card['is_active']);
+            }));
+            usort($featuredCards, function ($left, $right) {
+                $leftOrder = (int)($left['sort_order'] ?? 0);
+                $rightOrder = (int)($right['sort_order'] ?? 0);
+                if ($leftOrder !== $rightOrder) {
+                    return $leftOrder <=> $rightOrder;
+                }
+                return strcmp(($right['created_at'] ?? ''), ($left['created_at'] ?? ''));
+            });
+        } elseif (is_array($rawCards) && !empty($rawCards) && isset($rawCards['message'])) {
+            error_log('Featured cards query error: ' . ($rawCards['message'] ?? 'Unknown error'));
+            $featuredCards = [];
+        } else {
+            error_log('Featured cards: no active cards found or empty table');
+            $featuredCards = [];
+        }
+    }
+} catch (Exception $e) {
+    error_log('Featured cards exception: ' . $e->getMessage());
+}
 
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Cache-Control: post-check=0, pre-check=0', false);
@@ -2815,7 +2835,19 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // ── Modal setup ────────────────────────────────────────────────────────────
-    const API_BASE_URL = window.location.pathname.startsWith('/IECEP-LSC-MEMSYS') ? '/IECEP-LSC-MEMSYS' : '';
+    const API_BASE_URL = (function() {
+        const match = window.location.pathname.match(/^(\/[^\/]*iecep[^\/]*)/i);
+        if (match) return match[1].replace(/\/+$/, '');
+        const phpBase = '<?php echo defined("BASE_URL") ? htmlspecialchars(rtrim(BASE_URL, "/"), ENT_QUOTES) : ""; ?>';
+        if (phpBase) {
+            try {
+                return new URL(phpBase, window.location.origin).pathname.replace(/\/+$/, '');
+            } catch (e) {
+                return phpBase;
+            }
+        }
+        return '';
+    })();
     let verifiedEmail = '';
 
     const overlay = document.createElement('div');
@@ -2895,14 +2927,22 @@ document.addEventListener('DOMContentLoaded', function () {
         this.disabled = true;
         this.innerHTML = '<span class="spinner"></span> Sending...';
         try {
-            const res    = await fetch(API_BASE_URL + '/index.php', {
+            const endpoint = API_BASE_URL ? (API_BASE_URL + '/index.php') : 'index.php';
+            const res    = await fetch(endpoint, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'action=send_code&email=' + encodeURIComponent(email),
             });
             if (!res.ok) throw new Error(`Server error: ${res.status}`);
-            const result = await res.json();
+            const rawText = await res.text();
+            let result;
+            try {
+                result = JSON.parse(rawText);
+            } catch (jsonErr) {
+                console.error('[Verification] Server returned non-JSON:', rawText);
+                throw new Error('Server returned an unexpected response format. Please try again.');
+            }
             if (result.success) {
                 showModalSuccess('Verification code sent to your email! Please check your inbox and spam folder.');
                 document.getElementById('modal-sent-email').textContent = email;
@@ -2919,7 +2959,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.innerHTML = 'Send Verification Code';
             }
         } catch (err) {
-            showNotification('error', 'Network error: ' + err.message);
+            showNotification('error', err.message.startsWith('Network error') ? err.message : ('Network error: ' + err.message));
             this.disabled = false;
             this.innerHTML = 'Send Verification Code';
         }
@@ -2934,14 +2974,22 @@ document.addEventListener('DOMContentLoaded', function () {
         this.disabled = true;
         this.innerHTML = '<span class="spinner"></span> Verifying...';
         try {
-            const res    = await fetch(API_BASE_URL + '/index.php', {
+            const endpoint = API_BASE_URL ? (API_BASE_URL + '/index.php') : 'index.php';
+            const res    = await fetch(endpoint, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'action=verify_code&email=' + encodeURIComponent(email) + '&code=' + encodeURIComponent(code),
             });
             if (!res.ok) throw new Error(`Server error: ${res.status}`);
-            const result = await res.json();
+            const rawText = await res.text();
+            let result;
+            try {
+                result = JSON.parse(rawText);
+            } catch (jsonErr) {
+                console.error('[Verification] Server returned non-JSON:', rawText);
+                throw new Error('Server returned an unexpected response format. Please try again.');
+            }
             if (result.success) {
                 verifiedEmail = email;
                 showModalSuccess('Email verified successfully! Proceeding to application form...');
@@ -2952,7 +3000,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.innerHTML = 'Verify Code';
             }
         } catch (err) {
-            showModalError('Network error. Please try again.');
+            showModalError(err.message || 'Network error. Please try again.');
             this.disabled = false;
             this.innerHTML = 'Verify Code';
         }
@@ -3160,7 +3208,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const oldMembers = parseInt(document.getElementById('hidden-old-members').value);
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-            const response = await fetch(API_BASE_URL + '/public/api/simulate-payment.php', {
+            const simEndpoint = API_BASE_URL ? (API_BASE_URL + '/public/api/simulate-payment.php') : 'public/api/simulate-payment.php';
+            const response = await fetch(simEndpoint, {
                 method: 'POST',
                 credentials: 'same-origin',
                 headers: {
@@ -3437,12 +3486,20 @@ document.addEventListener('DOMContentLoaded', function () {
         formData.delete('action');
         
         try {
-            const response = await fetch(API_BASE_URL + '/public/api/submit-affiliation.php', {
+            const submitEndpoint = API_BASE_URL ? (API_BASE_URL + '/public/api/submit-affiliation.php') : 'public/api/submit-affiliation.php';
+            const response = await fetch(submitEndpoint, {
                 method: 'POST',
                 body: formData
             });
             
-            const result = await response.json();
+            const rawText = await response.text();
+            let result;
+            try {
+                result = JSON.parse(rawText);
+            } catch (jsonErr) {
+                console.error('[Affiliation] Server returned non-JSON:', rawText);
+                throw new Error('Server returned an unexpected response format. Please try again.');
+            }
             
             if (result.success) {
                 // Close affiliate modal

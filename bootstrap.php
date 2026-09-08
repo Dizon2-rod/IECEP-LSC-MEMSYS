@@ -145,8 +145,12 @@ if (!defined('APP_URL')) {
         
         $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
         $basePath = '';
-        if (str_contains($scriptName, '/IECEP-LSC-MEMSYS')) {
-            $basePath = '/IECEP-LSC-MEMSYS';
+        if (stripos($scriptName, 'iecep-lsc-memsys') !== false) {
+            if (preg_match('#(/[^/]*iecep[^/]*)#i', $scriptName, $matches)) {
+                $basePath = $matches[1];
+            } else {
+                $basePath = '/IECEP-LSC-MEMSYS';
+            }
         }
         $detectedAppUrl = $scheme . '://' . $httpHost . $basePath;
     } else {

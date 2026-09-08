@@ -1415,8 +1415,9 @@ $isResubmit = !empty($existingApplication);
             }
             
             try {
-                console.log('Sending submission request to ' + API_URL + '/submit-affiliation.php');
-                const response = await fetch(API_URL + '/submit-affiliation.php', {
+                const targetUrl = (typeof window.getSubmitApiUrl === 'function') ? window.getSubmitApiUrl() : (API_URL + '/submit-affiliation.php');
+                console.log('Sending submission request to ' + targetUrl);
+                const response = await fetch(targetUrl, {
                     method: 'POST',
                     body: formData
                 });
@@ -1424,7 +1425,14 @@ $isResubmit = !empty($existingApplication);
                 console.log('Response status:', response.status);
                 console.log('Response ok:', response.ok);
                 
-                const result = await response.json();
+                const rawText = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(rawText);
+                } catch (jsonErr) {
+                    console.error('Submission non-JSON response:', rawText);
+                    throw new Error('Server returned an unexpected response format. Please try again.');
+                }
                 console.log('Response result:', result);
                 
                 if (result.success) {
