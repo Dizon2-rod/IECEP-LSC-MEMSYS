@@ -127,9 +127,9 @@ class EmailService
      */
     public function hasHttpsApiConfigured(): bool
     {
-        $resend = getenv('RESEND_API_KEY') ?: ($_ENV['RESEND_API_KEY'] ?? ($_SERVER['RESEND_API_KEY'] ?? ''));
+        $resend = defined('RESEND_API_KEY') ? RESEND_API_KEY : (getenv('RESEND_API_KEY') ?: ($_ENV['RESEND_API_KEY'] ?? ($_SERVER['RESEND_API_KEY'] ?? '')));
         $brevo = getenv('BREVO_API_KEY') ?: ($_ENV['BREVO_API_KEY'] ?? ($_SERVER['BREVO_API_KEY'] ?? ''));
-        return !empty($resend) || !empty($brevo);
+        return (!empty($resend) && $resend !== 're_xxxxxxxxx') || !empty($brevo);
     }
 
     /**
@@ -138,9 +138,28 @@ class EmailService
     public function sendViaHttpsRestApi(string $to, string $subject, string $htmlBody, string $altBody = ''): bool
     {
         // 1. Resend API (https://resend.com)
-        $resendKey = getenv('RESEND_API_KEY') ?: ($_ENV['RESEND_API_KEY'] ?? ($_SERVER['RESEND_API_KEY'] ?? ''));
-        if (!empty($resendKey)) {
-            $from = getenv('RESEND_FROM') ?: ($_ENV['RESEND_FROM'] ?? 'IECEP-LSC MEMSYS <onboarding@resend.dev>');
+        $resendKey = defined('RESEND_API_KEY') ? RESEND_API_KEY : (getenv('RESEND_API_KEY') ?: ($_ENV['RESEND_API_KEY'] ?? ($_SERVER['RESEND_API_KEY'] ?? '')));
+        if (!empty($resendKey) && $resendKey !== 're_xxxxxxxxx') {
+            $from = defined('RESEND_FROM') ? RESEND_FROM : (getenv('RESEND_FROM') ?: ($_ENV['RESEND_FROM'] ?? 'onboarding@resend.dev'));
+
+            // If official Resend PHP SDK is installed:
+            if (class_exists('\\Resend')) {
+                try {
+                    $resend = \Resend::client(trim($resendKey));
+                    $resend->emails->send([
+                        'from'    => $from,
+                        'to'      => $to,
+                        'subject' => $subject,
+                        'html'    => $htmlBody
+                    ]);
+                    error_log("Email sent successfully to $to via Resend SDK!");
+                    return true;
+                } catch (\Throwable $sdkEx) {
+                    error_log("Resend SDK notice: " . $sdkEx->getMessage() . " - falling back to REST cURL");
+                }
+            }
+
+            // Native cURL call (zero external dependency, 100% reliable on Railway & Windows)
             $payload = [
                 'from'    => $from,
                 'to'      => [$to],
@@ -152,6 +171,8 @@ class EmailService
             curl_setopt_array($ch, [
                 CURLOPT_POST           => true,
                 CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
                 CURLOPT_HTTPHEADER     => [
                     'Authorization: Bearer ' . trim($resendKey),
                     'Content-Type: application/json'
@@ -161,12 +182,14 @@ class EmailService
             ]);
             $resp = curl_exec($ch);
             $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlErr = curl_error($ch);
             curl_close($ch);
             if ($code >= 200 && $code < 300) {
                 error_log("Email sent successfully to $to via Resend HTTPS API!");
                 return true;
             }
-            error_log("Resend API failed: HTTP $code - Response: $resp");
+            $this->lastError = "Resend API Error (HTTP $code): " . ($resp ?: $curlErr);
+            error_log($this->lastError);
         }
 
         // 2. Brevo API (https://brevo.com)
@@ -185,6 +208,8 @@ class EmailService
             curl_setopt_array($ch, [
                 CURLOPT_POST           => true,
                 CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
                 CURLOPT_HTTPHEADER     => [
                     'api-key: ' . trim($brevoKey),
                     'Content-Type: application/json'
@@ -368,6 +393,15 @@ class EmailService
                         <p style='font-size:13px;color:#64748B;margin-bottom:0;'>If you have any questions, please contact the IECEP-LSC Secretariat at <a href='mailto:lspuscc.adminece@gmail.com' style='color:#2563EB;'>lspuscc.adminece@gmail.com</a>.</p>
                     </div>
                 </div>";
+
+            $subject = "🎉 Affiliation Approved: {$institutionName} Officer Account Credentials - IECEP-LSC";
+            $mail->Subject = $subject;
+
+            if ($this->hasHttpsApiConfigured()) {
+                if ($this->sendViaHttpsRestApi($to, $subject, $mail->Body, "Credentials for {$institutionName}: Email: {$to}, Password: {$password}")) {
+                    return true;
+                }
+            }
 
             return $mail->send();
         } catch (\Throwable $e) {

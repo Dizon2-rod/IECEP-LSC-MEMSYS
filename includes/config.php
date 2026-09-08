@@ -120,6 +120,14 @@ if (!defined('SMTP_FROM_EMAIL')) {
     define('SMTP_FROM_EMAIL', env('SMTP_FROM_EMAIL', 'rasheddizon7@gmail.com') ?: 'rasheddizon7@gmail.com');
 }
 
+// Resend API Configuration (HTTPS REST API for Cloud/Railway hosting)
+if (!defined('RESEND_API_KEY')) {
+    define('RESEND_API_KEY', env('RESEND_API_KEY', ''));
+}
+if (!defined('RESEND_FROM')) {
+    define('RESEND_FROM', env('RESEND_FROM', 'onboarding@resend.dev'));
+}
+
 // Security
 if (!defined('JWT_SECRET')) {
     define('JWT_SECRET', env('JWT_SECRET', ''));
