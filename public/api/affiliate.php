@@ -25,6 +25,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require_once __DIR__ . '/../../autoload.php';
+require_once __DIR__ . '/../../includes/config.php';
 require_once __DIR__ . '/../../includes/supabase.php';
 require_once __DIR__ . '/../../includes/paths.php';
 require_once __DIR__ . '/../../src/lib/EmailService.php';
@@ -136,27 +137,25 @@ if ($action === 'send-code') {
 
         // Send email using EmailService
         $sent = $emailService->sendVerificationCode($email, $code);
+        if (!$sent) {
+            // Quick retry in case of transient network hiccup
+            usleep(500000);
+            $sent = $emailService->sendVerificationCode($email, $code);
+        }
 
-        error_log("Email send result: " . ($sent ? 'SUCCESS' : 'FAILED'));
+        error_log("Email send result for $email: " . ($sent ? 'SUCCESS' : 'FAILED'));
 
         if ($sent) {
-            echo json_encode(['success' => true, 'message' => 'Verification code sent successfully! Please check your email.']);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Verification code sent successfully! Please check your Gmail inbox and spam folder.'
+            ]);
         } else {
             $lastErr = $emailService->getLastError();
-            $appEnv = defined('APP_ENV') ? APP_ENV : 'development';
-            if ($appEnv === 'development' || !empty($_GET['debug'])) {
-                echo json_encode([
-                    'success' => true,
-                    'message' => "Verification code generated (Test mode fallback: $code)",
-                    'code' => $code,
-                    'email_error' => $lastErr
-                ]);
-            } else {
-                echo json_encode([
-                    'success' => false,
-                    'message' => 'Failed to send verification code email. ' . ($lastErr ? "($lastErr)" : 'Please check your connection or contact support.')
-                ]);
-            }
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to send verification code email to your Gmail: ' . ($lastErr ? "($lastErr)" : 'Please check your internet connection or try again.')
+            ]);
         }
 
     } catch (Exception $e) {

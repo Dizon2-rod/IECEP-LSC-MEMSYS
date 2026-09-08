@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (result.success) {
                     showStep('codeVerificationStep');
-                    showMessage('success', 'Verification code sent to your email!');
+                    showMessage('success', result.message || 'Verification code sent to your email! Please check your inbox and spam folder.');
                 } else {
                     showMessage('error', result.message || 'Failed to send verification code');
                 }

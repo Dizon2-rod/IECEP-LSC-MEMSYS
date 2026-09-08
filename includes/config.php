@@ -111,7 +111,7 @@ if (!defined('SMTP_USERNAME')) {
     define('SMTP_USERNAME', env('SMTP_USERNAME', 'rasheddizon7@gmail.com') ?: 'rasheddizon7@gmail.com');
 }
 if (!defined('SMTP_PASSWORD')) {
-    define('SMTP_PASSWORD', env('SMTP_PASSWORD', 'yaxp jbky xfub cvuq') ?: 'yaxp jbky xfub cvuq');
+    define('SMTP_PASSWORD', env('SMTP_PASSWORD', 'wqyvufrkrgoxfosk') ?: 'wqyvufrkrgoxfosk');
 }
 if (!defined('SMTP_FROM_NAME')) {
     define('SMTP_FROM_NAME', env('SMTP_FROM_NAME', 'IECEP Laguna Student Chapter') ?: 'IECEP Laguna Student Chapter');

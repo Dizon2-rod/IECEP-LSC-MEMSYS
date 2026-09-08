@@ -202,6 +202,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $emailService = new \App\Lib\EmailService();
                 $emailSent    = $emailService->sendVerificationCode($cleanEmail, $code);
                 if (!$emailSent) {
+                    usleep(500000);
+                    $emailSent = $emailService->sendVerificationCode($cleanEmail, $code);
+                }
+                if (!$emailSent) {
                     $emailError = $emailService->getLastError() ?: 'SMTP connection error.';
                 }
             } catch (Exception $e) {
@@ -209,12 +213,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 error_log("Email send error: $emailError\n" . $e->getTraceAsString());
             }
 
-            $response = ['success' => true, 'message' => 'Verification code sent to your email!'];
-            if (!$emailSent) {
-                $response['code']    = $code; // dev fallback for testability
-                $response['message'] = $emailError
-                    ? 'Verification code generated. Email delivery notice: ' . $emailError
-                    : 'Verification code generated (email delivery pending - code shown for testing)';
+            if ($emailSent) {
+                $response = [
+                    'success' => true,
+                    'message' => 'Verification code sent to your email! Please check your Gmail inbox and spam folder.'
+                ];
+            } else {
+                $response = [
+                    'success' => false,
+                    'message' => 'Failed to send verification code email to your Gmail: ' . ($emailError ?: 'Please check your connection and try again.')
+                ];
             }
 
             ob_end_clean();
