@@ -165,12 +165,6 @@ $pageTitle = 'Push Notifications & Urgent Broadcasts';
                 </form>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-bell"></i><span><strong>Push Engine:</strong> Web Push API / Service Worker Active</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Deliverability:</strong> Cryptographically Signed VAPID Keys</span></div>
-            </div>
-
         </div>
     </main>
 </body>

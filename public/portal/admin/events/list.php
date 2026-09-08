@@ -489,12 +489,6 @@ foreach ($eventsList as $ev) {
                 </div>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip" style="margin-top:1.5rem;">
-                <div class="ap-sentinel-item"><i class="fas fa-qrcode"></i><span><strong>Dynamic Attendance:</strong> 15-Second Refreshing Rolling QR Token System</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-certificate"></i><span><strong>Accreditation:</strong> Real-time Event CPD Verification</span></div>
-            </div>
-
         </div>
     </main>
 

@@ -220,12 +220,6 @@ if (!$institution) {
                 </div>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-fingerprint"></i><span><strong>Batch Genesis:</strong> Sequential Algorithmic ID Generator Active</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Proof-of-Membership:</strong> Blockchain Immutable Ledger Backed</span></div>
-            </div>
-
         </div>
     </main>
 </body>

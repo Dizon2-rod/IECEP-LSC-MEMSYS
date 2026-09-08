@@ -181,12 +181,6 @@ $txnThisMonth = 48;
                 </div>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-link"></i><span><strong>Ledger:</strong> Blockchain-Anchored SHA-256</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-sack-dollar"></i><span><strong>Collections:</strong> ₱<?= number_format($totalCollections) ?> Verified</span></div>
-            </div>
-
         </div>
     </main>
 </body>

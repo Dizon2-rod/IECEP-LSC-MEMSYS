@@ -424,12 +424,6 @@ $complianceRate = $totalInstitutions > 0 ? round(($compliantCount / $totalInstit
                 </div>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip" style="margin-top:1.5rem;">
-                <div class="ap-sentinel-item"><i class="fas fa-scale-balanced"></i><span><strong>National By-Laws:</strong> Minimum 20 Members per Chartered Chapter</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Cryptographic Hash:</strong> SHA-256 Ledger Verified</span></div>
-            </div>
-
         </div>
     </main>
 

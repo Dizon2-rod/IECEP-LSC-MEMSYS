@@ -318,12 +318,6 @@ if (isset($_GET['export']) && $_GET['export'] === 'csv') {
                 </div>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip">
-                <div class="ap-sentinel-item"><i class="fas fa-award"></i><span><strong>Compliance Protocol:</strong> 40% Quorum Constitution Rule Active</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-shield-halved"></i><span><strong>Proof-of-Attendance:</strong> Cryptographically Synced to Ledger</span></div>
-            </div>
-
         </div>
     </main>
 

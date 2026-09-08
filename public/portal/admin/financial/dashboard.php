@@ -333,12 +333,6 @@ try {
                 </div>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip" style="margin-top:1.5rem;">
-                <div class="ap-sentinel-item"><i class="fas fa-shield-check"></i><span><strong>Audited Ledger:</strong> Cryptographically Anchored Treasury Proof</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-file-invoice"></i><span><strong>Anti-Fraud:</strong> QR-Verifiable Official Receipts</span></div>
-            </div>
-
         </div>
     </main>
 </body>

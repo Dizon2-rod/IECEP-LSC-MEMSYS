@@ -465,12 +465,6 @@ try {
                 </div>
             </div>
 
-            <!-- Sentinel -->
-            <div class="ap-sentinel-strip" style="margin-top:1.5rem;">
-                <div class="ap-sentinel-item"><i class="fas fa-shield-check"></i><span><strong>Proof-of-Payment:</strong> Cryptographic Hash Verification</span></div>
-                <div class="ap-sentinel-item"><i class="fas fa-file-invoice"></i><span><strong>Official Receipt:</strong> QR Verifiable Tax & Treasury Compliance</span></div>
-            </div>
-
         </div>
     </main>
 
