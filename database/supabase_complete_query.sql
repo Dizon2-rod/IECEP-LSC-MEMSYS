@@ -167,20 +167,32 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'paid';
 -- 6. SEQUENTIAL MEMBER ID COUNTERS
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS member_id_counter (
-    year INTEGER PRIMARY KEY,
+    id SERIAL,
+    year INTEGER,
     last_number INTEGER NOT NULL DEFAULT 0,
+    counter INTEGER NOT NULL DEFAULT 0,
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure all columns exist even if table was created in an older migration
+ALTER TABLE member_id_counter ADD COLUMN IF NOT EXISTS year INTEGER;
+ALTER TABLE member_id_counter ADD COLUMN IF NOT EXISTS last_number INTEGER DEFAULT 0;
+ALTER TABLE member_id_counter ADD COLUMN IF NOT EXISTS counter INTEGER DEFAULT 0;
+ALTER TABLE member_id_counter ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+CREATE UNIQUE INDEX IF NOT EXISTS idx_member_id_counter_year_uq ON member_id_counter(year);
+
 CREATE TABLE IF NOT EXISTS membership_id_sequences (
     id SERIAL PRIMARY KEY,
-    year INT NOT NULL UNIQUE,
+    year INT,
     last_number INT NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_mem_seq_year ON membership_id_sequences(year);
+-- Ensure year column exists even if table was created in an older migration
+ALTER TABLE membership_id_sequences ADD COLUMN IF NOT EXISTS year INT;
+ALTER TABLE membership_id_sequences ADD COLUMN IF NOT EXISTS last_number INT DEFAULT 0;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_mem_seq_year_uq ON membership_id_sequences(year);
 
 -- =====================================================================
 -- 7. EVENTS & ATTENDANCE
@@ -560,9 +572,17 @@ CREATE TABLE IF NOT EXISTS compliance_scores (
     participation_rate NUMERIC(5,2),
     hosted_event_count INT DEFAULT 0,
     overall_score NUMERIC(5,2),
-    last_updated TIMESTAMPTZ DEFAULT NOW(),
-    PRIMARY KEY (institution_id, year)
+    last_updated TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure all columns exist even if table was created in an older migration
+ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS year INT;
+ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS participation_rate NUMERIC(5,2);
+ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS hosted_event_count INT DEFAULT 0;
+ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS overall_score NUMERIC(5,2);
+ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ DEFAULT NOW();
+CREATE INDEX IF NOT EXISTS idx_compliance_scores_year ON compliance_scores(year);
 
 CREATE TABLE IF NOT EXISTS compliance_rules (
     id SERIAL PRIMARY KEY,
@@ -938,13 +958,27 @@ ON CONFLICT (email) DO UPDATE SET
     course = EXCLUDED.course,
     student_number = EXCLUDED.student_number;
 
-INSERT INTO member_id_counter (year, last_number)
-VALUES (2026, 1)
-ON CONFLICT (year) DO UPDATE SET last_number = GREATEST(member_id_counter.last_number, EXCLUDED.last_number);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM member_id_counter WHERE year = 2026) THEN
+        INSERT INTO member_id_counter (year, last_number, counter) VALUES (2026, 1, 1);
+    ELSE
+        UPDATE member_id_counter 
+        SET last_number = GREATEST(COALESCE(last_number, 0), 1),
+            counter = GREATEST(COALESCE(counter, 0), 1)
+        WHERE year = 2026;
+    END IF;
 
-INSERT INTO membership_id_sequences (year, last_number)
-VALUES (2026, 1)
-ON CONFLICT (year) DO UPDATE SET last_number = GREATEST(membership_id_sequences.last_number, EXCLUDED.last_number);
+    IF NOT EXISTS (SELECT 1 FROM membership_id_sequences WHERE year = 2026) THEN
+        INSERT INTO membership_id_sequences (year, last_number) VALUES (2026, 1);
+    ELSE
+        UPDATE membership_id_sequences 
+        SET last_number = GREATEST(COALESCE(last_number, 0), 1) 
+        WHERE year = 2026;
+    END IF;
+EXCEPTION WHEN OTHERS THEN
+    NULL;
+END $$;
 
 -- =====================================================================
 -- 21. SEED DATA: EVENTS & ANNOUNCEMENTS
