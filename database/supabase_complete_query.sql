@@ -241,10 +241,23 @@ CREATE TABLE IF NOT EXISTS verification_codes (
     purpose TEXT DEFAULT 'affiliation',
     expires_at TIMESTAMPTZ NOT NULL,
     used BOOLEAN DEFAULT false,
+    verified BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_ver_code ON verification_codes(email, code);
+
+-- 12.1 EMAIL VERIFICATIONS TABLE
+CREATE TABLE IF NOT EXISTS email_verifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL,
+    code VARCHAR(10) NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    verified BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_verifications_lookup ON email_verifications (email, code, verified);
 
 -- 13. MERCHANDISE & STORE
 CREATE TABLE IF NOT EXISTS merch_items (

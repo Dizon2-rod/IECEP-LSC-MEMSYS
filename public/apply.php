@@ -384,32 +384,44 @@ if (!empty($resubmitId)) {
         <!-- Step 1: Email Verification -->
         <div id="email-verification-step" style="<?php echo !empty($existingApplication) ? 'display:none' : ''; ?>">
             <div class="card">
-                <h3 style="text-align: center; margin-bottom: var(--space-4); color: var(--primary);">Verify Your Email</h3>
+                <h3 style="text-align: center; margin-bottom: var(--space-4); color: var(--primary);">Step 1: Verify Your Email</h3>
                 <p style="text-align: center; color: var(--neutral-500); margin-bottom: var(--space-6);">
-                    Enter your email address to receive a verification code
+                    Enter your email address to receive a 6-digit verification code before proceeding to institution details.
                 </p>
 
+                <!-- Hidden field indicating email verification status -->
+                <input type="hidden" id="email-verified-flag" name="email_verified" value="<?php echo !empty($existingApplication) ? 'true' : 'false'; ?>">
+
                 <div id="email-form">
-                    <div class="form-group" style="max-width: 400px; margin: 0 auto var(--space-6);">
-                        <label for="verification-email">Gmail Address <span style="color: #DC3545;">*</span></label>
+                    <div class="form-group" style="max-width: 420px; margin: 0 auto var(--space-6);">
+                        <label for="verification-email">Gmail / Institutional Email Address <span style="color: #DC3545;">*</span></label>
                         <input type="email" class="form-control" id="verification-email" placeholder="your.email@gmail.com or your.email@institution.edu" required>
-                        <small style="color: var(--neutral-500); display: block; margin-top: var(--space-2);">Please Use Your Gmail Address</small>
+                        <small style="color: var(--neutral-500); display: block; margin-top: var(--space-2);">A 6-digit verification code will be sent to your Gmail inbox.</small>
                     </div>
 
                     <div style="text-align: center;">
-                        <button type="button" class="btn btn-primary btn-lg" id="send-code-btn" style="min-width: 200px;">
-                            Send Verification Code
+                        <button type="button" class="btn btn-primary btn-lg" id="send-code-btn" style="min-width: 220px;">
+                            <i class="fas fa-paper-plane me-2"></i> Send Verification Code
                         </button>
                     </div>
                 </div>
 
                 <div id="code-form" class="hidden">
                     <div style="text-align: center; margin-bottom: var(--space-6);">
-                        <p style="color: var(--accent); font-weight: 700;">Verification code sent to <span id="sent-email"></span></p>
-                        <p style="color: var(--neutral-500); font-size: 0.9rem;">Please check your inbox and spam folder</p>
+                        <p style="color: var(--accent); font-weight: 700; font-size: 1.05rem;">
+                            <i class="fas fa-envelope-circle-check me-2"></i> Verification code sent to <span id="sent-email"></span>
+                        </p>
+                        <p style="color: var(--neutral-500); font-size: 0.9rem;">Please check your Gmail inbox and spam folder.</p>
                     </div>
 
-                    <div class="verification-inputs">
+                    <div class="form-group" style="max-width: 300px; margin: 0 auto var(--space-4);">
+                        <label for="verification-code-input" style="text-align: center; display: block; font-weight: 600; color: var(--primary); margin-bottom: 8px;">
+                            6-Digit Verification Code <span style="color: #DC3545;">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="verification-code-input" maxlength="6" inputmode="numeric" pattern="[0-9]{6}" placeholder="------" style="font-size: 2rem; font-weight: 800; letter-spacing: 12px; text-align: center; border: 2px solid #CBD5E1; border-radius: 12px; font-family: monospace;" autocomplete="one-time-code">
+                    </div>
+
+                    <div class="verification-inputs" style="margin-top: 10px; margin-bottom: 10px;">
                         <input type="text" maxlength="1" class="code-input" data-index="0">
                         <input type="text" maxlength="1" class="code-input" data-index="1">
                         <input type="text" maxlength="1" class="code-input" data-index="2">
@@ -418,15 +430,20 @@ if (!empty($resubmitId)) {
                         <input type="text" maxlength="1" class="code-input" data-index="5">
                     </div>
 
-                    <div style="text-align: center;">
-                        <button type="button" class="btn btn-primary btn-lg" id="verify-code-btn" style="min-width: 200px;">
-                            Verify Code
+                    <div style="text-align: center; margin-top: var(--space-6);">
+                        <button type="button" class="btn btn-primary btn-lg" id="verify-code-btn" style="min-width: 220px;">
+                            <i class="fas fa-check-circle me-2"></i> Verify Code
                         </button>
                     </div>
 
-                    <div style="text-align: center; margin-top: var(--space-6);">
+                    <div style="text-align: center; margin-top: var(--space-6); display: flex; flex-direction: column; align-items: center; gap: 8px;">
                         <div class="countdown" id="countdown">Code expires in <span id="timer">10:00</span></div>
-                        <button type="button" class="resend-btn" id="resend-btn" disabled>Resend Code</button>
+                        <button type="button" class="resend-btn" id="resend-btn" disabled>
+                            <i class="fas fa-redo me-1"></i> Resend Verification Code
+                        </button>
+                        <button type="button" class="resend-btn" id="change-email-btn" style="color: #64748B; font-size: 0.85rem; text-decoration: none;">
+                            ← Change Email Address
+                        </button>
                     </div>
                 </div>
 
@@ -674,33 +691,40 @@ if (!empty($resubmitId)) {
             console.log('Resubmit mode - document upload section rendered server-side');
         }
 
-        // Email verification functionality
+        // Email verification functionality (Feature 1)
+        const SUBMIT_API_URL = API_URL + '/submit-affiliation.php';
+
         document.getElementById('send-code-btn').addEventListener('click', async function() {
-            const email = document.getElementById('verification-email').value.trim();
+            const emailInput = document.getElementById('verification-email');
+            const email = emailInput.value.trim();
 
             if (!email) {
                 showError('Please enter your email address');
+                emailInput.focus();
                 return;
             }
 
             if (!validateEmail(email)) {
                 showError('Please enter a valid email address');
+                emailInput.focus();
                 return;
             }
 
             this.disabled = true;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...';
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending Verification Code...';
 
             try {
-                const response = await fetch(API_URL + '/email.php?action=send', {
+                const response = await fetch(SUBMIT_API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ email: email })
+                    body: JSON.stringify({
+                        action: 'send-verification-code',
+                        email: email
+                    })
                 });
 
-                // Check if response is ok
                 if (!response.ok) {
                     const errorText = await response.text();
                     console.error('Server returned non-OK status:', response.status, errorText);
@@ -710,126 +734,169 @@ if (!empty($resubmitId)) {
                 const result = await response.json();
 
                 if (result.success) {
-                    currentEmail = email; // Store email for resend
+                    currentEmail = email;
                     document.getElementById('sent-email').textContent = email;
                     document.getElementById('email-form').classList.add('hidden');
                     document.getElementById('code-form').classList.remove('hidden');
-                    if (result.code) {
-                        showSuccess(result.message || `Verification code: ${result.code} (Test mode)`);
-                    } else {
-                        showSuccess(result.message || 'Verification code sent to your email! Please check your inbox and spam folder.');
-                    }
+                    
+                    showSuccess(result.message || 'Verification code sent to your email! Please check your inbox and spam folder.');
                     startCountdown();
                     setupCodeInputs();
                 } else {
-                    // Check if email already exists
                     if (result.email_exists) {
                         if (result.resubmit_available && result.application_id) {
                             showResubmitModal(result.message, result.application_id);
                         } else {
-                            // Email is approved - show error without resubmit option
-                            showError(result.message || result.error);
+                            showError(result.message || result.error || 'This email cannot be used.');
                         }
                     } else {
                         showError(result.error || result.message || 'Failed to send verification code');
                     }
                     this.disabled = false;
-                    this.innerHTML = 'Send Verification Code';
+                    this.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Send Verification Code';
                 }
             } catch (error) {
                 console.error('Send code error:', error);
-                if (error.message.includes('Server error')) {
-                    showError('Server error: ' + error.message);
-                } else {
-                    showError('Cannot connect to the server. Please check your internet connection.');
-                }
+                showError(error.message.includes('Server error') ? error.message : 'Cannot connect to the server. Please check your internet connection.');
                 this.disabled = false;
-                this.innerHTML = 'Send Verification Code';
+                this.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Send Verification Code';
             }
         });
 
+        // Setup both single 6-digit input and 6-box inputs
         function setupCodeInputs() {
-            const inputs = document.querySelectorAll('#code-form .code-input, .code-input');
-            
-            inputs.forEach((input, index) => {
+            const singleInput = document.getElementById('verification-code-input');
+            const boxInputs = document.querySelectorAll('#code-form .code-input');
+
+            // Clear previous inputs
+            if (singleInput) singleInput.value = '';
+            boxInputs.forEach(input => input.value = '');
+
+            if (singleInput) {
+                singleInput.focus();
+
+                singleInput.addEventListener('input', function(e) {
+                    const cleaned = this.value.replace(/\D/g, '').slice(0, 6);
+                    this.value = cleaned;
+
+                    // Sync with individual boxes
+                    const digits = cleaned.split('');
+                    boxInputs.forEach((box, i) => {
+                        box.value = digits[i] || '';
+                    });
+
+                    if (cleaned.length === 6) {
+                        document.getElementById('verify-code-btn')?.click();
+                    }
+                });
+
+                singleInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        document.getElementById('verify-code-btn')?.click();
+                    }
+                });
+            }
+
+            boxInputs.forEach((input, index) => {
                 input.addEventListener('input', function(e) {
                     const val = e.target.value;
                     if (val.length > 1) {
-                        // Multi-character input (e.g. autofill or fast paste)
                         const cleanDigits = val.replace(/\D/g, '').split('');
                         cleanDigits.forEach((digit, i) => {
-                            if (inputs[i]) inputs[i].value = digit;
+                            if (boxInputs[i]) boxInputs[i].value = digit;
                         });
-                        const nextIndex = Math.min(cleanDigits.length, inputs.length - 1);
-                        inputs[nextIndex].focus();
-                        if (cleanDigits.length >= 6) {
+                        const fullCode = Array.from(boxInputs).map(i => i.value.trim()).join('').slice(0, 6);
+                        if (singleInput) singleInput.value = fullCode;
+                        const nextIndex = Math.min(cleanDigits.length, boxInputs.length - 1);
+                        boxInputs[nextIndex]?.focus();
+                        if (fullCode.length >= 6) {
                             document.getElementById('verify-code-btn')?.click();
                         }
                         return;
                     }
-                    if (val && index < inputs.length - 1) {
-                        inputs[index + 1].focus();
+
+                    const fullCode = Array.from(boxInputs).map(i => i.value.trim()).join('');
+                    if (singleInput) singleInput.value = fullCode;
+
+                    if (val && index < boxInputs.length - 1) {
+                        boxInputs[index + 1].focus();
                     }
-                    // Auto-submit if last input is filled and code is complete
-                    const fullCode = Array.from(inputs).map(i => i.value.trim()).join('');
+
                     if (fullCode.length === 6) {
                         document.getElementById('verify-code-btn')?.click();
                     }
                 });
-                
+
                 input.addEventListener('keydown', function(e) {
                     if (e.key === 'Backspace' && !e.target.value && index > 0) {
-                        inputs[index - 1].focus();
+                        boxInputs[index - 1].focus();
                     } else if (e.key === 'Enter') {
                         e.preventDefault();
                         document.getElementById('verify-code-btn')?.click();
                     }
                 });
-                
+
                 input.addEventListener('paste', function(e) {
                     e.preventDefault();
                     const pastedData = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
                     const digits = pastedData.split('');
-                    
+
                     digits.forEach((digit, i) => {
-                        if (i < inputs.length) {
-                            inputs[i].value = digit;
+                        if (i < boxInputs.length) {
+                            boxInputs[i].value = digit;
                         }
                     });
-                    
-                    if (digits.length >= inputs.length) {
-                        inputs[inputs.length - 1].focus();
+
+                    const fullCode = Array.from(boxInputs).map(i => i.value.trim()).join('').slice(0, 6);
+                    if (singleInput) singleInput.value = fullCode;
+
+                    if (digits.length >= boxInputs.length) {
+                        boxInputs[boxInputs.length - 1].focus();
                         document.getElementById('verify-code-btn')?.click();
-                    } else if (digits.length > 0 && inputs[digits.length]) {
-                        inputs[digits.length].focus();
+                    } else if (digits.length > 0 && boxInputs[digits.length]) {
+                        boxInputs[digits.length].focus();
                     }
                 });
             });
-            
-            if (inputs[0]) inputs[0].focus();
         }
 
+        // Verify code functionality
         document.getElementById('verify-code-btn').addEventListener('click', async function() {
-            const codeInputs = document.querySelectorAll('#code-form .code-input, .code-input');
-            const code = Array.from(codeInputs).map(input => input.value.trim()).join('');
+            const singleInput = document.getElementById('verification-code-input');
+            let code = singleInput ? singleInput.value.trim() : '';
+
+            if (!code || code.length < 6) {
+                const boxInputs = document.querySelectorAll('#code-form .code-input');
+                code = Array.from(boxInputs).map(input => input.value.trim()).join('');
+            }
 
             if (code.length !== 6) {
-                showError('Please enter the complete 6-digit code');
+                showError('Please enter the complete 6-digit verification code');
+                if (singleInput) singleInput.focus();
                 return;
             }
 
             const email = (document.getElementById('verification-email')?.value || currentEmail || '').trim();
+            if (!email) {
+                showError('Email address is missing. Please restart email verification.');
+                return;
+            }
 
             this.disabled = true;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying...';
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying Code...';
 
             try {
-                const response = await fetch(API_URL + '/email.php?action=verify', {
+                const response = await fetch(SUBMIT_API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ email: email, code: code })
+                    body: JSON.stringify({
+                        action: 'verify-code',
+                        email: email,
+                        code: code
+                    })
                 });
 
                 if (!response.ok) {
@@ -842,56 +909,64 @@ if (!empty($resubmitId)) {
 
                 if (result.success) {
                     verifiedEmail = email;
-                    verificationToken = result.token || '';
-                    showSuccess('Email verified successfully! Proceeding to application form...');
+                    const verifiedFlag = document.getElementById('email-verified-flag');
+                    if (verifiedFlag) verifiedFlag.value = 'true';
+
+                    showSuccess(result.message || 'Email verified successfully! Proceeding to application form...');
 
                     setTimeout(() => {
                         moveToStep2();
-                    }, 1200);
+                    }, 1000);
                 } else {
                     showError(result.error || result.message || 'Invalid or expired verification code');
                     this.disabled = false;
-                    this.innerHTML = 'Verify Code';
+                    this.innerHTML = '<i class="fas fa-check-circle me-2"></i> Verify Code';
                 }
             } catch (error) {
                 console.error('Verify code error:', error);
                 showError(error.message.includes('Server error') ? error.message : 'Cannot connect to the server. Please check your internet connection.');
                 this.disabled = false;
-                this.innerHTML = 'Verify Code';
+                this.innerHTML = '<i class="fas fa-check-circle me-2"></i> Verify Code';
             }
         });
 
-        // Add resend code functionality with better error handling
+        // Change email button handler
+        document.getElementById('change-email-btn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('code-form').classList.add('hidden');
+            document.getElementById('email-form').classList.remove('hidden');
+            document.getElementById('send-code-btn').disabled = false;
+            document.getElementById('send-code-btn').innerHTML = '<i class="fas fa-paper-plane me-2"></i> Send Verification Code';
+            document.getElementById('verification-email').focus();
+            clearInterval(countdownInterval);
+        });
+
+        // Resend code functionality
         const resendBtn = document.getElementById('resend-btn');
         if (resendBtn) {
             resendBtn.addEventListener('click', async function(e) {
                 e.preventDefault();
-                console.log('RESEND BUTTON CLICKED!');
-                
-                const email = currentEmail; // Use stored email instead of hidden input
-                console.log('Current email:', email);
+                const email = currentEmail || document.getElementById('verification-email')?.value.trim();
 
                 if (!email) {
-                    showError('Email not found. Please go back and enter your email.');
+                    showError('Email not found. Please re-enter your email address.');
                     return;
                 }
 
                 this.disabled = true;
-                this.textContent = 'Sending...';
+                this.textContent = 'Sending new code...';
 
                 try {
-                    console.log('Sending resend request to: ' + API_URL + '/email.php?action=send with email:', email);
-
-                    const response = await fetch(API_URL + '/email.php?action=send', {
+                    const response = await fetch(SUBMIT_API_URL, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({ email: email })
+                        body: JSON.stringify({
+                            action: 'send-verification-code',
+                            email: email
+                        })
                     });
-
-                    console.log('Response status:', response.status);
-                    console.log('Response ok:', response.ok);
 
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -899,18 +974,10 @@ if (!empty($resubmitId)) {
 
                     const result = await response.json();
 
-                    console.log('Response result:', result);
-
                     if (result.success) {
-                        if (result.code) {
-                            showSuccess(`New verification code sent! (For testing: ${result.code})`);
-                        } else {
-                            showSuccess('New verification code sent! Check your email.');
-                        }
+                        showSuccess('New verification code sent! Check your Gmail inbox.');
                         startCountdown();
-                        // Clear code inputs
-                        document.querySelectorAll('.code-input').forEach(input => input.value = '');
-                        document.querySelector('.code-input').focus();
+                        setupCodeInputs();
                     } else {
                         showError(result.message || result.error || 'Failed to resend verification code');
                     }
@@ -919,7 +986,7 @@ if (!empty($resubmitId)) {
                     showError('Network error: ' + error.message);
                 } finally {
                     this.disabled = false;
-                    this.textContent = 'Resend Code';
+                    this.innerHTML = '<i class="fas fa-redo me-1"></i> Resend Verification Code';
                 }
             });
         } else {
@@ -1191,6 +1258,7 @@ if (!empty($resubmitId)) {
 
             // Add form fields
             formData.append('contact_email', verifiedEmail);
+            formData.append('email_verified', 'true');
             formData.append('institution_name', document.getElementById('inst-name').value);
             formData.append('institution_address', document.getElementById('inst-address').value);
             formData.append('contact_person', document.getElementById('contact-name').value);
@@ -1295,9 +1363,10 @@ if (!empty($resubmitId)) {
             }
 
             // Check if verified email exists
-            if (!verifiedEmail) {
+            const emailVerifiedFlag = document.getElementById('email-verified-flag')?.value === 'true';
+            if (!verifiedEmail || !emailVerifiedFlag) {
                 console.log('No verified email found');
-                showError('Email verification is required');
+                showError('Email verification is required before you can proceed.');
                 return false;
             }
 

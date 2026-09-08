@@ -89,14 +89,14 @@ if (in_array($currentStatus, ['approved', 'rejected'])) {
 }
 
 /**
- * Generate a secure temporary password that meets Supabase Auth requirements
- * Includes uppercase, lowercase, and numbers only for safer email copy/paste
+ * Generate a secure temporary password (12 characters, mixed case, numbers, symbols)
  */
 function generateTempPassword($length = 12) {
     $uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     $lowercase = 'abcdefghijklmnopqrstuvwxyz';
     $numbers = '0123456789';
-    $allChars = $uppercase . $lowercase . $numbers;
+    $symbols = '!@#$%^&*()_+-=';
+    $allChars = $uppercase . $lowercase . $numbers . $symbols;
     
     $password = '';
     
@@ -104,9 +104,10 @@ function generateTempPassword($length = 12) {
     $password .= $uppercase[random_int(0, strlen($uppercase) - 1)];
     $password .= $lowercase[random_int(0, strlen($lowercase) - 1)];
     $password .= $numbers[random_int(0, strlen($numbers) - 1)];
+    $password .= $symbols[random_int(0, strlen($symbols) - 1)];
     
     // Fill the rest randomly
-    for ($i = 3; $i < $length; $i++) {
+    for ($i = 4; $i < $length; $i++) {
         $password .= $allChars[random_int(0, strlen($allChars) - 1)];
     }
     
@@ -309,6 +310,7 @@ switch ($action) {
                         'role' => 'school_officer',
                         'full_name' => $contactPerson,
                         'membership_status' => 'active',
+                        'must_change_password' => true,
                         'force_password_change' => true,
                     ];
                     error_log("Creating user profile for user_id: $userId");
@@ -316,6 +318,16 @@ switch ($action) {
                     error_log("Profile creation result: " . json_encode($profileResult));
                 } else {
                     error_log("User profile already exists for user_id: $userId");
+                    // Ensure role and must_change_password are set
+                    try {
+                        $supabase->update('user_profiles', [
+                            'role' => 'school_officer',
+                            'must_change_password' => true,
+                            'force_password_change' => true,
+                        ], $existingProfile[0]['id'] ?? $existingProfile[0]['user_id']);
+                    } catch (\Throwable $pe) {
+                        error_log("Notice updating existing profile: " . $pe->getMessage());
+                    }
                 }
             } catch (Exception $profileError) {
                 error_log('Profile creation error: ' . $profileError->getMessage());
@@ -349,6 +361,33 @@ switch ($action) {
                 ]);
             }
 
+            // Log action to audit_logs table
+            try {
+                $auditAdminId = $_SESSION['user']['id'] ?? null;
+                $auditAdminEmail = $_SESSION['user']['email'] ?? ($_SESSION['email'] ?? 'admin');
+                $supabase->insert('audit_logs', [
+                    'action' => 'AFFILIATION_APPROVED',
+                    'table_name' => 'pending_affiliations',
+                    'record_id' => (string)$applicationId,
+                    'new_data' => json_encode([
+                        'application_id' => $applicationId,
+                        'institution_name' => $institution,
+                        'school_officer_email' => $email,
+                        'school_officer_name' => $contactPerson,
+                        'officer_user_id' => $userId,
+                        'approved_by' => $auditAdminEmail,
+                        'timestamp' => date('c')
+                    ]),
+                    'performed_by' => $auditAdminId,
+                    'ip_address' => $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1',
+                    'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? 'Admin Panel',
+                    'created_at' => date('c')
+                ]);
+                error_log("Audit log recorded for affiliation approval of application ID: $applicationId");
+            } catch (\Throwable $auditError) {
+                error_log("Failed to insert into audit_logs: " . $auditError->getMessage());
+            }
+
             // Add to affiliated_schools table if exists
             try {
                 $schoolData = [
@@ -364,8 +403,8 @@ switch ($action) {
                 error_log('Note: Could not add to affiliated_schools (may already exist): ' . $e->getMessage());
             }
             
-            // Send credentials email (always send with password, not "account linked")
-            $portalUrl = BASE_URL . '/login.php';
+            // Send credentials email using sendSchoolOfficerCredentials
+            $portalUrl = (defined('APP_URL') && !empty(APP_URL)) ? rtrim(APP_URL, '/') . '/login.php' : (BASE_URL . '/login.php');
             
             error_log("=== EMAIL SENDING DEBUG ===");
             error_log("Recipient: $email");
@@ -375,9 +414,8 @@ switch ($action) {
             error_log("Portal URL: $portalUrl");
             
             try {
-                // Always send credentials email with password
-                $emailSent = $emailService->sendSchoolAccountCredentials($email, $institution, $tempPassword, $contactPerson, $portalUrl);
-                error_log("Credentials email send result: " . ($emailSent ? 'SUCCESS' : 'FAILED'));
+                $emailSent = $emailService->sendSchoolOfficerCredentials($email, $contactPerson, $tempPassword, $portalUrl, $institution);
+                error_log("School officer credentials email send result: " . ($emailSent ? 'SUCCESS' : 'FAILED'));
             } catch (Exception $emailError) {
                 error_log("Email exception: " . $emailError->getMessage());
                 $emailSent = false;

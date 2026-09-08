@@ -172,6 +172,231 @@ try {
         }
     }
 
+    // ============================================================
+    // ACTION HANDLERS: send-verification-code & verify-code
+    // ============================================================
+    $rawInput = file_get_contents('php://input');
+    $jsonInput = json_decode($rawInput, true) ?: [];
+    $action = $_POST['action'] ?? $jsonInput['action'] ?? $_GET['action'] ?? '';
+
+    if ($action === 'send-verification-code') {
+        $email = strtolower(trim(filter_var($_POST['email'] ?? $jsonInput['email'] ?? '', FILTER_SANITIZE_EMAIL)));
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            echo json_encode(['success' => false, 'message' => 'Please provide a valid email address.']);
+            exit;
+        }
+
+        $config = require __DIR__ . '/../../includes/supabase.php';
+        $sb = new \App\Lib\SupabaseClient($config['url'], $config['anon_key']);
+
+        // Check if email already exists in user_profiles
+        try {
+            $userProfile = $sb->select('user_profiles', ['email' => 'eq.' . $email]);
+            if (is_array($userProfile) && isset($userProfile[0]) && is_array($userProfile[0])) {
+                echo json_encode([
+                    'success' => false,
+                    'email_exists' => true,
+                    'message' => 'This email is already registered with an existing account. Please log in or use a different email.'
+                ]);
+                exit;
+            }
+        } catch (\Throwable $pe) {
+            error_log("Profile check notice: " . $pe->getMessage());
+        }
+
+        // Check if email has active pending affiliation
+        try {
+            $existingAff = $sb->select('pending_affiliations', ['email' => 'eq.' . $email]);
+            if (is_array($existingAff) && isset($existingAff[0]) && is_array($existingAff[0])) {
+                $status = $existingAff[0]['status'] ?? '';
+                if (in_array($status, ['pending', 'under_review'])) {
+                    echo json_encode([
+                        'success' => false,
+                        'email_exists' => true,
+                        'message' => 'An affiliation application for this email is currently pending or under review.'
+                    ]);
+                    exit;
+                } elseif ($status === 'approved') {
+                    echo json_encode([
+                        'success' => false,
+                        'email_exists' => true,
+                        'message' => 'This school chapter affiliation has already been approved.'
+                    ]);
+                    exit;
+                }
+            }
+        } catch (\Throwable $ae) {
+            error_log("Affiliation check notice: " . $ae->getMessage());
+        }
+
+        // Generate cryptographically secure 6-digit numeric code
+        $code = (string)random_int(100000, 999999);
+        $expiresAt = date('c', time() + 600); // 10 minutes from now
+
+        // Store code in email_verifications (or verification_codes) table
+        try {
+            $sb->insert('email_verifications', [
+                'email'      => $email,
+                'code'       => $code,
+                'expires_at' => $expiresAt,
+                'verified'   => false
+            ]);
+        } catch (\Throwable $evEx) {
+            error_log("email_verifications insert notice: " . $evEx->getMessage());
+        }
+
+        try {
+            $sb->insert('verification_codes', [
+                'email'      => $email,
+                'code'       => $code,
+                'purpose'    => 'affiliation',
+                'expires_at' => $expiresAt,
+                'used'       => false,
+                'verified'   => false
+            ]);
+        } catch (\Throwable $vcEx) {
+            error_log("verification_codes insert notice: " . $vcEx->getMessage());
+        }
+
+        // Save in session for immediate verification validation
+        $_SESSION['affiliation_verification_code'] = $code;
+        $_SESSION['affiliation_verification_email'] = $email;
+        $_SESSION['affiliation_verification_expires'] = time() + 600;
+
+        // Send code via EmailService
+        require_once __DIR__ . '/../../src/lib/EmailService.php';
+        $emailService = new \App\Lib\EmailService();
+        $sent = $emailService->sendVerificationCode($email, $code);
+        if (!$sent) {
+            usleep(500000);
+            $sent = $emailService->sendVerificationCode($email, $code);
+        }
+
+        if ($sent) {
+            echo json_encode([
+                'success' => true,
+                'message' => 'Verification code sent to your email! Please check your inbox and spam folder.'
+            ]);
+        } else {
+            $lastErr = $emailService->getLastError();
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to send verification code email: ' . ($lastErr ? "($lastErr)" : 'Please check your connection and try again.')
+            ]);
+        }
+        exit;
+    }
+
+    if ($action === 'verify-code') {
+        $email = strtolower(trim(filter_var($_POST['email'] ?? $jsonInput['email'] ?? '', FILTER_SANITIZE_EMAIL)));
+        $code = trim($_POST['code'] ?? $jsonInput['code'] ?? '');
+
+        if (empty($email) || empty($code)) {
+            echo json_encode(['success' => false, 'message' => 'Email and 6-digit code are required.']);
+            exit;
+        }
+
+        $config = require __DIR__ . '/../../includes/supabase.php';
+        $sb = new \App\Lib\SupabaseClient($config['url'], $config['anon_key']);
+
+        $verified = false;
+        $now = time();
+
+        // 1. Check latest unexpired, unverified code in email_verifications table
+        try {
+            $records = $sb->select('email_verifications', [
+                'email' => 'eq.' . $email,
+                'order' => 'created_at.desc',
+                'limit' => 5
+            ]);
+            if (!empty($records) && is_array($records)) {
+                foreach ($records as $row) {
+                    if (($row['code'] ?? '') === $code) {
+                        if (!empty($row['verified'])) {
+                            continue; // already verified
+                        }
+                        $expiresTs = !empty($row['expires_at']) ? strtotime($row['expires_at']) : 0;
+                        if ($expiresTs >= ($now - 30)) {
+                            try {
+                                $sb->update('email_verifications', ['verified' => true], $row['id']);
+                            } catch (\Throwable $ue) {
+                                error_log("Failed to mark email_verifications verified: " . $ue->getMessage());
+                            }
+                            $verified = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $evCheckEx) {
+            error_log("email_verifications lookup notice: " . $evCheckEx->getMessage());
+        }
+
+        // 2. Check in verification_codes table if needed
+        if (!$verified) {
+            try {
+                $records = $sb->select('verification_codes', [
+                    'email' => 'eq.' . $email,
+                    'order' => 'created_at.desc',
+                    'limit' => 5
+                ]);
+                if (!empty($records) && is_array($records)) {
+                    foreach ($records as $row) {
+                        if (($row['code'] ?? '') === $code) {
+                            $isUsed = !empty($row['used']) || !empty($row['used_at']) || !empty($row['verified']);
+                            if ($isUsed) {
+                                continue;
+                            }
+                            $expiresTs = !empty($row['expires_at']) ? strtotime($row['expires_at']) : 0;
+                            if ($expiresTs >= ($now - 30)) {
+                                try {
+                                    $sb->update('verification_codes', ['used' => true, 'verified' => true], $row['id']);
+                                } catch (\Throwable $ue) {
+                                    error_log("Failed to mark verification_codes used: " . $ue->getMessage());
+                                }
+                                $verified = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (\Throwable $vcCheckEx) {
+                error_log("verification_codes lookup notice: " . $vcCheckEx->getMessage());
+            }
+        }
+
+        // 3. Fallback session validation
+        if (!$verified) {
+            if (!empty($_SESSION['affiliation_verification_code']) &&
+                $_SESSION['affiliation_verification_code'] === $code &&
+                !empty($_SESSION['affiliation_verification_email']) &&
+                strtolower($_SESSION['affiliation_verification_email']) === $email &&
+                ($_SESSION['affiliation_verification_expires'] ?? 0) >= ($now - 30)) {
+                $verified = true;
+            }
+        }
+
+        if ($verified) {
+            // Store flag in session indicating verified email
+            $_SESSION['affiliation_verified_email'] = $email;
+            $_SESSION['affiliation_email_verified'] = true;
+            unset($_SESSION['affiliation_verification_code']);
+
+            echo json_encode([
+                'success' => true,
+                'message' => 'Email verified successfully!',
+                'email' => $email,
+                'verified' => true
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Invalid or expired verification code. Please request a new code.'
+            ]);
+        }
+        exit;
+    }
+
     // Field Validation
     $institution_name = trim($_POST['institution_name'] ?? '');
     $institution_address = trim($_POST['institution_address'] ?? '');
@@ -182,6 +407,17 @@ try {
     
     if (empty($institution_name) || empty($institution_address) || empty($contact_person) || empty($contact_position) || empty($contact_email) || empty($contact_phone)) {
         throw new Exception('All fields are required.');
+    }
+
+    // Ensure applicant email was verified (Feature 1.3)
+    $verifiedSessionEmail = $_SESSION['affiliation_verified_email'] ?? '';
+    $emailVerifiedFlag = (!empty($_POST['email_verified']) && $_POST['email_verified'] === 'true');
+    $resubmitId = trim($_POST['resubmit_id'] ?? '');
+
+    if (empty($resubmitId)) {
+        if (!$emailVerifiedFlag && (empty($verifiedSessionEmail) || strtolower($contact_email) !== strtolower($verifiedSessionEmail))) {
+            throw new Exception('Email verification is required before submitting your affiliation application.');
+        }
     }
     
     // Strict File Validation (PDF for documents 1-5, Excel/CSV for Member Directory)

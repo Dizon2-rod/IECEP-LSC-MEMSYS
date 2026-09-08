@@ -267,7 +267,7 @@ class EmailService
     public function sendVerificationCode(string $to, string $code): bool
     {
         $formattedCode = implode(' ', str_split($code));
-        $subject = 'Your IECEP-LSC Email Verification Code: ' . $code;
+        $subject = 'Your IECEP-LSC Email Verification Code';
         $logoUrl = 'https://raw.githubusercontent.com/Dizon2-rod/IECEP-LSC-MEMSYS/main/public/assets/icons/iecep-logo.png';
         $altBody = "IECEP - Laguna Student Chapter (MEMSYS)\n\nEmail Verification Code\n\nYour 6-digit one-time verification code is: {$code}\n\nThis code expires in 10 minutes. Do not share this code with anyone.\n\n© " . date('Y') . " IECEP-LSC";
 
@@ -362,7 +362,7 @@ class EmailService
                     'secure' => PHPMailer::ENCRYPTION_SMTPS
                 ]);
                 $retryMail->addAddress($to);
-                $retryMail->Subject = 'Your IECEP-LSC Email Verification Code: ' . $code;
+                $retryMail->Subject = 'Your IECEP-LSC Email Verification Code';
                 $formattedCode = implode(' ', str_split($code));
                 $retryMail->Body = "
                 <div style='background:#0B1D4A;padding:30px;text-align:center;color:#ffffff;font-family:Arial,sans-serif;'>
@@ -440,6 +440,147 @@ class EmailService
             return $mail->send();
         } catch (\Throwable $e) {
             error_log("Email error (send school credentials): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Send School Officer Account Credentials upon Admin Approval
+     *
+     * @param string $to School officer login email
+     * @param string $fullName School officer full name
+     * @param string $password Temporary password
+     * @param string|null $loginUrl Login URL (defaults to APP_URL/login.php)
+     * @param string $institutionName School/Institution name
+     * @return bool
+     */
+    public function sendSchoolOfficerCredentials(string $to, string $fullName, string $password, ?string $loginUrl = null, string $institutionName = ''): bool
+    {
+        try {
+            error_log("Preparing to send school officer credentials email to: $to");
+            
+            $appUrl = $this->config['app_url'] ?: (defined('APP_URL') ? APP_URL : (defined('BASE_URL') ? BASE_URL : ''));
+            $finalLoginUrl = $loginUrl ?: (rtrim($appUrl, '/') . '/login.php');
+            $logoUrl = 'https://raw.githubusercontent.com/Dizon2-rod/IECEP-LSC-MEMSYS/main/public/assets/icons/iecep-logo.png';
+            $subject = 'IECEP-LSC School Officer Account Created';
+            
+            $htmlBody = "
+<!DOCTYPE html>
+<html lang='en'>
+<head><meta charset='UTF-8'><title>IECEP-LSC School Officer Account Created</title></head>
+<body style='margin:0;padding:0;background-color:#F0F4F8;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif;'>
+    <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#F0F4F8;padding:30px 15px;'>
+        <tr>
+            <td align='center'>
+                <table border='0' cellpadding='0' cellspacing='0' width='100%' style='max-width:580px;background-color:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(11,29,74,0.12);border:1px solid #E2E8F0;'>
+                    <tr>
+                        <td align='center' style='background:linear-gradient(135deg,#07122E 0%,#0B1D4A 50%,#142B67 100%);padding:32px 24px;border-bottom:4px solid #D4AF37;'>
+                            <img src='{$logoUrl}' alt='IECEP-LSC' width='60' height='60' style='display:block;margin:0 auto 10px;border-radius:10px;border:2px solid #D4AF37;background:#0B1D4A;object-fit:contain;'>
+                            <h1 style='color:#FFFFFF;font-size:22px;font-weight:800;margin:0 0 6px;'>IECEP &ndash; Laguna Student Chapter</h1>
+                            <p style='color:#D4AF37;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0;'>School Officer Account Notification</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style='padding:32px 28px;color:#334155;font-size:15px;line-height:1.6;'>
+                            <h2 style='color:#0B1D4A;font-size:20px;font-weight:700;margin:0 0 14px;'>Welcome to IECEP-LSC MEMSYS</h2>
+                            <p style='margin:0 0 16px;'>Dear <strong>" . htmlspecialchars($fullName ?: 'School Officer') . "</strong>,</p>
+                            <p style='margin:0 0 20px;'>
+                                Your affiliation application" . (!empty($institutionName) ? " for <strong>" . htmlspecialchars($institutionName) . "</strong>" : "") . " has been officially reviewed and approved by the Registration Committee. Your School Officer portal account has been created.
+                            </p>
+
+                            <div style='background:#F8FAFC;border:1.5px solid #CBD5E1;border-radius:12px;padding:20px;margin:20px 0;'>
+                                <h3 style='color:#0B1D4A;margin:0 0 12px;font-size:15px;font-weight:800;border-bottom:1px solid #E2E8F0;padding-bottom:8px;'>
+                                    🔑 Account Credentials
+                                </h3>
+                                <table border='0' cellpadding='4' cellspacing='0' width='100%' style='font-size:14px;color:#334155;'>
+                                    <tr>
+                                        <td style='width:140px;font-weight:600;'>Full Name:</td>
+                                        <td><strong>" . htmlspecialchars($fullName) . "</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td style='font-weight:600;'>Login Email:</td>
+                                        <td><code style='background:#E2E8F0;padding:2px 8px;border-radius:4px;color:#0F172A;font-weight:600;'>" . htmlspecialchars($to) . "</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td style='font-weight:600;'>Temporary Password:</td>
+                                        <td><code style='background:#FEF3C7;color:#92400E;padding:3px 10px;border-radius:4px;font-weight:700;font-size:15px;letter-spacing:1px;'>" . htmlspecialchars($password) . "</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td style='font-weight:600;'>Role:</td>
+                                        <td><span style='background:#EFF6FF;color:#1D4ED8;padding:2px 8px;border-radius:4px;font-weight:700;font-size:12px;text-transform:uppercase;'>School Officer</span></td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div style='text-align:center;margin:28px 0;'>
+                                <a href='{$finalLoginUrl}' style='display:inline-block;padding:14px 36px;background:#0B1D4A;color:#FFFFFF;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;box-shadow:0 4px 12px rgba(11,29,74,0.25);'>
+                                    🚀 Login to School Officer Portal
+                                </a>
+                            </div>
+
+                            <div style='background:#FFFBEB;border-left:4px solid #F59E0B;padding:12px 16px;border-radius:4px;font-size:13px;color:#92400E;margin-bottom:24px;'>
+                                ⚠️ <strong>Security Note:</strong> Please change your password immediately after your first login to keep your account secure.
+                            </div>
+
+                            <p style='font-size:13px;color:#64748B;margin:0;'>
+                                If you have any inquiries or require assistance, please reach out to the Registration Committee at <a href='mailto:ieceplsc24@gmail.com' style='color:#0B1D4A;font-weight:600;'>ieceplsc24@gmail.com</a>.
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td align='center' style='background:#F8FAFC;padding:16px 20px;border-top:1px solid #E2E8F0;font-size:12px;color:#94A3B8;'>
+                            &copy; " . date('Y') . " IECEP &ndash; Laguna Student Chapter (MEMSYS). All rights reserved.
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>";
+
+            $altBody = "IECEP - Laguna Student Chapter\n\nSchool Officer Account Created\n\nDear {$fullName},\n\nYour affiliation application has been approved and your School Officer account has been created.\n\nLogin Email: {$to}\nTemporary Password: {$password}\nLogin URL: {$finalLoginUrl}\n\nPlease change your password immediately after your first login.\n\n© " . date('Y') . " IECEP-LSC";
+
+            // If HTTPS REST API is configured, use it
+            if ($this->hasHttpsApiConfigured()) {
+                if ($this->sendViaHttpsRestApi($to, $subject, $htmlBody, $altBody)) {
+                    error_log("sendSchoolOfficerCredentials sent via HTTPS REST API to: $to");
+                    return true;
+                }
+            }
+
+            // Otherwise send via Gmail SMTP
+            $mail = $this->createMailer();
+            $mail->addAddress($to, $fullName);
+            $mail->Subject = $subject;
+            $mail->Body = $htmlBody;
+            $mail->AltBody = $altBody;
+
+            $sent = $mail->send();
+            if (!$sent) {
+                $this->lastError = $mail->ErrorInfo ?: 'Unknown mailer error';
+                error_log("sendSchoolOfficerCredentials SMTP failed: " . $this->lastError . ". Retrying via port 465...");
+                try {
+                    $retryMail = $this->createMailer([
+                        'port' => 465,
+                        'secure' => PHPMailer::ENCRYPTION_SMTPS
+                    ]);
+                    $retryMail->addAddress($to, $fullName);
+                    $retryMail->Subject = $subject;
+                    $retryMail->Body = $htmlBody;
+                    $retryMail->AltBody = $altBody;
+                    if ($retryMail->send()) {
+                        error_log("sendSchoolOfficerCredentials sent via port 465 fallback to: $to");
+                        return true;
+                    }
+                } catch (\Throwable $retryEx) {
+                    error_log("sendSchoolOfficerCredentials fallback failed: " . $retryEx->getMessage());
+                }
+            }
+            return (bool)$sent;
+        } catch (\Throwable $e) {
+            $this->lastError = $e->getMessage();
+            error_log("Error in sendSchoolOfficerCredentials: " . $e->getMessage());
             return false;
         }
     }
