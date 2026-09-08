@@ -56,7 +56,20 @@ class EmailService
         try {
             $mail = new PHPMailer(true);
             $mail->isSMTP();
-            $mail->Host = $options['host'] ?? $this->config['email']['host'];
+            $rawHost = $options['host'] ?? $this->config['email']['host'];
+            // On Windows systems without working IPv6, connecting to smtp.gmail.com can fail or hang
+            // because PHP tries IPv6 first. Resolving IPv4 explicitly provides an instant connection.
+            if ($rawHost === 'smtp.gmail.com') {
+                $ipv4 = gethostbyname('smtp.gmail.com');
+                if (!empty($ipv4) && filter_var($ipv4, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                    $mail->Host = $ipv4 . ';smtp.gmail.com';
+                } else {
+                    $mail->Host = $rawHost;
+                }
+            } else {
+                $mail->Host = $rawHost;
+            }
+
             $mail->Port = (int)($options['port'] ?? $this->config['email']['port']);
             $mail->SMTPAuth = true;
             $mail->SMTPSecure = $options['secure'] ?? PHPMailer::ENCRYPTION_STARTTLS;
@@ -87,7 +100,7 @@ class EmailService
             );
             
             // Set SMTP timeout
-            $mail->Timeout = 30;
+            $mail->Timeout = 15;
             $mail->SMTPKeepAlive = false;
             
             // Disable SMTP debugging to prevent HTML output in JSON responses
