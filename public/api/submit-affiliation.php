@@ -15,8 +15,11 @@ function renderProfessionalUI($title, $message, $type = 'success') {
     $statusTitle  = $isSuccess ? 'Submission Successful' : 'Action Required';
     $icon         = $isSuccess ? 'fa-circle-check'       : 'fa-triangle-exclamation';
     
-    $homeURL      = 'http://localhost/IECEP-LSC-MEMSYS/index.php'; 
-    $assetsUrl    = 'http://localhost/IECEP-LSC-MEMSYS/public'; 
+    $protocol     = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+    $host         = $_SERVER['HTTP_HOST'] ?? 'localhost';
+    $pathPrefix   = (strpos($_SERVER['SCRIPT_NAME'] ?? '', '/IECEP-LSC-MEMSYS') !== false) ? '/IECEP-LSC-MEMSYS' : '';
+    $homeURL      = $protocol . $host . $pathPrefix . '/index.php'; 
+    $assetsUrl    = $protocol . $host . $pathPrefix . '/public'; 
     $logoPath     = $assetsUrl . '/uploads/features/1776563416_iecep-logo.png';
     $heroPath     = $assetsUrl . '/uploads/features/1776563415_hero.png';
 

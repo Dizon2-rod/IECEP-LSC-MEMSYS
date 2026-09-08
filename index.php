@@ -1759,14 +1759,13 @@ try {
             ?>
 
             <?php foreach ($displayCards as $idx => $card): ?>
-                <?php
                     $imageUrl = trim((string)($card['image_url'] ?? ''));
-                    if (strpos($imageUrl, 'http://localhost/IECEP-LSC-MEMSYS') === 0) {
-                        $imageUrl = APP_URL . substr($imageUrl, strlen('http://localhost/IECEP-LSC-MEMSYS'));
-                    } elseif (strpos($imageUrl, 'http://localhost') === 0) {
-                        $imageUrl = APP_URL . substr($imageUrl, strlen('http://localhost'));
-                    } elseif ($imageUrl !== '' && !str_starts_with($imageUrl, 'http://') && !str_starts_with($imageUrl, 'https://') && !str_starts_with($imageUrl, '//')) {
-                        $imageUrl = PUBLIC_URL . '/' . ltrim($imageUrl, '/');
+                    if (!empty($imageUrl)) {
+                        if (preg_match('#^https?://[^/]+(?:/IECEP-LSC-MEMSYS)?/(public/.*)$#i', $imageUrl, $matches)) {
+                            $imageUrl = BASE_URL . '/' . ltrim($matches[1], '/');
+                        } elseif (!str_starts_with($imageUrl, 'http://') && !str_starts_with($imageUrl, 'https://') && !str_starts_with($imageUrl, '//')) {
+                            $imageUrl = PUBLIC_URL . '/' . ltrim($imageUrl, '/');
+                        }
                     }
                     $buttonText = trim((string)($card['button_text'] ?? 'View Details'));
                     $buttonUrl = trim((string)($card['button_url'] ?? ''));

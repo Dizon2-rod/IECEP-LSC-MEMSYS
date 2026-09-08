@@ -356,7 +356,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-family: 'Inter', sans-serif;
             display: flex;
             min-height: 100vh;
-            background: url('public/assets/icons/hero.png') center/cover no-repeat fixed;
+            background: url('<?= htmlspecialchars(ASSETS_URL, ENT_QUOTES) ?>/icons/hero.png') center/cover no-repeat fixed;
             position: relative;
             overflow-x: hidden;
             align-items: center;

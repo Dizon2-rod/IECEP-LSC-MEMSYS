@@ -402,7 +402,7 @@ define('HEAD_META_INCLUDED', true);
         padding: 55px var(--space-4) 35px; 
         overflow: hidden; 
     }
-    .hero-bg { position: absolute; inset: 0; background: url('public/uploads/features/1776563415_hero.png') center/cover no-repeat; z-index: 0; }
+    .hero-bg { position: absolute; inset: 0; background: url('<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/uploads/features/1776563415_hero.png') center/cover no-repeat; z-index: 0; }
     .hero-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(11, 29, 74, 0.6) 0%, rgba(30, 58, 110, 0.55) 50%, rgba(11, 29, 74, 0.6) 100%); z-index: 1; }
     .hero-content { position: relative; z-index: 10; text-align: center; max-width: 920px; margin: 0 auto 1.5rem; display: flex; flex-direction: column; justify-content: flex-start; }
     .hero-tagline { font-family: 'Times New Roman', serif; font-size: 2.1rem; font-weight: 700; color: var(--accent); font-style: italic; margin-bottom: 0.4rem; margin-top: 15px; }
@@ -495,7 +495,7 @@ define('HEAD_META_INCLUDED', true);
 
     /* Contact */
     .contact { background: linear-gradient(135deg, #0B1D4A 0%, #142a6b 100%); color: var(--white); padding: var(--space-12) 0; position: relative; overflow: hidden; }
-    .contact::before { content: ''; position: absolute; inset: 0; background: url('/IECEP-LSC-MEMSYS/public/assets/icons/hero.png') center/cover no-repeat; opacity: 0.7; z-index: 0; }
+    .contact::before { content: ''; position: absolute; inset: 0; background: url('<?= htmlspecialchars(ASSETS_URL, ENT_QUOTES) ?>/icons/hero.png') center/cover no-repeat; opacity: 0.7; z-index: 0; }
     .contact::after { content: ''; position: absolute; inset: 0; background: rgba(11, 29, 74, 0.6); z-index: 1; }
     .contact-container { display: grid; grid-template-columns: 1fr; gap: var(--space-8); max-width: 1200px; margin: 0 auto; padding: 0 var(--space-2); position: relative; z-index: 2; }
     @media (min-width: 768px) { .contact-container { grid-template-columns: 1fr 1fr; padding: 0 var(--space-4); } }
