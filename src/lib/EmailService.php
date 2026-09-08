@@ -59,15 +59,10 @@ class EmailService
             $rawHost = $options['host'] ?? $this->config['email']['host'];
             $baseHost = $rawHost ?: 'smtp.gmail.com';
 
-            // When using Gmail SMTP, configure direct IPv4 fallback addresses to avoid
-            // Windows IPv6 connection hangs and inactive network adapter DNS timeouts.
+            // When using Gmail SMTP, connect directly to official Google SMTP hosts.
+            // Avoid gethostbynamel() DNS blocking and failing raw IP addresses.
             if (stripos($baseHost, 'gmail.com') !== false) {
-                $ipv4Hosts = ['64.233.187.108', '142.250.27.108', '74.125.130.108', '64.233.187.109', '142.250.115.108'];
-                $resolved = @gethostbynamel('smtp.gmail.com');
-                if (!empty($resolved) && is_array($resolved)) {
-                    $ipv4Hosts = array_values(array_unique(array_merge($resolved, $ipv4Hosts)));
-                }
-                $mail->Host = implode(';', $ipv4Hosts) . ';' . $baseHost;
+                $mail->Host = 'smtp.gmail.com;smtp.googlemail.com';
             } else {
                 $mail->Host = $baseHost;
             }
@@ -296,7 +291,7 @@ class EmailService
         }
 
         $altBody = $altBody ?: strip_tags($htmlBody);
-        $primaryPort = (int)($this->config['email']['port'] ?: 587);
+        $primaryPort = (int)($this->config['email']['port'] ?: 465);
         $fallbackPort = ($primaryPort === 465) ? 587 : 465;
 
         // Transport 1: Primary SMTP Port

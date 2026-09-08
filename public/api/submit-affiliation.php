@@ -233,26 +233,14 @@ try {
         $code = (string)random_int(100000, 999999);
         $expiresAt = date('c', time() + 600); // 10 minutes from now
 
-        // Store code in email_verifications (or verification_codes) table
-        try {
-            $sb->insert('email_verifications', [
-                'email'      => $email,
-                'code'       => $code,
-                'expires_at' => $expiresAt,
-                'verified'   => false
-            ]);
-        } catch (\Throwable $evEx) {
-            error_log("email_verifications insert notice: " . $evEx->getMessage());
-        }
-
+        // Store code in verification_codes table
         try {
             $sb->insert('verification_codes', [
                 'email'      => $email,
                 'code'       => $code,
                 'purpose'    => 'affiliation',
                 'expires_at' => $expiresAt,
-                'used'       => false,
-                'verified'   => false
+                'used'       => false
             ]);
         } catch (\Throwable $vcEx) {
             error_log("verification_codes insert notice: " . $vcEx->getMessage());
@@ -263,14 +251,10 @@ try {
         $_SESSION['affiliation_verification_email'] = $email;
         $_SESSION['affiliation_verification_expires'] = time() + 600;
 
-        // Send code via EmailService
+        // Send code via EmailService (instant delivery via Port 465 SSL)
         require_once __DIR__ . '/../../src/lib/EmailService.php';
         $emailService = new \App\Lib\EmailService();
         $sent = $emailService->sendVerificationCode($email, $code);
-        if (!$sent) {
-            usleep(500000);
-            $sent = $emailService->sendVerificationCode($email, $code);
-        }
 
         if ($sent) {
             echo json_encode([
@@ -312,9 +296,9 @@ try {
         $verified = false;
         $now = time();
 
-        // 1. Check latest unexpired, unverified code in email_verifications table
+        // 1. Check in verification_codes table
         try {
-            $records = $sb->select('email_verifications', [
+            $records = $sb->select('verification_codes', [
                 'email' => 'eq.' . $email,
                 'order' => 'created_at.desc',
                 'limit' => 5
@@ -322,15 +306,16 @@ try {
             if (!empty($records) && is_array($records)) {
                 foreach ($records as $row) {
                     if (($row['code'] ?? '') === $code) {
-                        if (!empty($row['verified'])) {
-                            continue; // already verified
+                        $isUsed = !empty($row['used']) || !empty($row['used_at']);
+                        if ($isUsed) {
+                            continue;
                         }
                         $expiresTs = !empty($row['expires_at']) ? strtotime($row['expires_at']) : 0;
                         if ($expiresTs >= ($now - 30)) {
                             try {
-                                $sb->update('email_verifications', ['verified' => true], $row['id']);
+                                $sb->update('verification_codes', ['used' => true], $row['id']);
                             } catch (\Throwable $ue) {
-                                error_log("Failed to mark email_verifications verified: " . $ue->getMessage());
+                                error_log("Failed to mark verification_codes used: " . $ue->getMessage());
                             }
                             $verified = true;
                             break;
@@ -338,41 +323,8 @@ try {
                     }
                 }
             }
-        } catch (\Throwable $evCheckEx) {
-            error_log("email_verifications lookup notice: " . $evCheckEx->getMessage());
-        }
-
-        // 2. Check in verification_codes table if needed
-        if (!$verified) {
-            try {
-                $records = $sb->select('verification_codes', [
-                    'email' => 'eq.' . $email,
-                    'order' => 'created_at.desc',
-                    'limit' => 5
-                ]);
-                if (!empty($records) && is_array($records)) {
-                    foreach ($records as $row) {
-                        if (($row['code'] ?? '') === $code) {
-                            $isUsed = !empty($row['used']) || !empty($row['used_at']) || !empty($row['verified']);
-                            if ($isUsed) {
-                                continue;
-                            }
-                            $expiresTs = !empty($row['expires_at']) ? strtotime($row['expires_at']) : 0;
-                            if ($expiresTs >= ($now - 30)) {
-                                try {
-                                    $sb->update('verification_codes', ['used' => true, 'verified' => true], $row['id']);
-                                } catch (\Throwable $ue) {
-                                    error_log("Failed to mark verification_codes used: " . $ue->getMessage());
-                                }
-                                $verified = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-            } catch (\Throwable $vcCheckEx) {
-                error_log("verification_codes lookup notice: " . $vcCheckEx->getMessage());
-            }
+        } catch (\Throwable $vcCheckEx) {
+            error_log("verification_codes lookup notice: " . $vcCheckEx->getMessage());
         }
 
         // 3. Fallback session validation

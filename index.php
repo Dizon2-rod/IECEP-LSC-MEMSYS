@@ -202,10 +202,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 $emailService = new \App\Lib\EmailService();
                 $emailSent    = $emailService->sendVerificationCode($cleanEmail, $code);
                 if (!$emailSent) {
-                    usleep(500000);
-                    $emailSent = $emailService->sendVerificationCode($cleanEmail, $code);
-                }
-                if (!$emailSent) {
                     $emailError = $emailService->getLastError() ?: 'SMTP connection error.';
                 }
             } catch (Exception $e) {

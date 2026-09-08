@@ -105,7 +105,7 @@ if (!defined('SMTP_HOST')) {
     define('SMTP_HOST', env('SMTP_HOST', 'smtp.gmail.com') ?: 'smtp.gmail.com');
 }
 if (!defined('SMTP_PORT')) {
-    define('SMTP_PORT', (int)(env('SMTP_PORT', 587) ?: 587));
+    define('SMTP_PORT', (int)(env('SMTP_PORT', 465) ?: 465));
 }
 if (!defined('SMTP_USERNAME')) {
     define('SMTP_USERNAME', env('SMTP_USERNAME', 'rasheddizon7@gmail.com') ?: 'rasheddizon7@gmail.com');

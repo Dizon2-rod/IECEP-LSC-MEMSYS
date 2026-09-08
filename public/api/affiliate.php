@@ -137,11 +137,6 @@ if ($action === 'send-code') {
 
         // Send email using EmailService
         $sent = $emailService->sendVerificationCode($email, $code);
-        if (!$sent) {
-            // Quick retry in case of transient network hiccup
-            usleep(500000);
-            $sent = $emailService->sendVerificationCode($email, $code);
-        }
 
         error_log("Email send result for $email: " . ($sent ? 'SUCCESS' : 'FAILED'));
 
