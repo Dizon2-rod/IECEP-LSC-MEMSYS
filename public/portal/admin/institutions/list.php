@@ -477,6 +477,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $feedbackMsg = "❌ Error declining application: " . $e->getMessage();
             $feedbackType = 'danger';
         }
+    } elseif ($action === 'delete_institution') {
+        try {
+            $deleteInstId = trim($_POST['institution_id'] ?? '');
+            $deleteInstName = trim($_POST['institution_name'] ?? 'Institution');
+            
+            if (empty($deleteInstId)) {
+                throw new \Exception("Institution ID is required to delete.");
+            }
+
+            // 1. Safely unlink members from this institution
+            try {
+                $supabase->update('members', ['institution_id' => null], ['institution_id' => 'eq.' . $deleteInstId]);
+            } catch (\Throwable $mEx) {
+                error_log("Notice unlinking members: " . $mEx->getMessage());
+            }
+
+            // 2. Safely unlink users and user profiles
+            try {
+                $supabase->update('users', ['institution_id' => null], ['institution_id' => 'eq.' . $deleteInstId]);
+                $supabase->update('user_profiles', ['institution_id' => null], ['institution_id' => 'eq.' . $deleteInstId]);
+            } catch (\Throwable $uEx) {
+                error_log("Notice unlinking users: " . $uEx->getMessage());
+            }
+
+            // 3. Delete school profile if exists
+            try {
+                $supabase->delete('school_profiles', ['institution_id' => 'eq.' . $deleteInstId]);
+            } catch (\Throwable $spEx) {
+                error_log("Notice deleting school profile: " . $spEx->getMessage());
+            }
+
+            // 4. Delete institution record from institutions table
+            $supabase->delete('institutions', ['id' => 'eq.' . $deleteInstId]);
+
+            // 5. Update any pending_affiliations associated with this institution to cancelled
+            try {
+                $supabase->update('pending_affiliations', ['status' => 'cancelled'], ['institution_id' => 'eq.' . $deleteInstId]);
+            } catch (\Throwable $paEx) {
+                // Ignore if not present
+            }
+
+            $feedbackMsg = "🗑️ Successfully deleted institution '{$deleteInstName}'. All student records were safely unlinked.";
+            $feedbackType = 'success';
+        } catch (\Throwable $e) {
+            error_log("Delete institution error: " . $e->getMessage());
+            $feedbackMsg = "❌ Error deleting institution: " . $e->getMessage();
+            $feedbackType = 'danger';
+        }
     }
 }
 
@@ -1608,9 +1656,14 @@ try {
                                             </span>
                                         </td>
                                         <td style="text-align:right;">
-                                            <a href="<?= PORTAL_URL ?>/admin/members/list.php?school=<?= urlencode($inst['id']) ?>" class="btn-white" style="font-size:0.72rem; padding:0.28rem 0.65rem;">
-                                                <i class="fas fa-users" style="color:var(--color-navy);"></i> View Members
-                                            </a>
+                                            <div style="display:inline-flex; align-items:center; gap:0.45rem;">
+                                                <a href="<?= PORTAL_URL ?>/admin/members/list.php?school=<?= urlencode($inst['id']) ?>" class="btn-white" style="font-size:0.72rem; padding:0.28rem 0.65rem;">
+                                                    <i class="fas fa-users" style="color:var(--color-navy);"></i> View Members
+                                                </a>
+                                                <button type="button" class="btn-danger" style="font-size:0.72rem; padding:0.28rem 0.65rem; background:#EF4444; color:#FFFFFF; border:none; border-radius:6px; cursor:pointer; font-weight:700; display:inline-flex; align-items:center; gap:0.35rem; transition:background 0.15s;" onmouseover="this.style.background='#DC2626'" onmouseout="this.style.background='#EF4444'" onclick="openDeleteInstitutionModal('<?= htmlspecialchars($inst['id'], ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($inst['name']), ENT_QUOTES) ?>')">
+                                                    <i class="fas fa-trash-alt"></i> Delete
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -2470,6 +2523,58 @@ try {
             const canvas = document.getElementById('inspectPreviewCanvas');
             if (canvas) canvas.innerHTML = '';
         }
+
+        function openDeleteInstitutionModal(id, name) {
+            document.getElementById('deleteInstIdInput').value = id;
+            document.getElementById('deleteInstNameInput').value = name;
+            document.getElementById('deleteInstNameDisplay').textContent = name;
+            const modal = document.getElementById('deleteInstitutionModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeDeleteInstitutionModal() {
+            const modal = document.getElementById('deleteInstitutionModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
     </script>
+
+    <!-- Delete Institution Confirmation Modal -->
+    <div id="deleteInstitutionModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.65); backdrop-filter:blur(2px); z-index:999999; align-items:center; justify-content:center;">
+        <div style="background:#FFFFFF; border-radius:12px; max-width:480px; width:92%; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); overflow:hidden; border:1px solid #E2E8F0; animation:modalPop 0.2s ease-out;">
+            <div style="background:#DC2626; padding:1.2rem 1.5rem; color:#FFFFFF; display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:0.65rem;">
+                    <div style="width:36px; height:36px; border-radius:50%; background:rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:1.1rem;">
+                        <i class="fas fa-triangle-exclamation"></i>
+                    </div>
+                    <h3 style="margin:0; font-size:1.05rem; font-weight:800;">Delete Chartered Institution</h3>
+                </div>
+                <button type="button" onclick="closeDeleteInstitutionModal()" style="background:transparent; border:none; color:#FFFFFF; font-size:1.5rem; cursor:pointer; line-height:1; opacity:0.85;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.85">&times;</button>
+            </div>
+            <form method="POST" action="" style="padding:1.5rem; margin:0;">
+                <input type="hidden" name="action" value="delete_institution">
+                <input type="hidden" name="institution_id" id="deleteInstIdInput" value="">
+                <input type="hidden" name="institution_name" id="deleteInstNameInput" value="">
+                
+                <p style="color:#334155; font-size:0.95rem; line-height:1.6; margin:0 0 1rem;">
+                    Are you sure you want to permanently delete <strong id="deleteInstNameDisplay" style="color:#0F172A; text-decoration:underline;"></strong> from the list of chartered institutions?
+                </p>
+                <div style="background:#FEF2F2; border-left:4px solid #EF4444; padding:0.85rem 1rem; border-radius:4px; font-size:0.82rem; color:#991B1B; margin-bottom:1.5rem; line-height:1.5;">
+                    <i class="fas fa-info-circle me-1"></i> <strong>Safe Removal:</strong> Any student member records associated with this school will have their institution reference safely unlinked rather than deleted.
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                    <button type="button" class="btn-white" onclick="closeDeleteInstitutionModal()" style="padding:0.55rem 1.15rem; font-size:0.85rem; font-weight:600; cursor:pointer; border:1px solid #CBD5E1; border-radius:6px; background:#FFFFFF; color:#334155;">
+                        Cancel
+                    </button>
+                    <button type="submit" style="background:#DC2626; color:#FFFFFF; border:none; padding:0.55rem 1.3rem; font-size:0.85rem; font-weight:700; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:0.45rem; transition:background 0.15s;" onmouseover="this.style.background='#B91C1C'" onmouseout="this.style.background='#DC2626'">
+                        <i class="fas fa-trash-alt"></i> Yes, Delete Institution
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>
