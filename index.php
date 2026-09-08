@@ -458,6 +458,7 @@ try {
 <html lang="en">
 <head>
     <title>IECEP-LSC MEMSYS | Membership &amp; Affiliation Management System</title>
+    <meta name="csrf-token" content="<?= function_exists('csrf_token') ? htmlspecialchars(csrf_token(), ENT_QUOTES) : '' ?>">
     <?php include __DIR__ . '/includes/head-meta.php'; ?>
     <link rel="stylesheet" href="<?= htmlspecialchars(PUBLIC_URL, ENT_QUOTES) ?>/assets/css/styles.css">
     <style>
