@@ -31,6 +31,36 @@ CREATE TABLE IF NOT EXISTS pending_affiliations (
     receipt_number TEXT
 );
 
+-- Ensure all columns exist if table was created in an earlier migration
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS school_name TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS institution_name TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS acronym TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS contact_email TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS contact_person TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS contact_number TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS contact_phone TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS contact_position TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS institution_address TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS documents JSONB DEFAULT '{}';
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS letter_of_intent TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS endorsement_letter TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS constitution_by_laws TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS officers_cvs TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS organizational_chart TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS member_directory TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS total_members INTEGER DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS new_members INTEGER DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS old_members INTEGER DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS affiliation_fee DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS membership_total DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS total_fee DECIMAL(10,2) DEFAULT 0;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS receipt_number TEXT;
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMP DEFAULT NOW();
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS created_at TIMESTAMP DEFAULT NOW();
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
 -- Create index on status for faster queries
 CREATE INDEX IF NOT EXISTS idx_pending_affiliations_status ON pending_affiliations(status);
 

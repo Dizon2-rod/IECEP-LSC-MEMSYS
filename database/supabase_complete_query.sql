@@ -60,9 +60,6 @@ CREATE TABLE IF NOT EXISTS institutions (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_institutions_status ON institutions(status);
-CREATE INDEX IF NOT EXISTS idx_institutions_acronym ON institutions(acronym);
-
 -- Ensure all columns exist on institutions if pre-created
 ALTER TABLE institutions ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE institutions ADD COLUMN IF NOT EXISTS name TEXT;
@@ -87,6 +84,9 @@ ALTER TABLE institutions ADD COLUMN IF NOT EXISTS accreditation_status TEXT;
 ALTER TABLE institutions ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
 ALTER TABLE institutions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE institutions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_institutions_status ON institutions(status);
+CREATE INDEX IF NOT EXISTS idx_institutions_acronym ON institutions(acronym);
 
 -- =====================================================================
 -- 4. USERS & USER PROFILES
@@ -133,11 +133,6 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_user_profiles_role ON user_profiles(role);
-CREATE INDEX IF NOT EXISTS idx_user_profiles_inst ON user_profiles(institution_id);
-CREATE INDEX IF NOT EXISTS idx_user_profiles_uid ON user_profiles(user_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_user_profiles_email_uq ON user_profiles(email);
-
 -- Ensure all columns exist on user_profiles if pre-created
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS user_id UUID;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS email TEXT;
@@ -150,6 +145,11 @@ ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS force_password_change BOOLEAN DEFAULT false;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_user_profiles_role ON user_profiles(role);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_inst ON user_profiles(institution_id);
+CREATE INDEX IF NOT EXISTS idx_user_profiles_uid ON user_profiles(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_profiles_email_uq ON user_profiles(email);
 
 -- =====================================================================
 -- 5. MEMBERS (Digital ID & Official Roster)
@@ -182,13 +182,6 @@ CREATE TABLE IF NOT EXISTS members (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_members_mem_id ON members(membership_id);
-CREATE INDEX IF NOT EXISTS idx_members_inst ON members(institution_id);
-CREATE INDEX IF NOT EXISTS idx_members_status ON members(status);
-CREATE INDEX IF NOT EXISTS idx_members_payment ON members(payment_status);
-CREATE INDEX IF NOT EXISTS idx_members_user_id ON members(user_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_members_email_uq ON members(email);
-
 -- Ensure all member columns exist on existing tables
 ALTER TABLE members ADD COLUMN IF NOT EXISTS user_id UUID;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS membership_id TEXT;
@@ -214,6 +207,13 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS expiration_date DATE DEFAULT (CURRE
 ALTER TABLE members ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE members ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_members_mem_id ON members(membership_id);
+CREATE INDEX IF NOT EXISTS idx_members_inst ON members(institution_id);
+CREATE INDEX IF NOT EXISTS idx_members_status ON members(status);
+CREATE INDEX IF NOT EXISTS idx_members_payment ON members(payment_status);
+CREATE INDEX IF NOT EXISTS idx_members_user_id ON members(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_members_email_uq ON members(email);
 
 -- =====================================================================
 -- 6. SEQUENTIAL MEMBER ID COUNTERS
@@ -277,9 +277,6 @@ CREATE TABLE IF NOT EXISTS events (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
-CREATE INDEX IF NOT EXISTS idx_events_start ON events(start_date);
-
 -- Ensure all event columns exist on existing tables
 ALTER TABLE events ADD COLUMN IF NOT EXISTS title TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS description TEXT;
@@ -306,6 +303,9 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
 ALTER TABLE events ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
+CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
+CREATE INDEX IF NOT EXISTS idx_events_start ON events(start_date);
+
 -- Live Dynamic 15s QR & Officer Scanner Attendance
 CREATE TABLE IF NOT EXISTS event_attendees (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -320,6 +320,17 @@ CREATE TABLE IF NOT EXISTS event_attendees (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE(event_id, member_id)
 );
+
+-- Ensure all event_attendees columns exist
+ALTER TABLE event_attendees ADD COLUMN IF NOT EXISTS event_id UUID;
+ALTER TABLE event_attendees ADD COLUMN IF NOT EXISTS member_id UUID;
+ALTER TABLE event_attendees ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'attended';
+ALTER TABLE event_attendees ADD COLUMN IF NOT EXISTS check_in_time TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE event_attendees ADD COLUMN IF NOT EXISTS check_out_time TIMESTAMPTZ;
+ALTER TABLE event_attendees ADD COLUMN IF NOT EXISTS qr_hash TEXT;
+ALTER TABLE event_attendees ADD COLUMN IF NOT EXISTS verified_by UUID;
+ALTER TABLE event_attendees ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+ALTER TABLE event_attendees ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_att_event ON event_attendees(event_id);
 CREATE INDEX IF NOT EXISTS idx_att_member ON event_attendees(member_id);
@@ -338,6 +349,16 @@ CREATE TABLE IF NOT EXISTS event_registrations (
     qr_token TEXT UNIQUE,
     UNIQUE(event_id, user_id)
 );
+
+-- Ensure all event_registrations columns exist
+ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS event_id UUID;
+ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'registered';
+ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'unpaid';
+ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS registered_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS checked_in_at TIMESTAMPTZ;
+ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS checked_out_at TIMESTAMPTZ;
+ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS qr_token TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_event_reg_event ON event_registrations(event_id);
 CREATE INDEX IF NOT EXISTS idx_event_reg_qr ON event_registrations(qr_token);
@@ -362,6 +383,11 @@ CREATE TABLE IF NOT EXISTS attendance_logs (
     UNIQUE(user_id, event_id)
 );
 
+-- Ensure all attendance_logs columns exist
+ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS event_id UUID;
+ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS timestamp TIMESTAMPTZ DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_att_logs_user ON attendance_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_att_logs_event ON attendance_logs(event_id);
 
@@ -378,10 +404,6 @@ CREATE TABLE IF NOT EXISTS certificates (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_certificates_member ON certificates(member_id);
-CREATE INDEX IF NOT EXISTS idx_certificates_event ON certificates(event_id);
-CREATE INDEX IF NOT EXISTS idx_certificates_number ON certificates(certificate_number);
-
 -- Ensure all certificate columns exist on existing tables
 ALTER TABLE certificates ADD COLUMN IF NOT EXISTS member_id UUID;
 ALTER TABLE certificates ADD COLUMN IF NOT EXISTS event_id UUID;
@@ -391,6 +413,10 @@ ALTER TABLE certificates ADD COLUMN IF NOT EXISTS blockchain_hash TEXT;
 ALTER TABLE certificates ADD COLUMN IF NOT EXISTS file_path TEXT;
 ALTER TABLE certificates ADD COLUMN IF NOT EXISTS template_type TEXT DEFAULT 'participation';
 ALTER TABLE certificates ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_certificates_member ON certificates(member_id);
+CREATE INDEX IF NOT EXISTS idx_certificates_event ON certificates(event_id);
+CREATE INDEX IF NOT EXISTS idx_certificates_number ON certificates(certificate_number);
 
 -- =====================================================================
 -- 8. BLOCKCHAIN RECORDS (Cryptographic Proof & SHA-256 Ledger)
@@ -410,16 +436,21 @@ CREATE TABLE IF NOT EXISTS blockchain_records (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_bc_entity ON blockchain_records(entity_type, entity_id);
-CREATE INDEX IF NOT EXISTS idx_bc_hash ON blockchain_records(transaction_hash);
-
 -- Ensure all blockchain columns exist
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS block_index BIGINT;
+ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS entity_type TEXT;
+ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS entity_id UUID;
+ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS transaction_hash TEXT;
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS record_hash TEXT;
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS data_hash TEXT;
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS previous_hash TEXT;
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS merkle_root TEXT;
+ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS data_json JSONB DEFAULT '{}';
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS confirmed BOOLEAN DEFAULT true;
+ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_bc_entity ON blockchain_records(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_bc_hash ON blockchain_records(transaction_hash);
 
 -- =====================================================================
 -- 9. PENDING AFFILIATIONS (Institutional Applications)
@@ -461,11 +492,7 @@ CREATE TABLE IF NOT EXISTS pending_affiliations (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_pending_aff_status ON pending_affiliations(status);
-CREATE INDEX IF NOT EXISTS idx_pending_aff_email ON pending_affiliations(email);
-CREATE INDEX IF NOT EXISTS idx_pending_aff_contact_email ON pending_affiliations(contact_email);
-
--- Ensure all possible columns exist on pending_affiliations (prevents PGRST204)
+-- Ensure all possible columns exist on pending_affiliations (prevents PGRST204 & 42703)
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS school_name TEXT;
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS institution_name TEXT;
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS acronym TEXT;
@@ -495,6 +522,12 @@ ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPT
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS resubmitted_at TIMESTAMPTZ;
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_pending_aff_status ON pending_affiliations(status);
+CREATE INDEX IF NOT EXISTS idx_pending_aff_email ON pending_affiliations(email);
+CREATE INDEX IF NOT EXISTS idx_pending_aff_contact_email ON pending_affiliations(contact_email);
 
 -- Safely update status constraint on pending_affiliations to allow 'resubmitted'
 DO $$
@@ -518,6 +551,16 @@ CREATE TABLE IF NOT EXISTS revision_requests (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure all revision_requests columns exist
+ALTER TABLE revision_requests ADD COLUMN IF NOT EXISTS affiliation_id UUID;
+ALTER TABLE revision_requests ADD COLUMN IF NOT EXISTS token TEXT;
+ALTER TABLE revision_requests ADD COLUMN IF NOT EXISTS explanation TEXT;
+ALTER TABLE revision_requests ADD COLUMN IF NOT EXISTS requested_by UUID;
+ALTER TABLE revision_requests ADD COLUMN IF NOT EXISTS deadline TIMESTAMPTZ;
+ALTER TABLE revision_requests ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE revision_requests ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE revision_requests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_rev_req_token ON revision_requests(token);
 CREATE INDEX IF NOT EXISTS idx_rev_req_aff ON revision_requests(affiliation_id);
@@ -551,10 +594,6 @@ CREATE TABLE IF NOT EXISTS transactions (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_tx_status ON transactions(status);
-CREATE INDEX IF NOT EXISTS idx_tx_member ON transactions(member_id);
-CREATE INDEX IF NOT EXISTS idx_tx_receipt_number ON transactions(receipt_number);
-
 -- Ensure all transaction columns exist
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_id TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS user_id UUID;
@@ -578,6 +617,10 @@ ALTER TABLE transactions ADD COLUMN IF NOT EXISTS verified_by UUID;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
+CREATE INDEX IF NOT EXISTS idx_tx_status ON transactions(status);
+CREATE INDEX IF NOT EXISTS idx_tx_member ON transactions(member_id);
+CREATE INDEX IF NOT EXISTS idx_tx_receipt_number ON transactions(receipt_number);
+
 -- School-level financial records
 CREATE TABLE IF NOT EXISTS financial_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -589,6 +632,15 @@ CREATE TABLE IF NOT EXISTS financial_records (
     official_receipt_url TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure all financial_records columns exist
+ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS school_id UUID;
+ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS amount DECIMAL(10,2);
+ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS payment_type TEXT;
+ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'Pending';
+ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS proof_of_payment TEXT;
+ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS official_receipt_url TEXT;
+ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_fin_rec_school ON financial_records(school_id);
 CREATE INDEX IF NOT EXISTS idx_fin_rec_status ON financial_records(payment_status);
@@ -607,6 +659,15 @@ CREATE TABLE IF NOT EXISTS verification_codes (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure all verification_codes columns exist
+ALTER TABLE verification_codes ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE verification_codes ADD COLUMN IF NOT EXISTS code TEXT;
+ALTER TABLE verification_codes ADD COLUMN IF NOT EXISTS purpose TEXT DEFAULT 'affiliation';
+ALTER TABLE verification_codes ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE verification_codes ADD COLUMN IF NOT EXISTS used BOOLEAN DEFAULT false;
+ALTER TABLE verification_codes ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT false;
+ALTER TABLE verification_codes ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_ver_code ON verification_codes(email, code);
 
 CREATE TABLE IF NOT EXISTS email_verifications (
@@ -617,6 +678,13 @@ CREATE TABLE IF NOT EXISTS email_verifications (
     verified BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure all email_verifications columns exist
+ALTER TABLE email_verifications ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+ALTER TABLE email_verifications ADD COLUMN IF NOT EXISTS code VARCHAR(10);
+ALTER TABLE email_verifications ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE email_verifications ADD COLUMN IF NOT EXISTS verified BOOLEAN DEFAULT FALSE;
+ALTER TABLE email_verifications ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_email_verifications_lookup ON email_verifications (email, code, verified);
 
@@ -635,6 +703,16 @@ CREATE TABLE IF NOT EXISTS school_profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure all school_profiles columns exist
+ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS school_name TEXT;
+ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS affiliation_status TEXT DEFAULT 'Pending';
+ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS total_members INTEGER DEFAULT 0;
+ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS validity_expiry DATE;
+ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS last_renewal_date DATE;
+ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_school_profiles_status ON school_profiles(affiliation_status);
 CREATE INDEX IF NOT EXISTS idx_school_profiles_institution ON school_profiles(institution_id);
 
@@ -648,6 +726,15 @@ CREATE TABLE IF NOT EXISTS compliance_docs (
     verified_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure all compliance_docs columns exist
+ALTER TABLE compliance_docs ADD COLUMN IF NOT EXISTS school_id UUID;
+ALTER TABLE compliance_docs ADD COLUMN IF NOT EXISTS doc_type TEXT;
+ALTER TABLE compliance_docs ADD COLUMN IF NOT EXISTS file_url TEXT;
+ALTER TABLE compliance_docs ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;
+ALTER TABLE compliance_docs ADD COLUMN IF NOT EXISTS verified_by UUID;
+ALTER TABLE compliance_docs ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
+ALTER TABLE compliance_docs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_compliance_docs_school ON compliance_docs(school_id);
 CREATE INDEX IF NOT EXISTS idx_compliance_docs_verified ON compliance_docs(is_verified);
@@ -699,6 +786,18 @@ CREATE TABLE IF NOT EXISTS policy_compliance (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure all policy_compliance columns exist
+ALTER TABLE policy_compliance ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE policy_compliance ADD COLUMN IF NOT EXISTS policy_name VARCHAR(255);
+ALTER TABLE policy_compliance ADD COLUMN IF NOT EXISTS policy_description TEXT;
+ALTER TABLE policy_compliance ADD COLUMN IF NOT EXISTS is_compliant BOOLEAN DEFAULT FALSE;
+ALTER TABLE policy_compliance ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
+ALTER TABLE policy_compliance ADD COLUMN IF NOT EXISTS completed_by UUID;
+ALTER TABLE policy_compliance ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE policy_compliance ADD COLUMN IF NOT EXISTS due_date DATE;
+ALTER TABLE policy_compliance ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE policy_compliance ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_policy_comp_inst ON policy_compliance(institution_id);
 
 -- =====================================================================
@@ -720,8 +819,6 @@ CREATE TABLE IF NOT EXISTS merch_items (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_merch_items_active ON merch_items(is_active);
-
 -- Ensure all merch_items columns exist
 ALTER TABLE merch_items ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE merch_items ADD COLUMN IF NOT EXISTS title TEXT;
@@ -733,6 +830,10 @@ ALTER TABLE merch_items ADD COLUMN IF NOT EXISTS image TEXT;
 ALTER TABLE merch_items ADD COLUMN IF NOT EXISTS badge TEXT;
 ALTER TABLE merch_items ADD COLUMN IF NOT EXISTS stock INTEGER DEFAULT 100;
 ALTER TABLE merch_items ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE merch_items ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE merch_items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_merch_items_active ON merch_items(is_active);
 
 CREATE TABLE IF NOT EXISTS merch_orders (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -754,9 +855,6 @@ CREATE TABLE IF NOT EXISTS merch_orders (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_merch_orders_member ON merch_orders(member_id);
-CREATE INDEX IF NOT EXISTS idx_merch_orders_status ON merch_orders(status);
-
 -- Ensure all merch_orders columns exist
 ALTER TABLE merch_orders ADD COLUMN IF NOT EXISTS order_id TEXT;
 ALTER TABLE merch_orders ADD COLUMN IF NOT EXISTS member_id UUID;
@@ -771,6 +869,11 @@ ALTER TABLE merch_orders ADD COLUMN IF NOT EXISTS total_amount NUMERIC(10,2) DEF
 ALTER TABLE merch_orders ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'gcash';
 ALTER TABLE merch_orders ADD COLUMN IF NOT EXISTS transaction_id UUID;
 ALTER TABLE merch_orders ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE merch_orders ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE merch_orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_merch_orders_member ON merch_orders(member_id);
+CREATE INDEX IF NOT EXISTS idx_merch_orders_status ON merch_orders(status);
 
 -- =====================================================================
 -- 14. COMMUNICATIONS: ANNOUNCEMENTS, NOTIFICATIONS, MESSAGES, MEMOS
@@ -806,6 +909,22 @@ CREATE TABLE IF NOT EXISTS announcements (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure all announcements columns exist
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS content TEXT;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS body TEXT;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS target_role TEXT DEFAULT 'all';
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS target_roles TEXT[];
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS target_institutions UUID[];
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS priority TEXT DEFAULT 'normal';
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_global BOOLEAN DEFAULT false;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS author_id UUID;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS created_by UUID;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE announcements ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_announcements_active ON announcements(is_active);
 
 CREATE TABLE IF NOT EXISTS notifications (
@@ -820,6 +939,16 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure all notifications columns exist
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS message TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'info';
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link_url TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_id UUID;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, is_read);
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -832,6 +961,15 @@ CREATE TABLE IF NOT EXISTS messages (
     read_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure all messages columns exist
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_id UUID;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS receiver_id UUID;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS subject VARCHAR(255);
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS body TEXT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
 CREATE INDEX IF NOT EXISTS idx_messages_receiver ON messages(receiver_id);
@@ -849,6 +987,18 @@ CREATE TABLE IF NOT EXISTS memoranda (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure all memoranda columns exist
+ALTER TABLE memoranda ADD COLUMN IF NOT EXISTS title VARCHAR(255);
+ALTER TABLE memoranda ADD COLUMN IF NOT EXISTS content TEXT;
+ALTER TABLE memoranda ADD COLUMN IF NOT EXISTS sent_by UUID;
+ALTER TABLE memoranda ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE memoranda ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE memoranda ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;
+ALTER TABLE memoranda ADD COLUMN IF NOT EXISTS target_roles JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE memoranda ADD COLUMN IF NOT EXISTS target_institutions JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE memoranda ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE memoranda ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_memos_sent_by ON memoranda(sent_by);
 
@@ -890,6 +1040,23 @@ CREATE TABLE IF NOT EXISTS documents (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure all documents columns exist
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS title VARCHAR(255);
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS category TEXT;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_path VARCHAR(500);
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_size INT;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS mime_type VARCHAR(100);
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS file_hash VARCHAR(64);
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS version INT DEFAULT 1;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS uploaded_by UUID;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_documents_category ON documents(category);
 CREATE INDEX IF NOT EXISTS idx_documents_inst ON documents(institution_id);
 
@@ -918,6 +1085,17 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     user_agent TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure all audit_logs columns exist
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS action TEXT;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS table_name TEXT;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS record_id TEXT;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS old_data JSONB;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS new_data JSONB;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS performed_by UUID;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS ip_address TEXT;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS user_agent TEXT;
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_audit_logs_table ON audit_logs(table_name);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
