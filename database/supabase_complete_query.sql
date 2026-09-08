@@ -1,8 +1,32 @@
 -- =====================================================================
--- IECEP-LSC MEMSYS - COMPLETE PRODUCTION SUPABASE POSTGRESQL SCHEMA
+-- IECEP-LSC MEMSYS - COMPLETE UNIFIED SUPABASE POSTGRESQL MASTER SCHEMA
 -- Laguna Student Chapter Membership & Affiliation Management System
--- Unified All-In-One SQL Script for Supabase PostgreSQL & PostgREST
--- Idempotent (Safe to run multiple times without data loss)
+-- Unified All-In-One SQL Script Combining All Repository SQL Migrations:
+--   - database/additional_tables.sql
+--   - database/add_event_id_to_transactions.sql
+--   - database/enhancements_sql.sql (Surveys, Email Blasts, MFA)
+--   - database/featured_cards.sql
+--   - database/fix_blockchain_schema.sql
+--   - database/seed_accounts.sql
+--   - database/migrations/002_events_compliance.sql
+--   - database/migrations/003_cbl_compliance_system.sql
+--   - database/migrations/004_auto_generate_accounts.sql
+--   - database/migrations/005_pending_affiliations.sql
+--   - database/migrations/006_member_id_counter.sql
+--   - database/migrations/007_verification_codes.sql
+--   - database/migrations/008_merchandise.sql
+--   - database/migrations/009_fee_brackets_system_settings.sql
+--   - database/migrations/010_email_verifications.sql
+--   - migrations/create_revision_requests.sql
+--   - database/backups/backup_memsys_blockchain_v2_20260828.sql
+--
+-- 100% IDEMPOTENT & RESILIENT:
+--   1. Every table uses CREATE TABLE IF NOT EXISTS
+--   2. Every column is explicitly checked/added via ALTER TABLE ... ADD COLUMN IF NOT EXISTS
+--   3. All columns are ensured BEFORE indexes are created (prevents 42703 column missing errors)
+--   4. Seed data and triggers are wrapped in safe DO $$ BEGIN ... EXCEPTION WHEN OTHERS THEN NULL; END $$ blocks
+--   5. Full RLS enabled with permissive policies for API client access
+--   6. Dynamic Supabase Realtime publication registration
 -- =====================================================================
 
 -- =====================================================================
@@ -31,7 +55,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- =====================================================================
--- 3. INSTITUTIONS (Affiliated HEI Universities in Laguna)
+-- 3. INSTITUTIONS & AFFILIATED SCHOOLS
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS institutions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -60,7 +84,6 @@ CREATE TABLE IF NOT EXISTS institutions (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all columns exist on institutions if pre-created
 ALTER TABLE institutions ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE institutions ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE institutions ADD COLUMN IF NOT EXISTS acronym TEXT;
@@ -88,10 +111,26 @@ ALTER TABLE institutions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT
 CREATE INDEX IF NOT EXISTS idx_institutions_status ON institutions(status);
 CREATE INDEX IF NOT EXISTS idx_institutions_acronym ON institutions(acronym);
 
+CREATE TABLE IF NOT EXISTS affiliated_schools (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) UNIQUE NOT NULL,
+    facebook_url VARCHAR(500),
+    member_count INT DEFAULT 0,
+    status TEXT DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE affiliated_schools ADD COLUMN IF NOT EXISTS name VARCHAR(255);
+ALTER TABLE affiliated_schools ADD COLUMN IF NOT EXISTS facebook_url VARCHAR(500);
+ALTER TABLE affiliated_schools ADD COLUMN IF NOT EXISTS member_count INT DEFAULT 0;
+ALTER TABLE affiliated_schools ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+ALTER TABLE affiliated_schools ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE affiliated_schools ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 -- =====================================================================
--- 4. USERS & USER PROFILES
+-- 4. USERS, AUTH & PROFILES
 -- =====================================================================
--- Local/Direct Auth table
 CREATE TABLE IF NOT EXISTS users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     email TEXT UNIQUE NOT NULL,
@@ -104,7 +143,6 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all columns exist on users if pre-created
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
@@ -117,7 +155,23 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_uq ON users(email);
 
--- Supabase User Profiles (Linked with auth.users or local IDs)
+-- Compatibility Auth Users Table (for seed_accounts.sql & legacy queries)
+CREATE TABLE IF NOT EXISTS auth_users (
+    id TEXT PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE auth_users ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE auth_users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE auth_users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE auth_users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_auth_users_email ON auth_users(email);
+
+-- User Profiles (Linked with auth or users)
 CREATE TABLE IF NOT EXISTS user_profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID UNIQUE,
@@ -129,11 +183,12 @@ CREATE TABLE IF NOT EXISTS user_profiles (
     avatar_url TEXT,
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'pending', 'suspended')),
     force_password_change BOOLEAN DEFAULT false,
+    mfa_enabled BOOLEAN DEFAULT false,
+    mfa_secret TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all columns exist on user_profiles if pre-created
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS user_id UUID;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
@@ -143,6 +198,8 @@ ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS force_password_change BOOLEAN DEFAULT false;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS mfa_enabled BOOLEAN DEFAULT false;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS mfa_secret TEXT;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
@@ -152,7 +209,7 @@ CREATE INDEX IF NOT EXISTS idx_user_profiles_uid ON user_profiles(user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_user_profiles_email_uq ON user_profiles(email);
 
 -- =====================================================================
--- 5. MEMBERS (Digital ID & Official Roster)
+-- 5. MEMBERS (Digital ID, Roster, Batch Import & Profiles)
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS members (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -177,12 +234,13 @@ CREATE TABLE IF NOT EXISTS members (
     qr_code_url TEXT,
     joined_date DATE DEFAULT CURRENT_DATE,
     expiration_date DATE DEFAULT (CURRENT_DATE + INTERVAL '1 year'),
+    membership_expiry DATE,
+    last_renewal_date DATE,
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all member columns exist on existing tables
 ALTER TABLE members ADD COLUMN IF NOT EXISTS user_id UUID;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS membership_id TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS full_name TEXT;
@@ -204,6 +262,8 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS digital_id_hash TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS qr_code_url TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS joined_date DATE DEFAULT CURRENT_DATE;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS expiration_date DATE DEFAULT (CURRENT_DATE + INTERVAL '1 year');
+ALTER TABLE members ADD COLUMN IF NOT EXISTS membership_expiry DATE;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS last_renewal_date DATE;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE members ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
@@ -215,6 +275,135 @@ CREATE INDEX IF NOT EXISTS idx_members_payment ON members(payment_status);
 CREATE INDEX IF NOT EXISTS idx_members_user_id ON members(user_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_members_email_uq ON members(email);
 
+CREATE TABLE IF NOT EXISTS member_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID,
+    member_id UUID REFERENCES members(id) ON DELETE CASCADE,
+    full_name TEXT,
+    email TEXT,
+    phone TEXT,
+    address TEXT,
+    bio TEXT,
+    avatar_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS member_id UUID;
+ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS bio TEXT;
+ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE member_profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Member upload batches and temporary imports
+CREATE TABLE IF NOT EXISTS member_upload_batches (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    batch_name TEXT,
+    uploaded_by UUID,
+    total_rows INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'pending_approval',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE member_upload_batches ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE member_upload_batches ADD COLUMN IF NOT EXISTS batch_name TEXT;
+ALTER TABLE member_upload_batches ADD COLUMN IF NOT EXISTS uploaded_by UUID;
+ALTER TABLE member_upload_batches ADD COLUMN IF NOT EXISTS total_rows INTEGER DEFAULT 0;
+ALTER TABLE member_upload_batches ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending_approval';
+ALTER TABLE member_upload_batches ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE member_upload_batches ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE TABLE IF NOT EXISTS upload_batches (
+    id VARCHAR(50) PRIMARY KEY,
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    application_id UUID,
+    uploaded_by_user_id UUID,
+    file_name VARCHAR(255),
+    total_rows INT DEFAULT 0,
+    validated_rows INT DEFAULT 0,
+    status TEXT DEFAULT 'pending',
+    uploaded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE upload_batches ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE upload_batches ADD COLUMN IF NOT EXISTS application_id UUID;
+ALTER TABLE upload_batches ADD COLUMN IF NOT EXISTS uploaded_by_user_id UUID;
+ALTER TABLE upload_batches ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);
+ALTER TABLE upload_batches ADD COLUMN IF NOT EXISTS total_rows INT DEFAULT 0;
+ALTER TABLE upload_batches ADD COLUMN IF NOT EXISTS validated_rows INT DEFAULT 0;
+ALTER TABLE upload_batches ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE upload_batches ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE TABLE IF NOT EXISTS pending_members (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    batch_id UUID,
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    full_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    student_id TEXT,
+    student_number TEXT,
+    course TEXT,
+    year_level TEXT,
+    contact_number TEXT,
+    phone TEXT,
+    member_type TEXT DEFAULT 'new',
+    status TEXT DEFAULT 'pending',
+    error_message TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS batch_id UUID;
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS student_id TEXT;
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS student_number TEXT;
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS course TEXT;
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS year_level TEXT;
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS contact_number TEXT;
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS member_type TEXT DEFAULT 'new';
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS error_message TEXT;
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE pending_members ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_pending_members_inst ON pending_members(institution_id);
+CREATE INDEX IF NOT EXISTS idx_pending_members_batch ON pending_members(batch_id);
+
+CREATE TABLE IF NOT EXISTS member_applications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    full_name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    student_id TEXT,
+    course TEXT,
+    year_level TEXT,
+    contact_number TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE member_applications ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE member_applications ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE member_applications ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE member_applications ADD COLUMN IF NOT EXISTS student_id TEXT;
+ALTER TABLE member_applications ADD COLUMN IF NOT EXISTS course TEXT;
+ALTER TABLE member_applications ADD COLUMN IF NOT EXISTS year_level TEXT;
+ALTER TABLE member_applications ADD COLUMN IF NOT EXISTS contact_number TEXT;
+ALTER TABLE member_applications ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE member_applications ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE member_applications ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 -- =====================================================================
 -- 6. SEQUENTIAL MEMBER ID COUNTERS
 -- =====================================================================
@@ -223,13 +412,14 @@ CREATE TABLE IF NOT EXISTS member_id_counter (
     year INTEGER,
     last_number INTEGER NOT NULL DEFAULT 0,
     counter INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all columns exist even if table was created in an older migration
 ALTER TABLE member_id_counter ADD COLUMN IF NOT EXISTS year INTEGER;
 ALTER TABLE member_id_counter ADD COLUMN IF NOT EXISTS last_number INTEGER DEFAULT 0;
 ALTER TABLE member_id_counter ADD COLUMN IF NOT EXISTS counter INTEGER DEFAULT 0;
+ALTER TABLE member_id_counter ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE member_id_counter ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 CREATE UNIQUE INDEX IF NOT EXISTS idx_member_id_counter_year_uq ON member_id_counter(year);
 
@@ -241,13 +431,12 @@ CREATE TABLE IF NOT EXISTS membership_id_sequences (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure year column exists even if table was created in an older migration
 ALTER TABLE membership_id_sequences ADD COLUMN IF NOT EXISTS year INT;
 ALTER TABLE membership_id_sequences ADD COLUMN IF NOT EXISTS last_number INT DEFAULT 0;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mem_seq_year_uq ON membership_id_sequences(year);
 
 -- =====================================================================
--- 7. EVENTS & ATTENDANCE
+-- 7. EVENTS, ATTENDANCE & CERTIFICATES
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -277,7 +466,6 @@ CREATE TABLE IF NOT EXISTS events (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all event columns exist on existing tables
 ALTER TABLE events ADD COLUMN IF NOT EXISTS title TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS event_type TEXT DEFAULT 'seminar';
@@ -305,8 +493,9 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()
 
 CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
 CREATE INDEX IF NOT EXISTS idx_events_start ON events(start_date);
+CREATE INDEX IF NOT EXISTS idx_events_start_datetime ON events(start_datetime);
 
--- Live Dynamic 15s QR & Officer Scanner Attendance
+-- Event Attendees (Officer Scanner & 15s Dynamic QR)
 CREATE TABLE IF NOT EXISTS event_attendees (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -321,7 +510,6 @@ CREATE TABLE IF NOT EXISTS event_attendees (
     UNIQUE(event_id, member_id)
 );
 
--- Ensure all event_attendees columns exist
 ALTER TABLE event_attendees ADD COLUMN IF NOT EXISTS event_id UUID;
 ALTER TABLE event_attendees ADD COLUMN IF NOT EXISTS member_id UUID;
 ALTER TABLE event_attendees ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'attended';
@@ -336,7 +524,7 @@ CREATE INDEX IF NOT EXISTS idx_att_event ON event_attendees(event_id);
 CREATE INDEX IF NOT EXISTS idx_att_member ON event_attendees(member_id);
 CREATE INDEX IF NOT EXISTS idx_att_status ON event_attendees(status);
 
--- Event registrations & ticketing table
+-- Event Registrations Table
 CREATE TABLE IF NOT EXISTS event_registrations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id UUID REFERENCES events(id) ON DELETE CASCADE,
@@ -350,7 +538,6 @@ CREATE TABLE IF NOT EXISTS event_registrations (
     UNIQUE(event_id, user_id)
 );
 
--- Ensure all event_registrations columns exist
 ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS event_id UUID;
 ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS user_id UUID;
 ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'registered';
@@ -363,7 +550,7 @@ ALTER TABLE event_registrations ADD COLUMN IF NOT EXISTS qr_token TEXT;
 CREATE INDEX IF NOT EXISTS idx_event_reg_event ON event_registrations(event_id);
 CREATE INDEX IF NOT EXISTS idx_event_reg_qr ON event_registrations(qr_token);
 
--- Event attachments (Presentations, Program PDF)
+-- Event Attachments (Presentations, Program Materials)
 CREATE TABLE IF NOT EXISTS event_attachments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id UUID REFERENCES events(id) ON DELETE CASCADE,
@@ -374,7 +561,14 @@ CREATE TABLE IF NOT EXISTS event_attachments (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Member Attendance Logs (for CBL compliance)
+ALTER TABLE event_attachments ADD COLUMN IF NOT EXISTS event_id UUID;
+ALTER TABLE event_attachments ADD COLUMN IF NOT EXISTS file_name TEXT;
+ALTER TABLE event_attachments ADD COLUMN IF NOT EXISTS file_path TEXT;
+ALTER TABLE event_attachments ADD COLUMN IF NOT EXISTS file_type TEXT;
+ALTER TABLE event_attachments ADD COLUMN IF NOT EXISTS uploaded_by UUID;
+ALTER TABLE event_attachments ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Attendance Logs Table (CBL compliance)
 CREATE TABLE IF NOT EXISTS attendance_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL,
@@ -383,7 +577,6 @@ CREATE TABLE IF NOT EXISTS attendance_logs (
     UNIQUE(user_id, event_id)
 );
 
--- Ensure all attendance_logs columns exist
 ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS user_id UUID;
 ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS event_id UUID;
 ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS timestamp TIMESTAMPTZ DEFAULT NOW();
@@ -391,7 +584,36 @@ ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS timestamp TIMESTAMPTZ DEFAU
 CREATE INDEX IF NOT EXISTS idx_att_logs_user ON attendance_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_att_logs_event ON attendance_logs(event_id);
 
--- Certificates of Participation / Completion
+-- Attendance Table (Queried by attendance APIs, event-qr-checkin & ComplianceEngine)
+CREATE TABLE IF NOT EXISTS attendance (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID REFERENCES events(id) ON DELETE CASCADE,
+    user_id UUID,
+    member_id UUID REFERENCES members(id) ON DELETE CASCADE,
+    institution_id UUID REFERENCES institutions(id) ON DELETE SET NULL,
+    attended BOOLEAN DEFAULT true,
+    timestamp TIMESTAMPTZ DEFAULT NOW(),
+    recorded_at TIMESTAMPTZ DEFAULT NOW(),
+    type TEXT DEFAULT 'checkin',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS event_id UUID;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS member_id UUID;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS attended BOOLEAN DEFAULT true;
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS timestamp TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS recorded_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'checkin';
+ALTER TABLE attendance ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_attendance_event ON attendance(event_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_user ON attendance(user_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_member ON attendance(member_id);
+CREATE INDEX IF NOT EXISTS idx_attendance_inst ON attendance(institution_id);
+
+-- Certificates Table
 CREATE TABLE IF NOT EXISTS certificates (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     member_id UUID REFERENCES members(id) ON DELETE CASCADE,
@@ -404,7 +626,6 @@ CREATE TABLE IF NOT EXISTS certificates (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all certificate columns exist on existing tables
 ALTER TABLE certificates ADD COLUMN IF NOT EXISTS member_id UUID;
 ALTER TABLE certificates ADD COLUMN IF NOT EXISTS event_id UUID;
 ALTER TABLE certificates ADD COLUMN IF NOT EXISTS issue_date DATE DEFAULT CURRENT_DATE;
@@ -419,42 +640,50 @@ CREATE INDEX IF NOT EXISTS idx_certificates_event ON certificates(event_id);
 CREATE INDEX IF NOT EXISTS idx_certificates_number ON certificates(certificate_number);
 
 -- =====================================================================
--- 8. BLOCKCHAIN RECORDS (Cryptographic Proof & SHA-256 Ledger)
+-- 8. BLOCKCHAIN RECORDS (SHA-256 Ledger & Merkle Trees)
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS blockchain_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     block_index BIGINT,
     entity_type TEXT NOT NULL,
     entity_id UUID NOT NULL,
+    record_type TEXT,
+    reference_id UUID,
     transaction_hash TEXT NOT NULL,
     record_hash TEXT,
-    data_hash TEXT,
+    data_hash TEXT DEFAULT '',
     previous_hash TEXT,
     merkle_root TEXT,
     data_json JSONB NOT NULL DEFAULT '{}',
     confirmed BOOLEAN DEFAULT true,
+    metadata JSONB DEFAULT '{}',
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all blockchain columns exist
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS block_index BIGINT;
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS entity_type TEXT;
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS entity_id UUID;
+ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS record_type TEXT;
+ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS reference_id UUID;
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS transaction_hash TEXT;
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS record_hash TEXT;
-ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS data_hash TEXT;
+ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS data_hash TEXT DEFAULT '';
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS previous_hash TEXT;
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS merkle_root TEXT;
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS data_json JSONB DEFAULT '{}';
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS confirmed BOOLEAN DEFAULT true;
+ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
 ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE INDEX IF NOT EXISTS idx_bc_entity ON blockchain_records(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_bc_hash ON blockchain_records(transaction_hash);
+CREATE INDEX IF NOT EXISTS idx_blockchain_records_record_type ON blockchain_records(record_type);
+CREATE INDEX IF NOT EXISTS idx_blockchain_records_reference_id ON blockchain_records(reference_id);
+CREATE INDEX IF NOT EXISTS idx_blockchain_records_data_hash ON blockchain_records(data_hash);
+CREATE INDEX IF NOT EXISTS idx_blockchain_records_previous_hash ON blockchain_records(previous_hash);
 
 -- =====================================================================
--- 9. PENDING AFFILIATIONS (Institutional Applications)
--- Supports BOTH documents JSON AND individual column lookups seamlessly
+-- 9. PENDING AFFILIATIONS & REVISION REQUESTS
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS pending_affiliations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -492,7 +721,7 @@ CREATE TABLE IF NOT EXISTS pending_affiliations (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all possible columns exist on pending_affiliations (prevents PGRST204 & 42703)
+-- Ensure all columns exist before indexes (prevents 42703 contact_email error)
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS school_name TEXT;
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS institution_name TEXT;
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS acronym TEXT;
@@ -529,7 +758,6 @@ CREATE INDEX IF NOT EXISTS idx_pending_aff_status ON pending_affiliations(status
 CREATE INDEX IF NOT EXISTS idx_pending_aff_email ON pending_affiliations(email);
 CREATE INDEX IF NOT EXISTS idx_pending_aff_contact_email ON pending_affiliations(contact_email);
 
--- Safely update status constraint on pending_affiliations to allow 'resubmitted'
 DO $$
 BEGIN
     ALTER TABLE pending_affiliations DROP CONSTRAINT IF EXISTS pending_affiliations_status_check;
@@ -539,7 +767,6 @@ EXCEPTION WHEN OTHERS THEN
     NULL;
 END $$;
 
--- Revision requests tracker
 CREATE TABLE IF NOT EXISTS revision_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     affiliation_id UUID NOT NULL REFERENCES pending_affiliations(id) ON DELETE CASCADE,
@@ -552,7 +779,6 @@ CREATE TABLE IF NOT EXISTS revision_requests (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all revision_requests columns exist
 ALTER TABLE revision_requests ADD COLUMN IF NOT EXISTS affiliation_id UUID;
 ALTER TABLE revision_requests ADD COLUMN IF NOT EXISTS token TEXT;
 ALTER TABLE revision_requests ADD COLUMN IF NOT EXISTS explanation TEXT;
@@ -566,8 +792,27 @@ CREATE INDEX IF NOT EXISTS idx_rev_req_token ON revision_requests(token);
 CREATE INDEX IF NOT EXISTS idx_rev_req_aff ON revision_requests(affiliation_id);
 CREATE INDEX IF NOT EXISTS idx_rev_req_status ON revision_requests(status);
 
+CREATE TABLE IF NOT EXISTS affiliation_documents (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    application_id UUID,
+    document_type TEXT NOT NULL,
+    file_name VARCHAR(255) NOT NULL,
+    file_path VARCHAR(500) NOT NULL,
+    file_size INT,
+    file_hash VARCHAR(64),
+    uploaded_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE affiliation_documents ADD COLUMN IF NOT EXISTS application_id UUID;
+ALTER TABLE affiliation_documents ADD COLUMN IF NOT EXISTS document_type TEXT;
+ALTER TABLE affiliation_documents ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);
+ALTER TABLE affiliation_documents ADD COLUMN IF NOT EXISTS file_path VARCHAR(500);
+ALTER TABLE affiliation_documents ADD COLUMN IF NOT EXISTS file_size INT;
+ALTER TABLE affiliation_documents ADD COLUMN IF NOT EXISTS file_hash VARCHAR(64);
+ALTER TABLE affiliation_documents ADD COLUMN IF NOT EXISTS uploaded_at TIMESTAMPTZ DEFAULT NOW();
+
 -- =====================================================================
--- 10. TRANSACTIONS & TREASURY
+-- 10. TRANSACTIONS, TREASURY, INVOICES & PAYMENTS
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -594,7 +839,6 @@ CREATE TABLE IF NOT EXISTS transactions (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all transaction columns exist
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_id TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS user_id UUID;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS member_id UUID;
@@ -620,8 +864,8 @@ ALTER TABLE transactions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT
 CREATE INDEX IF NOT EXISTS idx_tx_status ON transactions(status);
 CREATE INDEX IF NOT EXISTS idx_tx_member ON transactions(member_id);
 CREATE INDEX IF NOT EXISTS idx_tx_receipt_number ON transactions(receipt_number);
+CREATE INDEX IF NOT EXISTS idx_tx_event_id ON transactions(event_id);
 
--- School-level financial records
 CREATE TABLE IF NOT EXISTS financial_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     school_id UUID NOT NULL,
@@ -633,7 +877,6 @@ CREATE TABLE IF NOT EXISTS financial_records (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all financial_records columns exist
 ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS school_id UUID;
 ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS amount DECIMAL(10,2);
 ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS payment_type TEXT;
@@ -645,8 +888,157 @@ ALTER TABLE financial_records ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DE
 CREATE INDEX IF NOT EXISTS idx_fin_rec_school ON financial_records(school_id);
 CREATE INDEX IF NOT EXISTS idx_fin_rec_status ON financial_records(payment_status);
 
+CREATE TABLE IF NOT EXISTS invoices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_number VARCHAR(100) UNIQUE NOT NULL,
+    member_id UUID,
+    institution_id UUID REFERENCES institutions(id) ON DELETE SET NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    description TEXT,
+    issue_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    due_date DATE,
+    pdf_path VARCHAR(500),
+    status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'paid', 'overdue', 'cancelled')),
+    created_by UUID,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(100);
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS member_id UUID;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS amount DECIMAL(10,2) DEFAULT 0.00;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS issue_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS due_date DATE;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(500);
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'draft';
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS created_by UUID;
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE invoices ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_invoices_number ON invoices(invoice_number);
+
+CREATE TABLE IF NOT EXISTS payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    member_id UUID,
+    institution_id UUID REFERENCES institutions(id) ON DELETE SET NULL,
+    transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
+    batch_id VARCHAR(50),
+    amount DECIMAL(10,2) NOT NULL,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'paid', 'cancelled', 'verified')),
+    payment_date TIMESTAMPTZ DEFAULT NOW(),
+    payment_reference VARCHAR(100),
+    proof_of_payment TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS member_id UUID;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS transaction_id UUID;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS batch_id VARCHAR(50);
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS amount DECIMAL(10,2) DEFAULT 0.00;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_date TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_reference VARCHAR(100);
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS proof_of_payment TEXT;
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE payments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Fee Waivers & Adjustment Modules
+CREATE TABLE IF NOT EXISTS fee_waivers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    requested_by UUID,
+    reason TEXT NOT NULL,
+    requested_amount DECIMAL(10,2) DEFAULT 0.00,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    reviewed_by UUID,
+    reviewed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE fee_waivers ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE fee_waivers ADD COLUMN IF NOT EXISTS requested_by UUID;
+ALTER TABLE fee_waivers ADD COLUMN IF NOT EXISTS reason TEXT;
+ALTER TABLE fee_waivers ADD COLUMN IF NOT EXISTS requested_amount DECIMAL(10,2) DEFAULT 0.00;
+ALTER TABLE fee_waivers ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE fee_waivers ADD COLUMN IF NOT EXISTS reviewed_by UUID;
+ALTER TABLE fee_waivers ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+ALTER TABLE fee_waivers ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE fee_waivers ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE TABLE IF NOT EXISTS fee_waiver_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    student_name TEXT NOT NULL,
+    student_number TEXT,
+    waiver_type TEXT DEFAULT 'Financial Hardship',
+    reason TEXT NOT NULL,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+    requested_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE fee_waiver_requests ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE fee_waiver_requests ADD COLUMN IF NOT EXISTS student_name TEXT;
+ALTER TABLE fee_waiver_requests ADD COLUMN IF NOT EXISTS student_number TEXT;
+ALTER TABLE fee_waiver_requests ADD COLUMN IF NOT EXISTS waiver_type TEXT DEFAULT 'Financial Hardship';
+ALTER TABLE fee_waiver_requests ADD COLUMN IF NOT EXISTS reason TEXT;
+ALTER TABLE fee_waiver_requests ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE fee_waiver_requests ADD COLUMN IF NOT EXISTS requested_by TEXT;
+ALTER TABLE fee_waiver_requests ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE fee_waiver_requests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE TABLE IF NOT EXISTS fee_adjustments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    institution_id UUID REFERENCES institutions(id) ON DELETE CASCADE,
+    old_bracket_id TEXT,
+    new_bracket_id TEXT,
+    member_count INT,
+    adjusted_at TIMESTAMPTZ DEFAULT NOW(),
+    auto_adjusted BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE fee_adjustments ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE fee_adjustments ADD COLUMN IF NOT EXISTS old_bracket_id TEXT;
+ALTER TABLE fee_adjustments ADD COLUMN IF NOT EXISTS new_bracket_id TEXT;
+ALTER TABLE fee_adjustments ADD COLUMN IF NOT EXISTS member_count INT;
+ALTER TABLE fee_adjustments ADD COLUMN IF NOT EXISTS adjusted_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE fee_adjustments ADD COLUMN IF NOT EXISTS auto_adjusted BOOLEAN DEFAULT true;
+ALTER TABLE fee_adjustments ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_fee_adj_inst ON fee_adjustments(institution_id);
+
+CREATE TABLE IF NOT EXISTS expenditures (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    description TEXT,
+    amount DECIMAL(10,2) NOT NULL,
+    category TEXT,
+    institution_id UUID REFERENCES institutions(id) ON DELETE SET NULL,
+    receipt_url TEXT,
+    approved_by UUID,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE expenditures ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE expenditures ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE expenditures ADD COLUMN IF NOT EXISTS amount DECIMAL(10,2) DEFAULT 0.00;
+ALTER TABLE expenditures ADD COLUMN IF NOT EXISTS category TEXT;
+ALTER TABLE expenditures ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE expenditures ADD COLUMN IF NOT EXISTS receipt_url TEXT;
+ALTER TABLE expenditures ADD COLUMN IF NOT EXISTS approved_by UUID;
+ALTER TABLE expenditures ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE expenditures ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 -- =====================================================================
--- 11. VERIFICATION CODES & 2FA
+-- 11. VERIFICATION CODES & EMAIL VERIFICATIONS
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS verification_codes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -659,7 +1051,6 @@ CREATE TABLE IF NOT EXISTS verification_codes (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all verification_codes columns exist
 ALTER TABLE verification_codes ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE verification_codes ADD COLUMN IF NOT EXISTS code TEXT;
 ALTER TABLE verification_codes ADD COLUMN IF NOT EXISTS purpose TEXT DEFAULT 'affiliation';
@@ -679,7 +1070,6 @@ CREATE TABLE IF NOT EXISTS email_verifications (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all email_verifications columns exist
 ALTER TABLE email_verifications ADD COLUMN IF NOT EXISTS email VARCHAR(255);
 ALTER TABLE email_verifications ADD COLUMN IF NOT EXISTS code VARCHAR(10);
 ALTER TABLE email_verifications ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
@@ -703,7 +1093,6 @@ CREATE TABLE IF NOT EXISTS school_profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all school_profiles columns exist
 ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS school_name TEXT;
 ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS affiliation_status TEXT DEFAULT 'Pending';
 ALTER TABLE school_profiles ADD COLUMN IF NOT EXISTS total_members INTEGER DEFAULT 0;
@@ -727,7 +1116,6 @@ CREATE TABLE IF NOT EXISTS compliance_docs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all compliance_docs columns exist
 ALTER TABLE compliance_docs ADD COLUMN IF NOT EXISTS school_id UUID;
 ALTER TABLE compliance_docs ADD COLUMN IF NOT EXISTS doc_type TEXT;
 ALTER TABLE compliance_docs ADD COLUMN IF NOT EXISTS file_url TEXT;
@@ -748,7 +1136,6 @@ CREATE TABLE IF NOT EXISTS compliance_scores (
     last_updated TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all columns exist even if table was created in an older migration
 ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS institution_id UUID;
 ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS year INT;
 ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS participation_rate NUMERIC(5,2);
@@ -765,7 +1152,6 @@ CREATE TABLE IF NOT EXISTS compliance_rules (
     is_active BOOLEAN DEFAULT true
 );
 
--- Ensure all columns exist on compliance_rules
 ALTER TABLE compliance_rules ADD COLUMN IF NOT EXISTS rule_key TEXT;
 ALTER TABLE compliance_rules ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE compliance_rules ADD COLUMN IF NOT EXISTS threshold NUMERIC(5,2);
@@ -786,7 +1172,6 @@ CREATE TABLE IF NOT EXISTS policy_compliance (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all policy_compliance columns exist
 ALTER TABLE policy_compliance ADD COLUMN IF NOT EXISTS institution_id UUID;
 ALTER TABLE policy_compliance ADD COLUMN IF NOT EXISTS policy_name VARCHAR(255);
 ALTER TABLE policy_compliance ADD COLUMN IF NOT EXISTS policy_description TEXT;
@@ -819,7 +1204,6 @@ CREATE TABLE IF NOT EXISTS merch_items (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all merch_items columns exist
 ALTER TABLE merch_items ADD COLUMN IF NOT EXISTS name TEXT;
 ALTER TABLE merch_items ADD COLUMN IF NOT EXISTS title TEXT;
 ALTER TABLE merch_items ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'apparel';
@@ -855,7 +1239,6 @@ CREATE TABLE IF NOT EXISTS merch_orders (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all merch_orders columns exist
 ALTER TABLE merch_orders ADD COLUMN IF NOT EXISTS order_id TEXT;
 ALTER TABLE merch_orders ADD COLUMN IF NOT EXISTS member_id UUID;
 ALTER TABLE merch_orders ADD COLUMN IF NOT EXISTS buyer_name TEXT;
@@ -876,7 +1259,7 @@ CREATE INDEX IF NOT EXISTS idx_merch_orders_member ON merch_orders(member_id);
 CREATE INDEX IF NOT EXISTS idx_merch_orders_status ON merch_orders(status);
 
 -- =====================================================================
--- 14. COMMUNICATIONS: ANNOUNCEMENTS, NOTIFICATIONS, MESSAGES, MEMOS
+-- 14. COMMUNICATIONS: FEATURED CARDS, ANNOUNCEMENTS, NOTIFICATIONS, MESSAGES, MEMOS, NEWSLETTERS
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS featured_cards (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -885,11 +1268,33 @@ CREATE TABLE IF NOT EXISTS featured_cards (
     category TEXT DEFAULT 'Announcement',
     image_url TEXT,
     link_url TEXT,
+    gradient_from TEXT DEFAULT '#0B1D4A',
+    gradient_to TEXT DEFAULT '#132a5e',
+    button_text TEXT DEFAULT 'Learn More',
+    button_url TEXT DEFAULT '#',
+    button_color TEXT DEFAULT '#0B1D4A',
     badge_text TEXT,
     sort_order INTEGER DEFAULT 0,
     is_active BOOLEAN DEFAULT true,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Announcement';
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS link_url TEXT;
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS gradient_from TEXT DEFAULT '#0B1D4A';
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS gradient_to TEXT DEFAULT '#132a5e';
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS button_text TEXT DEFAULT 'Learn More';
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS button_url TEXT DEFAULT '#';
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS button_color TEXT DEFAULT '#0B1D4A';
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS badge_text TEXT;
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS sort_order INTEGER DEFAULT 0;
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE featured_cards ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE TABLE IF NOT EXISTS announcements (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -909,7 +1314,6 @@ CREATE TABLE IF NOT EXISTS announcements (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all announcements columns exist
 ALTER TABLE announcements ADD COLUMN IF NOT EXISTS title TEXT;
 ALTER TABLE announcements ADD COLUMN IF NOT EXISTS content TEXT;
 ALTER TABLE announcements ADD COLUMN IF NOT EXISTS body TEXT;
@@ -932,19 +1336,22 @@ CREATE TABLE IF NOT EXISTS notifications (
     user_id UUID,
     title TEXT NOT NULL,
     message TEXT NOT NULL,
-    type TEXT DEFAULT 'info' CHECK (type IN ('info', 'success', 'warning', 'danger', 'event', 'system', 'affiliation_revision')),
+    type TEXT DEFAULT 'info',
+    action_url TEXT,
     link_url TEXT,
+    institution_id UUID REFERENCES institutions(id) ON DELETE SET NULL,
     reference_id UUID,
     is_read BOOLEAN DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all notifications columns exist
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS user_id UUID;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS title TEXT;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS message TEXT;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'info';
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS action_url TEXT;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link_url TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS institution_id UUID;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_id UUID;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT false;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
@@ -962,7 +1369,6 @@ CREATE TABLE IF NOT EXISTS messages (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all messages columns exist
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS sender_id UUID;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS receiver_id UUID;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS subject VARCHAR(255);
@@ -988,7 +1394,6 @@ CREATE TABLE IF NOT EXISTS memoranda (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all memoranda columns exist
 ALTER TABLE memoranda ADD COLUMN IF NOT EXISTS title VARCHAR(255);
 ALTER TABLE memoranda ADD COLUMN IF NOT EXISTS content TEXT;
 ALTER TABLE memoranda ADD COLUMN IF NOT EXISTS sent_by UUID;
@@ -1018,6 +1423,23 @@ CREATE TABLE IF NOT EXISTS newsletters (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS subject VARCHAR(255);
+ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS html_content TEXT;
+ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS text_content TEXT;
+ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS sent_by UUID;
+ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS target_roles JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS target_institutions JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ;
+ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'draft';
+ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS scheduled_for TIMESTAMPTZ;
+ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS recipient_count INT DEFAULT 0;
+ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE newsletters ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_newsletters_sent_by ON newsletters(sent_by);
+CREATE INDEX IF NOT EXISTS idx_newsletters_status ON newsletters(status);
+CREATE INDEX IF NOT EXISTS idx_newsletters_sent_at ON newsletters(sent_at DESC);
+
 -- =====================================================================
 -- 15. DOCUMENT MANAGEMENT & AUDIT TRAIL
 -- =====================================================================
@@ -1040,7 +1462,6 @@ CREATE TABLE IF NOT EXISTS documents (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all documents columns exist
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS title VARCHAR(255);
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE documents ADD COLUMN IF NOT EXISTS category TEXT;
@@ -1073,6 +1494,19 @@ CREATE TABLE IF NOT EXISTS document_versions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+ALTER TABLE document_versions ADD COLUMN IF NOT EXISTS document_id UUID;
+ALTER TABLE document_versions ADD COLUMN IF NOT EXISTS version_number INT;
+ALTER TABLE document_versions ADD COLUMN IF NOT EXISTS file_name VARCHAR(255);
+ALTER TABLE document_versions ADD COLUMN IF NOT EXISTS file_path VARCHAR(500);
+ALTER TABLE document_versions ADD COLUMN IF NOT EXISTS file_size INT;
+ALTER TABLE document_versions ADD COLUMN IF NOT EXISTS file_hash VARCHAR(64);
+ALTER TABLE document_versions ADD COLUMN IF NOT EXISTS uploaded_by UUID;
+ALTER TABLE document_versions ADD COLUMN IF NOT EXISTS change_notes TEXT;
+ALTER TABLE document_versions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_document_versions_document_id ON document_versions(document_id);
+CREATE INDEX IF NOT EXISTS idx_document_versions_number ON document_versions(version_number);
+
 CREATE TABLE IF NOT EXISTS audit_logs (
     id SERIAL PRIMARY KEY,
     action TEXT,
@@ -1086,7 +1520,6 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all audit_logs columns exist
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS action TEXT;
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS table_name TEXT;
 ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS record_id TEXT;
@@ -1100,8 +1533,50 @@ ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT N
 CREATE INDEX IF NOT EXISTS idx_audit_logs_table ON audit_logs(table_name);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
 
+CREATE TABLE IF NOT EXISTS system_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    log_level VARCHAR(50) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    message TEXT NOT NULL,
+    details JSONB DEFAULT '{}',
+    ip_address VARCHAR(45),
+    user_id UUID,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE system_logs ADD COLUMN IF NOT EXISTS log_level VARCHAR(50);
+ALTER TABLE system_logs ADD COLUMN IF NOT EXISTS category VARCHAR(100);
+ALTER TABLE system_logs ADD COLUMN IF NOT EXISTS message TEXT;
+ALTER TABLE system_logs ADD COLUMN IF NOT EXISTS details JSONB DEFAULT '{}';
+ALTER TABLE system_logs ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45);
+ALTER TABLE system_logs ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE system_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_system_logs_level ON system_logs(log_level);
+
+CREATE TABLE IF NOT EXISTS cron_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    job_id TEXT NOT NULL,
+    duration NUMERIC(10,2) DEFAULT 0,
+    success BOOLEAN DEFAULT true,
+    output TEXT,
+    triggered_by TEXT DEFAULT 'system',
+    executed_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE cron_logs ADD COLUMN IF NOT EXISTS job_id TEXT;
+ALTER TABLE cron_logs ADD COLUMN IF NOT EXISTS duration NUMERIC(10,2) DEFAULT 0;
+ALTER TABLE cron_logs ADD COLUMN IF NOT EXISTS success BOOLEAN DEFAULT true;
+ALTER TABLE cron_logs ADD COLUMN IF NOT EXISTS output TEXT;
+ALTER TABLE cron_logs ADD COLUMN IF NOT EXISTS triggered_by TEXT DEFAULT 'system';
+ALTER TABLE cron_logs ADD COLUMN IF NOT EXISTS executed_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE cron_logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_cron_logs_job ON cron_logs(job_id);
+
 -- =====================================================================
--- 16. SYSTEM SETTINGS & FEE SCHEDULES
+-- 16. SYSTEM SETTINGS, FEE SCHEDULES & MEMBER FEES
 -- =====================================================================
 CREATE TABLE IF NOT EXISTS system_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1112,7 +1587,6 @@ CREATE TABLE IF NOT EXISTS system_settings (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all columns exist on system_settings
 ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS key TEXT;
 ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS value TEXT;
 ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS description TEXT;
@@ -1133,7 +1607,6 @@ CREATE TABLE IF NOT EXISTS fee_brackets (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure all columns exist on fee_brackets
 ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS bracket_name TEXT;
 ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS min_members INTEGER;
 ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS max_members INTEGER;
@@ -1145,20 +1618,267 @@ ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT
 ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 CREATE UNIQUE INDEX IF NOT EXISTS idx_fee_brackets_name_uq ON fee_brackets(bracket_name);
 
+CREATE TABLE IF NOT EXISTS member_fees (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    member_type TEXT NOT NULL UNIQUE,
+    fee DECIMAL(10,2) NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE member_fees ADD COLUMN IF NOT EXISTS member_type TEXT;
+ALTER TABLE member_fees ADD COLUMN IF NOT EXISTS fee DECIMAL(10,2) DEFAULT 0.00;
+ALTER TABLE member_fees ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE member_fees ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE member_fees ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+CREATE UNIQUE INDEX IF NOT EXISTS idx_member_fees_type ON member_fees(member_type);
+
 -- =====================================================================
--- 17. AUTOMATED UPDATED_AT TRIGGERS
+-- 17. SURVEYS & EMAIL BLASTS (Enhancements Module)
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS surveys (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    description TEXT,
+    questions JSONB NOT NULL DEFAULT '[]',
+    event_id UUID REFERENCES events(id) ON DELETE SET NULL,
+    target_roles TEXT[] DEFAULT ARRAY['member'],
+    is_active BOOLEAN DEFAULT true,
+    created_by UUID,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS questions JSONB DEFAULT '[]';
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS event_id UUID;
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS target_roles TEXT[] DEFAULT ARRAY['member'];
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS created_by UUID;
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE surveys ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_surveys_event ON surveys(event_id);
+CREATE INDEX IF NOT EXISTS idx_surveys_active ON surveys(is_active);
+
+CREATE TABLE IF NOT EXISTS survey_responses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    survey_id UUID NOT NULL,
+    member_id UUID NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    event_id UUID REFERENCES events(id) ON DELETE SET NULL,
+    answers JSONB NOT NULL DEFAULT '{}',
+    submitted_at TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE survey_responses ADD COLUMN IF NOT EXISTS survey_id UUID;
+ALTER TABLE survey_responses ADD COLUMN IF NOT EXISTS member_id UUID;
+ALTER TABLE survey_responses ADD COLUMN IF NOT EXISTS event_id UUID;
+ALTER TABLE survey_responses ADD COLUMN IF NOT EXISTS answers JSONB DEFAULT '{}';
+ALTER TABLE survey_responses ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE survey_responses ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_survey_responses_survey ON survey_responses(survey_id);
+CREATE INDEX IF NOT EXISTS idx_survey_responses_member ON survey_responses(member_id);
+CREATE INDEX IF NOT EXISTS idx_survey_responses_event ON survey_responses(event_id);
+
+CREATE TABLE IF NOT EXISTS email_blasts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    campaign_id UUID,
+    subject TEXT NOT NULL,
+    html_content TEXT NOT NULL,
+    recipient_count INTEGER DEFAULT 0,
+    sent_at TIMESTAMPTZ,
+    status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'failed', 'scheduled')),
+    scheduled_for TIMESTAMPTZ,
+    created_by UUID,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE email_blasts ADD COLUMN IF NOT EXISTS campaign_id UUID;
+ALTER TABLE email_blasts ADD COLUMN IF NOT EXISTS subject TEXT;
+ALTER TABLE email_blasts ADD COLUMN IF NOT EXISTS html_content TEXT;
+ALTER TABLE email_blasts ADD COLUMN IF NOT EXISTS recipient_count INTEGER DEFAULT 0;
+ALTER TABLE email_blasts ADD COLUMN IF NOT EXISTS sent_at TIMESTAMPTZ;
+ALTER TABLE email_blasts ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'draft';
+ALTER TABLE email_blasts ADD COLUMN IF NOT EXISTS scheduled_for TIMESTAMPTZ;
+ALTER TABLE email_blasts ADD COLUMN IF NOT EXISTS created_by UUID;
+ALTER TABLE email_blasts ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE email_blasts ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_email_blasts_status ON email_blasts(status);
+
+CREATE TABLE IF NOT EXISTS email_tracking (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email_blast_id UUID,
+    member_id UUID REFERENCES members(id) ON DELETE SET NULL,
+    opened_at TIMESTAMPTZ,
+    clicked_at TIMESTAMPTZ,
+    bounce_status TEXT,
+    tracking_code TEXT UNIQUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE email_tracking ADD COLUMN IF NOT EXISTS email_blast_id UUID;
+ALTER TABLE email_tracking ADD COLUMN IF NOT EXISTS member_id UUID;
+ALTER TABLE email_tracking ADD COLUMN IF NOT EXISTS opened_at TIMESTAMPTZ;
+ALTER TABLE email_tracking ADD COLUMN IF NOT EXISTS clicked_at TIMESTAMPTZ;
+ALTER TABLE email_tracking ADD COLUMN IF NOT EXISTS bounce_status TEXT;
+ALTER TABLE email_tracking ADD COLUMN IF NOT EXISTS tracking_code TEXT;
+ALTER TABLE email_tracking ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_email_tracking_blast ON email_tracking(email_blast_id);
+CREATE INDEX IF NOT EXISTS idx_email_tracking_member ON email_tracking(member_id);
+CREATE INDEX IF NOT EXISTS idx_email_tracking_code ON email_tracking(tracking_code);
+
+-- =====================================================================
+-- 18. AWARDS, CALENDAR ACTIVITIES, CONTACT & SECURITY
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS awards_distinctions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    award_year VARCHAR(20) NOT NULL,
+    description TEXT,
+    category VARCHAR(100) DEFAULT 'Regional Recognition',
+    image_url TEXT,
+    sort_order INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE awards_distinctions ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE awards_distinctions ADD COLUMN IF NOT EXISTS award_year VARCHAR(20);
+ALTER TABLE awards_distinctions ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE awards_distinctions ADD COLUMN IF NOT EXISTS category VARCHAR(100);
+ALTER TABLE awards_distinctions ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE awards_distinctions ADD COLUMN IF NOT EXISTS sort_order INT DEFAULT 0;
+ALTER TABLE awards_distinctions ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE awards_distinctions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE awards_distinctions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_awards_year ON awards_distinctions(award_year);
+
+CREATE TABLE IF NOT EXISTS calendar_activities (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    description TEXT,
+    event_date DATE NOT NULL,
+    venue TEXT,
+    time_text TEXT,
+    is_active BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE calendar_activities ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE calendar_activities ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE calendar_activities ADD COLUMN IF NOT EXISTS event_date DATE;
+ALTER TABLE calendar_activities ADD COLUMN IF NOT EXISTS venue TEXT;
+ALTER TABLE calendar_activities ADD COLUMN IF NOT EXISTS time_text TEXT;
+ALTER TABLE calendar_activities ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE calendar_activities ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE calendar_activities ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_cal_act_date ON calendar_activities(event_date);
+
+CREATE TABLE IF NOT EXISTS contact_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    email TEXT NOT NULL,
+    subject TEXT,
+    message TEXT NOT NULL,
+    status TEXT DEFAULT 'unread' CHECK (status IN ('unread', 'read', 'replied', 'archived')),
+    ip_address TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS subject TEXT;
+ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS message TEXT;
+ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'unread';
+ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS ip_address TEXT;
+ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_contact_status ON contact_messages(status);
+CREATE INDEX IF NOT EXISTS idx_contact_created ON contact_messages(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    subscription_json JSONB NOT NULL,
+    is_active BOOLEAN DEFAULT true,
+    last_notified_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS subscription_json JSONB;
+ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS last_notified_at TIMESTAMPTZ;
+ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE push_subscriptions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE TABLE IF NOT EXISTS password_resets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) NOT NULL,
+    token VARCHAR(255) UNIQUE NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE password_resets ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+ALTER TABLE password_resets ADD COLUMN IF NOT EXISTS token VARCHAR(255);
+ALTER TABLE password_resets ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE password_resets ADD COLUMN IF NOT EXISTS used BOOLEAN DEFAULT false;
+ALTER TABLE password_resets ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS idx_pw_resets_token ON password_resets(token);
+CREATE INDEX IF NOT EXISTS idx_pw_resets_email ON password_resets(email);
+
+CREATE TABLE IF NOT EXISTS role_permissions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    role VARCHAR(100) NOT NULL,
+    permission VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(role, permission)
+);
+
+ALTER TABLE role_permissions ADD COLUMN IF NOT EXISTS role VARCHAR(100);
+ALTER TABLE role_permissions ADD COLUMN IF NOT EXISTS permission VARCHAR(100);
+ALTER TABLE role_permissions ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE role_permissions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+-- =====================================================================
+-- 19. AUTOMATED UPDATED_AT TRIGGERS
 -- =====================================================================
 DO $$
 DECLARE
     t text;
+    tables_list text[] := ARRAY[
+        'institutions', 'affiliated_schools', 'users', 'auth_users', 'user_profiles',
+        'members', 'member_profiles', 'member_upload_batches', 'pending_members',
+        'member_applications', 'events', 'event_attendees', 'event_registrations',
+        'attendance', 'blockchain_records', 'pending_affiliations', 'revision_requests',
+        'transactions', 'financial_records', 'invoices', 'payments', 'fee_waivers',
+        'fee_waiver_requests', 'fee_adjustments', 'expenditures', 'school_profiles',
+        'policy_compliance', 'merch_items', 'merch_orders', 'featured_cards',
+        'announcements', 'notifications', 'messages', 'memoranda', 'newsletters',
+        'documents', 'system_settings', 'fee_brackets', 'member_fees', 'surveys',
+        'email_blasts', 'awards_distinctions', 'calendar_activities', 'contact_messages',
+        'push_subscriptions'
+    ];
 BEGIN
-    FOR t IN 
-        SELECT unnest(ARRAY[
-            'institutions', 'users', 'user_profiles', 'members', 'events', 
-            'transactions', 'pending_affiliations', 'revision_requests', 
-            'school_profiles', 'policy_compliance', 'merch_items', 'merch_orders', 
-            'memoranda', 'newsletters', 'documents', 'system_settings', 'fee_brackets'
-        ])
+    FOREACH t IN ARRAY tables_list
     LOOP
         BEGIN
             EXECUTE format('DROP TRIGGER IF EXISTS trg_%I_updated_at ON %I;', t, t);
@@ -1169,7 +1889,7 @@ BEGIN
 END $$;
 
 -- =====================================================================
--- 18. SEED DATA: OFFICIAL LAGUNA HEI CHAPTERS (All 8 Campuses)
+-- 20. SEED DATA: OFFICIAL LAGUNA HEI CHAPTERS (All 8 Campuses)
 -- =====================================================================
 DO $$
 BEGIN
@@ -1197,10 +1917,11 @@ EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- =====================================================================
--- 19. SEED DATA: OFFICIAL USERS & PROFILES
+-- 21. SEED DATA: OFFICIAL USERS, AUTH & PROFILES
 -- =====================================================================
 DO $$
 BEGIN
+    -- 1. Direct Auth users table
     INSERT INTO users (id, email, password, password_hash, full_name, role, is_active, created_at, updated_at)
     VALUES
         ('00000000-0000-0000-0000-000000000001', 'lspuscc.adminece@gmail.com', '$2y$12$mypSMbD3y1XR5uuewBIV5ONYYT3yODWWKdOINbV7/2n86Xu0PupXK', '$2y$12$mypSMbD3y1XR5uuewBIV5ONYYT3yODWWKdOINbV7/2n86Xu0PupXK', 'IECEP-LSC Regional Admin', 'super_admin', true, NOW(), NOW()),
@@ -1213,6 +1934,15 @@ BEGIN
         role = EXCLUDED.role,
         is_active = EXCLUDED.is_active;
 
+    -- 2. Auth Users (for seed_accounts.sql & legacy queries)
+    INSERT INTO auth_users (id, email, password_hash, created_at, updated_at)
+    VALUES
+        ('admin-001-iecep-lsc', 'lspuscc.adminece@gmail.com', '$2y$12$mypSMbD3y1XR5uuewBIV5ONYYT3yODWWKdOINbV7/2n86Xu0PupXK', NOW(), NOW()),
+        ('school-001-pupsta', 'ieceptest86@gmail.com', '$2y$12$7QzP4zCK2as87c1og7U59et9vvPHU90pCYCNXn.zM7RuH/cti.cXa', NOW(), NOW()),
+        ('member-001', 'rasheddizon7@gmail.com', '$2y$12$t6adOxlvvxUJa4Lu2U6EX.R5U.2KGRTwQNeE9i51ou9Cw59Ft2vDi', NOW(), NOW())
+    ON CONFLICT (id) DO UPDATE SET password_hash = EXCLUDED.password_hash, updated_at = NOW();
+
+    -- 3. User Profiles
     INSERT INTO user_profiles (id, user_id, email, full_name, role, institution_id, phone, status, force_password_change)
     VALUES
         ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'lspuscc.adminece@gmail.com', 'IECEP-LSC Regional Admin', 'super_admin', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '09171234567', 'active', false),
@@ -1226,7 +1956,7 @@ EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- =====================================================================
--- 20. SEED DATA: OFFICIAL MEMBERS
+-- 22. SEED DATA: OFFICIAL MEMBERS & COUNTERS
 -- =====================================================================
 DO $$
 BEGIN
@@ -1286,7 +2016,7 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 
 -- =====================================================================
--- 21. SEED DATA: EVENTS & ANNOUNCEMENTS
+-- 23. SEED DATA: EVENTS & ANNOUNCEMENTS
 -- =====================================================================
 DO $$
 BEGIN
@@ -1330,22 +2060,38 @@ EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- =====================================================================
--- 22. SEED DATA: SETTINGS, FEE SCHEDULES, COMPLIANCE RULES, MERCH
+-- 24. SEED DATA: SETTINGS, FEE SCHEDULES, MEMBER FEES, COMPLIANCE RULES, MERCH
 -- =====================================================================
 DO $$
 BEGIN
-    INSERT INTO fee_brackets (bracket_name, min_members, max_members, fee, is_active)
+    INSERT INTO fee_brackets (bracket_name, min_members, max_members, fee, per_member_fee, annual_fee, is_active)
     VALUES
-        ('Small', 1, 50, 1500.00, true),
-        ('Medium', 51, 100, 2000.00, true),
-        ('Large', 101, 150, 2500.00, true),
-        ('Enterprise', 151, 999999, 3000.00, true)
-    ON CONFLICT (bracket_name) DO UPDATE SET fee = EXCLUDED.fee;
+        ('Small',      1,   50,  1500.00, 0.00, 0.00, true),
+        ('Medium',    51,  100,  2000.00, 0.00, 0.00, true),
+        ('Large',    101,  150,  2500.00, 0.00, 0.00, true),
+        ('Enterprise', 151, 999999, 3000.00, 0.00, 0.00, true)
+    ON CONFLICT (bracket_name) DO UPDATE SET 
+        fee = EXCLUDED.fee,
+        min_members = EXCLUDED.min_members,
+        max_members = EXCLUDED.max_members,
+        is_active = EXCLUDED.is_active;
+
+    INSERT INTO member_fees (member_type, fee, is_active)
+    VALUES
+        ('new',       250.00, true),
+        ('returning', 200.00, true),
+        ('honorary',  300.00, true)
+    ON CONFLICT (member_type) DO UPDATE SET
+        fee = EXCLUDED.fee,
+        is_active = EXCLUDED.is_active;
 
     INSERT INTO system_settings (key, value, description)
     VALUES
         ('operational_fee', '800.00', 'Annual organization operational fee per Board Resolution No. 021-2024'),
-        ('facebook_page_url', 'https://www.facebook.com/IECEPLSC', 'Official IECEP-LSC Facebook URL')
+        ('facebook_page_url', 'https://www.facebook.com/IECEPLSC', 'Official IECEP-LSC Facebook URL'),
+        ('treasurer_email', 'treasurer@iecep-lsc.org', 'Email address for receiving monthly financial reports'),
+        ('president_email', 'president@iecep-lsc.org', 'Email address for receiving monthly financial reports'),
+        ('cron_secret', '', 'Secret key for protecting cron job endpoints')
     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
     INSERT INTO compliance_rules (rule_key, description, threshold, is_active)
@@ -1359,52 +2105,27 @@ BEGIN
         ('90000000-0000-0000-0000-000000000001', 'IECEP-LSC Chapter Shirt', 'IECEP-LSC Chapter Shirt', 'Official Laguna Student Chapter technical polo-shirt (Navy Blue/Gold).', 350.00, 100, true),
         ('90000000-0000-0000-0000-000000000002', 'IECEP-LSC Enamel Pin', 'IECEP-LSC Enamel Pin', 'Collector edition metallic enamel chapter emblem pin.', 120.00, 250, true)
     ON CONFLICT (id) DO UPDATE SET price = EXCLUDED.price, stock = EXCLUDED.stock;
+
+    INSERT INTO awards_distinctions (title, award_year, description, category, is_active)
+    VALUES
+        ('Most Outstanding Student Chapter of the Year (Region IV-A)', '2025', 'Conferred during the IECEP National Convention for unprecedented member growth, exceptional technical seminars, and exemplary institutional governance across Laguna HEIs.', 'National Recognition', true),
+        ('Excellence in Student Technical Research & Innovation', '2024', 'Awarded for premier student technical research papers and IoT embedded hardware prototypes demonstrated at the Annual Regional Electronics Engineering Symposium.', 'Research & Tech', true),
+        ('PRC ECE & ECT Licensure Examination Topnotchers Plaque of Distinction', '2024', 'Honoring chapter-affiliated graduates and student alumni achieving Top 10 national ranking in the Electronics Engineering PRC Board Exams.', 'Academic Distinction', true)
+    ON CONFLICT DO NOTHING;
+
+    INSERT INTO calendar_activities (title, description, event_date, venue, time_text, is_active)
+    VALUES
+        ('Annual Institutional Affiliation Renewal Deadline', 'Accreditation period closing for all Higher Education Institutions in Laguna offering ECE and ECT degree curricula.', '2026-09-15', 'IECEP-LSC Portal', '11:59 PM PST', true),
+        ('IECEP-LSC Regional Student Convention 2026', 'The flagship gathering of engineering students, research symposiums, technical quiz bowl, and robotics innovation challenges.', '2026-10-24', 'Laguna Provincial Capitol Cultural Center', '8:00 AM – 5:00 PM', true),
+        ('TechX & IoT Embedded Systems Masterclass', 'Hands-on microcontrollers, RF protocols, firmware debugging, and smart sensing workshop led by certified industry engineers.', '2026-11-12', 'Virtual (Zoom / Live Stream)', '1:00 PM – 4:30 PM', true)
+    ON CONFLICT DO NOTHING;
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- =====================================================================
--- 23. ROW LEVEL SECURITY (RLS) POLICIES
+-- 25. ROW LEVEL SECURITY (RLS) POLICIES
 -- =====================================================================
-ALTER TABLE institutions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE member_id_counter ENABLE ROW LEVEL SECURITY;
-ALTER TABLE membership_id_sequences ENABLE ROW LEVEL SECURITY;
-ALTER TABLE events ENABLE ROW LEVEL SECURITY;
-ALTER TABLE event_attendees ENABLE ROW LEVEL SECURITY;
-ALTER TABLE event_registrations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE event_attachments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE attendance_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE certificates ENABLE ROW LEVEL SECURITY;
-ALTER TABLE blockchain_records ENABLE ROW LEVEL SECURITY;
-ALTER TABLE pending_affiliations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE revision_requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE financial_records ENABLE ROW LEVEL SECURITY;
-ALTER TABLE verification_codes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE email_verifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE school_profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE compliance_docs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE compliance_scores ENABLE ROW LEVEL SECURITY;
-ALTER TABLE compliance_rules ENABLE ROW LEVEL SECURITY;
-ALTER TABLE policy_compliance ENABLE ROW LEVEL SECURITY;
-ALTER TABLE merch_items ENABLE ROW LEVEL SECURITY;
-ALTER TABLE merch_orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE featured_cards ENABLE ROW LEVEL SECURITY;
-ALTER TABLE announcements ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
-ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE memoranda ENABLE ROW LEVEL SECURITY;
-ALTER TABLE newsletters ENABLE ROW LEVEL SECURITY;
-ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
-ALTER TABLE document_versions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE system_settings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE fee_brackets ENABLE ROW LEVEL SECURITY;
-
--- Grant Full Public & Service Role Access for API Client Operations
-DO $$ 
+DO $$
 DECLARE
     tbl text;
 BEGIN
@@ -1412,6 +2133,7 @@ BEGIN
         SELECT tablename FROM pg_tables WHERE schemaname = 'public'
     LOOP
         BEGIN
+            EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tbl);
             EXECUTE format('DROP POLICY IF EXISTS "Public access on %I" ON %I;', tbl, tbl);
             EXECUTE format('CREATE POLICY "Public access on %I" ON %I FOR ALL TO public USING (true) WITH CHECK (true);', tbl, tbl);
         EXCEPTION WHEN OTHERS THEN NULL;
@@ -1420,7 +2142,7 @@ BEGIN
 END $$;
 
 -- =====================================================================
--- 24. REALTIME WEB-SOCKET SUBSCRIPTIONS
+-- 26. REALTIME WEB-SOCKET SUBSCRIPTIONS
 -- =====================================================================
 DO $$
 DECLARE
@@ -1429,7 +2151,8 @@ DECLARE
         'notifications', 'announcements', 'events', 'event_attendees',
         'event_registrations', 'transactions', 'members', 'institutions',
         'pending_affiliations', 'revision_requests', 'merch_orders',
-        'merch_items', 'messages'
+        'merch_items', 'messages', 'surveys', 'survey_responses',
+        'featured_cards', 'attendance', 'compliance_scores'
     ];
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
@@ -1448,4 +2171,4 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
-SELECT 'IECEP-LSC MEMSYS Complete Supabase Schema executed successfully!' AS result;
+SELECT 'IECEP-LSC MEMSYS Unified Master Supabase Schema executed successfully!' AS result;
