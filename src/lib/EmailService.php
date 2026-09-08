@@ -297,7 +297,7 @@ class EmailService
      * 2. Fallback SMTP (Port 465 SSL / Port 587 STARTTLS)
      * 3. HTTPS REST API (Port 443 - e.g. for cloud hosts like Railway where raw SMTP is blocked)
      */
-    public function sendMailWithFallback(string $to, string $subject, string $htmlBody, string $altBody = '', ?callable $customizer = null): bool
+    public function sendMailWithFallback(string $to, string $subject, string $htmlBody, string $altBody = '', ?callable $customizer = null, bool $smtpOnly = false): bool
     {
         $to = trim($to);
         if (empty($to) || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
@@ -318,7 +318,7 @@ class EmailService
                             !empty($_SERVER['RAILWAY_STATIC_URL']) ||
                             (defined('APP_ENV') && APP_ENV === 'production');
 
-        if ($isCloudContainer && $this->hasHttpsApiConfigured()) {
+        if (!$smtpOnly && $isCloudContainer && $this->hasHttpsApiConfigured()) {
             error_log("EmailService: Cloud container detected, using HTTPS REST API as primary transport for $to...");
             if ($this->sendViaHttpsRestApi($to, $subject, $htmlBody, $altBody)) {
                 error_log("EmailService: Email successfully delivered to $to via HTTPS REST API [SUCCESS]");
@@ -376,7 +376,7 @@ class EmailService
         }
 
         // Transport 3: HTTPS REST API (Port 443)
-        if ($this->hasHttpsApiConfigured()) {
+        if (!$smtpOnly && $this->hasHttpsApiConfigured()) {
             error_log("EmailService: Attempting HTTPS REST API fallback for $to...");
             if ($this->sendViaHttpsRestApi($to, $subject, $htmlBody, $altBody)) {
                 error_log("EmailService: Email successfully delivered to $to via HTTPS REST API [SUCCESS]");
@@ -385,7 +385,10 @@ class EmailService
             }
         }
 
-        if ($isCloudContainer && !$this->hasHttpsApiConfigured()) {
+        if ($smtpOnly) {
+            $this->lastError = "Gmail SMTP delivery failed on ports $primaryPort and $fallbackPort: " . $this->lastError;
+            error_log("EmailService: " . $this->lastError);
+        } elseif ($isCloudContainer && !$this->hasHttpsApiConfigured()) {
             $this->lastError = "Cloud hosting (Railway) blocks outbound SMTP ports (465/587). Please configure RESEND_API_KEY or BREVO_API_KEY in Railway Variables to send emails via HTTPS port 443.";
             error_log("EmailService: " . $this->lastError);
         } else {
@@ -499,7 +502,8 @@ class EmailService
 
             $subject = "🎉 Affiliation Approved: {$institutionName} Officer Account Credentials - IECEP-LSC";
             $altBody = "Credentials for {$institutionName}: Email: {$to}, Password: {$password}\nLogin URL: {$loginUrl}";
-            return $this->sendMailWithFallback($to, $subject, $mail->Body, $altBody);
+            // School officer credentials must be sent from the configured Gmail account.
+            return $this->sendMailWithFallback($to, $subject, $mail->Body, $altBody, null, true);
         } catch (\Throwable $e) {
             error_log("Email error (send school credentials): " . $e->getMessage());
             return false;

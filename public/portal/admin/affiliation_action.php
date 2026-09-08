@@ -372,8 +372,9 @@ try {
         ], $applicationId);
 
         // 4. SEND SCHOOL OFFICER CREDENTIALS
+        $credentialsSent = false;
         try {
-            $emailService->sendSchoolAccountCredentials(
+            $credentialsSent = $emailService->sendSchoolAccountCredentials(
                 $appData['email'], 
                 $appData['institution_name'], 
                 $tempPassword,
@@ -383,7 +384,15 @@ try {
             error_log("School officer credentials email error: " . $emEx->getMessage());
         }
 
+        $supabase->update('pending_affiliations', [
+            'login_credentials_sent' => $credentialsSent ? 1 : 0,
+            'updated_at' => date('Y-m-d H:i:s')
+        ], $applicationId);
+
         $successMessage = "Application approved. School officer account created. $membersCreated member accounts created.";
+        $successMessage .= $credentialsSent
+            ? " Login credentials sent via Gmail SMTP to {$appData['email']}."
+            : " Login credentials were not sent. " . ($emailService->getLastError() ?: 'Check Gmail SMTP configuration.');
         if (!empty($memberErrors)) {
             $successMessage .= " Warnings: " . implode('; ', $memberErrors);
         }
