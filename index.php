@@ -1758,7 +1758,7 @@ try {
             }
             ?>
 
-            <?php foreach ($displayCards as $idx => $card): ?>
+            <?php foreach ($displayCards as $idx => $card):
                     $imageUrl = trim((string)($card['image_url'] ?? ''));
                     if (!empty($imageUrl)) {
                         if (preg_match('#^https?://[^/]+(?:/IECEP-LSC-MEMSYS)?/(public/.*)$#i', $imageUrl, $matches)) {

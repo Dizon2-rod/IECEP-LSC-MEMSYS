@@ -46,7 +46,7 @@ class EmailService
         }
     }
 
-    private function createMailer(array $options = [])
+    public function createMailer(array $options = [])
     {
         if (!class_exists('PHPMailer\PHPMailer\PHPMailer')) {
             $this->lastError = 'PHPMailer is not installed. Install via: composer require phpmailer/phpmailer';
@@ -215,13 +215,56 @@ class EmailService
             $result = $mail->send();
             if (!$result) {
                 $this->lastError = $mail->ErrorInfo ?: 'Unknown mailer error';
-                error_log("PHPMailer Error Info: " . $this->lastError);
+                error_log("PHPMailer Error Info: " . $this->lastError . ". Retrying via port 465 SMTPS...");
+                try {
+                    $retryMail = $this->createMailer([
+                        'port' => 465,
+                        'secure' => PHPMailer::ENCRYPTION_SMTPS
+                    ]);
+                    $retryMail->addAddress($to);
+                    $retryMail->Subject = $mail->Subject;
+                    $retryMail->Body = $mail->Body;
+                    $retryMail->AltBody = $mail->AltBody;
+                    $result = $retryMail->send();
+                    if ($result) {
+                        error_log("Email verification sent to $to via port 465: SUCCESS");
+                        return true;
+                    }
+                } catch (\Throwable $fbEx) {
+                    error_log("Port 465 fallback also failed: " . $fbEx->getMessage());
+                }
             }
             error_log("Email verification sent to $to: " . ($result ? 'SUCCESS' : 'FAILED'));
-            return $result;
+            return (bool)$result;
         } catch (\Throwable $e) {
             $this->lastError = $e->getMessage();
-            error_log("Email verification error: " . $e->getMessage());
+            error_log("Email verification primary attempt error: " . $e->getMessage() . ". Retrying via port 465 SMTPS...");
+            try {
+                $retryMail = $this->createMailer([
+                    'port' => 465,
+                    'secure' => PHPMailer::ENCRYPTION_SMTPS
+                ]);
+                $retryMail->addAddress($to);
+                $retryMail->Subject = 'Your IECEP-LSC Email Verification Code: ' . $code;
+                $formattedCode = implode(' ', str_split($code));
+                $retryMail->Body = "
+                <div style='background:#0B1D4A;padding:30px;text-align:center;color:#ffffff;font-family:Arial,sans-serif;'>
+                    <h2 style='color:#D4AF37;margin:0 0 10px;'>IECEP &ndash; Laguna Student Chapter</h2>
+                    <h3 style='margin:0 0 20px;color:#ffffff;'>Email Verification Code</h3>
+                    <div style='background:#ffffff;color:#0B1D4A;padding:15px;border-radius:8px;display:inline-block;font-size:28px;font-weight:bold;letter-spacing:6px;'>
+                        {$formattedCode}
+                    </div>
+                    <p style='color:#cbd5e1;font-size:13px;margin-top:20px;'>This code will expire in 10 minutes.</p>
+                </div>";
+                $retryMail->AltBody = "Your IECEP-LSC email verification code is: {$code} (Valid for 10 minutes)";
+                if ($retryMail->send()) {
+                    error_log("Email verification sent to $to via port 465 fallback: SUCCESS");
+                    return true;
+                }
+            } catch (\Throwable $fbEx2) {
+                error_log("Port 465 fallback also failed: " . $fbEx2->getMessage());
+                $this->lastError = $fbEx2->getMessage();
+            }
             return false;
         }
     }
