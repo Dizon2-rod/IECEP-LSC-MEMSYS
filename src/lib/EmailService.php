@@ -104,8 +104,16 @@ class EmailService
                 )
             );
             
-            // 15-second timeout to accommodate slow SSL handshakes on Windows/XAMPP networks
-            $mail->Timeout = 15;
+            // Cloud container detection
+            $isCloud = !empty(getenv('RAILWAY_ENVIRONMENT')) ||
+                       !empty(getenv('RAILWAY_STATIC_URL')) ||
+                       !empty(getenv('RAILWAY_GIT_COMMIT_SHA')) ||
+                       !empty($_SERVER['RAILWAY_STATIC_URL']) ||
+                       (defined('APP_ENV') && APP_ENV === 'production');
+
+            // 4-second timeout in cloud environments (e.g. Railway) to prevent 502 Bad Gateway timeouts.
+            // On localhost/Windows, allow up to 10s.
+            $mail->Timeout = $isCloud ? 4 : 10;
             $mail->SMTPKeepAlive = true;
             
             // Disable SMTP debugging to prevent HTML output in JSON responses
@@ -132,7 +140,7 @@ class EmailService
      */
     public function hasHttpsApiConfigured(): bool
     {
-        $resend = defined('RESEND_API_KEY') ? RESEND_API_KEY : (getenv('RESEND_API_KEY') ?: ($_ENV['RESEND_API_KEY'] ?? ($_SERVER['RESEND_API_KEY'] ?? '')));
+        $resend = (defined('RESEND_API_KEY') && RESEND_API_KEY !== '') ? RESEND_API_KEY : (getenv('RESEND_API_KEY') ?: ($_ENV['RESEND_API_KEY'] ?? ($_SERVER['RESEND_API_KEY'] ?? '')));
         $brevo = getenv('BREVO_API_KEY') ?: ($_ENV['BREVO_API_KEY'] ?? ($_SERVER['BREVO_API_KEY'] ?? ''));
         return (!empty($resend) && $resend !== 're_xxxxxxxxx') || !empty($brevo);
     }
@@ -143,9 +151,9 @@ class EmailService
     public function sendViaHttpsRestApi(string $to, string $subject, string $htmlBody, string $altBody = ''): bool
     {
         // 1. Resend API (https://resend.com)
-        $resendKey = defined('RESEND_API_KEY') ? RESEND_API_KEY : (getenv('RESEND_API_KEY') ?: ($_ENV['RESEND_API_KEY'] ?? ($_SERVER['RESEND_API_KEY'] ?? '')));
+        $resendKey = (defined('RESEND_API_KEY') && RESEND_API_KEY !== '') ? RESEND_API_KEY : (getenv('RESEND_API_KEY') ?: ($_ENV['RESEND_API_KEY'] ?? ($_SERVER['RESEND_API_KEY'] ?? '')));
         if (!empty($resendKey) && $resendKey !== 're_xxxxxxxxx') {
-            $from = defined('RESEND_FROM') ? RESEND_FROM : (getenv('RESEND_FROM') ?: ($_ENV['RESEND_FROM'] ?? 'onboarding@resend.dev'));
+            $from = (defined('RESEND_FROM') && RESEND_FROM !== '') ? RESEND_FROM : (getenv('RESEND_FROM') ?: ($_ENV['RESEND_FROM'] ?? 'onboarding@resend.dev'));
 
             // If official Resend PHP SDK is installed:
             if (class_exists('\\Resend')) {
@@ -369,7 +377,12 @@ class EmailService
             }
         }
 
-        error_log("EmailService: All delivery transports failed for $to. Last error: " . $this->lastError);
+        if ($isCloudContainer && !$this->hasHttpsApiConfigured()) {
+            $this->lastError = "Cloud hosting (Railway) blocks outbound SMTP ports (465/587). Please configure RESEND_API_KEY or BREVO_API_KEY in Railway Variables to send emails via HTTPS port 443.";
+            error_log("EmailService: " . $this->lastError);
+        } else {
+            error_log("EmailService: All delivery transports failed for $to. Last error: " . $this->lastError);
+        }
         return false;
     }
 
