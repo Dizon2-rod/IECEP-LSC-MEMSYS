@@ -2657,26 +2657,26 @@ try {
 </div>
 
 <!-- Success Notification Modal -->
-<div id="successNotificationModal" class="modal" style="display:none;">
-    <div class="modal-content" style="max-width:500px;width:min(500px, 92%);padding:0;overflow:hidden;margin:auto;">
-        <div style="background:linear-gradient(135deg,#10b981,#059669);padding:2rem;text-align:center;">
-            <div style="width:80px;height:80px;margin:0 auto 1rem;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;animation:scaleIn 0.5s ease;">
+<div id="successNotificationModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;width:100vw;height:100vh;max-width:100vw;max-height:100vh;margin:0;padding:1.5rem;background:rgba(11,29,74,0.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);align-items:center;justify-content:center;z-index:999999;box-sizing:border-box;overflow-y:auto;">
+    <div class="modal-content" style="max-width:500px;width:min(500px, 92%);padding:0;overflow:hidden;margin:auto;background:#ffffff;border-radius:24px;box-shadow:0 25px 70px rgba(0,0,0,0.35);position:relative;align-self:center;flex-shrink:0;">
+        <div style="background:linear-gradient(135deg,#10b981,#059669);padding:2.5rem 2rem 2rem;text-align:center;">
+            <div style="width:80px;height:80px;margin:0 auto 1.25rem;background:rgba(255,255,255,0.2);border-radius:50%;display:flex;align-items:center;justify-content:center;animation:scaleIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);box-shadow:0 10px 25px rgba(0,0,0,0.1);">
                 <i class="fas fa-check" style="color:white;font-size:2.5rem;"></i>
             </div>
-            <h3 style="color:white;margin:0;font-size:1.75rem;font-weight:700;">Application Submitted!</h3>
+            <h3 style="color:white;margin:0;font-size:1.75rem;font-weight:700;letter-spacing:-0.02em;">Application Submitted!</h3>
         </div>
         <div style="padding:2rem;">
             <p style="color:#64748b;margin-bottom:1.5rem;line-height:1.7;font-size:1rem;text-align:center;">Your affiliation application has been successfully submitted and is now visible to the Registration Committee for review.</p>
             <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
-                <div style="display:flex;align-items:start;gap:0.75rem;">
-                    <i class="fas fa-info-circle" style="color:#059669;font-size:1.25rem;margin-top:0.125rem;"></i>
+                <div style="display:flex;align-items:flex-start;gap:0.75rem;">
+                    <i class="fas fa-info-circle" style="color:#059669;font-size:1.25rem;margin-top:0.125rem;flex-shrink:0;"></i>
                     <div>
                         <p style="color:#166534;font-size:0.95rem;margin:0;font-weight:600;margin-bottom:0.5rem;">What happens next?</p>
                         <p style="color:#15803d;font-size:0.875rem;margin:0;line-height:1.6;">The Registration Committee will review your application within <strong>5–7 business days</strong>. You will receive an email notification once a decision has been made.</p>
                     </div>
                 </div>
             </div>
-            <button type="button" onclick="closeSuccessNotification()" class="btn btn-primary" style="width:100%;padding:1rem;font-size:1rem;">
+            <button type="button" onclick="closeSuccessNotification()" class="btn btn-primary" style="width:100%;padding:1rem;font-size:1rem;font-weight:600;border-radius:12px;cursor:pointer;">
                 <i class="fas fa-check" style="margin-right:0.5rem;"></i>Got it, Thanks!
             </button>
         </div>
@@ -2686,35 +2686,53 @@ try {
 <style>
 #successNotificationModal {
     position: fixed !important;
-    inset: 0 !important;
-    background: rgba(11, 29, 74, 0.5) !important;
-    backdrop-filter: blur(4px) !important;
-    -webkit-backdrop-filter: blur(4px) !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: 100vw !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+    padding: 1.5rem !important;
+    background: rgba(11, 29, 74, 0.65) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
     display: none;
     align-items: center !important;
     justify-content: center !important;
-    padding: 1.5rem !important;
-    z-index: 10000 !important;
+    z-index: 999999 !important;
+    overflow-x: hidden !important;
     overflow-y: auto !important;
     box-sizing: border-box !important;
+    transform: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
 }
+#successNotificationModal.active,
 #successNotificationModal[style*="display: flex"],
 #successNotificationModal[style*="display:flex"],
-#successNotificationModal.active {
+#successNotificationModal[style*="display: block"] {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
 }
 #successNotificationModal .modal-content {
-    background: white !important;
-    border-radius: 20px !important;
+    background: #ffffff !important;
+    border-radius: 24px !important;
+    max-width: 500px !important;
     width: min(500px, 92%) !important;
     margin: auto !important;
     position: relative !important;
-    box-shadow: 0 25px 70px rgba(0,0,0,0.35) !important;
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.35) !important;
     animation: successModalPop 0.35s cubic-bezier(0.16, 1, 0.3, 1) both !important;
     overflow: hidden !important;
     align-self: center !important;
+    padding: 0 !important;
+    border: none !important;
+    flex-shrink: 0 !important;
 }
 @keyframes successModalPop {
     from { opacity: 0; transform: scale(0.9) translateY(20px); }
