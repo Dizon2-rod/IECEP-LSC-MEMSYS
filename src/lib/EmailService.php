@@ -150,7 +150,46 @@ class EmailService
      */
     public function sendViaHttpsRestApi(string $to, string $subject, string $htmlBody, string $altBody = ''): bool
     {
-        // 1. Resend API (https://resend.com)
+        // 1. Brevo API (https://brevo.com) - Can send to any recipient without domain restriction
+        $brevoKey = (defined('BREVO_API_KEY') && BREVO_API_KEY !== '') ? BREVO_API_KEY : (getenv('BREVO_API_KEY') ?: ($_ENV['BREVO_API_KEY'] ?? ($_SERVER['BREVO_API_KEY'] ?? '')));
+        if (!empty($brevoKey)) {
+            $senderEmail = $this->config['email']['username'] ?? 'rasheddizon7@gmail.com';
+            $senderName = $this->config['email']['from_name'] ?? 'IECEP-LSC MEMSYS';
+            $payload = [
+                'sender' => [
+                    'name'  => $senderName,
+                    'email' => $senderEmail
+                ],
+                'to'          => [['email' => $to]],
+                'subject'     => $subject,
+                'htmlContent' => $htmlBody
+            ];
+            $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_HTTPHEADER     => [
+                    'api-key: ' . trim($brevoKey),
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_POSTFIELDS     => json_encode($payload),
+                CURLOPT_TIMEOUT        => 12
+            ]);
+            $resp = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlErr = curl_error($ch);
+            curl_close($ch);
+            if ($code >= 200 && $code < 300) {
+                error_log("Email sent successfully to $to via Brevo HTTPS API!");
+                return true;
+            }
+            $this->lastError = "Brevo API Error (HTTP $code): " . ($resp ?: $curlErr);
+            error_log($this->lastError . " - Trying alternative transports...");
+        }
+
+        // 2. Resend API (https://resend.com)
         $resendKey = (defined('RESEND_API_KEY') && RESEND_API_KEY !== '') ? RESEND_API_KEY : (getenv('RESEND_API_KEY') ?: ($_ENV['RESEND_API_KEY'] ?? ($_SERVER['RESEND_API_KEY'] ?? '')));
         if (!empty($resendKey) && $resendKey !== 're_xxxxxxxxx') {
             $from = (defined('RESEND_FROM') && RESEND_FROM !== '') ? RESEND_FROM : (getenv('RESEND_FROM') ?: ($_ENV['RESEND_FROM'] ?? 'onboarding@resend.dev'));
@@ -191,7 +230,7 @@ class EmailService
                     'Content-Type: application/json'
                 ],
                 CURLOPT_POSTFIELDS     => json_encode($payload),
-                CURLOPT_TIMEOUT        => 15
+                CURLOPT_TIMEOUT        => 12
             ]);
             $resp = curl_exec($ch);
             $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -227,7 +266,7 @@ class EmailService
                         'Content-Type: application/json'
                     ],
                     CURLOPT_POSTFIELDS     => json_encode($payload),
-                    CURLOPT_TIMEOUT        => 15
+                    CURLOPT_TIMEOUT        => 12
                 ]);
                 $resp2 = curl_exec($ch);
                 $code2 = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -243,41 +282,6 @@ class EmailService
 
             $this->lastError = "Resend API Error (HTTP $code): " . ($resp ?: $curlErr);
             error_log($this->lastError);
-        }
-
-        // 2. Brevo API (https://brevo.com)
-        $brevoKey = getenv('BREVO_API_KEY') ?: ($_ENV['BREVO_API_KEY'] ?? ($_SERVER['BREVO_API_KEY'] ?? ''));
-        if (!empty($brevoKey)) {
-            $payload = [
-                'sender' => [
-                    'name'  => $this->config['email']['from_name'] ?? 'IECEP-LSC MEMSYS',
-                    'email' => $this->config['email']['username'] ?? 'rasheddizon7@gmail.com'
-                ],
-                'to'          => [['email' => $to]],
-                'subject'     => $subject,
-                'htmlContent' => $htmlBody
-            ];
-            $ch = curl_init('https://api.brevo.com/v3/smtp/email');
-            curl_setopt_array($ch, [
-                CURLOPT_POST           => true,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_SSL_VERIFYPEER => false,
-                CURLOPT_SSL_VERIFYHOST => false,
-                CURLOPT_HTTPHEADER     => [
-                    'api-key: ' . trim($brevoKey),
-                    'Content-Type: application/json'
-                ],
-                CURLOPT_POSTFIELDS     => json_encode($payload),
-                CURLOPT_TIMEOUT        => 15
-            ]);
-            $resp = curl_exec($ch);
-            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            if ($code >= 200 && $code < 300) {
-                error_log("Email sent successfully to $to via Brevo HTTPS API!");
-                return true;
-            }
-            error_log("Brevo API failed: HTTP $code - Response: $resp");
         }
 
         return false;

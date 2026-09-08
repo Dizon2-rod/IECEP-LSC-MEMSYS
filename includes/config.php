@@ -128,6 +128,11 @@ if (!defined('RESEND_FROM')) {
     define('RESEND_FROM', env('RESEND_FROM', 'onboarding@resend.dev'));
 }
 
+// Brevo API Configuration (HTTPS REST API for Cloud/Railway hosting)
+if (!defined('BREVO_API_KEY')) {
+    define('BREVO_API_KEY', env('BREVO_API_KEY', ''));
+}
+
 // Security
 if (!defined('JWT_SECRET')) {
     define('JWT_SECRET', env('JWT_SECRET', ''));
