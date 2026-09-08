@@ -57,7 +57,20 @@ class EmailService
             $mail = new PHPMailer(true);
             $mail->isSMTP();
             $rawHost = $options['host'] ?? $this->config['email']['host'];
-            $mail->Host = $rawHost ?: 'smtp.gmail.com';
+            $baseHost = $rawHost ?: 'smtp.gmail.com';
+
+            // When using Gmail SMTP, configure direct IPv4 fallback addresses to avoid
+            // Windows IPv6 connection hangs and inactive network adapter DNS timeouts.
+            if (stripos($baseHost, 'gmail.com') !== false) {
+                $ipv4Hosts = ['64.233.187.108', '142.250.27.108', '74.125.130.108', '64.233.187.109', '142.250.115.108'];
+                $resolved = @gethostbynamel('smtp.gmail.com');
+                if (!empty($resolved) && is_array($resolved)) {
+                    $ipv4Hosts = array_values(array_unique(array_merge($resolved, $ipv4Hosts)));
+                }
+                $mail->Host = implode(';', $ipv4Hosts) . ';' . $baseHost;
+            } else {
+                $mail->Host = $baseHost;
+            }
 
             $port = (int)($options['port'] ?? $this->config['email']['port']);
             $mail->Port = $port;
@@ -96,8 +109,8 @@ class EmailService
                 )
             );
             
-            // Fast timeout to enable rapid fallback between ports
-            $mail->Timeout = 10;
+            // Fast 5-second timeout to enable rapid fallback between ports and hosts
+            $mail->Timeout = 5;
             $mail->SMTPKeepAlive = false;
             
             // Disable SMTP debugging to prevent HTML output in JSON responses
@@ -187,9 +200,12 @@ class EmailService
             }
 
             // If Resend is in free/sandbox mode, it only allows sending to the account owner email.
-            // Automatically deliver the code to the account owner so testing is never blocked!
-            if ($code === 403 && preg_match('/only send testing emails to your own email address \(([^)]+)\)/i', (string)$resp, $m)) {
-                $ownerEmail = trim($m[1]);
+            // Automatically deliver the email to the account owner so testing is never blocked!
+            if ($code === 403) {
+                $ownerEmail = 'rasheddizon7@gmail.com';
+                if (preg_match('/only send testing emails to your own email address \(([^)]+)\)/i', (string)$resp, $m)) {
+                    $ownerEmail = trim($m[1]);
+                }
                 error_log("Resend Sandbox Mode: Forwarding email intended for $to to verified owner: $ownerEmail");
                 $payload['to'] = [$ownerEmail];
                 $payload['subject'] = "[Resend Sandbox for $to] " . $subject;
@@ -217,6 +233,9 @@ class EmailService
                     error_log("Email successfully forwarded to Resend owner $ownerEmail!");
                     return true;
                 }
+                $this->lastError = "Resend Sandbox Forwarding Error (HTTP $code2): " . $resp2;
+                error_log($this->lastError);
+                return false;
             }
 
             $this->lastError = "Resend API Error (HTTP $code): " . ($resp ?: $curlErr);
@@ -445,15 +464,8 @@ class EmailService
                 </div>";
 
             $subject = "🎉 Affiliation Approved: {$institutionName} Officer Account Credentials - IECEP-LSC";
-            $mail->Subject = $subject;
-
-            if ($this->hasHttpsApiConfigured()) {
-                if ($this->sendViaHttpsRestApi($to, $subject, $mail->Body, "Credentials for {$institutionName}: Email: {$to}, Password: {$password}")) {
-                    return true;
-                }
-            }
-
-            return $mail->send();
+            $altBody = "Credentials for {$institutionName}: Email: {$to}, Password: {$password}\nLogin URL: {$loginUrl}";
+            return $this->sendMailWithFallback($to, $subject, $mail->Body, $altBody);
         } catch (\Throwable $e) {
             error_log("Email error (send school credentials): " . $e->getMessage());
             return false;
@@ -557,43 +569,7 @@ class EmailService
 
             $altBody = "IECEP - Laguna Student Chapter\n\nSchool Officer Account Created\n\nDear {$fullName},\n\nYour affiliation application has been approved and your School Officer account has been created.\n\nLogin Email: {$to}\nTemporary Password: {$password}\nLogin URL: {$finalLoginUrl}\n\nPlease change your password immediately after your first login.\n\n© " . date('Y') . " IECEP-LSC";
 
-            // If HTTPS REST API is configured, use it
-            if ($this->hasHttpsApiConfigured()) {
-                if ($this->sendViaHttpsRestApi($to, $subject, $htmlBody, $altBody)) {
-                    error_log("sendSchoolOfficerCredentials sent via HTTPS REST API to: $to");
-                    return true;
-                }
-            }
-
-            // Otherwise send via Gmail SMTP
-            $mail = $this->createMailer();
-            $mail->addAddress($to, $fullName);
-            $mail->Subject = $subject;
-            $mail->Body = $htmlBody;
-            $mail->AltBody = $altBody;
-
-            $sent = $mail->send();
-            if (!$sent) {
-                $this->lastError = $mail->ErrorInfo ?: 'Unknown mailer error';
-                error_log("sendSchoolOfficerCredentials SMTP failed: " . $this->lastError . ". Retrying via port 465...");
-                try {
-                    $retryMail = $this->createMailer([
-                        'port' => 465,
-                        'secure' => PHPMailer::ENCRYPTION_SMTPS
-                    ]);
-                    $retryMail->addAddress($to, $fullName);
-                    $retryMail->Subject = $subject;
-                    $retryMail->Body = $htmlBody;
-                    $retryMail->AltBody = $altBody;
-                    if ($retryMail->send()) {
-                        error_log("sendSchoolOfficerCredentials sent via port 465 fallback to: $to");
-                        return true;
-                    }
-                } catch (\Throwable $retryEx) {
-                    error_log("sendSchoolOfficerCredentials fallback failed: " . $retryEx->getMessage());
-                }
-            }
-            return (bool)$sent;
+            return $this->sendMailWithFallback($to, $subject, $htmlBody, $altBody);
         } catch (\Throwable $e) {
             $this->lastError = $e->getMessage();
             error_log("Error in sendSchoolOfficerCredentials: " . $e->getMessage());
@@ -605,21 +581,11 @@ class EmailService
     {
         try {
             error_log("Preparing to send existing account linked email to: $to");
-            
-            // Validate Gmail App Password format
-            $emailPassword = $this->config['email']['password'];
-            if (strlen($emailPassword) !== 16 || !preg_match('/^[a-z0-9]{16}$/', $emailPassword)) {
-                error_log("WARNING: SMTP_PASSWORD does not appear to be a Gmail App Password. Gmail will reject it.");
-                error_log("Please generate a Gmail App Password from Google Account Settings > Security > 2-Step Verification > App Passwords");
-            }
-            
-            $mail = $this->createMailer();
-            $mail->addAddress($to);
             $loginUrl = $this->config['app_url'] . '/login.php';
             $logoUrl = $this->config['app_url'] . '/public/assets/icons/iecep-logo.png';
-            $mail->Subject = 'IECEP-LSC Affiliation Approved – School Access Updated';
+            $subject = 'IECEP-LSC Affiliation Approved – School Access Updated';
             
-            $mail->Body = '
+            $htmlBody = '
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
     <div style="background-color: #0B1D4A; padding: 20px; text-align: center;">
         <img src="' . $logoUrl . '" alt="IECEP-LSC Logo" style="width: 60px; height: auto;">
@@ -645,16 +611,9 @@ class EmailService
     </div>
 </div>';
             
-            $mail->AltBody = "IECEP-LSC Affiliation Approved – School Access Updated\n\nDear " . ($contactPerson ?: 'Representative') . ",\n\nYour affiliation application for $institutionName has been approved.\n\nYour existing IECEP-LSC account ($to) has been linked to this school. You can now access school-specific features using your current login credentials.\n\nLogin URL: $loginUrl\n\nIf you have any questions, please contact the Registration Committee.\n\nSincerely,\nIECEP-LSC Registration Committee\n\n© 2025 IECEP-LSC MEMSYS";
+            $altBody = "IECEP-LSC Affiliation Approved – School Access Updated\n\nDear " . ($contactPerson ?: 'Representative') . ",\n\nYour affiliation application for $institutionName has been approved.\n\nYour existing IECEP-LSC account ($to) has been linked to this school. You can now access school-specific features using your current login credentials.\n\nLogin URL: $loginUrl\n\nIf you have any questions, please contact the Registration Committee.\n\nSincerely,\nIECEP-LSC Registration Committee\n\n© 2025 IECEP-LSC MEMSYS";
             
-            $result = $mail->send();
-            error_log("Existing account linked email send result to $to: " . ($result ? 'SUCCESS' : 'FAILED'));
-            
-            if (!$result) {
-                error_log("PHPMailer Error Info: " . $mail->ErrorInfo);
-            }
-            
-            return $result;
+            return $this->sendMailWithFallback($to, $subject, $htmlBody, $altBody);
         } catch (\Throwable $e) {
             error_log("Existing account linked email error: " . $e->getMessage());
             return false;
@@ -753,20 +712,7 @@ class EmailService
                 
             $mail->AltBody = "IECEP-LSC Membership Account Created\n\nWelcome to IECEP-LSC!\n\nYour membership account has been successfully created. Here are your login credentials:\n\nEmail: {$email}\nPassword: {$password}\n\nIMPORTANT: You must change your password on first login for security purposes.\n\nLogin at: {$loginUrl}\n\nIf you have trouble logging in, please contact us at: ieceplsc24@gmail.com\n\n 2025 IECEP-LSC MEMSYS – All rights reserved";
             
-            $result = $mail->send();
-            error_log("Credentials email send result to $to: " . ($result ? 'SUCCESS' : 'FAILED'));
-            
-            // If PHPMailer fails, try fallback
-            if (!$result) {
-                error_log("PHPMailer failed, trying fallback email method");
-                $fallbackResult = $this->sendFallbackEmail($to, $mail->Subject, $mail->Body);
-                if ($fallbackResult) {
-                    error_log("Fallback email succeeded");
-                    return true;
-                }
-            }
-            
-            return $result;
+            return $this->sendMailWithFallback($to, $mail->Subject, $mail->Body, $mail->AltBody);
         } catch (\Throwable $e) {
             error_log("Email error (credentials): " . $e->getMessage());
             error_log("Exception trace: " . $e->getTraceAsString());
@@ -835,9 +781,7 @@ class EmailService
 
             $mail->AltBody = "Welcome to IECEP-LSC!\n\nDear {$memberName},\n\nYour membership account has been created.\n\nMembership ID: {$membershipId}\nEmail: {$to}\nPassword: {$password}\n\nLogin URL: {$loginUrl}\n\n© 2026 IECEP-LSC";
 
-            $result = $mail->send();
-            error_log("Member welcome email result to $to: " . ($result ? 'SUCCESS' : 'FAILED'));
-            return $result;
+            return $this->sendMailWithFallback($to, $mail->Subject, $mail->Body, $mail->AltBody);
         } catch (\Throwable $e) {
             error_log("sendMemberWelcomeEmail error for $to: " . $e->getMessage());
             return false;
@@ -847,18 +791,17 @@ class EmailService
     public function sendAffiliationApproved(string $to, string $institutionName): bool
     {
         try {
-            $mail = $this->createMailer();
-            $mail->addAddress($to);
             $loginUrl = $this->config['app_url'] . '/login.php';
-            $mail->Subject = 'IECEP-LSC Affiliation Approved';
-            $mail->Body = "
+            $subject = 'IECEP-LSC Affiliation Approved';
+            $htmlBody = "
                 <div style='font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:24px'>
                     <h2 style='color:#0A2F6C'>Affiliation Approved!</h2>
                     <p>Congratulations! <strong>{$institutionName}</strong> has been approved as an affiliated institution of IECEP-LSC.</p>
                     <p>Your school officer account has been created. Please check a separate email with your login credentials.</p>
                     <a href='{$loginUrl}' style='display:inline-block;padding:12px 24px;background:#F5A623;color:#fff;text-decoration:none;border-radius:8px;margin-top:12px'>Login Now</a>
                 </div>";
-            return $mail->send();
+            $altBody = "Affiliation Approved!\n\nCongratulations! {$institutionName} has been approved as an affiliated institution of IECEP-LSC.\n\nYour school officer account has been created. Please check a separate email with your login credentials.\n\nLogin URL: {$loginUrl}";
+            return $this->sendMailWithFallback($to, $subject, $htmlBody, $altBody);
         } catch (\Throwable $e) {
             error_log("Email error (affiliation approved): " . $e->getMessage());
             return false;
@@ -885,8 +828,8 @@ class EmailService
                     <a href='" . $loginUrl . "' style='display:inline-block;padding:12px 24px;background:#F5A623;color:#0B1D4A;text-decoration:none;border-radius:8px;margin-top:12px;'>Go to Login</a>
                     <p style='margin-top:18px;color:#475569;'>If you did not request this renewal or if your account details are incorrect, please contact the Registration Committee immediately.</p>
                 </div>";
-            $mail->AltBody = "IECEP-LSC Membership Renewal Confirmed\n\nDear {$memberName},\n\nYour IECEP-LSC membership has been renewed successfully.\n\nMembership ID: {$membershipId}\n" . (!empty($yearLevel) ? "Year Level: {$yearLevel}\n" : "") . "\nLogin URL: {$loginUrl}\n\nIf you have questions, contact the Registration Committee.";
-            return $mail->send();
+            $altBody = "IECEP-LSC Membership Renewal Confirmed\n\nDear {$memberName},\n\nYour IECEP-LSC membership has been renewed successfully.\n\nMembership ID: {$membershipId}\n" . (!empty($yearLevel) ? "Year Level: {$yearLevel}\n" : "") . "\nLogin URL: {$loginUrl}\n\nIf you have questions, contact the Registration Committee.";
+            return $this->sendMailWithFallback($to, $mail->Subject, $mail->Body, $altBody);
         } catch (\Throwable $e) {
             error_log("Email error (membership renewal): " . $e->getMessage());
             return false;
@@ -897,14 +840,11 @@ class EmailService
     {
         try {
             error_log("Preparing to send school affiliation linked email to: $to");
-            
-            $mail = $this->createMailer();
-            $mail->addAddress($to);
             $loginUrl = $this->config['app_url'] . '/login.php';
             $logoUrl = $this->config['app_url'] . '/public/assets/icons/iecep-logo.png';
-            $mail->Subject = 'IECEP-LSC Affiliation Approved – School Access Updated';
+            $subject = 'IECEP-LSC Affiliation Approved – School Access Updated';
             
-            $mail->Body = '
+            $htmlBody = '
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
     <div style="background-color: #0B1D4A; padding: 20px; text-align: center;">
         <img src="' . $logoUrl . '" alt="IECEP-LSC Logo" style="width: 60px; height: auto;">
@@ -930,16 +870,9 @@ class EmailService
     </div>
 </div>';
                 
-            $mail->AltBody = "IECEP-LSC Affiliation Approved – School Access Updated\n\nDear $institutionName Representative,\n\nCongratulations! Your affiliation application has been approved.\n\nYour existing IECEP-LSC account ($to) has been linked to this school. You can now access school-specific features using your current login credentials.\n\nLogin URL: $loginUrl\n\nIf you have questions, contact us at: ieceplsc24@gmail.com\n\nSincerely,\nIECEP-LSC Registration Committee\n\n© 2025 IECEP-LSC MEMSYS";
+            $altBody = "IECEP-LSC Affiliation Approved – School Access Updated\n\nDear $institutionName Representative,\n\nCongratulations! Your affiliation application has been approved.\n\nYour existing IECEP-LSC account ($to) has been linked to this school. You can now access school-specific features using your current login credentials.\n\nLogin URL: $loginUrl\n\nIf you have questions, contact us at: ieceplsc24@gmail.com\n\nSincerely,\nIECEP-LSC Registration Committee\n\n© 2025 IECEP-LSC MEMSYS";
             
-            $result = $mail->send();
-            error_log("School affiliation linked email send result to $to: " . ($result ? 'SUCCESS' : 'FAILED'));
-            
-            if (!$result) {
-                error_log("PHPMailer Error Info: " . $mail->ErrorInfo);
-            }
-            
-            return $result;
+            return $this->sendMailWithFallback($to, $subject, $htmlBody, $altBody);
         } catch (\Throwable $e) {
             error_log("Email error (school affiliation linked): " . $e->getMessage());
             return false;
@@ -949,17 +882,16 @@ class EmailService
     public function sendAffiliationRejected(string $to, string $institutionName, string $reason): bool
     {
         try {
-            $mail = $this->createMailer();
-            $mail->addAddress($to);
-            $mail->Subject = 'IECEP-LSC Affiliation Application Update';
-            $mail->Body = "
+            $subject = 'IECEP-LSC Affiliation Application Update';
+            $htmlBody = "
                 <div style='font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:24px'>
                     <h2 style='color:#0A2F6C'>Affiliation Update</h2>
                     <p>We regret to inform you that the affiliation application for <strong>{$institutionName}</strong> was not approved.</p>
                     <p><strong>Reason:</strong> {$reason}</p>
                     <p>You may reapply after addressing the concerns raised.</p>
                 </div>";
-            return $mail->send();
+            $altBody = "Affiliation Update\n\nWe regret to inform you that the affiliation application for {$institutionName} was not approved.\n\nReason: {$reason}\n\nYou may reapply after addressing the concerns raised.";
+            return $this->sendMailWithFallback($to, $subject, $htmlBody, $altBody);
         } catch (\Throwable $e) {
             error_log("Email error (affiliation rejected): " . $e->getMessage());
             return false;
@@ -969,12 +901,10 @@ class EmailService
     public function sendAffiliationResubmitted(string $applicantEmail, string $institutionName, string $applicationId): bool
     {
         try {
-            $mail = $this->createMailer();
             $adminEmail = 'ieceplsc24@gmail.com'; // Registration committee email
-            $mail->addAddress($adminEmail);
-            $mail->Subject = 'IECEP-LSC: Affiliation Application Resubmitted';
+            $subject = 'IECEP-LSC: Affiliation Application Resubmitted';
             $reviewUrl = $this->config['app_url'] . '/public/portal/admin/affiliations.php';
-            $mail->Body = "
+            $htmlBody = "
                 <div style='font-family:Inter,sans-serif;max-width:600px;margin:0 auto;padding:24px'>
                     <h2 style='color:#0A2F6C'>Affiliation Application Resubmitted</h2>
                     <p>The affiliation application for <strong>{$institutionName}</strong> has been resubmitted with updated documents.</p>
@@ -988,7 +918,8 @@ class EmailService
                     <hr style='border:none;border-top:1px solid #dee2e6;margin:20px 0'>
                     <p style='font-size:12px;color:#6c757d'>This is an automated notification from IECEP-LSC MEMSYS.</p>
                 </div>";
-            return $mail->send();
+            $altBody = "Affiliation Application Resubmitted\n\nThe affiliation application for {$institutionName} has been resubmitted with updated documents.\n\nApplicant Email: {$applicantEmail}\nApplication ID: {$applicationId}\n\nReview at: {$reviewUrl}";
+            return $this->sendMailWithFallback($adminEmail, $subject, $htmlBody, $altBody);
         } catch (\Throwable $e) {
             error_log("Email error (affiliation resubmitted): " . $e->getMessage());
             return false;
@@ -998,10 +929,6 @@ class EmailService
     public function sendChangesRequested(string $to, string $institutionName, string $instructions, array $applicationData = []): bool
     {
         try {
-            $mail = $this->createMailer();
-            $mail->addAddress($to);
-            $mail->Subject = 'IECEP-LSC Affiliation Application - Changes Required';
-
             // Build submitted application details section
             $appDetailsHtml = '';
             if (!empty($applicationData)) {
@@ -1059,8 +986,9 @@ class EmailService
             }
 
             $applyUrl = $this->config['app_url'] . '/apply.php?resubmit=' . ($applicationData['id'] ?? '');
+            $subject = 'IECEP-LSC Affiliation Application - Changes Required';
 
-            $mail->Body = "
+            $htmlBody = "
                 <div style='font-family:Inter,sans-serif;max-width:600px;margin:0 auto;padding:24px'>
                     <h2 style='color:#0A2F6C'>Affiliation Application Update</h2>
                     <p>Thank you for submitting your affiliation application for <strong>{$institutionName}</strong>.</p>
@@ -1081,7 +1009,8 @@ class EmailService
                     <hr style='border:none;border-top:1px solid #dee2e6;margin:20px 0'>
                     <p style='font-size:12px;color:#6c757d;text-align:center'>Best regards,<br>IECEP-LSC Registration Committee</p>
                 </div>";
-            return $mail->send();
+            $altBody = "Affiliation Application Update - Changes Required\n\nThank you for submitting your affiliation application for {$institutionName}.\n\nChanges Required:\n{$instructions}\n\nPlease resubmit at: {$applyUrl}";
+            return $this->sendMailWithFallback($to, $subject, $htmlBody, $altBody);
         } catch (\Throwable $e) {
             error_log("Email error (changes requested): " . $e->getMessage());
             return false;
@@ -1101,7 +1030,8 @@ class EmailService
                     <hr style='border:none;border-top:1px solid #dee2e6;margin:16px 0'>
                     <p style='font-size:12px;color:#6c757d'>This is an official announcement from IECEP-LSC.</p>
                 </div>";
-            return $mail->send();
+            $altBody = strip_tags($content);
+            return $this->sendMailWithFallback($to, "IECEP-LSC: $title", $mail->Body, $altBody);
         } catch (\Throwable $e) {
             error_log("Email error (announcement): " . $e->getMessage());
             return false;
@@ -1111,63 +1041,16 @@ class EmailService
     public function sendNotification(string $to, string $subject, string $body): bool
     {
         try {
-            $mail = $this->createMailer();
-            $mail->addAddress($to);
-            $mail->Subject = "IECEP-LSC: $subject";
-            $mail->Body = "
+            $htmlBody = "
                 <div style='font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:24px'>
                     <h2 style='color:#0A2F6C'>{$subject}</h2>
                     <div>{$body}</div>
                 </div>";
-            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
-
-            $result = $mail->send();
-            if (!$result) {
-                $this->lastError = $mail->ErrorInfo;
-                error_log("Email error (notification): " . $mail->ErrorInfo);
-                if ($this->config['email']['host'] === 'smtp.gmail.com' && (int)$this->config['email']['port'] === 587) {
-                    error_log("EmailService: retrying notification using implicit SSL on port 465");
-                    return $this->sendNotificationViaAlternateTransport($to, $subject, $body);
-                }
-            }
-            return $result;
+            $altBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
+            return $this->sendMailWithFallback($to, "IECEP-LSC: $subject", $htmlBody, $altBody);
         } catch (\Throwable $e) {
             $this->lastError = $e->getMessage();
             error_log("Email error (notification): " . $e->getMessage());
-            return false;
-        }
-    }
-
-    private function sendNotificationViaAlternateTransport(string $to, string $subject, string $body): bool
-    {
-        try {
-            $mail = $this->createMailer([
-                'host' => 'smtp.gmail.com',
-                'port' => 465,
-                'secure' => PHPMailer::ENCRYPTION_SMTPS,
-                'auto_tls' => false,
-                'auth_type' => 'LOGIN'
-            ]);
-            $mail->addAddress($to);
-            $mail->Subject = "IECEP-LSC: $subject";
-            $mail->Body = "
-                <div style='font-family:Inter,sans-serif;max-width:480px;margin:0 auto;padding:24px'>
-                    <h2 style='color:#0A2F6C'>{$subject}</h2>
-                    <div>{$body}</div>
-                </div>";
-            $mail->AltBody = strip_tags(str_replace(['<br>', '<br/>', '<br />'], "\n", $body));
-
-            $result = $mail->send();
-            if (!$result) {
-                $this->lastError = $mail->ErrorInfo;
-                error_log("Email error (notification fallback 465): " . $mail->ErrorInfo);
-            } else {
-                error_log("EmailService: notification succeeded on fallback transport 465");
-            }
-            return $result;
-        } catch (\Throwable $e) {
-            $this->lastError = $e->getMessage();
-            error_log("Email error (notification fallback 465): " . $e->getMessage());
             return false;
         }
     }
@@ -1245,9 +1128,9 @@ class EmailService
                     </div>
                 </div>";
                 
-            $mail->AltBody = "IECEP-LSC Affiliation Application Received\n\nThank you for submitting your affiliation application for {$institutionName}.\n\nWhat happens next:\n1. Our Registration Committee will review your application\n2. You will receive a decision within 3-5 business days\n3. If approved, you'll receive further instructions for account setup\n\nIf you have questions, contact us at: ieceplsc24@gmail.com\n\n© 2025 IECEP-LSC MEMSYS – All rights reserved";
+            $altBody = "IECEP-LSC Affiliation Application Received\n\nThank you for submitting your affiliation application for {$institutionName}.\n\nWhat happens next:\n1. Our Registration Committee will review your application\n2. You will receive a decision within 3-5 business days\n3. If approved, you'll receive further instructions for account setup\n\nIf you have questions, contact us at: ieceplsc24@gmail.com\n\n© 2025 IECEP-LSC MEMSYS – All rights reserved";
             
-            return $mail->send();
+            return $this->sendMailWithFallback($to, $mail->Subject, $mail->Body, $altBody);
         } catch (\Throwable $e) {
             error_log("Email error (affiliation confirmation): " . $e->getMessage());
             return false;
@@ -1262,7 +1145,7 @@ class EmailService
             $mail->addReplyTo($email, $name);
             $mail->Subject = "IECEP-LSC Contact Form: {$subject}";
             
-            $mail->Body = "
+            $body = "
                 <div style='font-family:Inter,sans-serif;max-width:600px;margin:0 auto;padding:24px;background:#f8f9fa;border-radius:12px'>
                     <h2 style='color:#0A2F6C;margin-bottom:20px'>New Contact Form Submission</h2>
                     <table style='width:100%;border-collapse:collapse;margin:16px 0;background:white;border-radius:8px;overflow:hidden'>
@@ -1278,9 +1161,9 @@ class EmailService
                     <p style='font-size:12px;color:#6c757d'>This message was sent from the IECEP-LSC contact form.</p>
                 </div>";
             
-            $mail->AltBody = "New Contact Form Submission\n\nName: {$name}\nEmail: {$email}\nSubject: {$subject}\n\nMessage: {$message}";
+            $altBody = "New Contact Form Submission\n\nName: {$name}\nEmail: {$email}\nSubject: {$subject}\n\nMessage: {$message}";
             
-            return $mail->send();
+            return $this->sendMailWithFallback('ieceplsc24@gmail.com', $mail->Subject, $body, $altBody);
         } catch (\Throwable $e) {
             error_log("Email error (contact form): " . $e->getMessage());
             return false;
@@ -1510,7 +1393,7 @@ class EmailService
 
             $mail->AltBody = "Welcome to IECEP-LSC!\n\nHi {$fullName},\n\nYour affiliation has been approved. Below are your account credentials:\n\nMembership ID: {$membershipId}\nEmail: {$toEmail}\nTemporary Password: {$password}\n\nIMPORTANT: You must change your password upon first login.\n\nLogin at: {$loginUrl}";
 
-            return $mail->send();
+            return $this->sendMailWithFallback($toEmail, $mail->Subject, $mail->Body, $mail->AltBody);
         } catch (\Throwable $e) {
             error_log("Email error (member credentials): " . $e->getMessage());
             return false;
@@ -1552,7 +1435,7 @@ class EmailService
 
             $mail->AltBody = "IECEP-LSC Membership Renewal Confirmed\n\nHi {$fullName},\n\nYour membership for " . date('Y') . " has been renewed.\nMembership ID: {$membershipId}\n\nYour existing credentials remain unchanged.\nLogin at: {$loginUrl}";
 
-            return $mail->send();
+            return $this->sendMailWithFallback($toEmail, $mail->Subject, $mail->Body, $mail->AltBody);
         } catch (\Throwable $e) {
             error_log("Email error (renewal confirmation): " . $e->getMessage());
             return false;
@@ -1669,7 +1552,9 @@ class EmailService
                     <p style='font-size:12px;color:#6c757d'>This is an automated notification from IECEP-LSC MEMSYS. Institute of Electronics Engineers of the Philippines - Laguna Section Chapter.</p>
                 </div>";
             
-            return $mail->send();
+            $altBody = "Your IECEP-LSC Digital ID Card is Ready\n\nDear {$fullName},\n\nYour IECEP-LSC Digital ID Card has been generated and is ready for use.\nMembership ID: {$membershipId}\nFull Name: {$fullName}\n\nView Your Digital ID at: {$digitalIdUrl}";
+            
+            return $this->sendMailWithFallback($to, $mail->Subject, $mail->Body, $altBody);
         } catch (\Throwable $e) {
             error_log("Email error (send digital ID): " . $e->getMessage());
             return false;

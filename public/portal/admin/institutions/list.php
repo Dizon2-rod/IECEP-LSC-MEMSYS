@@ -406,28 +406,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $applicantName = trim($appData['contact_person'] ?: ($contactPerson ?: 'School Chapter Representative'));
             $applicantSchool = trim($appData['institution_name'] ?: ($appData['school_name'] ?: ($instName ?: 'Affiliated Institution')));
             
-            if (empty($applicantEmail)) {
-                throw new \Exception("Applicant email is missing from this affiliation record. Cannot send revision request via Gmail.");
-            }
-            
-            $emailService = new \App\Lib\EmailService();
             $revisionUrl = rtrim(BASE_URL, '/') . '/public/revise-affiliation.php?id=' . urlencode($appId);
-            
-            $sent = $emailService->sendAffiliationRevisionRequest(
-                $applicantEmail,
-                $applicantSchool,
-                $applicantName,
-                $fileListForEmail,
-                $instructions,
-                $revisionUrl
-            );
-            if (!$sent) {
-                $lastErr = $emailService->getLastError() ?: 'SMTP delivery issue';
-                $feedbackMsg = "⚠️ Revision status saved in database! However, sending Gmail to {$applicantEmail} encountered an issue: {$lastErr}. You may share this link directly with the school: " . htmlspecialchars($revisionUrl);
+            if (empty($applicantEmail)) {
+                $feedbackMsg = "⚠️ Revision status saved in database! (No applicant email was found on record). You may share this link directly with the school: " . htmlspecialchars($revisionUrl);
                 $feedbackType = 'warning';
             } else {
-                $feedbackMsg = "📩 Revision Request successfully sent to {$applicantEmail}! The applicant has received the link in their Gmail to re-upload the requested file(s).";
-                $feedbackType = 'info';
+                $emailService = new \App\Lib\EmailService();
+                $sent = $emailService->sendAffiliationRevisionRequest(
+                    $applicantEmail,
+                    $applicantSchool,
+                    $applicantName,
+                    $fileListForEmail,
+                    $instructions,
+                    $revisionUrl
+                );
+                if (!$sent) {
+                    $lastErr = $emailService->getLastError() ?: 'SMTP delivery issue';
+                    $feedbackMsg = "⚠️ Revision status saved in database! However, sending Gmail to {$applicantEmail} encountered an issue: {$lastErr}. You may share this link directly with the school: " . htmlspecialchars($revisionUrl);
+                    $feedbackType = 'warning';
+                } else {
+                    $feedbackMsg = "📩 Revision Request successfully sent to {$applicantEmail}! The applicant has received the link in their Gmail to re-upload the requested file(s).";
+                    $feedbackType = 'info';
+                }
             }
         } catch (\Throwable $e) {
             error_log("Revision request error: " . $e->getMessage());
@@ -460,13 +460,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         $sent = $emailService->sendAffiliationRejectionNotice($applicantEmail, $applicantSchool, $applicantName, $reason);
                         if (!$sent) {
                             $lastErr = $emailService->getLastError() ?: 'SMTP delivery issue';
-                            throw new \Exception("Rejection status saved, but email notice to '{$applicantEmail}' failed: {$lastErr}");
+                            $feedbackMsg = "🚫 Application for '{$instName}' was declined and saved in database. (Email notice could not be delivered to {$applicantEmail}: {$lastErr})";
+                            $feedbackType = 'warning';
+                        } else {
+                            $feedbackMsg = "🚫 Application for '{$instName}' declined and formal notice sent to {$applicantEmail}.";
+                            $feedbackType = 'warning';
                         }
+                    } else {
+                        $feedbackMsg = "🚫 Application for '{$instName}' declined and saved in database.";
+                        $feedbackType = 'warning';
                     }
                 }
             }
-            $feedbackMsg = "🚫 Application for '{$instName}' declined and formal notice sent to applicant.";
-            $feedbackType = 'warning';
         } catch (\Throwable $e) {
             error_log("Reject error: " . $e->getMessage());
             $feedbackMsg = "❌ Error declining application: " . $e->getMessage();

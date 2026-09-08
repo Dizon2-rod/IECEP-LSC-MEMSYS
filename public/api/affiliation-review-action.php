@@ -503,10 +503,13 @@ switch ($action) {
             $applicantEmail = $application['email'] ?? '';
             
             if (!empty($applicantEmail)) {
-                $emailSent = $emailService->sendAffiliationRejected($applicantEmail, $institutionName, $reason);
-                
-                if (!$emailSent) {
-                    error_log('Failed to send rejection email to: ' . $applicantEmail);
+                try {
+                    $emailSent = $emailService->sendAffiliationRejected($applicantEmail, $institutionName, $reason);
+                    if (!$emailSent) {
+                        error_log('Failed to send rejection email to: ' . $applicantEmail);
+                    }
+                } catch (\Throwable $emEx) {
+                    error_log('Exception sending rejection email to ' . $applicantEmail . ': ' . $emEx->getMessage());
                 }
             }
             

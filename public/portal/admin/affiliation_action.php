@@ -372,12 +372,16 @@ try {
         ], $applicationId);
 
         // 4. SEND SCHOOL OFFICER CREDENTIALS
-        $emailService->sendSchoolAccountCredentials(
-            $appData['email'], 
-            $appData['institution_name'], 
-            $tempPassword,
-            $appData['contact_person'] ?? ''
-        );
+        try {
+            $emailService->sendSchoolAccountCredentials(
+                $appData['email'], 
+                $appData['institution_name'], 
+                $tempPassword,
+                $appData['contact_person'] ?? ''
+            );
+        } catch (\Throwable $emEx) {
+            error_log("School officer credentials email error: " . $emEx->getMessage());
+        }
 
         $successMessage = "Application approved. School officer account created. $membersCreated member accounts created.";
         if (!empty($memberErrors)) {
@@ -413,7 +417,11 @@ try {
         
         require_once __DIR__ . '/../../../src/lib/EmailService.php';
         $emailService = new \App\Lib\EmailService();
-        $emailService->sendChangesRequested($appData['email'], $appData['institution_name'], $_POST['changes_instructions']);
+        try {
+            $emailService->sendChangesRequested($appData['email'], $appData['institution_name'], $_POST['changes_instructions']);
+        } catch (\Throwable $emEx) {
+            error_log("Changes requested email error: " . $emEx->getMessage());
+        }
         
         sendResponse(true, 'Changes requested successfully.');
     }
@@ -429,7 +437,11 @@ try {
         
         require_once __DIR__ . '/../../../src/lib/EmailService.php';
         $emailService = new \App\Lib\EmailService();
-        $emailService->sendAffiliationRejected($appData['email'], $appData['institution_name'], $_POST['rejection_reason']);
+        try {
+            $emailService->sendAffiliationRejected($appData['email'], $appData['institution_name'], $_POST['rejection_reason']);
+        } catch (\Throwable $emEx) {
+            error_log("Affiliation rejected email error: " . $emEx->getMessage());
+        }
         
         sendResponse(true, 'Application rejected successfully.');
     }
