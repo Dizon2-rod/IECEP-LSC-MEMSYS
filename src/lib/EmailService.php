@@ -188,6 +188,40 @@ class EmailService
                 error_log("Email sent successfully to $to via Resend HTTPS API!");
                 return true;
             }
+
+            // If Resend is in free/sandbox mode, it only allows sending to the account owner email.
+            // Automatically deliver the code to the account owner so testing is never blocked!
+            if ($code === 403 && preg_match('/only send testing emails to your own email address \(([^)]+)\)/i', (string)$resp, $m)) {
+                $ownerEmail = trim($m[1]);
+                error_log("Resend Sandbox Mode: Forwarding email intended for $to to verified owner: $ownerEmail");
+                $payload['to'] = [$ownerEmail];
+                $payload['subject'] = "[Resend Sandbox for $to] " . $subject;
+                $payload['html'] = "<div style='padding:12px;margin-bottom:15px;background:#FEF3C7;border-left:4px solid #D97706;color:#92400E;font-size:13px;'>
+                    <strong>Resend Sandbox Notice:</strong> This email was requested for <strong>" . htmlspecialchars($to) . "</strong>. Because your Resend domain is not yet verified, it was delivered to your registered Resend email address (<strong>{$ownerEmail}</strong>).
+                </div>" . $htmlBody;
+
+                $ch = curl_init('https://api.resend.com/emails');
+                curl_setopt_array($ch, [
+                    CURLOPT_POST           => true,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => false,
+                    CURLOPT_HTTPHEADER     => [
+                        'Authorization: Bearer ' . trim($resendKey),
+                        'Content-Type: application/json'
+                    ],
+                    CURLOPT_POSTFIELDS     => json_encode($payload),
+                    CURLOPT_TIMEOUT        => 15
+                ]);
+                $resp2 = curl_exec($ch);
+                $code2 = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                if ($code2 >= 200 && $code2 < 300) {
+                    error_log("Email successfully forwarded to Resend owner $ownerEmail!");
+                    return true;
+                }
+            }
+
             $this->lastError = "Resend API Error (HTTP $code): " . ($resp ?: $curlErr);
             error_log($this->lastError);
         }
