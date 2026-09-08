@@ -294,6 +294,24 @@ class EmailService
         $primaryPort = (int)($this->config['email']['port'] ?: 465);
         $fallbackPort = ($primaryPort === 465) ? 587 : 465;
 
+        // Cloud Container Check: On hosts like Railway where raw SMTP ports are blocked,
+        // prioritize HTTPS REST API (Port 443) for instant sub-second delivery
+        $isCloudContainer = !empty(getenv('RAILWAY_ENVIRONMENT')) ||
+                            !empty(getenv('RAILWAY_STATIC_URL')) ||
+                            !empty(getenv('RAILWAY_GIT_COMMIT_SHA')) ||
+                            !empty($_SERVER['RAILWAY_STATIC_URL']) ||
+                            (defined('APP_ENV') && APP_ENV === 'production');
+
+        if ($isCloudContainer && $this->hasHttpsApiConfigured()) {
+            error_log("EmailService: Cloud container detected, using HTTPS REST API as primary transport for $to...");
+            if ($this->sendViaHttpsRestApi($to, $subject, $htmlBody, $altBody)) {
+                error_log("EmailService: Email successfully delivered to $to via HTTPS REST API [SUCCESS]");
+                $this->lastError = '';
+                return true;
+            }
+            error_log("EmailService: HTTPS REST API failed, falling back to SMTP...");
+        }
+
         // Transport 1: Primary SMTP Port
         try {
             $mail = $this->createMailer(['port' => $primaryPort]);
