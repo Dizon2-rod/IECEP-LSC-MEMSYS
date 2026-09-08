@@ -63,6 +63,31 @@ CREATE TABLE IF NOT EXISTS institutions (
 CREATE INDEX IF NOT EXISTS idx_institutions_status ON institutions(status);
 CREATE INDEX IF NOT EXISTS idx_institutions_acronym ON institutions(acronym);
 
+-- Ensure all columns exist on institutions if pre-created
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS acronym TEXT;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'university';
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS address TEXT;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS city TEXT;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS province TEXT DEFAULT 'Laguna';
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS region TEXT DEFAULT 'Region IV-A (CALABARZON)';
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS country TEXT DEFAULT 'Philippines';
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS contact_person TEXT;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS contact_email TEXT;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS contact_phone TEXT;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS website TEXT;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS facebook_url TEXT;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS affiliation_fee_paid BOOLEAN DEFAULT false;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS compliance_status TEXT DEFAULT 'compliant';
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS membership_count INTEGER DEFAULT 0;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS established_year INTEGER;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS accreditation_status TEXT;
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE institutions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 -- =====================================================================
 -- 4. USERS & USER PROFILES
 -- =====================================================================
@@ -79,7 +104,18 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure all columns exist on users if pre-created
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_uq ON users(email);
 
 -- Supabase User Profiles (Linked with auth.users or local IDs)
 CREATE TABLE IF NOT EXISTS user_profiles (
@@ -100,9 +136,11 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 CREATE INDEX IF NOT EXISTS idx_user_profiles_role ON user_profiles(role);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_inst ON user_profiles(institution_id);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_uid ON user_profiles(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_profiles_email_uq ON user_profiles(email);
 
 -- Ensure all columns exist on user_profiles if pre-created
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'member';
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS institution_id UUID;
@@ -110,6 +148,8 @@ ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS phone TEXT;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS force_password_change BOOLEAN DEFAULT false;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- =====================================================================
 -- 5. MEMBERS (Digital ID & Official Roster)
@@ -147,21 +187,33 @@ CREATE INDEX IF NOT EXISTS idx_members_inst ON members(institution_id);
 CREATE INDEX IF NOT EXISTS idx_members_status ON members(status);
 CREATE INDEX IF NOT EXISTS idx_members_payment ON members(payment_status);
 CREATE INDEX IF NOT EXISTS idx_members_user_id ON members(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_members_email_uq ON members(email);
 
 -- Ensure all member columns exist on existing tables
 ALTER TABLE members ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS membership_id TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS full_name TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS first_name TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS last_name TEXT;
-ALTER TABLE members ADD COLUMN IF NOT EXISTS student_number TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS email TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS institution_id UUID;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS course TEXT DEFAULT 'Bachelor of Science in Electronics Engineering';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS year_level TEXT DEFAULT '4th Year';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS student_number TEXT;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS membership_type TEXT DEFAULT 'student';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'paid';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS avatar_url TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS birthday DATE;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS address TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS digital_id_hash TEXT;
 ALTER TABLE members ADD COLUMN IF NOT EXISTS qr_code_url TEXT;
-ALTER TABLE members ADD COLUMN IF NOT EXISTS payment_status TEXT DEFAULT 'paid';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS joined_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE members ADD COLUMN IF NOT EXISTS expiration_date DATE DEFAULT (CURRENT_DATE + INTERVAL '1 year');
+ALTER TABLE members ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE members ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- =====================================================================
 -- 6. SEQUENTIAL MEMBER ID COUNTERS
@@ -229,6 +281,9 @@ CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
 CREATE INDEX IF NOT EXISTS idx_events_start ON events(start_date);
 
 -- Ensure all event columns exist on existing tables
+ALTER TABLE events ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS event_type TEXT DEFAULT 'seminar';
 ALTER TABLE events ADD COLUMN IF NOT EXISTS venue TEXT DEFAULT 'Main Auditorium / Online';
 ALTER TABLE events ADD COLUMN IF NOT EXISTS location TEXT;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS start_date TIMESTAMPTZ DEFAULT NOW();
@@ -243,7 +298,13 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS registration_deadline TIMESTAMPTZ;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS requires_payment BOOLEAN DEFAULT false;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT false;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS online_link TEXT;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'published';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS created_by UUID;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS target_roles TEXT[];
+ALTER TABLE events ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+ALTER TABLE events ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- Live Dynamic 15s QR & Officer Scanner Attendance
 CREATE TABLE IF NOT EXISTS event_attendees (
@@ -320,6 +381,16 @@ CREATE TABLE IF NOT EXISTS certificates (
 CREATE INDEX IF NOT EXISTS idx_certificates_member ON certificates(member_id);
 CREATE INDEX IF NOT EXISTS idx_certificates_event ON certificates(event_id);
 CREATE INDEX IF NOT EXISTS idx_certificates_number ON certificates(certificate_number);
+
+-- Ensure all certificate columns exist on existing tables
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS member_id UUID;
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS event_id UUID;
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS issue_date DATE DEFAULT CURRENT_DATE;
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS certificate_number TEXT;
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS blockchain_hash TEXT;
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS file_path TEXT;
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS template_type TEXT DEFAULT 'participation';
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 
 -- =====================================================================
 -- 8. BLOCKCHAIN RECORDS (Cryptographic Proof & SHA-256 Ledger)
@@ -485,12 +556,27 @@ CREATE INDEX IF NOT EXISTS idx_tx_member ON transactions(member_id);
 CREATE INDEX IF NOT EXISTS idx_tx_receipt_number ON transactions(receipt_number);
 
 -- Ensure all transaction columns exist
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_id TEXT;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS user_id UUID;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS member_id UUID;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS institution_id UUID;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS event_id UUID;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS pending_affiliation_id UUID;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS amount NUMERIC(10,2) DEFAULT 0.00;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS fee_type TEXT DEFAULT 'membership_fee';
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS type TEXT DEFAULT 'payment';
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS transaction_type TEXT DEFAULT 'payment';
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payment_method TEXT DEFAULT 'gcash';
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS reference_number TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS receipt_number TEXT;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS receipt_url TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS receipt_path TEXT;
 ALTER TABLE transactions ADD COLUMN IF NOT EXISTS blockchain_hash TEXT;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'completed';
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS verified_by UUID;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- School-level financial records
 CREATE TABLE IF NOT EXISTS financial_records (
@@ -591,6 +677,13 @@ CREATE TABLE IF NOT EXISTS compliance_rules (
     threshold NUMERIC(5,2),
     is_active BOOLEAN DEFAULT true
 );
+
+-- Ensure all columns exist on compliance_rules
+ALTER TABLE compliance_rules ADD COLUMN IF NOT EXISTS rule_key TEXT;
+ALTER TABLE compliance_rules ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE compliance_rules ADD COLUMN IF NOT EXISTS threshold NUMERIC(5,2);
+ALTER TABLE compliance_rules ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_compliance_rules_key_uq ON compliance_rules(rule_key);
 
 CREATE TABLE IF NOT EXISTS policy_compliance (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -841,6 +934,14 @@ CREATE TABLE IF NOT EXISTS system_settings (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Ensure all columns exist on system_settings
+ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS key TEXT;
+ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS value TEXT;
+ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+CREATE UNIQUE INDEX IF NOT EXISTS idx_system_settings_key_uq ON system_settings(key);
+
 CREATE TABLE IF NOT EXISTS fee_brackets (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     bracket_name TEXT NOT NULL UNIQUE,
@@ -853,6 +954,18 @@ CREATE TABLE IF NOT EXISTS fee_brackets (
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure all columns exist on fee_brackets
+ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS bracket_name TEXT;
+ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS min_members INTEGER;
+ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS max_members INTEGER;
+ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS fee NUMERIC(10,2) DEFAULT 0.00;
+ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS per_member_fee NUMERIC(10,2) DEFAULT 0.00;
+ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS annual_fee NUMERIC(10,2) DEFAULT 0.00;
+ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE fee_brackets ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+CREATE UNIQUE INDEX IF NOT EXISTS idx_fee_brackets_name_uq ON fee_brackets(bracket_name);
 
 -- =====================================================================
 -- 17. AUTOMATED UPDATED_AT TRIGGERS
@@ -869,94 +982,108 @@ BEGIN
             'memoranda', 'newsletters', 'documents', 'system_settings', 'fee_brackets'
         ])
     LOOP
-        EXECUTE format('DROP TRIGGER IF EXISTS trg_%I_updated_at ON %I;', t, t);
-        EXECUTE format('CREATE TRIGGER trg_%I_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION handle_updated_at();', t, t);
+        BEGIN
+            EXECUTE format('DROP TRIGGER IF EXISTS trg_%I_updated_at ON %I;', t, t);
+            EXECUTE format('CREATE TRIGGER trg_%I_updated_at BEFORE UPDATE ON %I FOR EACH ROW EXECUTE FUNCTION handle_updated_at();', t, t);
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
     END LOOP;
 END $$;
 
 -- =====================================================================
 -- 18. SEED DATA: OFFICIAL LAGUNA HEI CHAPTERS (All 8 Campuses)
 -- =====================================================================
-INSERT INTO institutions (id, email, name, acronym, type, address, city, province, contact_email, facebook_url, status, compliance_status, membership_count)
-VALUES
-    ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'ecelss@letran-calamba.edu.ph', 'Colegio de San Juan de Letran - Calamba', 'Letran - Calamba', 'college', 'Colegio de San Juan de Letran, Calamba, Philippines, 4027', 'Calamba', 'Laguna', 'ecelss@letran-calamba.edu.ph', 'https://www.facebook.com/ECELSSrocks', 'active', 'compliant', 95),
-    ('3c6f8a12-9844-48f6-b11c-99d9b626e5a1', 'afece_spc@lspu.edu.ph', 'Laguna State Polytechnic University - San Pablo City Campus', 'LSPU - SPCC', 'university', 'San Pablo City, Philippines, 4000', 'San Pablo City', 'Laguna', 'afece_spc@lspu.edu.ph', 'https://www.facebook.com/LSPUAFECE', 'active', 'compliant', 120),
-    ('7d8e9f01-1234-4567-89ab-cdef01234567', 'iecepmmcl@gmail.com', 'Mapúa Malayan Colleges Laguna', 'MMCL', 'college', 'Pulo, Cabuyao, Philippines, 4025', 'Cabuyao', 'Laguna', 'iecepmmcl@gmail.com', 'https://www.facebook.com/iecepmmcl', 'active', 'compliant', 110),
-    ('4d5e6f7a-8b9c-0123-def4-567890123456', 'jieceppnc@gmail.com', 'University of Cabuyao (Pamantasan ng Cabuyao)', 'PnC', 'university', 'Cabuyao, Philippines, 4025', 'Cabuyao', 'Laguna', 'jieceppnc@gmail.com', 'https://www.facebook.com/jiecep.pnc.official', 'active', 'compliant', 85),
-    ('c3d4e5f6-a7b8-9012-cdef-123456789012', 'officialaeces.pupsrc@gmail.com', 'Polytechnic University of the Philippines - Santa Rosa Campus', 'PUP - Santa Rosa', 'university', 'Room 3-4, PUP-Sta. Rosa, Barangay Tagapo, Santa Rosa, Philippines, 4026', 'Santa Rosa', 'Laguna', 'officialaeces.pupsrc@gmail.com', 'https://www.facebook.com/OfficialAECES', 'active', 'compliant', 130),
-    ('e5f6a7b8-c9d0-1234-ef12-345678901234', 'uphsl.pieces@gmail.com', 'University of Perpetual Help System Laguna – Biñan Campus', 'UPHSL - Biñan', 'university', 'National Hi-way, Brgy. Sto. Niño, Biñan, Philippines, 4024', 'Biñan', 'Laguna', 'uphsl.pieces@gmail.com', 'https://www.facebook.com/uphslpieces', 'active', 'compliant', 90),
-    ('d4e5f6a7-b8c9-0123-def1-234567890123', 'pieces.uphsd@gmail.com', 'University of Perpetual Help System DALTA - Calamba Campus', 'UPHSD - Calamba', 'university', 'Calamba, Philippines, 4027', 'Calamba', 'Laguna', 'pieces.uphsd@gmail.com', 'https://www.facebook.com/eceperpslp.org', 'active', 'compliant', 75),
-    ('1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'official.lspusccecess@gmail.com', 'Laguna State Polytechnic University - Santa Cruz Campus', 'LSPU - SCC', 'university', 'Santa Cruz National High-way, Brgy. Bubukal, Santa Cruz, Laguna', 'Santa Cruz', 'Laguna', 'official.lspusccecess@gmail.com', 'https://www.facebook.com/LSPUSCCECESS', 'active', 'compliant', 150)
-ON CONFLICT (id) DO UPDATE SET
-    email = EXCLUDED.email,
-    name = EXCLUDED.name,
-    acronym = EXCLUDED.acronym,
-    address = EXCLUDED.address,
-    city = EXCLUDED.city,
-    facebook_url = EXCLUDED.facebook_url,
-    contact_email = EXCLUDED.contact_email,
-    compliance_status = EXCLUDED.compliance_status,
-    membership_count = EXCLUDED.membership_count;
+DO $$
+BEGIN
+    INSERT INTO institutions (id, email, name, acronym, type, address, city, province, contact_email, facebook_url, status, compliance_status, membership_count)
+    VALUES
+        ('b2c3d4e5-f6a7-8901-bcde-f12345678901', 'ecelss@letran-calamba.edu.ph', 'Colegio de San Juan de Letran - Calamba', 'Letran - Calamba', 'college', 'Colegio de San Juan de Letran, Calamba, Philippines, 4027', 'Calamba', 'Laguna', 'ecelss@letran-calamba.edu.ph', 'https://www.facebook.com/ECELSSrocks', 'active', 'compliant', 95),
+        ('3c6f8a12-9844-48f6-b11c-99d9b626e5a1', 'afece_spc@lspu.edu.ph', 'Laguna State Polytechnic University - San Pablo City Campus', 'LSPU - SPCC', 'university', 'San Pablo City, Philippines, 4000', 'San Pablo City', 'Laguna', 'afece_spc@lspu.edu.ph', 'https://www.facebook.com/LSPUAFECE', 'active', 'compliant', 120),
+        ('7d8e9f01-1234-4567-89ab-cdef01234567', 'iecepmmcl@gmail.com', 'Mapúa Malayan Colleges Laguna', 'MMCL', 'college', 'Pulo, Cabuyao, Philippines, 4025', 'Cabuyao', 'Laguna', 'iecepmmcl@gmail.com', 'https://www.facebook.com/iecepmmcl', 'active', 'compliant', 110),
+        ('4d5e6f7a-8b9c-0123-def4-567890123456', 'jieceppnc@gmail.com', 'University of Cabuyao (Pamantasan ng Cabuyao)', 'PnC', 'university', 'Cabuyao, Philippines, 4025', 'Cabuyao', 'Laguna', 'jieceppnc@gmail.com', 'https://www.facebook.com/jiecep.pnc.official', 'active', 'compliant', 85),
+        ('c3d4e5f6-a7b8-9012-cdef-123456789012', 'officialaeces.pupsrc@gmail.com', 'Polytechnic University of the Philippines - Santa Rosa Campus', 'PUP - Santa Rosa', 'university', 'Room 3-4, PUP-Sta. Rosa, Barangay Tagapo, Santa Rosa, Philippines, 4026', 'Santa Rosa', 'Laguna', 'officialaeces.pupsrc@gmail.com', 'https://www.facebook.com/OfficialAECES', 'active', 'compliant', 130),
+        ('e5f6a7b8-c9d0-1234-ef12-345678901234', 'uphsl.pieces@gmail.com', 'University of Perpetual Help System Laguna – Biñan Campus', 'UPHSL - Biñan', 'university', 'National Hi-way, Brgy. Sto. Niño, Biñan, Philippines, 4024', 'Biñan', 'Laguna', 'uphsl.pieces@gmail.com', 'https://www.facebook.com/uphslpieces', 'active', 'compliant', 90),
+        ('d4e5f6a7-b8c9-0123-def1-234567890123', 'pieces.uphsd@gmail.com', 'University of Perpetual Help System DALTA - Calamba Campus', 'UPHSD - Calamba', 'university', 'Calamba, Philippines, 4027', 'Calamba', 'Laguna', 'pieces.uphsd@gmail.com', 'https://www.facebook.com/eceperpslp.org', 'active', 'compliant', 75),
+        ('1fe48809-8ac6-4428-a6f1-3025cc47f5bb', 'official.lspusccecess@gmail.com', 'Laguna State Polytechnic University - Santa Cruz Campus', 'LSPU - SCC', 'university', 'Santa Cruz National High-way, Brgy. Bubukal, Santa Cruz, Laguna', 'Santa Cruz', 'Laguna', 'official.lspusccecess@gmail.com', 'https://www.facebook.com/LSPUSCCECESS', 'active', 'compliant', 150)
+    ON CONFLICT (id) DO UPDATE SET
+        email = EXCLUDED.email,
+        name = EXCLUDED.name,
+        acronym = EXCLUDED.acronym,
+        address = EXCLUDED.address,
+        city = EXCLUDED.city,
+        facebook_url = EXCLUDED.facebook_url,
+        contact_email = EXCLUDED.contact_email,
+        compliance_status = EXCLUDED.compliance_status,
+        membership_count = EXCLUDED.membership_count;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 -- =====================================================================
 -- 19. SEED DATA: OFFICIAL USERS & PROFILES
 -- =====================================================================
--- Seed users (Password hash for Admin: Admin123! | Officer: School123! | Member: Member123!)
-INSERT INTO users (id, email, password, password_hash, full_name, role, is_active, created_at, updated_at)
-VALUES
-    ('00000000-0000-0000-0000-000000000001', 'lspuscc.adminece@gmail.com', '$2y$12$mypSMbD3y1XR5uuewBIV5ONYYT3yODWWKdOINbV7/2n86Xu0PupXK', '$2y$12$mypSMbD3y1XR5uuewBIV5ONYYT3yODWWKdOINbV7/2n86Xu0PupXK', 'IECEP-LSC Regional Admin', 'super_admin', true, NOW(), NOW()),
-    ('00000000-0000-0000-0000-000000000002', 'ieceptest86@gmail.com', '$2y$12$7QzP4zCK2as87c1og7U59et9vvPHU90pCYCNXn.zM7RuH/cti.cXa', '$2y$12$7QzP4zCK2as87c1og7U59et9vvPHU90pCYCNXn.zM7RuH/cti.cXa', 'LSPU - SCC School Officer', 'school_officer', true, NOW(), NOW()),
-    ('00000000-0000-0000-0000-000000000003', 'rasheddizon7@gmail.com', '$2y$12$t6adOxlvvxUJa4Lu2U6EX.R5U.2KGRTwQNeE9i51ou9Cw59Ft2vDi', '$2y$12$t6adOxlvvxUJa4Lu2U6EX.R5U.2KGRTwQNeE9i51ou9Cw59Ft2vDi', 'Rashed Dizon', 'member', true, NOW(), NOW())
-ON CONFLICT (email) DO UPDATE SET
-    password = EXCLUDED.password,
-    password_hash = EXCLUDED.password_hash,
-    full_name = EXCLUDED.full_name,
-    role = EXCLUDED.role,
-    is_active = EXCLUDED.is_active;
+DO $$
+BEGIN
+    INSERT INTO users (id, email, password, password_hash, full_name, role, is_active, created_at, updated_at)
+    VALUES
+        ('00000000-0000-0000-0000-000000000001', 'lspuscc.adminece@gmail.com', '$2y$12$mypSMbD3y1XR5uuewBIV5ONYYT3yODWWKdOINbV7/2n86Xu0PupXK', '$2y$12$mypSMbD3y1XR5uuewBIV5ONYYT3yODWWKdOINbV7/2n86Xu0PupXK', 'IECEP-LSC Regional Admin', 'super_admin', true, NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000002', 'ieceptest86@gmail.com', '$2y$12$7QzP4zCK2as87c1og7U59et9vvPHU90pCYCNXn.zM7RuH/cti.cXa', '$2y$12$7QzP4zCK2as87c1og7U59et9vvPHU90pCYCNXn.zM7RuH/cti.cXa', 'LSPU - SCC School Officer', 'school_officer', true, NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000003', 'rasheddizon7@gmail.com', '$2y$12$t6adOxlvvxUJa4Lu2U6EX.R5U.2KGRTwQNeE9i51ou9Cw59Ft2vDi', '$2y$12$t6adOxlvvxUJa4Lu2U6EX.R5U.2KGRTwQNeE9i51ou9Cw59Ft2vDi', 'Rashed Dizon', 'member', true, NOW(), NOW())
+    ON CONFLICT (email) DO UPDATE SET
+        password = EXCLUDED.password,
+        password_hash = EXCLUDED.password_hash,
+        full_name = EXCLUDED.full_name,
+        role = EXCLUDED.role,
+        is_active = EXCLUDED.is_active;
 
-INSERT INTO user_profiles (id, user_id, email, full_name, role, institution_id, phone, status, force_password_change)
-VALUES
-    ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'lspuscc.adminece@gmail.com', 'IECEP-LSC Regional Admin', 'super_admin', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '09171234567', 'active', false),
-    ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', 'ieceptest86@gmail.com', 'LSPU - SCC School Officer', 'school_officer', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '09181234567', 'active', false),
-    ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000003', 'rasheddizon7@gmail.com', 'Rashed Dizon', 'member', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '09191234567', 'active', false)
-ON CONFLICT (email) DO UPDATE SET
-    full_name = EXCLUDED.full_name,
-    role = EXCLUDED.role,
-    institution_id = EXCLUDED.institution_id;
+    INSERT INTO user_profiles (id, user_id, email, full_name, role, institution_id, phone, status, force_password_change)
+    VALUES
+        ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'lspuscc.adminece@gmail.com', 'IECEP-LSC Regional Admin', 'super_admin', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '09171234567', 'active', false),
+        ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', 'ieceptest86@gmail.com', 'LSPU - SCC School Officer', 'school_officer', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '09181234567', 'active', false),
+        ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000003', 'rasheddizon7@gmail.com', 'Rashed Dizon', 'member', '1fe48809-8ac6-4428-a6f1-3025cc47f5bb', '09191234567', 'active', false)
+    ON CONFLICT (email) DO UPDATE SET
+        full_name = EXCLUDED.full_name,
+        role = EXCLUDED.role,
+        institution_id = EXCLUDED.institution_id;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 -- =====================================================================
 -- 20. SEED DATA: OFFICIAL MEMBERS
 -- =====================================================================
-INSERT INTO members (
-    id, membership_id, full_name, first_name, last_name, email,
-    phone, institution_id, course, year_level, student_number,
-    membership_type, status, payment_status, digital_id_hash
-)
-VALUES
-    (
-        '10000000-0000-0000-0000-000000000003',
-        '20260001',
-        'Rashed Dizon',
-        'Rashed',
-        'Dizon',
-        'rasheddizon7@gmail.com',
-        '09191234567',
-        '1fe48809-8ac6-4428-a6f1-3025cc47f5bb',
-        'BS Electronics Engineering',
-        '3rd Year',
-        '2022-00123',
-        'student',
-        'active',
-        'paid',
-        'a1b2c3d4e5f60103'
+DO $$
+BEGIN
+    INSERT INTO members (
+        id, membership_id, full_name, first_name, last_name, email,
+        phone, institution_id, course, year_level, student_number,
+        membership_type, status, payment_status, digital_id_hash
     )
-ON CONFLICT (email) DO UPDATE SET
-    full_name = EXCLUDED.full_name,
-    membership_id = EXCLUDED.membership_id,
-    institution_id = EXCLUDED.institution_id,
-    year_level = EXCLUDED.year_level,
-    course = EXCLUDED.course,
-    student_number = EXCLUDED.student_number;
+    VALUES
+        (
+            '10000000-0000-0000-0000-000000000003',
+            '20260001',
+            'Rashed Dizon',
+            'Rashed',
+            'Dizon',
+            'rasheddizon7@gmail.com',
+            '09191234567',
+            '1fe48809-8ac6-4428-a6f1-3025cc47f5bb',
+            'BS Electronics Engineering',
+            '3rd Year',
+            '2022-00123',
+            'student',
+            'active',
+            'paid',
+            'a1b2c3d4e5f60103'
+        )
+    ON CONFLICT (email) DO UPDATE SET
+        full_name = EXCLUDED.full_name,
+        membership_id = EXCLUDED.membership_id,
+        institution_id = EXCLUDED.institution_id,
+        year_level = EXCLUDED.year_level,
+        course = EXCLUDED.course,
+        student_number = EXCLUDED.student_number;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 DO $$
 BEGIN
@@ -983,71 +1110,79 @@ END $$;
 -- =====================================================================
 -- 21. SEED DATA: EVENTS & ANNOUNCEMENTS
 -- =====================================================================
-INSERT INTO events (id, title, description, event_type, venue, start_date, end_date, start_datetime, end_datetime, status, registration_fee, fee, max_attendees)
-VALUES
-    (
-        '2f2f99ce-98e1-49f6-8949-760687189aa6',
-        'IECEP-LSC Regional Technical Summit 2026',
-        'Flagship regional technical convention and research exposition for Laguna electronics engineering students.',
-        'technical_summit',
-        'Main Auditorium / Online',
-        NOW() - INTERVAL '2 hours',
-        NOW() + INTERVAL '8 hours',
-        NOW() - INTERVAL '2 hours',
-        NOW() + INTERVAL '8 hours',
-        'published',
-        150.00,
-        150.00,
-        500
-    ),
-    (
-        'a9b8c7d6-e5f4-3210-fedc-ba9876543210',
-        'IECEP Leadership & Chapter Assembly 2026',
-        'Annual quorum and leadership transition assembly for affiliated Laguna HEI chapters.',
-        'assembly',
-        'LSPU Main Hall',
-        NOW() + INTERVAL '7 days',
-        NOW() + INTERVAL '7 days 5 hours',
-        NOW() + INTERVAL '7 days',
-        NOW() + INTERVAL '7 days 5 hours',
-        'published',
-        0.00,
-        0.00,
-        300
-    )
-ON CONFLICT (id) DO UPDATE SET
-    title = EXCLUDED.title,
-    description = EXCLUDED.description,
-    status = EXCLUDED.status;
+DO $$
+BEGIN
+    INSERT INTO events (id, title, description, event_type, venue, start_date, end_date, start_datetime, end_datetime, status, registration_fee, fee, max_attendees)
+    VALUES
+        (
+            '2f2f99ce-98e1-49f6-8949-760687189aa6',
+            'IECEP-LSC Regional Technical Summit 2026',
+            'Flagship regional technical convention and research exposition for Laguna electronics engineering students.',
+            'technical_summit',
+            'Main Auditorium / Online',
+            NOW() - INTERVAL '2 hours',
+            NOW() + INTERVAL '8 hours',
+            NOW() - INTERVAL '2 hours',
+            NOW() + INTERVAL '8 hours',
+            'published',
+            150.00,
+            150.00,
+            500
+        ),
+        (
+            'a9b8c7d6-e5f4-3210-fedc-ba9876543210',
+            'IECEP Leadership & Chapter Assembly 2026',
+            'Annual quorum and leadership transition assembly for affiliated Laguna HEI chapters.',
+            'assembly',
+            'LSPU Main Hall',
+            NOW() + INTERVAL '7 days',
+            NOW() + INTERVAL '7 days 5 hours',
+            NOW() + INTERVAL '7 days',
+            NOW() + INTERVAL '7 days 5 hours',
+            'published',
+            0.00,
+            0.00,
+            300
+        )
+    ON CONFLICT (id) DO UPDATE SET
+        title = EXCLUDED.title,
+        description = EXCLUDED.description,
+        status = EXCLUDED.status;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 -- =====================================================================
 -- 22. SEED DATA: SETTINGS, FEE SCHEDULES, COMPLIANCE RULES, MERCH
 -- =====================================================================
-INSERT INTO fee_brackets (bracket_name, min_members, max_members, fee, is_active)
-VALUES
-    ('Small', 1, 50, 1500.00, true),
-    ('Medium', 51, 100, 2000.00, true),
-    ('Large', 101, 150, 2500.00, true),
-    ('Enterprise', 151, 999999, 3000.00, true)
-ON CONFLICT (bracket_name) DO UPDATE SET fee = EXCLUDED.fee;
+DO $$
+BEGIN
+    INSERT INTO fee_brackets (bracket_name, min_members, max_members, fee, is_active)
+    VALUES
+        ('Small', 1, 50, 1500.00, true),
+        ('Medium', 51, 100, 2000.00, true),
+        ('Large', 101, 150, 2500.00, true),
+        ('Enterprise', 151, 999999, 3000.00, true)
+    ON CONFLICT (bracket_name) DO UPDATE SET fee = EXCLUDED.fee;
 
-INSERT INTO system_settings (key, value, description)
-VALUES
-    ('operational_fee', '800.00', 'Annual organization operational fee per Board Resolution No. 021-2024'),
-    ('facebook_page_url', 'https://www.facebook.com/IECEPLSC', 'Official IECEP-LSC Facebook URL')
-ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
+    INSERT INTO system_settings (key, value, description)
+    VALUES
+        ('operational_fee', '800.00', 'Annual organization operational fee per Board Resolution No. 021-2024'),
+        ('facebook_page_url', 'https://www.facebook.com/IECEPLSC', 'Official IECEP-LSC Facebook URL')
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value;
 
-INSERT INTO compliance_rules (rule_key, description, threshold, is_active)
-VALUES 
-    ('min_participation', 'Minimum participation rate required for chapter compliance', 40.00, true),
-    ('required_hosted_events', 'Minimum hosted events per academic year', 1.00, true)
-ON CONFLICT (rule_key) DO NOTHING;
+    INSERT INTO compliance_rules (rule_key, description, threshold, is_active)
+    VALUES 
+        ('min_participation', 'Minimum participation rate required for chapter compliance', 40.00, true),
+        ('required_hosted_events', 'Minimum hosted events per academic year', 1.00, true)
+    ON CONFLICT (rule_key) DO NOTHING;
 
-INSERT INTO merch_items (id, name, title, description, price, stock, is_active)
-VALUES
-    ('90000000-0000-0000-0000-000000000001', 'IECEP-LSC Chapter Shirt', 'IECEP-LSC Chapter Shirt', 'Official Laguna Student Chapter technical polo-shirt (Navy Blue/Gold).', 350.00, 100, true),
-    ('90000000-0000-0000-0000-000000000002', 'IECEP-LSC Enamel Pin', 'IECEP-LSC Enamel Pin', 'Collector edition metallic enamel chapter emblem pin.', 120.00, 250, true)
-ON CONFLICT (id) DO UPDATE SET price = EXCLUDED.price, stock = EXCLUDED.stock;
+    INSERT INTO merch_items (id, name, title, description, price, stock, is_active)
+    VALUES
+        ('90000000-0000-0000-0000-000000000001', 'IECEP-LSC Chapter Shirt', 'IECEP-LSC Chapter Shirt', 'Official Laguna Student Chapter technical polo-shirt (Navy Blue/Gold).', 350.00, 100, true),
+        ('90000000-0000-0000-0000-000000000002', 'IECEP-LSC Enamel Pin', 'IECEP-LSC Enamel Pin', 'Collector edition metallic enamel chapter emblem pin.', 120.00, 250, true)
+    ON CONFLICT (id) DO UPDATE SET price = EXCLUDED.price, stock = EXCLUDED.stock;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 -- =====================================================================
 -- 23. ROW LEVEL SECURITY (RLS) POLICIES
@@ -1098,30 +1233,41 @@ BEGIN
     FOR tbl IN 
         SELECT tablename FROM pg_tables WHERE schemaname = 'public'
     LOOP
-        EXECUTE format('DROP POLICY IF EXISTS "Public access on %I" ON %I;', tbl, tbl);
-        EXECUTE format('CREATE POLICY "Public access on %I" ON %I FOR ALL TO public USING (true) WITH CHECK (true);', tbl, tbl);
+        BEGIN
+            EXECUTE format('DROP POLICY IF EXISTS "Public access on %I" ON %I;', tbl, tbl);
+            EXECUTE format('CREATE POLICY "Public access on %I" ON %I FOR ALL TO public USING (true) WITH CHECK (true);', tbl, tbl);
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
     END LOOP;
 END $$;
 
 -- =====================================================================
 -- 24. REALTIME WEB-SOCKET SUBSCRIPTIONS
 -- =====================================================================
-BEGIN;
-    DROP PUBLICATION IF EXISTS supabase_realtime CASCADE;
-    CREATE PUBLICATION supabase_realtime FOR TABLE
-        notifications,
-        announcements,
-        events,
-        event_attendees,
-        event_registrations,
-        transactions,
-        members,
-        institutions,
-        pending_affiliations,
-        revision_requests,
-        merch_orders,
-        merch_items,
-        messages;
-COMMIT;
+DO $$
+DECLARE
+    tbl text;
+    realtime_tables text[] := ARRAY[
+        'notifications', 'announcements', 'events', 'event_attendees',
+        'event_registrations', 'transactions', 'members', 'institutions',
+        'pending_affiliations', 'revision_requests', 'merch_orders',
+        'merch_items', 'messages'
+    ];
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+        CREATE PUBLICATION supabase_realtime;
+    END IF;
+
+    FOREACH tbl IN ARRAY realtime_tables
+    LOOP
+        BEGIN
+            EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE %I;', tbl);
+        EXCEPTION
+            WHEN duplicate_object THEN NULL;
+            WHEN OTHERS THEN NULL;
+        END;
+    END LOOP;
+EXCEPTION WHEN OTHERS THEN NULL;
+END $$;
 
 SELECT 'IECEP-LSC MEMSYS Complete Supabase Schema executed successfully!' AS result;
