@@ -247,7 +247,7 @@ if ($action === 'verify-code') {
     exit;
 }
 
-if ($action === 'submit') {
+if ($action === 'submit' || $action === 'submit_application') {
     error_log("Submit action received");
 
     // Handle FormData submission

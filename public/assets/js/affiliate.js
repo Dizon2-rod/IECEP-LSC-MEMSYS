@@ -114,13 +114,12 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
 
             const formData = new FormData(applicationForm);
-            formData.append('action', 'submit_application');
-            formData.append('email', document.getElementById('institutionEmail').value);
+            formData.append('contact_email', document.getElementById('institutionEmail').value);
 
             showLoading();
 
             try {
-                const response = await fetch(IECEP_PATHS.API_URL + '/affiliate.php', {
+                const response = await fetch('/IECEP-LSC-MEMSYS/public/api/affiliate.php?action=submit', {
                     method: 'POST',
                     body: formData
                 });
@@ -189,7 +188,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.showStep = function(stepId) {
         const steps = document.querySelectorAll('.step');
         steps.forEach(step => step.classList.remove('active'));
-        document.getElementById(stepId) ? .classList.add('active');
+        document.getElementById(stepId)?.classList.add('active');
     };
 
     window.resetApplicationForm = function() {

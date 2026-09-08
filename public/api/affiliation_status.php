@@ -133,44 +133,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                             // Send credentials email with real account details
                             try {
                                 error_log("Sending school account credentials to: $schoolEmail");
-                                error_log("Email config: SMTP_HOST=" . SMTP_HOST . ", SMTP_USERNAME=" . SMTP_USERNAME);
-                                error_log("Temporary password generated: $tempPassword");
+                                error_log("Temporary password generated for: $institutionName");
                                 
-                                // First test Gmail connection
-                                error_log("Testing Gmail SMTP connection before sending credentials...");
-                                $connectionTest = $emailService->testGmailConnection();
-                                error_log("Gmail connection test result: " . ($connectionTest ? 'SUCCESS' : 'FAILED'));
+                                // Send credentials email directly (contactPerson already set at line 74)
+                                $credentialsSent = $emailService->sendSchoolAccountCredentials($schoolEmail, $institutionName, $tempPassword, $contactPerson);
+                                error_log("Credentials email sent to $schoolEmail: " . ($credentialsSent ? 'SUCCESS' : 'FAILED'));
                                 
-                                if ($connectionTest) {
-                                    // Send actual credentials email with contact person
-                                    $contactPerson = $application['contact_person'] ?? '';
-                                    $credentialsSent = $emailService->sendSchoolAccountCredentials($schoolEmail, $institutionName, $tempPassword, $contactPerson);
-                                    error_log("Credentials email sent to $schoolEmail: " . ($credentialsSent ? 'SUCCESS' : 'FAILED'));
+                                if (!$credentialsSent) {
+                                    error_log("WARNING: Credentials email failed to send, but account was created");
+                                    error_log("EmailService Error Info: " . $emailService->getErrorInfo());
                                     
-                                    if (!$credentialsSent) {
-                                        error_log("WARNING: Credentials email failed to send, but account was created");
-                                        error_log("EmailService Error Info: " . ($emailService ? $emailService->getErrorInfo() : 'Not available'));
-                                        
-                                        // Try sending a test email to verify email service
-                                        try {
-                                            error_log("Attempting to send test credentials email...");
-                                            $testSent = $emailService->sendCredentialsTest($schoolEmail, $tempPassword);
-                                            error_log("Test credentials email result: " . ($testSent ? 'SUCCESS' : 'FAILED'));
-                                        } catch (Exception $testEx) {
-                                            error_log("Test credentials email exception: " . $testEx->getMessage());
-                                        }
-                                    }
-                                } else {
-                                    error_log("CRITICAL: Gmail SMTP connection failed, cannot send credentials email");
-                                    error_log("Account was created but email delivery failed");
-                                    
-                                    // Try fallback email service
+                                    // Try fallback credentials test email
                                     try {
-                                        error_log("Attempting fallback email service...");
-                                        $fallbackSent = $emailService->sendTestEmail($schoolEmail);
-                                        error_log("Fallback email result: " . ($fallbackSent ? 'SUCCESS' : 'FAILED'));
-                                    } catch (Exception $fallbackEx) {
-                                        error_log("Fallback email exception: " . $fallbackEx->getMessage());
+                                        $testSent = $emailService->sendCredentialsTest($schoolEmail, $tempPassword);
+                                        error_log("Fallback credentials email result: " . ($testSent ? 'SUCCESS' : 'FAILED'));
+                                    } catch (Exception $testEx) {
+                                        error_log("Fallback credentials email exception: " . $testEx->getMessage());
                                     }
                                 }
                             } catch (Exception $e) {
