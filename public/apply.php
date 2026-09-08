@@ -50,6 +50,7 @@ if (!empty($resubmitId)) {
         error_log("Error loading application: " . $e->getMessage());
     }
 }
+$isResubmit = !empty($existingApplication);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -400,7 +401,7 @@ if (!empty($resubmitId)) {
                     </div>
 
                     <div style="text-align: center;">
-                        <button type="button" class="btn btn-primary btn-lg" id="send-code-btn" style="min-width: 220px;">
+                        <button type="button" class="btn btn-primary btn-lg" id="send-code-btn" style="min-width: 220px;" onclick="handleSendVerificationCode(this)">
                             <i class="fas fa-paper-plane me-2"></i> Send Verification Code
                         </button>
                     </div>
@@ -431,17 +432,17 @@ if (!empty($resubmitId)) {
                     </div>
 
                     <div style="text-align: center; margin-top: var(--space-6);">
-                        <button type="button" class="btn btn-primary btn-lg" id="verify-code-btn" style="min-width: 220px;">
+                        <button type="button" class="btn btn-primary btn-lg" id="verify-code-btn" style="min-width: 220px;" onclick="handleVerifyCode(this)">
                             <i class="fas fa-check-circle me-2"></i> Verify Code
                         </button>
                     </div>
 
                     <div style="text-align: center; margin-top: var(--space-6); display: flex; flex-direction: column; align-items: center; gap: 8px;">
                         <div class="countdown" id="countdown">Code expires in <span id="timer">10:00</span></div>
-                        <button type="button" class="resend-btn" id="resend-btn" disabled>
+                        <button type="button" class="resend-btn" id="resend-btn" disabled onclick="handleResendCode(this)">
                             <i class="fas fa-redo me-1"></i> Resend Verification Code
                         </button>
-                        <button type="button" class="resend-btn" id="change-email-btn" style="color: #64748B; font-size: 0.85rem; text-decoration: none;">
+                        <button type="button" class="resend-btn" id="change-email-btn" style="color: #64748B; font-size: 0.85rem; text-decoration: none;" onclick="handleChangeEmail(this)">
                             ← Change Email Address
                         </button>
                     </div>
@@ -665,7 +666,6 @@ if (!empty($resubmitId)) {
     <!-- Load XLSX library for parsing -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="<?php echo PUBLIC_URL; ?>/js/member-directory-parser.js"></script>
-    <script src="<?php echo PUBLIC_URL; ?>/assets/js/app.js"></script>
     <script>
         const API_URL = '<?php echo API_URL; ?>';
         const BASE_URL = '<?php echo BASE_URL; ?>';
@@ -675,27 +675,63 @@ if (!empty($resubmitId)) {
         let isResubmit = <?php echo !empty($existingApplication) ? 'true' : 'false'; ?>;
         let resubmitId = '<?php echo htmlspecialchars($resubmitId); ?>';
         let currentEmail = '';
-        
-        // Initialize Member Directory Parser
-        const parser = new MemberDirectoryParser();
-        let memberDirectoryParsed = false;
 
-        // If resubmitting, skip email verification and set verified email
-        if (isResubmit) {
-            verifiedEmail = '<?php echo htmlspecialchars($existingApplication['email'] ?? ''); ?>';
-            document.getElementById('step1').classList.remove('active');
-            document.getElementById('step1').classList.add('completed');
-            document.getElementById('step2').classList.add('active');
-            document.getElementById('email-verification-step').classList.add('hidden');
-            document.getElementById('application-form-step').classList.remove('hidden');
-            console.log('Resubmit mode - document upload section rendered server-side');
+        // Safe URL builder for affiliation submission API
+        window.getSubmitApiUrl = function() {
+            if (typeof API_URL !== 'undefined' && API_URL) {
+                return API_URL.replace(/\/+$/, '') + '/submit-affiliation.php';
+            }
+            const origin = window.location.origin;
+            if (window.location.pathname.includes('/public/')) {
+                const prefix = window.location.pathname.substring(0, window.location.pathname.indexOf('/public/'));
+                return origin + prefix + '/public/api/submit-affiliation.php';
+            }
+            const prefix = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+            return origin + (prefix ? prefix : '') + '/public/api/submit-affiliation.php';
+        };
+
+        const SUBMIT_API_URL = window.getSubmitApiUrl();
+
+        // Email validation helper
+        function validateEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
         }
 
-        // Email verification functionality (Feature 1)
-        const SUBMIT_API_URL = API_URL + '/submit-affiliation.php';
+        // Error and Success notification helpers
+        function showError(message) {
+            const errorEl = document.getElementById('verification-error');
+            const successEl = document.getElementById('verification-success');
+            if (errorEl) {
+                errorEl.innerHTML = message;
+                errorEl.classList.remove('hidden');
+            }
+            if (successEl) {
+                successEl.classList.add('hidden');
+            }
+        }
 
-        document.getElementById('send-code-btn').addEventListener('click', async function() {
+        function showSuccess(message) {
+            const errorEl = document.getElementById('verification-error');
+            const successEl = document.getElementById('verification-success');
+            if (successEl) {
+                successEl.textContent = message;
+                successEl.classList.remove('hidden');
+            }
+            if (errorEl) {
+                errorEl.classList.add('hidden');
+            }
+        }
+
+        // Global handler for sending verification code (callable via onclick or addEventListener)
+        window.handleSendVerificationCode = async function(btn) {
+            console.log('[Verification] handleSendVerificationCode called');
+            const sendBtn = btn || document.getElementById('send-code-btn');
             const emailInput = document.getElementById('verification-email');
+            if (!emailInput) {
+                console.error('[Verification] verification-email input not found');
+                return;
+            }
+
             const email = emailInput.value.trim();
 
             if (!email) {
@@ -710,14 +746,23 @@ if (!empty($resubmitId)) {
                 return;
             }
 
-            this.disabled = true;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending Verification Code...';
+            if (sendBtn) {
+                sendBtn.disabled = true;
+                sendBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Sending Verification Code...';
+            }
+
+            // Hide old messages while requesting
+            const errorEl = document.getElementById('verification-error');
+            if (errorEl) errorEl.classList.add('hidden');
 
             try {
-                const response = await fetch(SUBMIT_API_URL, {
+                const targetUrl = window.getSubmitApiUrl();
+                console.log('[Verification] Posting send-verification-code to:', targetUrl);
+                const response = await fetch(targetUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({
                         action: 'send-verification-code',
@@ -725,19 +770,22 @@ if (!empty($resubmitId)) {
                     })
                 });
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Server returned non-OK status:', response.status, errorText);
-                    throw new Error(`Server error: ${response.status}`);
+                const rawText = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(rawText);
+                } catch (parseErr) {
+                    console.error('[Verification] Non-JSON server response:', rawText);
+                    throw new Error('Server returned an unexpected response format.');
                 }
-
-                const result = await response.json();
 
                 if (result.success) {
                     currentEmail = email;
-                    document.getElementById('sent-email').textContent = email;
-                    document.getElementById('email-form').classList.add('hidden');
-                    document.getElementById('code-form').classList.remove('hidden');
+                    const sentEmailSpan = document.getElementById('sent-email');
+                    if (sentEmailSpan) sentEmailSpan.textContent = email;
+
+                    document.getElementById('email-form')?.classList.add('hidden');
+                    document.getElementById('code-form')?.classList.remove('hidden');
                     
                     showSuccess(result.message || 'Verification code sent to your email! Please check your inbox and spam folder.');
                     startCountdown();
@@ -750,18 +798,49 @@ if (!empty($resubmitId)) {
                             showError(result.message || result.error || 'This email cannot be used.');
                         }
                     } else {
-                        showError(result.error || result.message || 'Failed to send verification code');
+                        showError(result.error || result.message || 'Failed to send verification code. Please try again.');
                     }
-                    this.disabled = false;
-                    this.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Send Verification Code';
+                    if (sendBtn) {
+                        sendBtn.disabled = false;
+                        sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Send Verification Code';
+                    }
                 }
             } catch (error) {
-                console.error('Send code error:', error);
-                showError(error.message.includes('Server error') ? error.message : 'Cannot connect to the server. Please check your internet connection.');
-                this.disabled = false;
-                this.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Send Verification Code';
+                console.error('[Verification] Send code error:', error);
+                showError(error.message || 'Cannot connect to the server. Please check your internet connection.');
+                if (sendBtn) {
+                    sendBtn.disabled = false;
+                    sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Send Verification Code';
+                }
             }
+        };
+
+        // Attach event listener as backup to inline onclick
+        document.getElementById('send-code-btn')?.addEventListener('click', function() {
+            window.handleSendVerificationCode(this);
         });
+
+        // Initialize Member Directory Parser defensively
+        let parser = null;
+        try {
+            if (typeof MemberDirectoryParser !== 'undefined') {
+                parser = new MemberDirectoryParser();
+            }
+        } catch (e) {
+            console.warn('MemberDirectoryParser deferred:', e);
+        }
+        let memberDirectoryParsed = false;
+
+        // If resubmitting, skip email verification and set verified email
+        if (isResubmit) {
+            verifiedEmail = '<?php echo htmlspecialchars($existingApplication['email'] ?? ''); ?>';
+            document.getElementById('step1')?.classList.remove('active');
+            document.getElementById('step1')?.classList.add('completed');
+            document.getElementById('step2')?.classList.add('active');
+            document.getElementById('email-verification-step')?.classList.add('hidden');
+            document.getElementById('application-form-step')?.classList.remove('hidden');
+            console.log('Resubmit mode - document upload section rendered server-side');
+        }
 
         // Setup both single 6-digit input and 6-box inputs
         function setupCodeInputs() {
@@ -862,7 +941,8 @@ if (!empty($resubmitId)) {
         }
 
         // Verify code functionality
-        document.getElementById('verify-code-btn').addEventListener('click', async function() {
+        window.handleVerifyCode = async function(btn) {
+            const verifyBtn = btn || document.getElementById('verify-code-btn');
             const singleInput = document.getElementById('verification-code-input');
             let code = singleInput ? singleInput.value.trim() : '';
 
@@ -883,14 +963,19 @@ if (!empty($resubmitId)) {
                 return;
             }
 
-            this.disabled = true;
-            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Verifying Code...';
+            if (verifyBtn) {
+                verifyBtn.disabled = true;
+                verifyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Verifying Code...';
+            }
 
             try {
-                const response = await fetch(SUBMIT_API_URL, {
+                const targetUrl = window.getSubmitApiUrl();
+                console.log('[Verification] Posting verify-code to:', targetUrl);
+                const response = await fetch(targetUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json'
                     },
                     body: JSON.stringify({
                         action: 'verify-code',
@@ -899,13 +984,14 @@ if (!empty($resubmitId)) {
                     })
                 });
 
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Server returned non-OK status:', response.status, errorText);
-                    throw new Error(`Server error: ${response.status}`);
+                const rawText = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(rawText);
+                } catch (parseErr) {
+                    console.error('[Verification] Non-JSON server response:', rawText);
+                    throw new Error('Server returned an unexpected response format.');
                 }
-
-                const result = await response.json();
 
                 if (result.success) {
                     verifiedEmail = email;
@@ -916,82 +1002,105 @@ if (!empty($resubmitId)) {
 
                     setTimeout(() => {
                         moveToStep2();
-                    }, 1000);
+                    }, 800);
                 } else {
                     showError(result.error || result.message || 'Invalid or expired verification code');
-                    this.disabled = false;
-                    this.innerHTML = '<i class="fas fa-check-circle me-2"></i> Verify Code';
+                    if (verifyBtn) {
+                        verifyBtn.disabled = false;
+                        verifyBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Verify Code';
+                    }
                 }
             } catch (error) {
-                console.error('Verify code error:', error);
-                showError(error.message.includes('Server error') ? error.message : 'Cannot connect to the server. Please check your internet connection.');
-                this.disabled = false;
-                this.innerHTML = '<i class="fas fa-check-circle me-2"></i> Verify Code';
+                console.error('[Verification] Verify code error:', error);
+                showError(error.message || 'Cannot connect to the server. Please check your internet connection.');
+                if (verifyBtn) {
+                    verifyBtn.disabled = false;
+                    verifyBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Verify Code';
+                }
             }
+        };
+
+        document.getElementById('verify-code-btn')?.addEventListener('click', function() {
+            window.handleVerifyCode(this);
         });
 
         // Change email button handler
+        window.handleChangeEmail = function(btn) {
+            document.getElementById('code-form')?.classList.add('hidden');
+            document.getElementById('email-form')?.classList.remove('hidden');
+            const sendBtn = document.getElementById('send-code-btn');
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Send Verification Code';
+            }
+            document.getElementById('verification-email')?.focus();
+            clearInterval(countdownInterval);
+        };
+
         document.getElementById('change-email-btn')?.addEventListener('click', function(e) {
             e.preventDefault();
-            document.getElementById('code-form').classList.add('hidden');
-            document.getElementById('email-form').classList.remove('hidden');
-            document.getElementById('send-code-btn').disabled = false;
-            document.getElementById('send-code-btn').innerHTML = '<i class="fas fa-paper-plane me-2"></i> Send Verification Code';
-            document.getElementById('verification-email').focus();
-            clearInterval(countdownInterval);
+            window.handleChangeEmail(this);
         });
 
         // Resend code functionality
-        const resendBtn = document.getElementById('resend-btn');
-        if (resendBtn) {
-            resendBtn.addEventListener('click', async function(e) {
-                e.preventDefault();
-                const email = currentEmail || document.getElementById('verification-email')?.value.trim();
+        window.handleResendCode = async function(btn) {
+            const resendButton = btn || document.getElementById('resend-btn');
+            const email = currentEmail || document.getElementById('verification-email')?.value.trim();
 
-                if (!email) {
-                    showError('Email not found. Please re-enter your email address.');
-                    return;
-                }
+            if (!email) {
+                showError('Email not found. Please re-enter your email address.');
+                return;
+            }
 
-                this.disabled = true;
-                this.textContent = 'Sending new code...';
+            if (resendButton) {
+                resendButton.disabled = true;
+                resendButton.textContent = 'Sending new code...';
+            }
 
+            try {
+                const targetUrl = window.getSubmitApiUrl();
+                const response = await fetch(targetUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'send-verification-code',
+                        email: email
+                    })
+                });
+
+                const rawText = await response.text();
+                let result;
                 try {
-                    const response = await fetch(SUBMIT_API_URL, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            action: 'send-verification-code',
-                            email: email
-                        })
-                    });
-
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    const result = await response.json();
-
-                    if (result.success) {
-                        showSuccess('New verification code sent! Check your Gmail inbox.');
-                        startCountdown();
-                        setupCodeInputs();
-                    } else {
-                        showError(result.message || result.error || 'Failed to resend verification code');
-                    }
-                } catch (error) {
-                    console.error('Resend error:', error);
-                    showError('Network error: ' + error.message);
-                } finally {
-                    this.disabled = false;
-                    this.innerHTML = '<i class="fas fa-redo me-1"></i> Resend Verification Code';
+                    result = JSON.parse(rawText);
+                } catch (parseErr) {
+                    throw new Error('Server returned an unexpected response format.');
                 }
-            });
-        } else {
-            console.error('Resend button not found!');
-        }
+
+                if (result.success) {
+                    showSuccess('New verification code sent! Check your Gmail inbox.');
+                    startCountdown();
+                    setupCodeInputs();
+                } else {
+                    showError(result.message || result.error || 'Failed to resend verification code');
+                }
+            } catch (error) {
+                console.error('[Verification] Resend error:', error);
+                showError('Network error: ' + error.message);
+            } finally {
+                if (resendButton) {
+                    resendButton.disabled = false;
+                    resendButton.innerHTML = '<i class="fas fa-redo me-1"></i> Resend Verification Code';
+                }
+            }
+        };
+
+        document.getElementById('resend-btn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.handleResendCode(this);
+        });
 
         function startCountdown() {
             let seconds = 600; // 10 minutes

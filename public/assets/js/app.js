@@ -1,10 +1,8 @@
 // app.js - Main frontend logic
-// Load path configuration
-document.write('<script src="/js/config.js"></script>');
 
 class IECEPLSCApp {
     constructor() {
-        this.apiBase = IECEP_PATHS ? IECEP_PATHS.API_URL : '/public/api';
+        this.apiBase = (typeof IECEP_PATHS !== 'undefined' && IECEP_PATHS && IECEP_PATHS.API_URL) ? IECEP_PATHS.API_URL : '/public/api';
         this.init();
     }
 
