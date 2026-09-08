@@ -286,26 +286,44 @@ try {
             error_log("Profile check notice: " . $pe->getMessage());
         }
 
-        // Check if email has active pending affiliation
+        // Check if email has active pending or approved affiliation
         try {
             $existingAff = $sb->select('pending_affiliations', ['email' => 'eq.' . $email]);
             if (is_array($existingAff) && isset($existingAff[0]) && is_array($existingAff[0])) {
-                $status = $existingAff[0]['status'] ?? '';
-                if (in_array($status, ['pending', 'under_review'])) {
+                $status = strtolower($existingAff[0]['status'] ?? 'pending');
+                if (in_array($status, ['pending', 'under_review', 'resubmitted', 'submitted'])) {
                     echo json_encode([
                         'success' => false,
                         'email_exists' => true,
-                        'message' => 'An affiliation application for this email is currently pending or under review.'
+                        'message' => 'Bawal mag-submit muli: Ang email na ito ay mayroon nang kasalukuyang PENDING affiliation application na nasa proseso ng review.'
+                    ]);
+                    exit;
+                } elseif ($status === 'requires_revision') {
+                    echo json_encode([
+                        'success' => false,
+                        'email_exists' => true,
+                        'message' => 'Mayroon nang umiiral na application ang email na ito na nangangailangan ng revision. Paki-click ang link na ipinadala sa inyong Gmail upang mag-update.'
                     ]);
                     exit;
                 } elseif ($status === 'approved') {
                     echo json_encode([
                         'success' => false,
                         'email_exists' => true,
-                        'message' => 'This school chapter affiliation has already been approved.'
+                        'message' => 'Ang institusyong ito ay APPROVED at CHARTERED na sa IECEP-LSC. Hindi na kailangang mag-apply muli. Maaari na kayong mag-login sa School Officer Portal.'
                     ]);
                     exit;
                 }
+            }
+
+            // Check if email belongs to an existing chartered institution
+            $existingInst = $sb->select('institutions', ['email' => 'eq.' . $email]);
+            if (is_array($existingInst) && isset($existingInst[0]) && is_array($existingInst[0])) {
+                echo json_encode([
+                    'success' => false,
+                    'email_exists' => true,
+                    'message' => 'Ang institusyong ito ay nakarehistro na bilang chartered chapter sa IECEP-LSC. Bawal mag-apply muli.'
+                ]);
+                exit;
             }
         } catch (\Throwable $ae) {
             error_log("Affiliation check notice: " . $ae->getMessage());
@@ -451,6 +469,36 @@ try {
     
     if (empty($institution_name) || empty($institution_address) || empty($contact_person) || empty($contact_position) || empty($contact_email) || empty($contact_phone)) {
         throw new Exception('All fields are required.');
+    }
+
+    // 1. Strict duplicate check on email in pending_affiliations
+    $dupEmailAff = $sb->select('pending_affiliations', ['email' => 'eq.' . $contact_email]);
+    if (is_array($dupEmailAff) && !empty($dupEmailAff)) {
+        $st = strtolower($dupEmailAff[0]['status'] ?? 'pending');
+        if (in_array($st, ['pending', 'under_review', 'resubmitted', 'submitted'])) {
+            throw new Exception("Bawal mag-apply ulit: Ang email ({$contact_email}) ay may kasalukuyan nang PENDING affiliation application na nirerebyu pa ng secretariat.");
+        } elseif ($st === 'requires_revision') {
+            throw new Exception("Ang application para sa email na ito ay nangangailangan ng revision. Paki-gamit ang link na ipinadala sa inyong Gmail.");
+        } elseif ($st === 'approved') {
+            throw new Exception("Ang institusyong ito ay APPROVED at CHARTERED na sa IECEP-LSC. Bawal nang mag-submit muli.");
+        }
+    }
+
+    // 2. Strict duplicate check on institution name in pending_affiliations
+    $dupNameAff = $sb->select('pending_affiliations', ['school_name' => 'eq.' . $institution_name]);
+    if (is_array($dupNameAff) && !empty($dupNameAff)) {
+        $st = strtolower($dupNameAff[0]['status'] ?? 'pending');
+        if (in_array($st, ['pending', 'under_review', 'resubmitted', 'submitted'])) {
+            throw new Exception("Bawal mag-apply ulit: Ang paaralan na '{$institution_name}' ay may umiiral nang PENDING affiliation application.");
+        } elseif ($st === 'approved') {
+            throw new Exception("Ang paaralan na '{$institution_name}' ay opisyal nang APPROVED at CHARTERED sa IECEP-LSC.");
+        }
+    }
+
+    // 3. Strict check against chartered institutions table
+    $dupInst = $sb->select('institutions', ['name' => 'eq.' . $institution_name]);
+    if (is_array($dupInst) && !empty($dupInst)) {
+        throw new Exception("Ang '{$institution_name}' ay rehistrado na bilang opisyal na chartered institution sa IECEP-LSC.");
     }
 
     // Ensure applicant email was verified (Feature 1.3)

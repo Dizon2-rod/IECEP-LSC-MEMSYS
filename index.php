@@ -140,16 +140,35 @@ if ($isPostRequest && !empty($postAction)) {
                 exit;
             }
 
-            // 3. Block active applications (pending or under_review)
+            // 3. Block active applications (pending, under_review, requires_revision, resubmitted, or approved)
             $existing = $supabaseClient->select('pending_affiliations', ['email' => 'eq.' . $email]);
             if (is_array($existing) && isset($existing[0]) && is_array($existing[0])) {
-                $status = $existing[0]['status'] ?? '';
-                if (in_array($status, ['pending', 'under_review'])) {
-                    $message = 'This email is already associated with an active affiliation application (Status: Under Review). Please check your application status or contact the IECEP - LSC.';
+                $status = strtolower($existing[0]['status'] ?? 'pending');
+                if (in_array($status, ['pending', 'under_review', 'resubmitted', 'submitted'])) {
+                    $message = 'Bawal mag-submit muli: Ang email na ito ay mayroon nang kasalukuyang PENDING affiliation application na nasa proseso ng review. Pakihintay ang desisyon ng secretariat.';
                     ob_end_clean();
-                    echo json_encode(['success' => false, 'message' => $message, 'resubmit_available' => true]);
+                    echo json_encode(['success' => false, 'message' => $message]);
+                    exit;
+                } elseif ($status === 'requires_revision') {
+                    $message = 'Mayroon nang umiiral na application ang email na ito na nangangailangan ng revision. Paki-click ang link na ipinadala sa inyong Gmail upang mag-update ng documents.';
+                    ob_end_clean();
+                    echo json_encode(['success' => false, 'message' => $message]);
+                    exit;
+                } elseif ($status === 'approved') {
+                    $message = 'Ang institusyong ito ay APPROVED at CHARTERED na sa IECEP-LSC. Hindi na kailangang mag-apply muli. Maaari na kayong mag-login sa School Officer Portal.';
+                    ob_end_clean();
+                    echo json_encode(['success' => false, 'message' => $message]);
                     exit;
                 }
+            }
+
+            // 4. Check if email already belongs to a chartered institution
+            $existingInst = $supabaseClient->select('institutions', ['email' => 'eq.' . $email]);
+            if (is_array($existingInst) && isset($existingInst[0]) && is_array($existingInst[0])) {
+                $message = 'Ang institusyong ito ay nakarehistro na bilang chartered chapter sa IECEP-LSC. Bawal mag-apply muli.';
+                ob_end_clean();
+                echo json_encode(['success' => false, 'message' => $message]);
+                exit;
             }
 
             // Generate & store 6-digit code

@@ -279,6 +279,33 @@ if ($action === 'submit' || $action === 'submit_application') {
         $config = require __DIR__ . '/../../includes/supabase.php';
         $supabase = new SupabaseClient($config['url'], $config['anon_key']);
 
+        // Check for active pending affiliation or existing chartered institution
+        if (empty($resubmitId)) {
+            $existingAff = $supabase->select('pending_affiliations', ['email' => 'eq.' . $contactEmail]);
+            if (is_array($existingAff) && !empty($existingAff)) {
+                $st = strtolower($existingAff[0]['status'] ?? 'pending');
+                if (in_array($st, ['pending', 'under_review', 'resubmitted', 'submitted'])) {
+                    echo json_encode(['success' => false, 'error' => 'Bawal mag-apply ulit: Ang email na ito ay may kasalukuyan nang PENDING affiliation application na sumasailalim sa review.']);
+                    exit;
+                }
+            }
+
+            $existingSchool = $supabase->select('pending_affiliations', ['school_name' => 'eq.' . $institutionName]);
+            if (is_array($existingSchool) && !empty($existingSchool)) {
+                $st = strtolower($existingSchool[0]['status'] ?? 'pending');
+                if (in_array($st, ['pending', 'under_review', 'resubmitted', 'submitted'])) {
+                    echo json_encode(['success' => false, 'error' => "Bawal mag-apply ulit: Ang paaralan na '{$institutionName}' ay may umiiral nang PENDING affiliation application."]);
+                    exit;
+                }
+            }
+
+            $existingInst = $supabase->select('institutions', ['name' => 'eq.' . $institutionName]);
+            if (is_array($existingInst) && !empty($existingInst)) {
+                echo json_encode(['success' => false, 'error' => "Ang '{$institutionName}' ay opisyal nang rehistrado at chartered sa IECEP-LSC."]);
+                exit;
+            }
+        }
+
         // Prepare documents array
         $documents = [];
 
