@@ -1143,6 +1143,7 @@ ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS hosted_event_count INT DE
 ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS overall_score NUMERIC(5,2);
 ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ DEFAULT NOW();
 CREATE INDEX IF NOT EXISTS idx_compliance_scores_year ON compliance_scores(year);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_compliance_scores_inst_year_uq ON compliance_scores(institution_id, year);
 
 CREATE TABLE IF NOT EXISTS compliance_rules (
     id SERIAL PRIMARY KEY,
@@ -1889,7 +1890,625 @@ BEGIN
 END $$;
 
 -- =====================================================================
--- 20. SEED DATA: OFFICIAL LAGUNA HEI CHAPTERS (All 8 Campuses)
+-- 20. BUSINESS LOGIC, STORED FUNCTIONS & PROCEDURES (Full Localhost Parity)
+-- =====================================================================
+
+-- 20.1 Ensure extra compliance columns
+ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS compliance_status TEXT DEFAULT 'compliant';
+ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS payload JSONB DEFAULT '{}';
+ALTER TABLE blockchain_records ADD COLUMN IF NOT EXISTS institution_id UUID;
+
+-- 20.2 Membership ID Sequential Generator (IECEP-YYYY-XXXX)
+-- Parity: process-member-batch.php, generate-membership-id.php, validate-directory.php
+CREATE OR REPLACE FUNCTION generate_next_membership_id(p_year INT DEFAULT NULL)
+RETURNS TEXT AS $$
+DECLARE
+    v_year INT;
+    v_seq INT;
+    v_prefix TEXT := 'IECEP';
+BEGIN
+    v_year := COALESCE(p_year, EXTRACT(YEAR FROM CURRENT_DATE)::INT);
+    
+    -- Fetch configurable prefix if defined
+    BEGIN
+        SELECT value INTO v_prefix FROM system_settings WHERE key = 'member_id_prefix' LIMIT 1;
+        IF v_prefix IS NULL OR TRIM(v_prefix) = '' THEN
+            v_prefix := 'IECEP';
+        ELSE
+            v_prefix := UPPER(TRIM(v_prefix));
+        END IF;
+    EXCEPTION WHEN OTHERS THEN
+        v_prefix := 'IECEP';
+    END;
+
+    -- Atomically increment counter for the year
+    INSERT INTO member_id_counter (year, last_number, counter, updated_at)
+    VALUES (v_year, 1, 1, NOW())
+    ON CONFLICT (year) DO UPDATE
+    SET last_number = member_id_counter.last_number + 1,
+        counter = member_id_counter.counter + 1,
+        updated_at = NOW()
+    RETURNING last_number INTO v_seq;
+
+    -- Also keep membership_id_sequences in sync
+    BEGIN
+        INSERT INTO membership_id_sequences (year, last_number, updated_at)
+        VALUES (v_year, v_seq, NOW())
+        ON CONFLICT (year) DO UPDATE
+        SET last_number = GREATEST(membership_id_sequences.last_number, v_seq),
+            updated_at = NOW();
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+
+    RETURN v_prefix || '-' || v_year::TEXT || '-' || LPAD(v_seq::TEXT, 4, '0');
+END;
+$$ LANGUAGE plpgsql;
+
+-- 20.3 Auto-Assign Membership ID & Expiry Trigger Function
+CREATE OR REPLACE FUNCTION trg_auto_assign_membership_id()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_target_year INT;
+BEGIN
+    IF NEW.membership_id IS NULL OR TRIM(NEW.membership_id) = '' THEN
+        v_target_year := EXTRACT(YEAR FROM COALESCE(NEW.joined_date, CURRENT_DATE))::INT;
+        NEW.membership_id := generate_next_membership_id(v_target_year);
+    END IF;
+
+    IF NEW.joined_date IS NULL THEN
+        NEW.joined_date := CURRENT_DATE;
+    END IF;
+
+    IF NEW.expiration_date IS NULL THEN
+        NEW.expiration_date := NEW.joined_date + INTERVAL '1 year';
+    END IF;
+
+    IF NEW.membership_expiry IS NULL THEN
+        NEW.membership_expiry := NEW.expiration_date;
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_members_auto_id ON members;
+CREATE TRIGGER trg_members_auto_id
+    BEFORE INSERT ON members
+    FOR EACH ROW
+    EXECUTE FUNCTION trg_auto_assign_membership_id();
+
+-- 20.4 Synchronize Institution Member Counts
+-- Parity: Member batch registration, active roster status transitions
+CREATE OR REPLACE FUNCTION sync_institution_member_counts()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_inst_id UUID;
+    v_count INT;
+BEGIN
+    v_inst_id := COALESCE(NEW.institution_id, OLD.institution_id);
+    IF v_inst_id IS NOT NULL THEN
+        SELECT COUNT(*) INTO v_count
+        FROM members
+        WHERE institution_id = v_inst_id
+          AND status = 'active';
+
+        UPDATE institutions
+        SET membership_count = v_count,
+            updated_at = NOW()
+        WHERE id = v_inst_id;
+
+        UPDATE school_profiles
+        SET total_members = v_count,
+            updated_at = NOW()
+        WHERE institution_id = v_inst_id;
+    END IF;
+
+    -- If institution_id changed, also update the previous institution
+    IF TG_OP = 'UPDATE' AND OLD.institution_id IS NOT NULL AND OLD.institution_id IS DISTINCT FROM NEW.institution_id THEN
+        SELECT COUNT(*) INTO v_count
+        FROM members
+        WHERE institution_id = OLD.institution_id
+          AND status = 'active';
+
+        UPDATE institutions
+        SET membership_count = v_count,
+            updated_at = NOW()
+        WHERE id = OLD.institution_id;
+
+        UPDATE school_profiles
+        SET total_members = v_count,
+            updated_at = NOW()
+        WHERE institution_id = OLD.institution_id;
+    END IF;
+
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_sync_institution_member_counts ON members;
+CREATE TRIGGER trg_sync_institution_member_counts
+    AFTER INSERT OR UPDATE OF institution_id, status OR DELETE ON members
+    FOR EACH ROW
+    EXECUTE FUNCTION sync_institution_member_counts();
+
+-- 20.5 Affiliation & Member Fee Calculator
+-- Parity: App\Lib\FeeCalculator, Board Resolution No. 021-2024
+CREATE OR REPLACE FUNCTION calculate_affiliation_fees(
+    p_member_count INT,
+    p_new_members INT DEFAULT 0,
+    p_returning_members INT DEFAULT 0,
+    p_honorary_members INT DEFAULT 0
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_national_fee NUMERIC(10,2) := 2000.00;
+    v_operational_fee NUMERIC(10,2) := 800.00;
+    v_new_rate NUMERIC(10,2) := 250.00;
+    v_ret_rate NUMERIC(10,2) := 200.00;
+    v_hon_rate NUMERIC(10,2) := 300.00;
+    v_membership_total NUMERIC(10,2) := 0.00;
+    v_total_fee NUMERIC(10,2) := 0.00;
+BEGIN
+    -- Query fee_brackets for national fee
+    BEGIN
+        SELECT fee INTO v_national_fee
+        FROM fee_brackets
+        WHERE is_active = true
+          AND min_members <= p_member_count
+        ORDER BY min_members DESC
+        LIMIT 1;
+
+        IF v_national_fee IS NULL THEN
+            IF p_member_count <= 50 THEN v_national_fee := 1500.00;
+            ELSIF p_member_count <= 100 THEN v_national_fee := 2000.00;
+            ELSIF p_member_count <= 150 THEN v_national_fee := 2500.00;
+            ELSE v_national_fee := 3000.00;
+            END IF;
+        END IF;
+    EXCEPTION WHEN OTHERS THEN
+        v_national_fee := 2000.00;
+    END;
+
+    -- Query operational fee from system settings
+    BEGIN
+        SELECT value::NUMERIC INTO v_operational_fee
+        FROM system_settings
+        WHERE key = 'operational_fee'
+        LIMIT 1;
+        IF v_operational_fee IS NULL THEN v_operational_fee := 800.00; END IF;
+    EXCEPTION WHEN OTHERS THEN
+        v_operational_fee := 800.00;
+    END;
+
+    -- Query member type rates from member_fees
+    BEGIN
+        SELECT fee INTO v_new_rate FROM member_fees WHERE member_type = 'new' AND is_active = true LIMIT 1;
+        IF v_new_rate IS NULL THEN v_new_rate := 250.00; END IF;
+    EXCEPTION WHEN OTHERS THEN v_new_rate := 250.00;
+    END;
+
+    BEGIN
+        SELECT fee INTO v_ret_rate FROM member_fees WHERE member_type = 'returning' AND is_active = true LIMIT 1;
+        IF v_ret_rate IS NULL THEN v_ret_rate := 200.00; END IF;
+    EXCEPTION WHEN OTHERS THEN v_ret_rate := 200.00;
+    END;
+
+    BEGIN
+        SELECT fee INTO v_hon_rate FROM member_fees WHERE member_type = 'honorary' AND is_active = true LIMIT 1;
+        IF v_hon_rate IS NULL THEN v_hon_rate := 300.00; END IF;
+    EXCEPTION WHEN OTHERS THEN v_hon_rate := 300.00;
+    END;
+
+    v_membership_total := (COALESCE(p_new_members, 0) * v_new_rate) +
+                          (COALESCE(p_returning_members, 0) * v_ret_rate) +
+                          (COALESCE(p_honorary_members, 0) * v_hon_rate);
+
+    v_total_fee := v_national_fee + v_operational_fee + v_membership_total;
+
+    RETURN jsonb_build_object(
+        'member_count', p_member_count,
+        'national_fee', ROUND(v_national_fee, 2),
+        'affiliation_fee', ROUND(v_national_fee, 2),
+        'operational_fee', ROUND(v_operational_fee, 2),
+        'new_members', COALESCE(p_new_members, 0),
+        'returning_members', COALESCE(p_returning_members, 0),
+        'honorary_members', COALESCE(p_honorary_members, 0),
+        'membership_fees_total', ROUND(v_membership_total, 2),
+        'total_fee', ROUND(v_total_fee, 2)
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- 20.6 Verification Code & OTP Validation Function
+-- Parity: public/api/email.php (verifyCode), 2FA & Affiliation verification
+CREATE OR REPLACE FUNCTION verify_code(
+    p_email TEXT,
+    p_code TEXT,
+    p_type TEXT DEFAULT 'affiliation'
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_email TEXT;
+    v_code TEXT;
+    v_id UUID;
+BEGIN
+    v_email := LOWER(TRIM(p_email));
+    v_code := TRIM(p_code);
+
+    IF v_email = '' OR v_code = '' THEN
+        RETURN FALSE;
+    END IF;
+
+    -- Check verification_codes table
+    UPDATE verification_codes
+    SET used = true, verified = true
+    WHERE id = (
+        SELECT id FROM verification_codes
+        WHERE LOWER(email) = v_email
+          AND code = v_code
+          AND (used IS FALSE OR used IS NULL)
+          AND (expires_at IS NULL OR expires_at > NOW())
+        ORDER BY created_at DESC
+        LIMIT 1
+    )
+    RETURNING id INTO v_id;
+
+    IF v_id IS NOT NULL THEN
+        RETURN TRUE;
+    END IF;
+
+    -- Check email_verifications table
+    UPDATE email_verifications
+    SET verified = true
+    WHERE id = (
+        SELECT id FROM email_verifications
+        WHERE LOWER(email) = v_email
+          AND code = v_code
+          AND (verified IS FALSE OR verified IS NULL)
+          AND (expires_at IS NULL OR expires_at > NOW())
+        ORDER BY created_at DESC
+        LIMIT 1
+    )
+    RETURNING id INTO v_id;
+
+    RETURN (v_id IS NOT NULL);
+END;
+$$ LANGUAGE plpgsql;
+
+-- 20.7 Institution CBL Compliance Calculator
+-- Parity: App\Lib\ComplianceEngine, Constitution Art. V Sec. 3
+CREATE OR REPLACE FUNCTION calculate_institution_compliance(
+    p_institution_id UUID,
+    p_year INT DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_year INT;
+    v_total_members INT := 0;
+    v_attended_count INT := 0;
+    v_hosted_events INT := 0;
+    v_part_rate NUMERIC(5,2) := 0.00;
+    v_part_score NUMERIC(5,2) := 0.00;
+    v_host_score NUMERIC(5,2) := 0.00;
+    v_overall_score NUMERIC(5,2) := 0.00;
+    v_status TEXT := 'at_risk';
+BEGIN
+    v_year := COALESCE(p_year, EXTRACT(YEAR FROM CURRENT_DATE)::INT);
+
+    -- 1. Active members in chapter
+    SELECT COUNT(*) INTO v_total_members
+    FROM members
+    WHERE institution_id = p_institution_id
+      AND status = 'active';
+
+    -- 2. Distinct attendees for events in that year
+    SELECT COUNT(DISTINCT a.user_id) INTO v_attended_count
+    FROM attendance a
+    WHERE a.institution_id = p_institution_id
+      AND EXTRACT(YEAR FROM a.created_at) = v_year;
+
+    -- 3. Participation percentage
+    IF v_total_members > 0 THEN
+        v_part_rate := ROUND((v_attended_count::NUMERIC / v_total_members::NUMERIC) * 100.0, 2);
+    ELSE
+        v_part_rate := 0.00;
+    END IF;
+
+    -- 4. Count hosted events with completed status
+    SELECT COUNT(*) INTO v_hosted_events
+    FROM events
+    WHERE institution_id = p_institution_id
+      AND status = 'completed'
+      AND EXTRACT(YEAR FROM COALESCE(start_date, created_at)) = v_year;
+
+    -- 5. Constitution Art. V Sec. 3: Participation >= 40% AND hosted_events >= 1
+    IF v_part_rate >= 40.0 AND v_hosted_events >= 1 THEN
+        v_status := 'compliant';
+    ELSE
+        v_status := 'at_risk';
+    END IF;
+
+    v_part_score := CASE WHEN v_part_rate >= 40.0 THEN 50.0 ELSE (v_part_rate / 40.0) * 50.0 END;
+    v_host_score := CASE WHEN v_hosted_events >= 1 THEN 50.0 ELSE 0.0 END;
+    v_overall_score := LEAST(100.00, ROUND(v_part_score + v_host_score, 2));
+
+    -- 6. Upsert into compliance_scores table
+    INSERT INTO compliance_scores (
+        institution_id, year, participation_rate, hosted_event_count,
+        overall_score, compliance_status, last_updated
+    )
+    VALUES (
+        p_institution_id, v_year, v_part_rate, v_hosted_events,
+        v_overall_score, v_status, NOW()
+    )
+    ON CONFLICT (institution_id, year) DO UPDATE SET
+        participation_rate = EXCLUDED.participation_rate,
+        hosted_event_count = EXCLUDED.hosted_event_count,
+        overall_score = EXCLUDED.overall_score,
+        compliance_status = EXCLUDED.compliance_status,
+        last_updated = NOW();
+
+    -- 7. Sync back to institutions table
+    UPDATE institutions
+    SET compliance_status = v_status,
+        updated_at = NOW()
+    WHERE id = p_institution_id;
+
+    RETURN jsonb_build_object(
+        'institution_id', p_institution_id,
+        'year', v_year,
+        'total_members', v_total_members,
+        'attended_count', v_attended_count,
+        'participation_rate', v_part_rate,
+        'hosted_events', v_hosted_events,
+        'overall_score', v_overall_score,
+        'compliance_status', v_status
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- 20.8 Calculate Compliance for All Institutions RPC
+CREATE OR REPLACE FUNCTION calculate_all_institution_compliance(p_year INT DEFAULT NULL)
+RETURNS JSONB AS $$
+DECLARE
+    v_year INT;
+    v_inst RECORD;
+    v_results JSONB := '[]'::JSONB;
+    v_score JSONB;
+BEGIN
+    v_year := COALESCE(p_year, EXTRACT(YEAR FROM CURRENT_DATE)::INT);
+
+    FOR v_inst IN SELECT id, name FROM institutions WHERE status = 'active' ORDER BY name
+    LOOP
+        v_score := calculate_institution_compliance(v_inst.id, v_year);
+        v_results := v_results || jsonb_build_object(
+            'institution_id', v_inst.id,
+            'name', v_inst.name,
+            'data', v_score
+        );
+    END LOOP;
+
+    RETURN v_results;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 20.9 Users to User Profiles Auto-Sync Trigger Function
+-- Parity: Auth user creation & role synchronization
+CREATE OR REPLACE FUNCTION sync_user_to_user_profile()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO user_profiles (id, user_id, email, full_name, role, status, created_at, updated_at)
+    VALUES (
+        NEW.id,
+        NEW.id,
+        NEW.email,
+        COALESCE(NEW.full_name, 'IECEP User'),
+        COALESCE(NEW.role, 'member'),
+        CASE WHEN NEW.is_active THEN 'active' ELSE 'inactive' END,
+        NOW(),
+        NOW()
+    )
+    ON CONFLICT (email) DO UPDATE SET
+        full_name = EXCLUDED.full_name,
+        role = EXCLUDED.role,
+        status = EXCLUDED.status,
+        updated_at = NOW();
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_sync_user_profile ON users;
+CREATE TRIGGER trg_sync_user_profile
+    AFTER INSERT OR UPDATE OF email, full_name, role, is_active ON users
+    FOR EACH ROW
+    EXECUTE FUNCTION sync_user_to_user_profile();
+
+-- 20.10 Auto-Generate Transaction Reference & Blockchain Hash Trigger Function
+-- Parity: Treasury and payment processing
+CREATE OR REPLACE FUNCTION trg_auto_transaction_blockchain_hash()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.transaction_id IS NULL OR TRIM(NEW.transaction_id) = '' THEN
+        NEW.transaction_id := 'TXN-' || TO_CHAR(NOW(), 'YYYYMMDD') || '-' || UPPER(SUBSTRING(gen_random_uuid()::TEXT FROM 1 FOR 8));
+    END IF;
+
+    IF NEW.reference_number IS NULL OR TRIM(NEW.reference_number) = '' THEN
+        NEW.reference_number := 'REF-' || TO_CHAR(NOW(), 'YYYY') || '-' || UPPER(SUBSTRING(gen_random_uuid()::TEXT FROM 1 FOR 8));
+    END IF;
+
+    IF NEW.receipt_number IS NULL OR TRIM(NEW.receipt_number) = '' THEN
+        NEW.receipt_number := 'OR-' || TO_CHAR(NOW(), 'YYYY') || '-' || UPPER(SUBSTRING(gen_random_uuid()::TEXT FROM 1 FOR 6));
+    END IF;
+
+    IF NEW.blockchain_hash IS NULL OR TRIM(NEW.blockchain_hash) = '' THEN
+        NEW.blockchain_hash := encode(digest(CONCAT_WS(':', NEW.transaction_id, NEW.reference_number, NEW.amount, NEW.institution_id, clock_timestamp()), 'sha256'), 'hex');
+    END IF;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_tx_auto_hash ON transactions;
+CREATE TRIGGER trg_tx_auto_hash
+    BEFORE INSERT ON transactions
+    FOR EACH ROW
+    EXECUTE FUNCTION trg_auto_transaction_blockchain_hash();
+
+-- 20.11 Cryptographic Blockchain Audit Recorder
+-- Parity: App\Lib\BlockchainService (SHA-256 hash-chaining)
+CREATE OR REPLACE FUNCTION record_blockchain_audit(
+    p_entity_type TEXT,
+    p_entity_id TEXT,
+    p_institution_id UUID,
+    p_payload JSONB
+)
+RETURNS UUID AS $$
+DECLARE
+    v_record_id UUID := gen_random_uuid();
+    v_record_hash TEXT;
+    v_tx_hash TEXT;
+    v_prev_hash TEXT := '0000000000000000000000000000000000000000000000000000000000000000';
+    v_block_index BIGINT;
+BEGIN
+    v_record_hash := encode(digest(p_payload::TEXT, 'sha256'), 'hex');
+    v_tx_hash := encode(digest(CONCAT_WS(':', p_entity_type, p_entity_id, v_record_hash, clock_timestamp()), 'sha256'), 'hex');
+
+    SELECT transaction_hash, COALESCE(block_index, 0) + 1
+    INTO v_prev_hash, v_block_index
+    FROM blockchain_records
+    ORDER BY created_at DESC
+    LIMIT 1;
+
+    v_block_index := COALESCE(v_block_index, 1);
+    v_prev_hash := COALESCE(v_prev_hash, '0000000000000000000000000000000000000000000000000000000000000000');
+
+    INSERT INTO blockchain_records (
+        id, block_index, entity_type, entity_id, transaction_hash,
+        record_hash, previous_hash, confirmed, institution_id,
+        data_json, payload, metadata, created_at
+    )
+    VALUES (
+        v_record_id, v_block_index, p_entity_type, v_record_id, v_tx_hash,
+        v_record_hash, v_prev_hash, true, p_institution_id,
+        p_payload, p_payload, jsonb_build_object('source', 'postgres_rpc'), NOW()
+    );
+
+    RETURN v_record_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 20.12 Membership Expiry Sweep Procedure
+-- Parity: cron/expire_memberships.php
+CREATE OR REPLACE FUNCTION check_and_expire_memberships()
+RETURNS INTEGER AS $$
+DECLARE
+    v_expired_count INT;
+BEGIN
+    UPDATE members
+    SET status = 'expired',
+        updated_at = NOW()
+    WHERE status = 'active'
+      AND (
+          (expiration_date IS NOT NULL AND expiration_date < CURRENT_DATE)
+          OR (membership_expiry IS NOT NULL AND membership_expiry < CURRENT_DATE)
+      );
+
+    GET DIAGNOSTICS v_expired_count = ROW_COUNT;
+    RETURN v_expired_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 20.13 Institution Dashboard Stats RPC
+CREATE OR REPLACE FUNCTION get_institution_dashboard_summary(p_institution_id UUID)
+RETURNS JSONB AS $$
+DECLARE
+    v_inst RECORD;
+    v_total_members INT;
+    v_active_members INT;
+    v_pending_members INT;
+    v_completed_events INT;
+    v_latest_score NUMERIC(5,2);
+    v_comp_status TEXT;
+BEGIN
+    SELECT * INTO v_inst FROM institutions WHERE id = p_institution_id;
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('error', 'Institution not found');
+    END IF;
+
+    SELECT COUNT(*) INTO v_total_members FROM members WHERE institution_id = p_institution_id;
+    SELECT COUNT(*) INTO v_active_members FROM members WHERE institution_id = p_institution_id AND status = 'active';
+    SELECT COUNT(*) INTO v_pending_members FROM members WHERE institution_id = p_institution_id AND status = 'pending';
+    SELECT COUNT(*) INTO v_completed_events FROM events WHERE institution_id = p_institution_id AND status = 'completed';
+
+    SELECT overall_score, compliance_status
+    INTO v_latest_score, v_comp_status
+    FROM compliance_scores
+    WHERE institution_id = p_institution_id
+    ORDER BY year DESC, last_updated DESC
+    LIMIT 1;
+
+    RETURN jsonb_build_object(
+        'institution_id', p_institution_id,
+        'name', v_inst.name,
+        'acronym', v_inst.acronym,
+        'status', v_inst.status,
+        'affiliation_fee_paid', v_inst.affiliation_fee_paid,
+        'compliance_status', COALESCE(v_comp_status, v_inst.compliance_status, 'compliant'),
+        'overall_score', COALESCE(v_latest_score, 100.00),
+        'total_members', v_total_members,
+        'active_members', v_active_members,
+        'pending_members', v_pending_members,
+        'completed_events', v_completed_events
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+-- 20.14 Module-Specific Timestamp Trigger Functions
+CREATE OR REPLACE FUNCTION update_featured_cards_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_featured_cards_updated_at ON featured_cards;
+CREATE TRIGGER trg_featured_cards_updated_at
+    BEFORE UPDATE ON featured_cards
+    FOR EACH ROW
+    EXECUTE FUNCTION update_featured_cards_updated_at();
+
+CREATE OR REPLACE FUNCTION update_pending_affiliations_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_pending_affiliations_updated_at ON pending_affiliations;
+CREATE TRIGGER trg_pending_affiliations_updated_at
+    BEFORE UPDATE ON pending_affiliations
+    FOR EACH ROW
+    EXECUTE FUNCTION update_pending_affiliations_updated_at();
+
+CREATE OR REPLACE FUNCTION update_school_profiles_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_school_profiles_updated_at ON school_profiles;
+CREATE TRIGGER trg_school_profiles_updated_at
+    BEFORE UPDATE ON school_profiles
+    FOR EACH ROW
+    EXECUTE FUNCTION update_school_profiles_updated_at();
+
+-- =====================================================================
+-- 21. SEED DATA: OFFICIAL LAGUNA HEI CHAPTERS (All 8 Campuses)
 -- =====================================================================
 DO $$
 BEGIN
@@ -1917,7 +2536,7 @@ EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- =====================================================================
--- 21. SEED DATA: OFFICIAL USERS, AUTH & PROFILES
+-- 22. SEED DATA: OFFICIAL USERS, AUTH & PROFILES
 -- =====================================================================
 DO $$
 BEGIN
@@ -1956,7 +2575,7 @@ EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- =====================================================================
--- 22. SEED DATA: OFFICIAL MEMBERS & COUNTERS
+-- 23. SEED DATA: OFFICIAL MEMBERS & COUNTERS
 -- =====================================================================
 DO $$
 BEGIN
@@ -2016,7 +2635,7 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 
 -- =====================================================================
--- 23. SEED DATA: EVENTS & ANNOUNCEMENTS
+-- 24. SEED DATA: EVENTS & ANNOUNCEMENTS
 -- =====================================================================
 DO $$
 BEGIN
@@ -2060,7 +2679,7 @@ EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- =====================================================================
--- 24. SEED DATA: SETTINGS, FEE SCHEDULES, MEMBER FEES, COMPLIANCE RULES, MERCH
+-- 25. SEED DATA: SETTINGS, FEE SCHEDULES, MEMBER FEES, COMPLIANCE RULES, MERCH
 -- =====================================================================
 DO $$
 BEGIN
@@ -2123,7 +2742,7 @@ EXCEPTION WHEN OTHERS THEN NULL;
 END $$;
 
 -- =====================================================================
--- 25. ROW LEVEL SECURITY (RLS) POLICIES
+-- 26. ROW LEVEL SECURITY (RLS) POLICIES
 -- =====================================================================
 DO $$
 DECLARE
@@ -2142,7 +2761,7 @@ BEGIN
 END $$;
 
 -- =====================================================================
--- 26. REALTIME WEB-SOCKET SUBSCRIPTIONS
+-- 27. REALTIME WEB-SOCKET SUBSCRIPTIONS
 -- =====================================================================
 DO $$
 DECLARE
