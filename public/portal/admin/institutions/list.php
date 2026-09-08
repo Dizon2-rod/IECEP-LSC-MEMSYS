@@ -110,6 +110,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             // 3. Auto-Create / Update School Officer Portal Account & Send Credentials
             $officerTempPass = 'LSC-' . rand(1000, 9999) . '-' . substr(strtoupper(bin2hex(random_bytes(2))), 0, 4);
+            $officerEmailSent = false;
+            $officerEmailErr = '';
+            $officerEmailTo = $email;
+            $officerCreated = false;
+
             if ($email) {
                 $existingUser = $supabase->select('users', ['email' => 'eq.' . $email]);
                 if (!empty($existingUser) && isset($existingUser[0]['id'])) {
@@ -130,6 +135,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         'membership_status' => 'active',
                         'updated_at' => $timestamp
                     ], $officerUserId);
+                    $officerCreated = true;
                 } else {
                     $officerUserId = uuid_v4();
                     $supabase->insert('users', [[
@@ -156,11 +162,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                         'created_at' => $timestamp,
                         'updated_at' => $timestamp
                     ]]);
+                    $officerCreated = true;
                 }
 
+                // Send login credentials email to School Officer's Gmail
                 try {
-                    $emailService->sendSchoolAccountCredentials($email, $instName, $officerTempPass, $contactPerson ?: "$acronym Officer");
+                    $officerEmailSent = $emailService->sendSchoolAccountCredentials(
+                        $email,
+                        $instName,
+                        $officerTempPass,
+                        $contactPerson ?: "$acronym Officer"
+                    );
+                    if (!$officerEmailSent) {
+                        $officerEmailErr = $emailService->getLastError() ?: 'Email delivery issue';
+                        error_log("Officer email notice: " . $officerEmailErr);
+                    }
                 } catch (\Throwable $emEx) {
+                    $officerEmailErr = $emEx->getMessage();
                     error_log("Officer email send error: " . $emEx->getMessage());
                 }
             }
@@ -320,10 +338,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             // 5. Update pending application status
             if ($appId) {
-                $supabase->update('pending_affiliations', [
-                    'status' => 'approved',
-                    'updated_at' => $timestamp
-                ], $appId);
+                try {
+                    $supabase->update('pending_affiliations', [
+                        'status' => 'approved',
+                        'portal_user_id' => $officerUserId ?? null,
+                        'login_credentials_sent' => $officerEmailSent ? 1 : 0,
+                        'updated_at' => $timestamp
+                    ], $appId);
+                } catch (\Throwable $paEx) {
+                    $supabase->update('pending_affiliations', [
+                        'status' => 'approved',
+                        'updated_at' => $timestamp
+                    ], $appId);
+                }
             }
 
             // 6. Anchor blockchain proof
@@ -350,8 +377,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 error_log("Blockchain record insertion warning: " . $bcEx->getMessage());
             }
 
-            $feedbackMsg = "🎉 Successfully Approved Affiliation for '{$instName}'! Chapter active, School Officer account created, and {$ingestedCount} student members ingested.";
-            $feedbackType = 'success';
+            if ($officerCreated && $officerEmailSent) {
+                $feedbackMsg = "🎉 Successfully Approved Affiliation for '{$instName}'! School Officer account created and login credentials sent to {$officerEmailTo} (Temporary Password: {$officerTempPass}). {$ingestedCount} student members ingested.";
+                $feedbackType = 'success';
+            } elseif ($officerCreated && !$officerEmailSent) {
+                $feedbackMsg = "🎉 Affiliation Approved & School Officer account created for {$officerEmailTo}! (Temporary Password: <strong>{$officerTempPass}</strong>). Notice: Gmail delivery warning: " . htmlspecialchars($officerEmailErr ?: 'Please share password directly with officer.');
+                $feedbackType = 'warning';
+            } else {
+                $feedbackMsg = "🎉 Successfully Approved Affiliation for '{$instName}'! Chapter is now active and {$ingestedCount} student members ingested.";
+                $feedbackType = 'success';
+            }
         } catch (\Throwable $e) {
             error_log("Approval error: " . $e->getMessage());
             $feedbackMsg = "❌ Error approving affiliation: " . $e->getMessage();
