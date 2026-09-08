@@ -1139,7 +1139,8 @@ CREATE TABLE IF NOT EXISTS compliance_scores (
     participation_rate NUMERIC(5,2),
     hosted_event_count INT DEFAULT 0,
     overall_score NUMERIC(5,2),
-    last_updated TIMESTAMPTZ DEFAULT NOW()
+    last_updated TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (institution_id, year)
 );
 
 ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS institution_id UUID;
@@ -1150,6 +1151,7 @@ ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS overall_score NUMERIC(5,2
 ALTER TABLE compliance_scores ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ DEFAULT NOW();
 CREATE INDEX IF NOT EXISTS idx_compliance_scores_year ON compliance_scores(year);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_compliance_scores_inst_year_uq ON compliance_scores(institution_id, year);
+ALTER TABLE compliance_scores REPLICA IDENTITY FULL;
 
 CREATE TABLE IF NOT EXISTS compliance_rules (
     id SERIAL PRIMARY KEY,

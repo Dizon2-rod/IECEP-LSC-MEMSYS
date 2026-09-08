@@ -112,3 +112,12 @@ ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS affiliation_fee DECIMA
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS membership_total DECIMAL(10,2) DEFAULT 0;
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS total_fee DECIMAL(10,2) DEFAULT 0;
 ALTER TABLE pending_affiliations ADD COLUMN IF NOT EXISTS receipt_number TEXT;
+
+-- Fix PostgreSQL 55000: set REPLICA IDENTITY for tables in publication
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'compliance_scores') THEN
+        ALTER TABLE compliance_scores REPLICA IDENTITY FULL;
+    END IF;
+END $$;
+

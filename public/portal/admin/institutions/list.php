@@ -508,7 +508,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 error_log("Notice deleting school profile: " . $spEx->getMessage());
             }
 
-            // 4. Delete institution record from institutions table
+            // 4. Safely clean up any child compliance / fee / batch records that link to this institution
+            $cascadeTables = [
+                'compliance_scores',
+                'policy_compliance',
+                'fee_waiver_requests',
+                'fee_waivers',
+                'fee_adjustments',
+                'pending_members',
+                'member_upload_batches',
+                'upload_batches',
+                'member_applications'
+            ];
+            foreach ($cascadeTables as $cTable) {
+                try {
+                    $supabase->delete($cTable, ['institution_id' => 'eq.' . $deleteInstId]);
+                } catch (\Throwable $cEx) {
+                    error_log("Notice cleaning $cTable: " . $cEx->getMessage());
+                }
+            }
+
+            // 5. Delete institution record from institutions table
             $supabase->delete('institutions', ['id' => 'eq.' . $deleteInstId]);
 
             // 5. Update any pending_affiliations associated with this institution to cancelled
