@@ -58,10 +58,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (result.success) {
                     showStep('codeVerificationStep');
                     showMessage('success', result.message || 'Verification code sent to your email! Please check your inbox and spam folder.');
-                    if (result.code) {
-                        const codeInput = document.getElementById('verificationCode');
-                        if (codeInput) codeInput.value = result.code;
-                    }
+                    const codeInput = document.getElementById('verificationCode');
+                    if (codeInput) { codeInput.value = ''; codeInput.focus(); }
                 } else {
                     showMessage('error', result.message || 'Failed to send verification code');
                 }

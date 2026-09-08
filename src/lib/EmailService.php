@@ -122,87 +122,132 @@ class EmailService
         return $this->lastError;
     }
 
+    /**
+     * Checks whether an HTTPS email API key (Resend or Brevo) is configured
+     */
+    public function hasHttpsApiConfigured(): bool
+    {
+        $resend = getenv('RESEND_API_KEY') ?: ($_ENV['RESEND_API_KEY'] ?? ($_SERVER['RESEND_API_KEY'] ?? ''));
+        $brevo = getenv('BREVO_API_KEY') ?: ($_ENV['BREVO_API_KEY'] ?? ($_SERVER['BREVO_API_KEY'] ?? ''));
+        return !empty($resend) || !empty($brevo);
+    }
+
+    /**
+     * Send email via HTTPS REST API (Port 443) - ideal for cloud containers (e.g. Railway) where raw SMTP is blocked
+     */
+    public function sendViaHttpsRestApi(string $to, string $subject, string $htmlBody, string $altBody = ''): bool
+    {
+        // 1. Resend API (https://resend.com)
+        $resendKey = getenv('RESEND_API_KEY') ?: ($_ENV['RESEND_API_KEY'] ?? ($_SERVER['RESEND_API_KEY'] ?? ''));
+        if (!empty($resendKey)) {
+            $from = getenv('RESEND_FROM') ?: ($_ENV['RESEND_FROM'] ?? 'IECEP-LSC MEMSYS <onboarding@resend.dev>');
+            $payload = [
+                'from'    => $from,
+                'to'      => [$to],
+                'subject' => $subject,
+                'html'    => $htmlBody,
+                'text'    => $altBody ?: strip_tags($htmlBody)
+            ];
+            $ch = curl_init('https://api.resend.com/emails');
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => [
+                    'Authorization: Bearer ' . trim($resendKey),
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_POSTFIELDS     => json_encode($payload),
+                CURLOPT_TIMEOUT        => 15
+            ]);
+            $resp = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($code >= 200 && $code < 300) {
+                error_log("Email sent successfully to $to via Resend HTTPS API!");
+                return true;
+            }
+            error_log("Resend API failed: HTTP $code - Response: $resp");
+        }
+
+        // 2. Brevo API (https://brevo.com)
+        $brevoKey = getenv('BREVO_API_KEY') ?: ($_ENV['BREVO_API_KEY'] ?? ($_SERVER['BREVO_API_KEY'] ?? ''));
+        if (!empty($brevoKey)) {
+            $payload = [
+                'sender' => [
+                    'name'  => $this->config['email']['from_name'] ?? 'IECEP-LSC MEMSYS',
+                    'email' => $this->config['email']['username'] ?? 'rasheddizon7@gmail.com'
+                ],
+                'to'          => [['email' => $to]],
+                'subject'     => $subject,
+                'htmlContent' => $htmlBody
+            ];
+            $ch = curl_init('https://api.brevo.com/v3/smtp/email');
+            curl_setopt_array($ch, [
+                CURLOPT_POST           => true,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER     => [
+                    'api-key: ' . trim($brevoKey),
+                    'Content-Type: application/json'
+                ],
+                CURLOPT_POSTFIELDS     => json_encode($payload),
+                CURLOPT_TIMEOUT        => 15
+            ]);
+            $resp = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($code >= 200 && $code < 300) {
+                error_log("Email sent successfully to $to via Brevo HTTPS API!");
+                return true;
+            }
+            error_log("Brevo API failed: HTTP $code - Response: $resp");
+        }
+
+        return false;
+    }
+
     public function sendVerificationCode(string $to, string $code): bool
     {
-        try {
-            $mail = $this->createMailer();
-            $mail->addAddress($to);
-            $logoUrl = 'https://raw.githubusercontent.com/Dizon2-rod/IECEP-LSC-MEMSYS/main/public/assets/icons/iecep-logo.png';
-            $mail->Subject = 'Your IECEP-LSC Email Verification Code: ' . $code;
-            
-            // Format 6-digit code with spacing
-            $formattedCode = implode(' ', str_split($code));
+        $formattedCode = implode(' ', str_split($code));
+        $subject = 'Your IECEP-LSC Email Verification Code: ' . $code;
+        $logoUrl = 'https://raw.githubusercontent.com/Dizon2-rod/IECEP-LSC-MEMSYS/main/public/assets/icons/iecep-logo.png';
+        $altBody = "IECEP - Laguna Student Chapter (MEMSYS)\n\nEmail Verification Code\n\nYour 6-digit one-time verification code is: {$code}\n\nThis code expires in 10 minutes. Do not share this code with anyone.\n\n© " . date('Y') . " IECEP-LSC";
 
-            $mail->Body = "
+        // HTML Body Template
+        $htmlBody = "
 <!DOCTYPE html>
 <html lang='en'>
-<head>
-    <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Email Verification Code</title>
-</head>
-<body style='margin:0;padding:0;background-color:#F0F4F8;font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased;'>
+<head><meta charset='UTF-8'><title>Email Verification Code</title></head>
+<body style='margin:0;padding:0;background-color:#F0F4F8;font-family:Arial,sans-serif;'>
     <table border='0' cellpadding='0' cellspacing='0' width='100%' style='background-color:#F0F4F8;padding:30px 15px;'>
         <tr>
             <td align='center'>
                 <table border='0' cellpadding='0' cellspacing='0' width='100%' style='max-width:560px;background-color:#FFFFFF;border-radius:16px;overflow:hidden;box-shadow:0 8px 30px rgba(11,29,74,0.12);border:1px solid #E2E8F0;'>
-                    
-                    <!-- Header -->
                     <tr>
                         <td align='center' style='background:linear-gradient(135deg,#07122E 0%,#0B1D4A 50%,#142B67 100%);padding:35px 25px 25px;border-bottom:4px solid #D4AF37;'>
                             <img src='{$logoUrl}' alt='IECEP-LSC' width='64' height='64' style='display:block;margin:0 auto 12px;border-radius:10px;border:2px solid #D4AF37;background:#0B1D4A;object-fit:contain;'>
-                            <h1 style='color:#FFFFFF;font-size:20px;font-weight:800;margin:0 0 6px;letter-spacing:0.5px;'>IECEP &ndash; Laguna Student Chapter</h1>
+                            <h1 style='color:#FFFFFF;font-size:20px;font-weight:800;margin:0 0 6px;'>IECEP &ndash; Laguna Student Chapter</h1>
                             <p style='color:#F8E7A2;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;margin:0;'>Membership Management System</p>
                         </td>
                     </tr>
-
-                    <!-- Body Content -->
                     <tr>
                         <td style='padding:35px 30px;'>
                             <h2 style='color:#0B1D4A;font-size:22px;font-weight:700;margin:0 0 12px;'>Email Verification Code</h2>
                             <p style='color:#475569;font-size:15px;line-height:1.6;margin:0 0 24px;'>
                                 Hello! We received a request to verify this email address (<strong>" . htmlspecialchars($to) . "</strong>) for your IECEP-LSC application. Use the one-time verification code below to proceed:
                             </p>
-
-                            <!-- OTP Box -->
                             <table border='0' cellpadding='0' cellspacing='0' width='100%' style='margin:0 0 28px;'>
                                 <tr>
-                                    <td align='center' style='background:linear-gradient(135deg,#0B1D4A 0%,#17306D 100%);border-radius:12px;padding:22px 20px;border:2px solid #D4AF37;box-shadow:0 6px 18px rgba(11,29,74,0.15);'>
+                                    <td align='center' style='background:linear-gradient(135deg,#0B1D4A 0%,#17306D 100%);border-radius:12px;padding:22px 20px;border:2px solid #D4AF37;'>
                                         <span style='color:#F8E7A2;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;display:block;margin-bottom:8px;'>Your 6-Digit One-Time Code</span>
                                         <span style='color:#FFFFFF;font-family:Courier,monospace;font-size:36px;font-weight:800;letter-spacing:10px;display:inline-block;padding-left:10px;'>{$code}</span>
                                     </td>
                                 </tr>
                             </table>
-
-                            <!-- Expiry & Security Notice -->
-                            <div style='background-color:#FFFBEB;border-left:4px solid #F59E0B;border-radius:6px;padding:14px 16px;margin:0 0 24px;'>
-                                <table border='0' cellpadding='0' cellspacing='0' width='100%'>
-                                    <tr>
-                                        <td style='color:#92400E;font-size:13px;line-height:1.5;'>
-                                            <strong>&#9200; Code Validity:</strong> This code is valid for <strong>10 minutes</strong> and can only be used once. Never share this code with anyone.
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
-
                             <p style='color:#64748B;font-size:13px;line-height:1.5;margin:0;'>
-                                If you did not initiate this request, you can safely ignore this email. No changes will be made to your account.
+                                This code is valid for <strong>10 minutes</strong> and can only be used once. Never share this code with anyone.
                             </p>
                         </td>
                     </tr>
-
-                    <!-- Footer -->
-                    <tr>
-                        <td align='center' style='background-color:#F8FAFC;padding:24px 20px;border-top:1px solid #E2E8F0;'>
-                            <p style='color:#64748B;font-size:12px;margin:0 0 6px;'>
-                                &copy; " . date('Y') . " <strong>IECEP - Laguna Student Chapter</strong>. All rights reserved.
-                            </p>
-                            <p style='color:#94A3B8;font-size:11px;margin:0;'>
-                                Institute of Electronics Engineers of the Philippines &bull; MEMSYS Portal
-                            </p>
-                        </td>
-                    </tr>
-
                 </table>
             </td>
         </tr>
@@ -210,7 +255,20 @@ class EmailService
 </body>
 </html>";
 
-            $mail->AltBody = "IECEP - Laguna Student Chapter (MEMSYS)\n\nEmail Verification Code\n\nYour 6-digit one-time verification code is: {$code}\n\nThis code expires in 10 minutes. Do not share this code with anyone.\n\nIf you did not request this code, please ignore this email.\n\n© " . date('Y') . " IECEP-LSC";
+        // 1. If HTTPS REST API is configured (e.g. on Railway where SMTP is blocked), use it
+        if ($this->hasHttpsApiConfigured()) {
+            if ($this->sendViaHttpsRestApi($to, $subject, $htmlBody, $altBody)) {
+                return true;
+            }
+        }
+
+        // 2. Otherwise use SMTP (works on localhost / standard servers)
+        try {
+            $mail = $this->createMailer();
+            $mail->addAddress($to);
+            $mail->Subject = $subject;
+            $mail->Body = $htmlBody;
+            $mail->AltBody = $altBody;
 
             $result = $mail->send();
             if (!$result) {
