@@ -291,6 +291,8 @@ if ($isPostRequest && !empty($postAction)) {
         ob_end_clean();
         if ($verified) {
             $_SESSION['verified_email'] = $email;
+            $_SESSION['affiliation_verified_email'] = $email;
+            $_SESSION['affiliation_email_verified'] = true;
             echo json_encode(['success' => true, 'message' => 'Email verified successfully.']);
         } else {
             echo json_encode(['success' => false, 'message' => 'Invalid or expired verification code.']);
@@ -3483,6 +3485,7 @@ document.addEventListener('DOMContentLoaded', function () {
         
         const formData = new FormData(this);
         formData.set('contact_email', verifiedEmail);
+        formData.set('email_verified', 'true');
         formData.delete('action');
         
         try {

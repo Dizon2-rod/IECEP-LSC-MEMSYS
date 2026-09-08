@@ -372,12 +372,47 @@ try {
     }
 
     // Ensure applicant email was verified (Feature 1.3)
-    $verifiedSessionEmail = $_SESSION['affiliation_verified_email'] ?? '';
-    $emailVerifiedFlag = (!empty($_POST['email_verified']) && $_POST['email_verified'] === 'true');
+    $verifiedSessionEmail = $_SESSION['affiliation_verified_email'] ?? ($_SESSION['verified_email'] ?? '');
+    $emailVerifiedFlag = (!empty($_POST['email_verified']) && ($_POST['email_verified'] === 'true' || $_POST['email_verified'] === '1'));
     $resubmitId = trim($_POST['resubmit_id'] ?? '');
 
     if (empty($resubmitId)) {
-        if (!$emailVerifiedFlag && (empty($verifiedSessionEmail) || strtolower($contact_email) !== strtolower($verifiedSessionEmail))) {
+        $isEmailVerified = false;
+
+        // 1. Check session email match
+        if (!empty($verifiedSessionEmail) && strtolower($contact_email) === strtolower($verifiedSessionEmail)) {
+            $isEmailVerified = true;
+        }
+
+        // 2. Check verified flag from form submission
+        if (!$isEmailVerified && $emailVerifiedFlag) {
+            $isEmailVerified = true;
+        }
+
+        // 3. Database fallback: check if verification code was verified for this email in verification_codes table
+        if (!$isEmailVerified) {
+            try {
+                $recentCodes = $sb->select('verification_codes', [
+                    'email' => 'eq.' . $contact_email,
+                    'order' => 'created_at.desc',
+                    'limit' => 5
+                ]);
+                if (!empty($recentCodes) && is_array($recentCodes)) {
+                    foreach ($recentCodes as $rc) {
+                        $isUsed = !empty($rc['used']) || !empty($rc['used_at']);
+                        $createdAtTs = !empty($rc['created_at']) ? strtotime($rc['created_at']) : 0;
+                        if ($isUsed && ($createdAtTs > 0 && (time() - $createdAtTs) < 7200)) {
+                            $isEmailVerified = true;
+                            break;
+                        }
+                    }
+                }
+            } catch (\Throwable $ve) {
+                error_log("DB verification fallback notice: " . $ve->getMessage());
+            }
+        }
+
+        if (!$isEmailVerified) {
             throw new Exception('Email verification is required before submitting your affiliation application.');
         }
     }

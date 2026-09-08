@@ -1385,6 +1385,17 @@ $isResubmit = !empty($existingApplication);
             formData.append('operational_fee', feeData.operationalFee);
             formData.append('total_fee', feeData.totalFee);
 
+            if (verifiedEmail) {
+                formData.set('contact_email', verifiedEmail);
+                formData.set('email_verified', 'true');
+            } else {
+                const emailInput = document.getElementById('contact-email') || document.getElementById('verification-email');
+                if (emailInput && emailInput.value) {
+                    formData.set('contact_email', emailInput.value.trim());
+                    formData.set('email_verified', 'true');
+                }
+            }
+
             // Add resubmit ID if resubmitting
             if (isResubmit && resubmitId) {
                 formData.append('resubmit_id', resubmitId);
