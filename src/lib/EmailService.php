@@ -185,7 +185,11 @@ class EmailService
                 error_log("Email sent successfully to $to via Brevo HTTPS API!");
                 return true;
             }
-            $this->lastError = "Brevo API Error (HTTP $code): " . ($resp ?: $curlErr);
+            if ($code === 401 && (stripos((string)$resp, 'unrecognised IP address') !== false || stripos((string)$resp, 'authorised_ips') !== false)) {
+                $this->lastError = "Brevo IP Restriction: Buksan ang https://app.brevo.com/security/authorised_ips at i-disable/i-off ang 'Authorised IPs'.";
+            } else {
+                $this->lastError = "Brevo API Error (HTTP $code): " . ($resp ?: $curlErr);
+            }
             error_log($this->lastError . " - Trying alternative transports...");
         }
 
