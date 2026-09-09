@@ -11,11 +11,28 @@ if (file_exists($composerAutoload)) {
 spl_autoload_register(function ($class) {
     // Convert namespace to file path
     $file = __DIR__ . '/src/' . str_replace('\\', '/', $class) . '.php';
-    
-    // Check if file exists
     if (file_exists($file)) {
         require_once $file;
         return true;
+    }
+
+    // Support PSR-4 App\ mapping to src/
+    if (strpos($class, 'App\\') === 0) {
+        $relativeClass = substr($class, 4);
+        $psr4File = __DIR__ . '/src/' . str_replace('\\', '/', $relativeClass) . '.php';
+        if (file_exists($psr4File)) {
+            require_once $psr4File;
+            return true;
+        }
+
+        // Support lowercase directory/file names, e.g., App\Lib\CsvService -> src/lib/csv.php
+        if (strtolower($relativeClass) === 'lib/csvservice') {
+            $csvFile = __DIR__ . '/src/lib/csv.php';
+            if (file_exists($csvFile)) {
+                require_once $csvFile;
+                return true;
+            }
+        }
     }
     
     // Check vendor directory for Composer packages

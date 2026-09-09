@@ -25,6 +25,17 @@ if ($supabase) {
                 $institutionId = $userProfile[0]['institution_id'];
             }
         }
+        if (!$institutionId && !empty($user['email'])) {
+            $instByEmail = $supabase->select('institutions', ['email' => 'eq.' . $user['email'], 'limit' => 1]);
+            if (!empty($instByEmail[0]['id'])) {
+                $institutionId = $instByEmail[0]['id'];
+            } else {
+                $instByContact = $supabase->select('institutions', ['contact_email' => 'eq.' . $user['email'], 'limit' => 1]);
+                if (!empty($instByContact[0]['id'])) {
+                    $institutionId = $instByContact[0]['id'];
+                }
+            }
+        }
         if (!$institutionId) {
             $instList = $supabase->select('institutions', ['status' => 'eq.active', 'limit' => 1]);
             if (is_array($instList) && isset($instList[0]['id'])) {
@@ -604,10 +615,20 @@ if ($supabase && $institutionId) {
                         <tbody>
                             <?php if (empty($members)): ?>
                                 <tr>
-                                    <td colspan="6" style="text-align:center; padding:2.5rem; color:#64748B;">
-                                        <i class="fas fa-users-slash" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
-                                        <strong style="color:#0F172A; font-size:0.92rem;">No Registered Chapter Members Found in Database</strong>
-                                        <p style="margin:0.25rem 0 0; font-size:0.78rem;">Click "+ Add Student Member" or "Batch Upload" to populate your school chapter directory.</p>
+                                    <td colspan="6" style="text-align:center; padding:3rem 1.5rem; color:#64748B;">
+                                        <i class="fas fa-users-slash" style="font-size:2.5rem; color:#CBD5E1; margin-bottom:0.75rem; display:block;"></i>
+                                        <strong style="color:#0F172A; font-size:1rem; display:block; margin-bottom:0.35rem;">No Registered Chapter Members Found</strong>
+                                        <p style="margin:0 0 1.25rem; font-size:0.82rem; max-width:420px; margin-inline:auto;">
+                                            Your institution does not have any enrolled members listed yet. Upload your official student member directory to populate your roster.
+                                        </p>
+                                        <div style="display:inline-flex; align-items:center; gap:0.5rem; flex-wrap:wrap; justify-content:center;">
+                                            <a href="<?= PORTAL_URL ?>/school-officer/members/upload.php" class="btn-primary-navy" style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.55rem 1.15rem; font-size:0.82rem; border-radius:8px; text-decoration:none;">
+                                                <i class="fas fa-cloud-arrow-up" style="color:#FDE047;"></i> Upload Member Directory
+                                            </a>
+                                            <button type="button" class="btn-white" onclick="openMemberModal()" style="display:inline-flex; align-items:center; gap:0.4rem; padding:0.55rem 1.15rem; font-size:0.82rem; border-radius:8px;">
+                                                <i class="fas fa-user-plus" style="color:var(--color-navy);"></i> Add Student Member
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php else: ?>

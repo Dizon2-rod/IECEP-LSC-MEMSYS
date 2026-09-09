@@ -339,7 +339,7 @@ try {
                     'email' => $email,
                     'member_type' => $memberType,
                     'year_level' => $yearLevel,
-                    'payment_status' => false,
+                    'payment_status' => 'pending',
                     'membership_id' => $membershipId,
                 ], true);
 

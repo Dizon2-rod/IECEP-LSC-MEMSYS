@@ -16,6 +16,8 @@ $schoolAcronym = 'IECEP-SC';
 $supabase = getSupabaseClient();
 
 // Resolve Institution ID & Details from Database
+$institutionMembershipCount = null;
+
 if ($supabase) {
     try {
         if (!$institutionId && $userId) {
@@ -27,6 +29,19 @@ if ($supabase) {
                 $members = $supabase->select('members', ['user_id' => 'eq.' . $userId]);
                 if (is_array($members) && isset($members[0]['institution_id'])) {
                     $institutionId = $members[0]['institution_id'];
+                }
+            }
+        }
+
+        // Check by user email if institutionId still unresolved
+        if (!$institutionId && !empty($user['email'])) {
+            $instByEmail = $supabase->select('institutions', ['email' => 'eq.' . $user['email'], 'limit' => 1]);
+            if (!empty($instByEmail[0]['id'])) {
+                $institutionId = $instByEmail[0]['id'];
+            } else {
+                $instByContact = $supabase->select('institutions', ['contact_email' => 'eq.' . $user['email'], 'limit' => 1]);
+                if (!empty($instByContact[0]['id'])) {
+                    $institutionId = $instByContact[0]['id'];
                 }
             }
         }
@@ -62,7 +77,6 @@ $totalPaid = 0;
 $recentMembers = [];
 $recentBatches = [];
 $upcomingEvents = [];
-$institutionMembershipCount = null;
 
 if ($institutionId && $supabase) {
     // 1. Members
@@ -115,7 +129,10 @@ if ($institutionId && $supabase) {
     } catch (Exception $e) {}
 }
 
-$memberCount = $institutionMembershipCount ?? count($membersList);
+$actualMembersCount = count($membersList);
+$memberCount = ($institutionMembershipCount !== null && $institutionMembershipCount > 0)
+    ? max($institutionMembershipCount, $actualMembersCount)
+    : $actualMembersCount;
 $activePaidMembers = count(array_filter($membersList, fn($m) => strtolower($m['payment_status'] ?? '') === 'paid' || !empty($m['is_paid'])));
 $complianceRate = ($memberCount > 0) ? round(($activePaidMembers / $memberCount) * 100) : 0;
 ?>

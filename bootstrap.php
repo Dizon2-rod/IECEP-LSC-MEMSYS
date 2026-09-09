@@ -66,12 +66,30 @@ if (file_exists($composerAutoload)) {
 // 5. CUSTOM AUTOLOADER (PSR-4 compliant)
 // ============================================================================
 spl_autoload_register(function ($class) {
-    // Convert namespace to file path
+    // Try direct namespace path
     $file = PROJECT_ROOT . '/src/' . str_replace('\\', '/', $class) . '.php';
-    
     if (file_exists($file)) {
         require_once $file;
         return true;
+    }
+
+    // Support PSR-4 App\ mapping to src/
+    if (strpos($class, 'App\\') === 0) {
+        $relative = str_replace('\\', '/', substr($class, 4));
+        $file = PROJECT_ROOT . '/src/' . $relative . '.php';
+        if (file_exists($file)) {
+            require_once $file;
+            return true;
+        }
+
+        // Support lowercase file name or specific legacy maps
+        if (strtolower($relative) === 'lib/csvservice') {
+            $csvFile = PROJECT_ROOT . '/src/lib/csv.php';
+            if (file_exists($csvFile)) {
+                require_once $csvFile;
+                return true;
+            }
+        }
     }
     
     return false;
@@ -79,8 +97,10 @@ spl_autoload_register(function ($class) {
 
 // Backward compatibility for legacy pages that instantiate SupabaseClient
 // without its App\Lib namespace. New code should use App\Lib\SupabaseClient.
-if (!class_exists('SupabaseClient') && class_exists('App\\Lib\\SupabaseClient')) {
-    class_alias('App\\Lib\\SupabaseClient', 'SupabaseClient');
+if (!class_exists('SupabaseClient', false)) {
+    if (class_exists('App\\Lib\\SupabaseClient', false)) {
+        @class_alias('App\\Lib\\SupabaseClient', 'SupabaseClient');
+    }
 }
 
 // ============================================================================

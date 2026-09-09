@@ -123,14 +123,53 @@ function generateEditToken() {
     return bin2hex(random_bytes(32)); // 64 character hex string
 }
 
-function downloadAffiliationFile(string $source, string $destination): bool
+function generateUuidV4(): string
+{
+    $data = random_bytes(16);
+    $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
+    $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+}
+
+function resolveAffiliationLocalPath(string $source): ?string
 {
     if (is_file($source)) {
-        return copy($source, $destination);
+        return $source;
+    }
+
+    $cleanPath = parse_url($source, PHP_URL_PATH) ?: $source;
+    $cleanPath = preg_replace('#^/IECEP-LSC-MEMSYS#i', '', $cleanPath);
+
+    $candidates = [
+        PUBLIC_PATH . '/' . ltrim($cleanPath, '/'),
+        BASE_PATH . '/' . ltrim($cleanPath, '/'),
+        PUBLIC_PATH . '/uploads/' . ltrim(preg_replace('#^.*?uploads/#i', '', $cleanPath), '/'),
+        BASE_PATH . '/public/uploads/' . ltrim(preg_replace('#^.*?uploads/#i', '', $cleanPath), '/'),
+    ];
+
+    foreach ($candidates as $cand) {
+        if (is_file($cand)) {
+            return $cand;
+        }
+    }
+
+    return null;
+}
+
+function downloadAffiliationFile(string $source, string $destination): bool
+{
+    $local = resolveAffiliationLocalPath($source);
+    if ($local && is_file($local)) {
+        return copy($local, $destination);
     }
 
     if (!preg_match('#^https?://#i', $source)) {
-        $source = rtrim(BASE_URL, '/') . '/' . ltrim($source, '/');
+        $cleanSource = '/' . ltrim($source, '/');
+        $cleanBase = rtrim(BASE_URL, '/');
+        if (strpos($cleanSource, '/IECEP-LSC-MEMSYS/') === 0) {
+            $cleanBase = preg_replace('#/IECEP-LSC-MEMSYS$#i', '', $cleanBase);
+        }
+        $source = $cleanBase . $cleanSource;
     }
 
     $contents = false;
@@ -197,18 +236,21 @@ function saveAndImportAffiliationDirectory(SupabaseClient $supabase, array $appl
     $documentRows = [];
     $documentSources = [];
 
+    // 1. Check affiliation_documents table
     try {
         $storedDocuments = $supabase->select('affiliation_documents', ['application_id' => 'eq.' . $applicationId]);
         foreach ($storedDocuments ?: [] as $storedDocument) {
             if (!empty($storedDocument['file_path'])) {
                 $documentRows[] = $storedDocument;
-                $documentSources[$storedDocument['document_type'] ?? $storedDocument['file_name']] = $storedDocument['file_path'];
+                $docKey = $storedDocument['document_type'] ?? $storedDocument['file_name'];
+                $documentSources[$docKey] = $storedDocument['file_path'];
             }
         }
     } catch (Throwable $e) {
         error_log('Affiliation document lookup notice: ' . $e->getMessage());
     }
 
+    // 2. Check pending_affiliations.documents JSON and direct columns
     $documentTypes = [
         'letter_of_intent',
         'endorsement_letter',
@@ -224,8 +266,9 @@ function saveAndImportAffiliationDirectory(SupabaseClient $supabase, array $appl
         }
     }
 
+    // 3. Prepare Institution Document Directory in public/uploads/affiliations/{institution_id}/
     $institutionDirectory = PUBLIC_PATH . '/uploads/affiliations/' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $institutionId);
-    if (!is_dir($institutionDirectory) && !mkdir($institutionDirectory, 0755, true) && !is_dir($institutionDirectory)) {
+    if (!is_dir($institutionDirectory) && !mkdir($institutionDirectory, 0777, true) && !is_dir($institutionDirectory)) {
         throw new Exception('Unable to create institution document directory');
     }
 
@@ -238,9 +281,16 @@ function saveAndImportAffiliationDirectory(SupabaseClient $supabase, array $appl
         $sourceName = basename(parse_url($source, PHP_URL_PATH) ?: $documentType);
         $sourceName = preg_replace('/[^a-zA-Z0-9._-]/', '_', $sourceName) ?: ($documentType . '.dat');
         $destination = $institutionDirectory . '/' . $documentType . '_' . $sourceName;
-        if (!downloadAffiliationFile($source, $destination)) {
-            error_log("Unable to save affiliation document {$documentType} for application {$applicationId}");
-            continue;
+        
+        $copied = downloadAffiliationFile($source, $destination);
+        if (!$copied) {
+            error_log("Unable to save affiliation document {$documentType} for application {$applicationId} from {$source}");
+            // Still check if source itself exists
+            $local = resolveAffiliationLocalPath($source);
+            if ($local && is_file($local)) {
+                $destination = $local;
+                $copied = true;
+            }
         }
 
         $relativePath = '/IECEP-LSC-MEMSYS/public/uploads/affiliations/' . basename($institutionDirectory) . '/' . basename($destination);
@@ -257,37 +307,63 @@ function saveAndImportAffiliationDirectory(SupabaseClient $supabase, array $appl
             error_log('Institution document record notice: ' . $e->getMessage());
         }
 
-        if ($documentType === 'member_directory') {
+        if ($documentType === 'member_directory' && $copied) {
             $savedDirectoryPath = $destination;
         }
     }
 
+    // Fallback: If member_directory wasn't saved in loop, try source directly
+    if (!$savedDirectoryPath && !empty($documentSources['member_directory'])) {
+        $cand = resolveAffiliationLocalPath($documentSources['member_directory']);
+        if ($cand && is_file($cand)) {
+            $savedDirectoryPath = $cand;
+        }
+    }
+
+    // 4. Parse Member Directory if available
     if (!$savedDirectoryPath || !is_file($savedDirectoryPath)) {
-        throw new Exception('Member Directory file could not be saved for processing');
+        error_log("Notice: No Member Directory file available for application {$applicationId}");
+        $totalMembers = intval($application['total_members'] ?? 0);
+        return ['member_count' => $totalMembers, 'directory_path' => null];
     }
 
     $parser = new CsvService();
     $parsed = $parser->parseMemberDirectory($savedDirectoryPath);
     if ($parsed['error']) {
-        throw new Exception($parsed['message']);
+        error_log("Member Directory parse error for app {$applicationId}: " . ($parsed['message'] ?? 'Unknown'));
+        $totalMembers = intval($application['total_members'] ?? 0);
+        return ['member_count' => $totalMembers, 'directory_path' => $savedDirectoryPath];
     }
 
     $validMembers = $parsed['data'];
-    foreach ($validMembers as $member) {
+    $isPaymentConfirmed = !empty($application['receipt_number']) || floatval($application['total_fee'] ?? 0) > 0;
+    $paymentStatus = $isPaymentConfirmed ? 'paid' : 'pending';
+    $batchId = 'AFF-' . $applicationId;
+
+    foreach ($validMembers as $idx => $member) {
         $existing = $supabase->select('members', ['email' => 'eq.' . $member['email'], 'limit' => 1]);
         $memberType = !empty($existing[0]) ? 'returning' : ($member['member_type'] ?: 'new');
+        
+        $nameParts = explode(' ', trim($member['full_name']));
+        $firstName = count($nameParts) > 1 ? implode(' ', array_slice($nameParts, 0, -1)) : $member['full_name'];
+        $lastName = count($nameParts) > 1 ? end($nameParts) : '';
+        $membershipId = 'AFF-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(4)));
+
         $payload = [
             'institution_id' => $institutionId,
             'full_name' => $member['full_name'],
+            'first_name' => $firstName,
+            'last_name' => $lastName,
             'email' => $member['email'],
             'student_number' => $member['student_number'] ?: null,
-            'course' => $member['course'] ?: null,
-            'year_level' => $member['year_level'] ?: null,
+            'course' => $member['course'] ?: 'Bachelor of Science in Electronics Engineering',
+            'program' => $member['course'] ?: 'Bachelor of Science in Electronics Engineering',
+            'year_level' => $member['year_level'] ?: '1st Year',
             'membership_type' => 'student',
             'member_type' => $memberType,
-            'payment_status' => 'pending',
+            'payment_status' => $paymentStatus,
             'status' => 'active',
-            'membership_id' => 'AFF-' . date('Y') . '-' . strtoupper(bin2hex(random_bytes(4))),
+            'membership_id' => $membershipId,
             'created_at' => date('c'),
             'updated_at' => date('c')
         ];
@@ -297,13 +373,33 @@ function saveAndImportAffiliationDirectory(SupabaseClient $supabase, array $appl
         } else {
             $supabase->insert('members', $payload);
         }
+
+        // Insert into member_directory_imports for audit / admin review tracking
+        try {
+            $supabase->insert('member_directory_imports', [
+                'id' => generateUuidV4(),
+                'batch_id' => $batchId,
+                'application_id' => $applicationId,
+                'row_index' => $idx + 1,
+                'full_name' => $member['full_name'],
+                'name' => $member['full_name'],
+                'email' => $member['email'],
+                'member_number' => $membershipId,
+                'is_valid' => true,
+                'payment_status' => $isPaymentConfirmed,
+                'is_paid' => $isPaymentConfirmed,
+                'status' => 'imported',
+                'created_at' => date('c')
+            ]);
+        } catch (Throwable $mde) {
+            error_log('Notice inserting into member_directory_imports: ' . $mde->getMessage());
+        }
     }
 
     $memberCount = count($validMembers);
     $supabase->update('institutions', ['membership_count' => $memberCount, 'updated_at' => date('c')], $institutionId);
 
     try {
-        $batchId = 'AFF-' . $applicationId;
         $supabase->insert('upload_batches', [
             'id' => $batchId,
             'institution_id' => $institutionId,
@@ -635,7 +731,7 @@ switch ($action) {
                 $schoolData = [
                     'name' => $institution,
                     'facebook_url' => '',
-                    'member_count' => 0,
+                    'member_count' => $directoryImport['member_count'] ?? 0,
                     'status' => 'active',
                     'created_at' => date('c'),
                     'updated_at' => date('c')
