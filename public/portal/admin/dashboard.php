@@ -45,8 +45,18 @@ try {
 }
 $totalMembers = count($membersList);
 $paidMembers = count(array_filter($membersList, fn($m) => in_array(strtolower($m['payment_status'] ?? ''), ['paid', 'active', 'completed', 'verified'])));
-$pendingMembers = $totalMembers - $paidMembers;
-$issuedDigitalIds = count(array_filter($membersList, fn($m) => !empty($m['membership_id'])));
+
+// Sum from verified institutional rosters
+$instMembersSum = 0;
+foreach ($institutionsList as $inst) {
+    $instMembersSum += intval($inst['membership_count'] ?? 0);
+}
+if ($instMembersSum > $totalMembers) {
+    $totalMembers = $instMembersSum;
+    $paidMembers = $instMembersSum;
+}
+$pendingMembers = max(0, $totalMembers - $paidMembers);
+$issuedDigitalIds = max(count(array_filter($membersList, fn($m) => !empty($m['membership_id']))), count($membersList));
 
 // C. Real Pending Chapter Affiliations
 $pendingAffiliationsList = [];

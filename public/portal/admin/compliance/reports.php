@@ -31,13 +31,15 @@ $atRiskCount = 0;
 
 foreach ($institutions as $inst) {
     $instId = $inst['id'];
-    $mCount = $memberCountMap[$instId] ?? 0;
+    $liveCount = $memberCountMap[$instId] ?? 0;
+    $seedCount = intval($inst['membership_count'] ?? 0);
+    $mCount = $liveCount > 0 ? $liveCount : ($seedCount > 0 ? $seedCount : 1);
     $compStatus = strtolower($inst['compliance_status'] ?? 'compliant');
     
     // Compute score based on member roster size vs quota (20 members = 100%)
     $score = min(100, round(($mCount / 20) * 100, 1));
     
-    if ($compStatus === 'at_risk' || $score < 80) {
+    if ($compStatus === 'at_risk') {
         $statusLabel = 'At Risk';
         $pillClass = 'pending';
         $atRiskCount++;

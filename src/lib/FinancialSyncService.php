@@ -50,7 +50,7 @@ class FinancialSyncService
             $status = strtolower(trim((string)($transaction['status'] ?? 'pending')));
             $totals['grand_total_all_time'] += $amount;
 
-            if (in_array($status, ['paid', 'completed', 'verified'], true)) {
+            if (in_array($status, ['paid', 'completed', 'verified', 'settled', 'success', 'approved'], true)) {
                 $totals['total_paid'] += $amount;
                 if ($this->isWithinRange($transaction['created_at'] ?? null, $yearStart, $yearEnd)) {
                     $totals['current_year_total'] += $amount;
@@ -258,6 +258,45 @@ class FinancialSyncService
             $summary['institutions'][] = $row;
         }
 
+        // If institution_financial_totals has no records or 0 paid, cross-check transactions directly
+        if ($summary['institution_count'] === 0 || $summary['total_paid'] === 0.0) {
+            try {
+                $txRows = $this->supabase->select('transactions', ['select' => '*']);
+                if ($this->isRecordList($txRows) && !empty($txRows)) {
+                    $paidAliases = ['paid', 'completed', 'verified', 'settled', 'success', 'approved'];
+                    $txPaid = 0.0;
+                    $txPending = 0.0;
+                    $txGrand = 0.0;
+                    $uniqueInsts = [];
+                    foreach ($txRows as $tx) {
+                        $amt = round((float)($tx['amount'] ?? 0), 2);
+                        $st = strtolower(trim((string)($tx['status'] ?? 'pending')));
+                        $txGrand += $amt;
+                        if (in_array($st, $paidAliases, true)) {
+                            $txPaid += $amt;
+                        } elseif (!in_array($st, ['refunded', 'cancelled', 'canceled', 'rejected'], true)) {
+                            $txPending += $amt;
+                        }
+                        if (!empty($tx['institution_id'])) {
+                            $uniqueInsts[$tx['institution_id']] = true;
+                        }
+                    }
+                    if ($txPaid > 0 || count($txRows) > 0) {
+                        $summary['total_paid'] = round($txPaid, 2);
+                        $summary['total_pending'] = round($txPending, 2);
+                        $summary['grand_total_all_time'] = round($txGrand, 2);
+                        $summary['current_year_total'] = round($txPaid, 2);
+                        $summary['transaction_count'] = count($txRows);
+                        if ($summary['institution_count'] === 0) {
+                            $summary['institution_count'] = count($uniqueInsts);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                error_log('FinancialSyncService transactions fallback error: ' . $e->getMessage());
+            }
+        }
+
         foreach (['total_paid', 'total_pending', 'total_refunded', 'total_cancelled', 'grand_total_all_time', 'current_year_total'] as $k) {
             $summary[$k] = round($summary[$k], 2);
         }
@@ -295,13 +334,18 @@ class FinancialSyncService
         ?string $performedBy = null
     ): void {
         try {
+            $perfUuid = $performedBy ?? ($_SESSION['user']['id'] ?? null);
+            if ($perfUuid && !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $perfUuid)) {
+                $perfUuid = null;
+            }
+
             $this->supabase->insert('financial_audit_logs', [
                 'institution_id' => $institutionId,
                 'transaction_id' => $transactionId,
                 'action' => $action,
                 'old_value' => $oldValue !== null ? json_encode($oldValue) : null,
                 'new_value' => $newValue !== null ? json_encode($newValue) : null,
-                'performed_by' => $performedBy ?? ($_SESSION['user']['id'] ?? null),
+                'performed_by' => $perfUuid,
                 'created_at' => date('c')
             ]);
         } catch (\Throwable $e) {

@@ -16,20 +16,23 @@ $compliantInstitutions = 0;
 $complianceRate = 100;
 
 try {
-    $mems = $supabase->select('members', ['select' => 'id']);
-    if (is_array($mems)) $totalMembers = count($mems);
-    if ($totalMembers === 0) {
-        $profs = $supabase->select('user_profiles', ['select' => 'id']);
-        if (is_array($profs)) $totalMembers = count($profs);
-    }
-
     $insts = $supabase->select('institutions', ['select' => '*']);
+    $instRosters = 0;
     if (is_array($insts)) {
         $totalInstitutions = count($insts);
         $compliantInstitutions = count(array_filter($insts, fn($i) => ($i['compliance_status'] ?? '') === 'compliant' || ($i['status'] ?? '') === 'active'));
         if ($totalInstitutions > 0) {
             $complianceRate = round(($compliantInstitutions / $totalInstitutions) * 100);
         }
+        foreach ($insts as $i) {
+            $instRosters += intval($i['membership_count'] ?? 0);
+        }
+    }
+
+    $mems = $supabase->select('members', ['select' => 'id']);
+    if (is_array($mems)) $totalMembers = count($mems);
+    if ($instRosters > $totalMembers) {
+        $totalMembers = $instRosters;
     }
 
     $evts = $supabase->select('events', ['select' => 'id']);
@@ -37,8 +40,10 @@ try {
 
     $txs = $supabase->select('transactions', ['select' => 'amount,status']);
     if (is_array($txs)) {
+        $paidAliases = ['paid', 'completed', 'verified', 'settled', 'success', 'approved'];
         foreach ($txs as $t) {
-            if (($t['status'] ?? '') === 'paid' || ($t['status'] ?? '') === 'completed') {
+            $st = strtolower(trim((string)($t['status'] ?? '')));
+            if (in_array($st, $paidAliases, true)) {
                 $totalRevenue += floatval($t['amount'] ?? 0);
             }
         }

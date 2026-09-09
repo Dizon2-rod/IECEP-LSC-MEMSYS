@@ -19,10 +19,10 @@ try {
         $transactionsList = $rawTx;
         foreach ($rawTx as $tx) {
             $amt = floatval($tx['amount'] ?? 0);
-            $type = strtolower($tx['type'] ?? '');
+            $type = strtolower($tx['type'] ?? ($tx['transaction_type'] ?? ''));
             $st = strtolower($tx['status'] ?? 'pending');
 
-            if ($st === 'paid' || $st === 'completed') {
+            if (in_array($st, ['paid', 'completed', 'verified', 'settled', 'success', 'approved'], true)) {
                 if ($type === 'expense' || $type === 'disbursement') {
                     $totalOutflow += $amt;
                 } else {

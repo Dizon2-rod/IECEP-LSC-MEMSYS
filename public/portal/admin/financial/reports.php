@@ -22,20 +22,31 @@ try {
     $rawTx = $supabase->select('transactions', ['select' => '*', 'order' => 'created_at.desc']);
     if (is_array($rawTx)) {
         $totalTransactions = count($rawTx);
+        $paidStatuses = ['paid', 'completed', 'verified', 'settled', 'success', 'approved'];
+
         foreach ($rawTx as $tx) {
             $amt = floatval($tx['amount'] ?? 0);
-            $type = strtolower($tx['type'] ?? ($tx['transaction_type'] ?? 'membership_fee'));
+            $type = strtolower($tx['transaction_type'] ?? ($tx['type'] ?? 'membership_fee'));
             $created = $tx['created_at'] ?? $tx['transaction_date'] ?? date('Y-m-d');
             $monthKey = date('F Y', strtotime($created));
+            $st = strtolower(trim((string)($tx['status'] ?? 'pending')));
 
-            if (($tx['status'] ?? '') === 'paid' || ($tx['status'] ?? '') === 'completed') {
+            if (in_array($st, $paidStatuses, true)) {
                 $totalCollections += $amt;
                 if (!isset($monthlyData[$monthKey])) {
                     $monthlyData[$monthKey] = 0.0;
                 }
                 $monthlyData[$monthKey] += $amt;
 
-                if (isset($typeBreakdown[$type])) {
+                // Accurately attribute affiliation vs membership components
+                $notes = $tx['notes'] ?? '';
+                if ($type === 'affiliation_fee' && preg_match('/Bracket\s*₱?([\d,]+).*?Op Fee\s*₱?([\d,]+).*?Student Dues\s*₱?([\d,]+)/ui', $notes, $m)) {
+                    $bracketVal = floatval(str_replace(',', '', $m[1]));
+                    $opVal = floatval(str_replace(',', '', $m[2]));
+                    $duesVal = floatval(str_replace(',', '', $m[3]));
+                    $typeBreakdown['affiliation_fee'] += ($bracketVal + $opVal);
+                    $typeBreakdown['membership_fee'] += $duesVal;
+                } elseif (isset($typeBreakdown[$type])) {
                     $typeBreakdown[$type] += $amt;
                 } else {
                     $typeBreakdown['membership_fee'] += $amt;

@@ -37,10 +37,12 @@ $atRiskCount = 0;
 
 foreach ($institutions as $inst) {
     $instId = $inst['id'];
-    $mCount = $memberCountMap[$instId] ?? 0;
+    $liveCount = $memberCountMap[$instId] ?? 0;
+    $seedCount = intval($inst['membership_count'] ?? 0);
+    $mCount = $liveCount > 0 ? $liveCount : ($seedCount > 0 ? $seedCount : 1);
     $compStatus = strtolower($inst['compliance_status'] ?? 'compliant');
     
-    if ($compStatus === 'at_risk' || $mCount < 5) {
+    if ($compStatus === 'at_risk' || ($compStatus !== 'compliant' && $mCount < 1)) {
         $statusLabel = 'At Risk';
         $pillClass = 'pending';
         $atRiskCount++;

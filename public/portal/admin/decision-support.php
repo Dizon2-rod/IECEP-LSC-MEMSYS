@@ -16,20 +16,19 @@ $atRiskCount = 0;
 
 try {
     $txs = $supabase->select('transactions', ['select' => '*']);
-    if (is_array($txs) && !empty($txs)) {
+        $paidAliases = ['paid', 'completed', 'verified', 'settled', 'success', 'approved'];
         foreach ($txs as $t) {
             $amt = floatval($t['amount'] ?? 0);
-            $st = strtolower($t['status'] ?? 'pending');
-            if ($st === 'completed' || $st === 'paid') {
+            $st = strtolower(trim((string)($t['status'] ?? 'pending')));
+            if (in_array($st, $paidAliases, true)) {
                 $totalCollected += $amt;
-            } else {
+            } elseif (!in_array($st, ['refunded', 'cancelled', 'canceled', 'rejected'], true)) {
                 $totalPending += $amt;
             }
         }
         if ($totalCollected + $totalPending > 0) {
             $collectionRate = round(($totalCollected / ($totalCollected + $totalPending)) * 100, 1);
         }
-    }
 
     $insts = $supabase->select('institutions', ['select' => '*']);
     if (is_array($insts)) {
