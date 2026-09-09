@@ -260,6 +260,9 @@ $avgScore = $totalInst > 0 ? round(array_sum(array_column($scorecards, 'score'))
                     </p>
                 </div>
                 <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <a href="<?= PORTAL_URL ?>/admin/policy-compliance.php" class="btn-white">
+                        <i class="fas fa-clipboard-check" style="color:var(--color-navy);"></i> Policy Compliance
+                    </a>
                     <button class="btn-white" onclick="window.print()">
                         <i class="fas fa-print"></i> Print Scorecard
                     </button>

@@ -310,6 +310,9 @@ $complianceRate = $totalInstitutions > 0 ? round(($compliantCount / $totalInstit
                     </p>
                 </div>
                 <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <a href="<?= PORTAL_URL ?>/admin/policy-compliance.php" class="btn-white">
+                        <i class="fas fa-clipboard-check" style="color:var(--color-navy);"></i> Policy Compliance
+                    </a>
                     <a href="<?= PORTAL_URL ?>/admin/compliance/reports.php" class="btn-white">
                         <i class="fas fa-file-contract" style="color:var(--color-navy);"></i> Compliance Reports
                     </a>
