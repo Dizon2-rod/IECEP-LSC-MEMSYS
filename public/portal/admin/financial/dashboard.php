@@ -4,39 +4,57 @@ $current_page = 'financial';
 
 require_once __DIR__ . '/../../auth_check.php';
 require_role(['admin', 'super_admin', 'treasurer', 'auditor']);
+require_once __DIR__ . '/../../../../src/lib/FinancialSyncService.php';
 
 $supabase = getSupabaseClient();
+$syncService = new \App\Lib\FinancialSyncService($supabase);
 
 $totalCollections = 0.0;
 $pendingCollections = 0.0;
 $totalMembers = 0;
 $totalInstitutions = 0;
 $transactionsList = [];
-$schoolRevenue = [];
+$institutionBreakdown = [];
+$lastSyncedAt = null;
 
 try {
-    $rawPayments = $supabase->select('payments', ['select' => '*', 'order' => 'created_at.desc']);
-    if (is_array($rawPayments)) {
-        $transactionsList = $rawPayments;
-        foreach ($rawPayments as $p) {
-            $amt = floatval($p['amount'] ?? 0);
-            $st = strtolower($p['status'] ?? ($p['payment_status'] ?? 'pending'));
-            if ($st === 'completed' || $st === 'paid') {
-                $totalCollections += $amt;
-            } else {
-                $pendingCollections += $amt;
+    // Use synced totals as the single source of truth
+    $globalSummary = $syncService->getGlobalSummary();
+    $totalCollections = $globalSummary['total_paid'];
+    $pendingCollections = $globalSummary['total_pending'];
+    $totalInstitutions = $globalSummary['institution_count'];
+    $lastSyncedAt = $globalSummary['last_synced_at'];
+    $institutionBreakdown = $globalSummary['institutions'];
+
+    // Load institution names for the breakdown table
+    $rawInst = $supabase->select('institutions', ['select' => 'id,name,acronym']);
+    $instNames = [];
+    if (is_array($rawInst)) {
+        foreach ($rawInst as $inst) {
+            if (!empty($inst['id'])) {
+                $instNames[$inst['id']] = $inst;
             }
         }
+        $totalInstitutions = max($totalInstitutions, count($rawInst));
     }
 
-    $rawMembers = $supabase->select('members', ['select' => 'id, payment_status']);
+    // Attach institution names to breakdown rows
+    foreach ($institutionBreakdown as &$row) {
+        $iid = $row['institution_id'] ?? '';
+        $row['institution_name'] = $instNames[$iid]['name'] ?? 'Unknown';
+        $row['institution_acronym'] = $instNames[$iid]['acronym'] ?? '';
+    }
+    unset($row);
+
+    $rawMembers = $supabase->select('members', ['select' => 'id']);
     if (is_array($rawMembers)) {
         $totalMembers = count($rawMembers);
     }
 
-    $rawInst = $supabase->select('institutions', ['select' => 'id, name, acronym']);
-    if (is_array($rawInst)) {
-        $totalInstitutions = count($rawInst);
+    // Fetch recent transactions for the table
+    $rawTx = $supabase->select('transactions', ['select' => '*', 'order' => 'created_at.desc', 'limit' => 10]);
+    if (is_array($rawTx)) {
+        $transactionsList = $rawTx;
     }
 } catch (Exception $e) {
     error_log("Financial dashboard error: " . $e->getMessage());
@@ -236,11 +254,19 @@ try {
                     </p>
                 </div>
                 <div style="display:flex; align-items:center; gap:0.45rem; flex-wrap:wrap;">
+                    <?php if ($lastSyncedAt): ?>
+                    <span style="font-size:0.68rem; color:#64748B; background:#F1F5F9; padding:0.25rem 0.55rem; border-radius:5px;">
+                        <i class="fas fa-clock-rotate-left"></i> Synced: <?= date('M d, H:i', strtotime($lastSyncedAt)) ?>
+                    </span>
+                    <?php endif; ?>
                     <a href="<?= PORTAL_URL ?>/admin/financial/transactions.php" class="btn-white">
                         <i class="fas fa-receipt" style="color:var(--color-blue);"></i> Transactions Ledger
                     </a>
                     <a href="<?= PORTAL_URL ?>/admin/financial/reports.php" class="btn-white">
                         <i class="fas fa-file-invoice-dollar" style="color:#059669;"></i> Financial Reports
+                    </a>
+                    <a href="<?= PORTAL_URL ?>/admin/financial/audit-sync.php" class="btn-white">
+                        <i class="fas fa-arrows-rotate" style="color:var(--color-navy);"></i> Audit &amp; Sync
                     </a>
                     <a href="<?= PORTAL_URL ?>/admin/financial/transparency.php" class="btn-white">
                         <i class="fas fa-scale-balanced" style="color:#D97706;"></i> Transparency Hub
@@ -332,6 +358,52 @@ try {
                     </table>
                 </div>
             </div>
+
+            <!-- 4. Per-Institution Financial Breakdown -->
+            <?php if (!empty($institutionBreakdown)): ?>
+            <div class="ap-card">
+                <div class="ap-card-header">
+                    <h3 class="ap-card-title"><i class="fas fa-building-columns"></i> Per-Institution Financial Breakdown</h3>
+                    <a href="<?= PORTAL_URL ?>/admin/financial/audit-sync.php" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
+                        <i class="fas fa-arrows-rotate"></i> Audit & Sync
+                    </a>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="ap-table">
+                        <thead>
+                            <tr>
+                                <th>Institution</th>
+                                <th>Paid</th>
+                                <th>Pending</th>
+                                <th>Refunded</th>
+                                <th>Grand Total</th>
+                                <th>Current Year</th>
+                                <th>Transactions</th>
+                                <th>Last Synced</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($institutionBreakdown as $ib): ?>
+                            <tr>
+                                <td><strong style="color:var(--color-navy);"><?= htmlspecialchars($ib['institution_name'] ?? 'Unknown') ?></strong>
+                                    <?php if (!empty($ib['institution_acronym'])): ?>
+                                    <span style="font-size:0.68rem; color:#94A3B8;">(<?= htmlspecialchars($ib['institution_acronym']) ?>)</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><strong style="color:#059669;">₱<?= number_format((float)($ib['total_paid'] ?? 0), 2) ?></strong></td>
+                                <td style="color:#D97706;">₱<?= number_format((float)($ib['total_pending'] ?? 0), 2) ?></td>
+                                <td style="color:#64748B;">₱<?= number_format((float)($ib['total_refunded'] ?? 0), 2) ?></td>
+                                <td><strong>₱<?= number_format((float)($ib['grand_total_all_time'] ?? 0), 2) ?></strong></td>
+                                <td>₱<?= number_format((float)($ib['current_year_total'] ?? 0), 2) ?></td>
+                                <td style="text-align:center;"><?= (int)($ib['transaction_count'] ?? 0) ?></td>
+                                <td style="font-size:0.72rem; color:#64748B;"><?= !empty($ib['last_synced_at']) ? date('M d, H:i', strtotime($ib['last_synced_at'])) : 'Never' ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <?php endif; ?>
 
         </div>
     </main>

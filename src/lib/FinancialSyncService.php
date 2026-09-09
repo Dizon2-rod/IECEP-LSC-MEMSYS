@@ -19,7 +19,11 @@ class FinancialSyncService
         $this->supabase = new SupabaseClient($config['url'], $config['service_role_key']);
     }
 
-    public function syncInstitutionTotals(string $institutionId): array
+    /**
+     * Recalculate and persist financial totals for a single institution.
+     * Logs an audit entry if the stored totals differ from the calculated ones.
+     */
+    public function syncInstitutionTotals(string $institutionId, ?string $performedBy = null, string $auditAction = 'sync_correction'): array
     {
         $transactions = $this->supabase->select('transactions', [
             'institution_id' => 'eq.' . $institutionId,
@@ -67,10 +71,14 @@ class FinancialSyncService
         }
 
         $now = date('c');
+
+        // Read old stored totals for audit comparison
         $existing = $this->supabase->select('institution_financial_totals', [
             'institution_id' => 'eq.' . $institutionId,
             'limit' => 1
         ]);
+        $oldStored = $this->isRecordList($existing) ? ($existing[0] ?? []) : [];
+
         $payload = array_merge($totals, [
             'institution_id' => $institutionId,
             'last_synced_at' => $now
@@ -82,6 +90,28 @@ class FinancialSyncService
             $this->supabase->insert('institution_financial_totals', $payload);
         }
 
+        // Log audit entry if any monetary field changed
+        $auditFields = ['total_paid', 'total_pending', 'total_refunded', 'total_cancelled', 'grand_total_all_time', 'current_year_total'];
+        $corrections = [];
+        foreach ($auditFields as $field) {
+            $oldVal = round((float)($oldStored[$field] ?? 0), 2);
+            $newVal = round((float)($totals[$field] ?? 0), 2);
+            if (abs($oldVal - $newVal) > 0.009) {
+                $corrections[$field] = ['old' => $oldVal, 'new' => $newVal, 'delta' => round($newVal - $oldVal, 2)];
+            }
+        }
+        if (!empty($corrections)) {
+            $this->logAuditEntry(
+                $institutionId,
+                null,
+                $auditAction,
+                array_intersect_key($oldStored, array_flip($auditFields)),
+                $totals,
+                $performedBy
+            );
+        }
+
+        // Mark transactions as synchronized
         foreach ($transactions as $transaction) {
             if (!empty($transaction['id'])) {
                 try {
@@ -92,10 +122,14 @@ class FinancialSyncService
             }
         }
 
+        $payload['corrections'] = $corrections;
         return $payload;
     }
 
-    public function syncAllInstitutions(): array
+    /**
+     * Sync all institutions and return per-institution results with correction details.
+     */
+    public function syncAllInstitutions(?string $performedBy = null): array
     {
         $institutions = $this->supabase->select('institutions', ['select' => 'id,name', 'order' => 'name.asc']);
         if (!$this->isRecordList($institutions)) {
@@ -110,7 +144,7 @@ class FinancialSyncService
             try {
                 $results[] = array_merge(
                     ['institution_id' => $institution['id'], 'institution_name' => $institution['name'] ?? 'Institution'],
-                    $this->syncInstitutionTotals((string)$institution['id'])
+                    $this->syncInstitutionTotals((string)$institution['id'], $performedBy)
                 );
             } catch (\Throwable $e) {
                 $results[] = [
@@ -124,6 +158,9 @@ class FinancialSyncService
         return $results;
     }
 
+    /**
+     * Verify stored totals against calculated totals for a single institution.
+     */
     public function verifyTotals(string $institutionId): array
     {
         $expected = $this->calculateTotals($institutionId);
@@ -150,6 +187,126 @@ class FinancialSyncService
             'actual' => $stored,
             'mismatches' => $mismatches
         ];
+    }
+
+    /**
+     * Batch-verify all institutions. Returns an array of verification results.
+     */
+    public function verifyAllInstitutions(): array
+    {
+        $institutions = $this->supabase->select('institutions', ['select' => 'id,name', 'order' => 'name.asc']);
+        if (!$this->isRecordList($institutions)) {
+            return [];
+        }
+
+        $results = [];
+        foreach ($institutions as $institution) {
+            if (empty($institution['id'])) {
+                continue;
+            }
+            try {
+                $v = $this->verifyTotals((string)$institution['id']);
+                $v['institution_name'] = $institution['name'] ?? 'Institution';
+                $results[] = $v;
+            } catch (\Throwable $e) {
+                $results[] = [
+                    'institution_id' => $institution['id'],
+                    'institution_name' => $institution['name'] ?? 'Institution',
+                    'match' => false,
+                    'mismatches' => ['error' => ['expected' => '', 'actual' => $e->getMessage()]]
+                ];
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Return system-wide totals aggregated from all institution_financial_totals rows.
+     */
+    public function getGlobalSummary(): array
+    {
+        $rows = $this->supabase->select('institution_financial_totals', ['select' => '*']);
+        $summary = [
+            'total_paid' => 0.0,
+            'total_pending' => 0.0,
+            'total_refunded' => 0.0,
+            'total_cancelled' => 0.0,
+            'grand_total_all_time' => 0.0,
+            'current_year_total' => 0.0,
+            'transaction_count' => 0,
+            'institution_count' => 0,
+            'last_synced_at' => null,
+            'institutions' => []
+        ];
+
+        foreach ($this->isRecordList($rows) ? $rows : [] as $row) {
+            $summary['total_paid'] += (float)($row['total_paid'] ?? 0);
+            $summary['total_pending'] += (float)($row['total_pending'] ?? 0);
+            $summary['total_refunded'] += (float)($row['total_refunded'] ?? 0);
+            $summary['total_cancelled'] += (float)($row['total_cancelled'] ?? 0);
+            $summary['grand_total_all_time'] += (float)($row['grand_total_all_time'] ?? 0);
+            $summary['current_year_total'] += (float)($row['current_year_total'] ?? 0);
+            $summary['transaction_count'] += (int)($row['transaction_count'] ?? 0);
+            $summary['institution_count']++;
+
+            $syncedAt = $row['last_synced_at'] ?? null;
+            if ($syncedAt && (!$summary['last_synced_at'] || strtotime($syncedAt) > strtotime($summary['last_synced_at']))) {
+                $summary['last_synced_at'] = $syncedAt;
+            }
+
+            $summary['institutions'][] = $row;
+        }
+
+        foreach (['total_paid', 'total_pending', 'total_refunded', 'total_cancelled', 'grand_total_all_time', 'current_year_total'] as $k) {
+            $summary[$k] = round($summary[$k], 2);
+        }
+
+        return $summary;
+    }
+
+    /**
+     * Fetch recent financial audit log entries.
+     */
+    public function getAuditLog(?string $institutionId = null, int $limit = 50): array
+    {
+        $filters = [
+            'select' => '*',
+            'order' => 'created_at.desc',
+            'limit' => $limit
+        ];
+        if ($institutionId) {
+            $filters['institution_id'] = 'eq.' . $institutionId;
+        }
+
+        $rows = $this->supabase->select('financial_audit_logs', $filters);
+        return $this->isRecordList($rows) ? $rows : [];
+    }
+
+    /**
+     * Insert a financial audit log entry from PHP (supplements DB-level triggers).
+     */
+    public function logAuditEntry(
+        ?string $institutionId,
+        ?string $transactionId,
+        string  $action,
+        $oldValue = null,
+        $newValue = null,
+        ?string $performedBy = null
+    ): void {
+        try {
+            $this->supabase->insert('financial_audit_logs', [
+                'institution_id' => $institutionId,
+                'transaction_id' => $transactionId,
+                'action' => $action,
+                'old_value' => $oldValue !== null ? json_encode($oldValue) : null,
+                'new_value' => $newValue !== null ? json_encode($newValue) : null,
+                'performed_by' => $performedBy ?? ($_SESSION['user']['id'] ?? null),
+                'created_at' => date('c')
+            ]);
+        } catch (\Throwable $e) {
+            error_log('Financial audit log entry failed: ' . $e->getMessage());
+        }
     }
 
     private function calculateTotals(string $institutionId): array

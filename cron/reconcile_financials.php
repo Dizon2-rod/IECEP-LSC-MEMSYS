@@ -18,38 +18,55 @@ $emailService = new \App\Lib\EmailService();
 try {
     $institutions = $supabase->select('institutions', ['select' => 'id,name', 'order' => 'name.asc']);
     $mismatches = [];
+    $corrections = 0;
+    $checked = 0;
+
     foreach (is_array($institutions) ? $institutions : [] as $institution) {
         $institutionId = (string)($institution['id'] ?? '');
         if ($institutionId === '') {
             continue;
         }
+        $checked++;
         try {
+            // Verify before sync
             $before = $syncService->verifyTotals($institutionId);
+
             if (empty($before['match'])) {
                 $mismatches[] = ['institution' => $institution, 'details' => $before];
-                $supabase->insert('audit_logs', [
-                    'action' => 'FINANCIAL_TOTAL_MISMATCH',
-                    'table_name' => 'institution_financial_totals',
-                    'record_id' => $institutionId,
-                    'new_data' => json_encode($before),
-                    'performed_by' => null,
-                    'ip_address' => 'cron',
-                    'user_agent' => 'reconcile_financials.php',
-                    'created_at' => date('c')
-                ]);
+
+                // Log the mismatch detection
+                $syncService->logAuditEntry(
+                    $institutionId,
+                    null,
+                    'cron_mismatch_detected',
+                    $before['actual'] ?? null,
+                    $before['expected'] ?? null,
+                    null
+                );
             }
-            $syncService->syncInstitutionTotals($institutionId);
+
+            // Sync (will also log correction if values differ)
+            $result = $syncService->syncInstitutionTotals($institutionId, null, 'cron_reconciliation');
+            if (!empty($result['corrections'])) {
+                $corrections++;
+            }
         } catch (Throwable $e) {
             error_log("Financial reconciliation failed for {$institutionId}: " . $e->getMessage());
         }
     }
 
+    // Email notification if mismatches were found
     if (!empty($mismatches)) {
         $treasurers = $supabase->select('user_profiles', [
             'role' => 'in.(treasurer,eb_treasurer)',
             'select' => 'email,full_name'
         ]);
-        $lines = ['Financial reconciliation found ' . count($mismatches) . ' institution mismatch(es):', ''];
+        $lines = [
+            'Financial reconciliation found ' . count($mismatches) . ' institution mismatch(es):',
+            'Institutions checked: ' . $checked,
+            'Corrections applied: ' . $corrections,
+            ''
+        ];
         foreach ($mismatches as $item) {
             $lines[] = ($item['institution']['name'] ?? 'Institution') . ': ' . json_encode($item['details']['mismatches'] ?? []);
         }
@@ -61,7 +78,11 @@ try {
         }
     }
 
-    $summary = ['institutions' => count(is_array($institutions) ? $institutions : []), 'mismatches' => count($mismatches)];
+    $summary = [
+        'institutions_checked' => $checked,
+        'mismatches_found' => count($mismatches),
+        'corrections_applied' => $corrections
+    ];
     echo '[' . date('Y-m-d H:i:s') . '] Financial reconciliation completed: ' . json_encode($summary) . PHP_EOL;
 } catch (Throwable $e) {
     error_log('Financial reconciliation error: ' . $e->getMessage());

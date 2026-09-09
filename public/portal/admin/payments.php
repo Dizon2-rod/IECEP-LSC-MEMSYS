@@ -1,30 +1,41 @@
 <?php
-require_once __DIR__ . '/../auth_check.php';
 require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../auth_check.php';
 $current_page = 'payments';
 
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header('Location: /IECEP-LSC-MEMSYS/public/login.php');
-    exit;
-}
+require_role(['admin', 'super_admin']);
+require_once __DIR__ . '/../../../src/lib/FinancialSyncService.php';
 
-$allowed_roles = ['admin', 'super_admin'];
-if (!in_array($_SESSION['role'] ?? '', $allowed_roles)) {
-    header('Location: /IECEP-LSC-MEMSYS/public/portal/member/dashboard.php');
-    exit;
-}
+$supabase = getSupabaseClient();
+$syncService = new \App\Lib\FinancialSyncService($supabase);
 
-// Demo data
-$recentPayments = [
-    ['id'=>'PAY-001','member'=>'Alex Johnson','institution'=>'LSPU Santa Cruz','amount'=>950,'type'=>'Membership Fee','status'=>'paid','date'=>date('Y-m-d',strtotime('-2 days')),'ref'=>'20260041'],
-    ['id'=>'PAY-002','member'=>'David Kim','institution'=>'Mapúa Malayan Colleges','amount'=>950,'type'=>'Membership Fee','status'=>'paid','date'=>date('Y-m-d',strtotime('-3 days')),'ref'=>'20260042'],
-    ['id'=>'PAY-003','member'=>'Emma Wilson','institution'=>'Colegio de San Juan de Letran','amount'=>950,'type'=>'Membership Fee','status'=>'pending','date'=>date('Y-m-d',strtotime('-1 day')),'ref'=>'20260043'],
-    ['id'=>'PAY-004','member'=>'Kenji Tan','institution'=>'UPH - Dr. Jose G. Tamayo','amount'=>500,'type'=>'Event Fee','status'=>'paid','date'=>date('Y-m-d',strtotime('-5 days')),'ref'=>'20260044'],
-    ['id'=>'PAY-005','member'=>'Mira Stone','institution'=>'Regional Executive Council','amount'=>950,'type'=>'Membership Fee','status'=>'paid','date'=>date('Y-m-d',strtotime('-1 day')),'ref'=>'20260001'],
-];
-$totalCollections = 125000;
-$pendingAmount = 12400;
-$txnThisMonth = 48;
+$recentPayments = [];
+$totalCollections = 0;
+$pendingAmount = 0;
+$txnThisMonth = 0;
+
+try {
+    // Use synced totals for consistent KPIs
+    $globalSummary = $syncService->getGlobalSummary();
+    $totalCollections = $globalSummary['total_paid'];
+    $pendingAmount = $globalSummary['total_pending'];
+
+    // Fetch recent transactions from DB
+    $rawTx = $supabase->select('transactions', ['select' => '*', 'order' => 'created_at.desc', 'limit' => 20]);
+    if (is_array($rawTx)) {
+        $recentPayments = $rawTx;
+        // Count this month's transactions
+        $monthStart = date('Y-m-01');
+        foreach ($rawTx as $tx) {
+            $txDate = $tx['created_at'] ?? $tx['transaction_date'] ?? '';
+            if ($txDate && strtotime($txDate) >= strtotime($monthStart)) {
+                $txnThisMonth++;
+            }
+        }
+    }
+} catch (Exception $e) {
+    error_log("Payments page error: " . $e->getMessage());
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -109,40 +120,61 @@ $txnThisMonth = 48;
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($recentPayments as $pay): ?>
+                            <?php if (empty($recentPayments)): ?>
+                                <tr>
+                                    <td colspan="7" style="text-align:center; padding:2.5rem; color:#64748B;">
+                                        <i class="fas fa-receipt" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
+                                        <strong style="color:#0F172A;">No Payment Records</strong>
+                                        <p style="margin:0.25rem 0 0; font-size:0.78rem;">Transactions will appear here once payments are recorded.</p>
+                                    </td>
+                                </tr>
+                            <?php else: ?>
+                                <?php foreach ($recentPayments as $pay):
+                                    $payId = $pay['receipt_number'] ?? $pay['id'] ?? 'TXN';
+                                    $payRef = $pay['transaction_id'] ?? substr($pay['id'] ?? '', 0, 12);
+                                    $payMember = $pay['payer_name'] ?? $pay['member_name'] ?? $pay['student_name'] ?? 'Member';
+                                    $payInst = $pay['institution_name'] ?? '';
+                                    $payType = ucwords(str_replace('_', ' ', $pay['type'] ?? $pay['transaction_type'] ?? 'Dues'));
+                                    $payAmount = floatval($pay['amount'] ?? 0);
+                                    $payDate = $pay['created_at'] ?? $pay['transaction_date'] ?? '';
+                                    $payStatus = strtolower($pay['status'] ?? 'pending');
+                                ?>
                                 <tr>
                                     <td>
-                                        <span class="ap-mono"><?= htmlspecialchars($pay['id']) ?></span><br>
-                                        <span style="font-size:0.72rem; color:var(--text-muted);"><?= htmlspecialchars($pay['ref']) ?></span>
+                                        <span class="ap-mono"><?= htmlspecialchars($payId) ?></span><br>
+                                        <span style="font-size:0.72rem; color:var(--text-muted);"><?= htmlspecialchars($payRef) ?></span>
                                     </td>
                                     <td>
                                         <div style="display:flex; align-items:center; gap:0.75rem;">
-                                            <div class="ap-avatar-badge"><?= htmlspecialchars(substr($pay['member'], 0, 2)) ?></div>
+                                            <div class="ap-avatar-badge"><?= htmlspecialchars(substr($payMember, 0, 2)) ?></div>
                                             <div>
-                                                <strong style="color:var(--text-heading);"><?= htmlspecialchars($pay['member']) ?></strong><br>
-                                                <span style="font-size:0.76rem; color:var(--text-muted);"><?= htmlspecialchars($pay['institution']) ?></span>
+                                                <strong style="color:var(--text-heading);"><?= htmlspecialchars($payMember) ?></strong>
+                                                <?php if ($payInst): ?><br><span style="font-size:0.76rem; color:var(--text-muted);"><?= htmlspecialchars($payInst) ?></span><?php endif; ?>
                                             </div>
                                         </div>
                                     </td>
-                                    <td><span class="ap-pill navy"><span class="ap-pill-dot"></span><?= htmlspecialchars($pay['type']) ?></span></td>
-                                    <td><strong>₱<?= number_format($pay['amount']) ?></strong></td>
-                                    <td style="font-size:0.82rem; color:var(--text-muted);"><?= date('M d, Y', strtotime($pay['date'])) ?></td>
+                                    <td><span class="ap-pill navy"><span class="ap-pill-dot"></span><?= htmlspecialchars($payType) ?></span></td>
+                                    <td><strong>₱<?= number_format($payAmount, 2) ?></strong></td>
+                                    <td style="font-size:0.82rem; color:var(--text-muted);"><?= $payDate ? date('M d, Y', strtotime($payDate)) : 'Recent' ?></td>
                                     <td>
-                                        <?php if ($pay['status'] === 'paid'): ?>
+                                        <?php if ($payStatus === 'paid' || $payStatus === 'completed'): ?>
                                             <span class="ap-pill active"><span class="ap-pill-dot"></span>Paid</span>
-                                        <?php elseif ($pay['status'] === 'pending'): ?>
+                                        <?php elseif ($payStatus === 'pending'): ?>
                                             <span class="ap-pill pending"><span class="ap-pill-dot"></span>Pending</span>
+                                        <?php elseif ($payStatus === 'refunded'): ?>
+                                            <span class="ap-pill"><span class="ap-pill-dot"></span>Refunded</span>
                                         <?php else: ?>
-                                            <span class="ap-pill danger"><span class="ap-pill-dot"></span>Failed</span>
+                                            <span class="ap-pill danger"><span class="ap-pill-dot"></span><?= ucfirst($payStatus) ?></span>
                                         <?php endif; ?>
                                     </td>
                                     <td style="text-align:right;">
-                                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/financial/receipt.php?id=<?= urlencode($pay['id']) ?>" class="ap-btn-secondary" style="padding:0.3rem 0.85rem; font-size:0.75rem;">
+                                        <a href="/IECEP-LSC-MEMSYS/public/portal/admin/financial/receipt.php?id=<?= urlencode($pay['id'] ?? '') ?>" class="ap-btn-secondary" style="padding:0.3rem 0.85rem; font-size:0.75rem;">
                                             <i class="fas fa-receipt"></i>
                                         </a>
                                     </td>
                                 </tr>
-                            <?php endforeach; ?>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>

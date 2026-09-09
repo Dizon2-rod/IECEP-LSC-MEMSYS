@@ -4,6 +4,7 @@ $current_page = 'transactions';
 
 require_once __DIR__ . '/../../auth_check.php';
 require_role(['admin', 'super_admin', 'eb_treasurer', 'eb_auditor', 'treasurer', 'auditor']);
+require_once __DIR__ . '/../../../../src/lib/FinancialSyncService.php';
 
 $pageTitle = 'Treasury Transactions & Audit Ledger';
 $supabase = getSupabaseClient();
@@ -19,28 +20,54 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $desc = trim($_POST['description'] ?? 'Chapter Dues Remittance');
         $status = trim($_POST['status'] ?? 'paid');
         $method = trim($_POST['payment_method'] ?? 'gcash');
+        $institutionId = trim($_POST['institution_id'] ?? '');
 
         if ($amount > 0) {
             $timestamp = date('c');
             $rcpNumber = 'RCP-2026-' . rand(10000, 99999);
             $txHash = hash('sha256', $rcpNumber . '|' . $amount . '|' . $timestamp);
+            $txId = bin2hex(random_bytes(16));
+
+            $txData = [
+                'id' => $txId,
+                'amount' => $amount,
+                'currency' => 'PHP',
+                'type' => $type,
+                'transaction_type' => $type,
+                'status' => $status,
+                'payment_method' => $method,
+                'receipt_number' => $rcpNumber,
+                'transaction_date' => $timestamp,
+                'blockchain_hash' => $txHash,
+                'notes' => $desc,
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp
+            ];
+            if ($institutionId !== '') {
+                $txData['institution_id'] = $institutionId;
+            }
 
             try {
-                $supabase->insert('transactions', [[
-                    'id' => bin2hex(random_bytes(16)),
-                    'amount' => $amount,
-                    'currency' => 'PHP',
-                    'type' => $type,
-                    'transaction_type' => $type,
-                    'status' => $status,
-                    'payment_method' => $method,
-                    'receipt_number' => $rcpNumber,
-                    'transaction_date' => $timestamp,
-                    'blockchain_hash' => $txHash,
-                    'notes' => $desc,
-                    'created_at' => $timestamp,
-                    'updated_at' => $timestamp
-                ]]);
+                $supabase->insert('transactions', [$txData]);
+
+                // PHP-side audit log (supplements DB trigger)
+                $syncService = new \App\Lib\FinancialSyncService($supabase);
+                $syncService->logAuditEntry(
+                    $institutionId ?: null,
+                    $rcpNumber,
+                    'created',
+                    null,
+                    ['amount' => $amount, 'status' => $status, 'type' => $type, 'receipt' => $rcpNumber]
+                );
+
+                // Auto-sync institution totals if institution is specified
+                if ($institutionId !== '') {
+                    try {
+                        $syncService->syncInstitutionTotals($institutionId, $_SESSION['user']['id'] ?? null, 'transaction_created');
+                    } catch (\Throwable $syncErr) {
+                        error_log('Auto-sync after transaction: ' . $syncErr->getMessage());
+                    }
+                }
 
                 $feedbackMsg = "🎉 Transaction {$rcpNumber} for ₱" . number_format($amount, 2) . " recorded successfully!";
                 $feedbackType = 'success';
@@ -52,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
     }
 }
+
 
 // Fetch real transactions from database
 $transactionsList = [];
