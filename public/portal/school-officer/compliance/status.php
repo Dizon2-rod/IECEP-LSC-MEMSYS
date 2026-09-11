@@ -41,10 +41,22 @@ if ($supabase) {
 // Fetch real metrics
 $memberCount = 0;
 $totalPaid = 0;
+$participationRate = 0.0;
+$hostedEventsCount = 0;
+$venueEventsCount = 0;
+$totalHostingCredit = 0;
+$overallScore = 0.0;
+$complianceStatus = 'compliant';
+$year = intval(date('Y'));
+
 if ($supabase && $institutionId) {
     try {
-        $mems = $supabase->select('members', ['institution_id' => 'eq.' . $institutionId]);
+        $mems = $supabase->select('members', ['institution_id' => 'eq.' . $institutionId, 'status' => 'eq.active']);
         if (is_array($mems)) $memberCount = count($mems);
+        if ($memberCount === 0) {
+            $allMems = $supabase->select('members', ['institution_id' => 'eq.' . $institutionId]);
+            if (is_array($allMems)) $memberCount = count($allMems);
+        }
         
         $txs = $supabase->select('transactions', [
             'institution_id' => 'eq.' . $institutionId,
@@ -53,12 +65,65 @@ if ($supabase && $institutionId) {
         if (is_array($txs)) {
             foreach ($txs as $t) $totalPaid += floatval($t['amount'] ?? 0);
         }
-    } catch (Exception $e) {}
+
+        // 1. Fetch compliance score from compliance_scores table
+        $scores = $supabase->select('compliance_scores', [
+            'institution_id' => 'eq.' . $institutionId,
+            'year' => 'eq.' . $year,
+            'limit' => 1
+        ]);
+
+        if (!empty($scores) && is_array($scores)) {
+            $row = $scores[0];
+            $participationRate = floatval($row['participation_rate'] ?? 0);
+            $totalHostingCredit = intval($row['hosted_event_count'] ?? 0);
+            $overallScore = floatval($row['overall_score'] ?? 0);
+            $complianceStatus = $row['compliance_status'] ?? 'compliant';
+        } else {
+            // Calculate live via ComplianceEngine if available
+            try {
+                require_once SRC_PATH . 'lib/BlockchainService.php';
+                require_once SRC_PATH . 'lib/ComplianceEngine.php';
+                $blockchain = new \App\Lib\BlockchainService($supabase);
+                $engine = new \App\Lib\ComplianceEngine($supabase, $blockchain);
+                $overallScore = $engine->calculateForInstitution($institutionId, $year);
+                $rep = $engine->getReport($institutionId, $year);
+                if ($rep) {
+                    $participationRate = floatval($rep['participation_rate'] ?? 0);
+                    $totalHostingCredit = intval($rep['hosted_event_count'] ?? 0);
+                    $complianceStatus = $rep['compliance_status'] ?? 'compliant';
+                }
+            } catch (\Throwable $ce) {
+                error_log("ComplianceEngine live run notice: " . $ce->getMessage());
+            }
+        }
+
+        // Count hosted & venue events
+        $hosted = $supabase->select('events', ['institution_id' => 'eq.' . $institutionId, 'status' => 'eq.completed']);
+        if (is_array($hosted)) $hostedEventsCount = count($hosted);
+        
+        try {
+            $venues = $supabase->select('events', ['venue_institution_id' => 'eq.' . $institutionId, 'status' => 'eq.completed']);
+            if (is_array($venues)) $venueEventsCount = count($venues);
+        } catch (\Throwable $ve) {
+            $venueEventsCount = 0;
+        }
+        if ($totalHostingCredit === 0) {
+            $totalHostingCredit = $hostedEventsCount + $venueEventsCount;
+        }
+
+    } catch (Exception $e) {
+        error_log("Error loading compliance status metrics: " . $e->getMessage());
+    }
 }
 
 $hasRoster = ($memberCount > 0);
 $hasPaid = ($totalPaid > 0);
-$isCompliant = $hasRoster && $hasPaid;
+$meetsParticipation = ($participationRate >= 40.0);
+$meetsHosting = ($totalHostingCredit >= 1);
+$isCompliant = ($complianceStatus === 'compliant');
+$isAtRisk = ($complianceStatus === 'at_risk');
+$isNonCompliant = ($complianceStatus === 'non_compliant');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -314,48 +379,128 @@ $isCompliant = $hasRoster && $hasPaid;
             <!-- 2. KPI Grid -->
             <div class="dash-kpi-grid">
                 <div class="dash-kpi-card">
-                    <div class="kpi-icon-pill <?= $isCompliant ? 'emerald' : 'amber' ?>">
-                        <i class="fas fa-certificate"></i>
+                    <div class="kpi-icon-pill <?= $isCompliant ? 'emerald' : ($isAtRisk ? 'amber' : 'navy') ?>" style="<?= $isNonCompliant ? 'background:#FEE2E2; color:#DC2626;' : '' ?>">
+                        <i class="fas <?= $isCompliant ? 'fa-certificate' : ($isAtRisk ? 'fa-triangle-exclamation' : 'fa-circle-exclamation') ?>"></i>
                     </div>
                     <div>
-                        <div class="kpi-val" style="color:<?= $isCompliant ? '#059669' : '#D97706' ?>;">
-                            <?= $isCompliant ? 'Compliant' : 'In Progress' ?>
+                        <div class="kpi-val" style="color:<?= $isCompliant ? '#059669' : ($isAtRisk ? '#D97706' : '#DC2626') ?>;">
+                            <?= $isCompliant ? 'Compliant' : ($isAtRisk ? 'At Risk' : 'Needs Improvement') ?>
                         </div>
-                        <div class="kpi-lbl">Standing Status</div>
+                        <div class="kpi-lbl">CBL Compliance Standing</div>
                     </div>
                 </div>
 
                 <div class="dash-kpi-card">
-                    <div class="kpi-icon-pill navy"><i class="fas fa-users"></i></div>
+                    <div class="kpi-icon-pill <?= $meetsParticipation ? 'emerald' : 'amber' ?>">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
                     <div>
-                        <div class="kpi-val"><?= $memberCount ?></div>
-                        <div class="kpi-lbl">Roster Members Enrolled</div>
+                        <div class="kpi-val" style="color:<?= $meetsParticipation ? '#059669' : '#D97706' ?>;"><?= number_format($participationRate, 1) ?>%</div>
+                        <div class="kpi-lbl">Participation (Min 40%)</div>
                     </div>
                 </div>
 
                 <div class="dash-kpi-card">
-                    <div class="kpi-icon-pill gold"><i class="fas fa-peso-sign"></i></div>
+                    <div class="kpi-icon-pill <?= $meetsHosting ? 'emerald' : 'amber' ?>">
+                        <i class="fas fa-landmark"></i>
+                    </div>
                     <div>
-                        <div class="kpi-val" style="color:#B45309;">₱<?= number_format($totalPaid, 2) ?></div>
-                        <div class="kpi-lbl">Dues Remitted to Regional</div>
+                        <div class="kpi-val" style="color:<?= $meetsHosting ? '#059669' : '#B45309' ?>;"><?= $totalHostingCredit ?> Event<?= $totalHostingCredit == 1 ? '' : 's' ?></div>
+                        <div class="kpi-lbl">Hosted / Official Venue</div>
                     </div>
                 </div>
 
                 <div class="dash-kpi-card">
-                    <div class="kpi-icon-pill amber"><i class="fas fa-calendar-alt"></i></div>
+                    <div class="kpi-icon-pill gold"><i class="fas fa-link"></i></div>
                     <div>
-                        <div class="kpi-val">AY 2026</div>
-                        <div class="kpi-lbl">Active Term</div>
+                        <div class="kpi-val" style="color:#B45309;"><?= number_format($overallScore, 1) ?>%</div>
+                        <div class="kpi-lbl">Blockchain Audited Score</div>
                     </div>
                 </div>
             </div>
 
+            <!-- Low Compliance Advisory Reminder Banner (Monitoring Notice) -->
+            <?php if ($isAtRisk || $isNonCompliant || !$meetsParticipation || !$meetsHosting): ?>
+                <div style="background: <?= $isNonCompliant ? '#FFF1F2' : '#FFFBEB' ?>; border: 1px solid <?= $isNonCompliant ? '#FECDD3' : '#FDE68A' ?>; border-left: 5px solid <?= $isNonCompliant ? '#E11D48' : '#D97706' ?>; border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: var(--shadow-card);">
+                    <div style="display: flex; align-items: flex-start; gap: 0.85rem;">
+                        <div style="width: 36px; height: 36px; border-radius: 8px; background: <?= $isNonCompliant ? '#FFE4E6' : '#FEF3C7' ?>; color: <?= $isNonCompliant ? '#E11D48' : '#D97706' ?>; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; margin-top: 2px;">
+                            <i class="fas <?= $isNonCompliant ? 'fa-triangle-exclamation' : 'fa-bell' ?>"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.35rem;">
+                                <strong style="font-size: 0.92rem; color: <?= $isNonCompliant ? '#9F1239' : '#92400E' ?>;">
+                                    <i class="fas fa-circle-info"></i> Chapter Compliance Monitoring Advisory
+                                </strong>
+                                <span style="font-size: 0.72rem; font-weight: 700; background: <?= $isNonCompliant ? '#FFE4E6' : '#FEF3C7' ?>; color: <?= $isNonCompliant ? '#9F1239' : '#92400E' ?>; padding: 0.2rem 0.55rem; border-radius: 6px;">
+                                    Status: <?= $isNonCompliant ? 'Needs Improvement' : 'At Risk' ?>
+                                </span>
+                            </div>
+                            <p style="margin: 0 0 0.65rem; font-size: 0.8rem; color: <?= $isNonCompliant ? '#881337' : '#78350F' ?>; line-height: 1.45;">
+                                This indicator is an <strong>informational monitoring metric</strong> under CBL Art. V Sec. 3 designed to help your chapter foster active member engagement. There are <strong>no automatic affiliation revocations or punitive deadlines</strong>. Please consider the following recommended steps to boost your chapter's compliance rating:
+                            </p>
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.65rem; margin-bottom: 0.75rem;">
+                                <div style="background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 0.6rem 0.75rem;">
+                                    <strong style="font-size: 0.78rem; color: #0F172A; display: block;">
+                                        <i class="fas fa-users" style="color: <?= $meetsParticipation ? '#059669' : '#D97706' ?>;"></i>
+                                        Member Participation (Current: <?= number_format($participationRate, 1) ?>% / Target: ≥ 40%)
+                                    </strong>
+                                    <span style="font-size: 0.73rem; color: #64748B;">Encourage registered student members to attend upcoming regional technical webinars, conventions, and leadership summits.</span>
+                                </div>
+                                <div style="background: rgba(255, 255, 255, 0.7); border: 1px solid rgba(0,0,0,0.06); border-radius: 8px; padding: 0.6rem 0.75rem;">
+                                    <strong style="font-size: 0.78rem; color: #0F172A; display: block;">
+                                        <i class="fas fa-landmark" style="color: <?= $meetsHosting ? '#059669' : '#D97706' ?>;"></i>
+                                        Event Hosting or Official Venue (Current: <?= $totalHostingCredit ?> / Target: ≥ 1)
+                                    </strong>
+                                    <span style="font-size: 0.73rem; color: #64748B;">Coordinate with the IECEP-LSC Executive Board to host a local seminar or designate your school facilities as the official venue.</span>
+                                </div>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                                <a href="<?= PORTAL_URL ?>/events.php" class="btn-primary-navy" style="font-size: 0.74rem; padding: 0.35rem 0.75rem;">
+                                    <i class="fas fa-calendar-alt"></i> View Sanctioned Regional Events
+                                </a>
+                                <a href="mailto:compliance@iecep-lsc.org?subject=<?= urlencode('Chapter Event Hosting Collaboration - ' . $schoolName) ?>" class="btn-white" style="font-size: 0.74rem; padding: 0.35rem 0.75rem;">
+                                    <i class="fas fa-envelope"></i> Contact Executive Board
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <!-- 3. Compliance Milestone Checklist -->
             <div class="ap-card">
                 <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-tasks"></i> Chapter Accreditation Prerequisites (AY 2026–2027)</h3>
+                    <h3 class="ap-card-title"><i class="fas fa-tasks"></i> Constitution & By-Laws Compliance Verification (Art. IV & V)</h3>
                 </div>
                 <div>
+                    
+                    <!-- Metric 1: 40% Participation -->
+                    <div class="compliance-step-row">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <div class="kpi-icon-pill <?= $meetsParticipation ? 'emerald' : 'amber' ?>">
+                                <i class="fas <?= $meetsParticipation ? 'fa-check' : 'fa-hourglass-half' ?>"></i>
+                            </div>
+                            <div>
+                                <strong style="font-size:0.84rem; color:#0F172A; display:block;">1. Minimum 40% Member Participation Threshold (Art. V Sec. 3)</strong>
+                                <span style="font-size:0.74rem; color:#64748B;">At least 40% of the active chapter roster must participate in IECEP-LSC sanctioned events (Current: <strong><?= number_format($participationRate, 1) ?>%</strong>).</span>
+                            </div>
+                        </div>
+                        <span class="ap-pill <?= $meetsParticipation ? 'active' : 'pending' ?>"><span class="ap-pill-dot"></span> <?= $meetsParticipation ? 'Satisfied (≥ 40%)' : 'Under 40%' ?></span>
+                    </div>
+
+                    <!-- Metric 2: Hosted Event or Official Venue -->
+                    <div class="compliance-step-row">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <div class="kpi-icon-pill <?= $meetsHosting ? 'emerald' : 'amber' ?>">
+                                <i class="fas <?= $meetsHosting ? 'fa-check' : 'fa-calendar-plus' ?>"></i>
+                            </div>
+                            <div>
+                                <strong style="font-size:0.84rem; color:#0F172A; display:block;">2. Sanctioned Event Hosting OR Official Venue (Art. V Sec. 3)</strong>
+                                <span style="font-size:0.74rem; color:#64748B;">Host at least one regional activity or serve as the official physical/virtual venue during the academic year (Current: <strong><?= $totalHostingCredit ?></strong>).</span>
+                            </div>
+                        </div>
+                        <span class="ap-pill <?= $meetsHosting ? 'active' : 'pending' ?>"><span class="ap-pill-dot"></span> <?= $meetsHosting ? 'Satisfied (≥ 1)' : 'Pending Requirement' ?></span>
+                    </div>
                     
                     <div class="compliance-step-row">
                         <div style="display:flex; align-items:center; gap:0.75rem;">

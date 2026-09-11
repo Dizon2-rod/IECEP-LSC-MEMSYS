@@ -34,15 +34,39 @@ try {
 
 $compliantCount = 0;
 $atRiskCount = 0;
+$nonCompliantCount = 0;
+$scoresMap = [];
+
+try {
+    $scoresData = $supabase->select('compliance_scores', ['year' => 'eq.' . date('Y')]);
+    if (is_array($scoresData)) {
+        foreach ($scoresData as $sc) {
+            if (isset($sc['institution_id'])) {
+                $scoresMap[$sc['institution_id']] = $sc;
+            }
+        }
+    }
+} catch (Exception $e) {
+    error_log("Compliance scores query error: " . $e->getMessage());
+}
 
 foreach ($institutions as $inst) {
     $instId = $inst['id'];
     $liveCount = $memberCountMap[$instId] ?? 0;
     $seedCount = intval($inst['membership_count'] ?? 0);
     $mCount = $liveCount > 0 ? $liveCount : ($seedCount > 0 ? $seedCount : 1);
-    $compStatus = strtolower($inst['compliance_status'] ?? 'compliant');
     
-    if ($compStatus === 'at_risk' || ($compStatus !== 'compliant' && $mCount < 1)) {
+    // Get latest compliance record
+    $sc = $scoresMap[$instId] ?? null;
+    $partRate = floatval($sc['participation_rate'] ?? 0);
+    $hostedCount = intval($sc['hosted_event_count'] ?? 0);
+    $compStatus = strtolower($sc['compliance_status'] ?? ($inst['compliance_status'] ?? 'compliant'));
+
+    if ($compStatus === 'non_compliant') {
+        $statusLabel = 'Non-Compliant';
+        $pillClass = 'inactive';
+        $nonCompliantCount++;
+    } elseif ($compStatus === 'at_risk') {
         $statusLabel = 'At Risk';
         $pillClass = 'pending';
         $atRiskCount++;
@@ -60,6 +84,8 @@ foreach ($institutions as $inst) {
         'pill' => $pillClass,
         'status_label' => $statusLabel,
         'member_count' => $mCount,
+        'participation_rate' => $partRate,
+        'hosted_count' => $hostedCount,
         'created_at' => $inst['created_at'] ?? date('Y-m-d')
     ];
 }
@@ -316,6 +342,11 @@ $complianceRate = $totalInstitutions > 0 ? round(($compliantCount / $totalInstit
                     <a href="<?= PORTAL_URL ?>/admin/compliance/reports.php" class="btn-white">
                         <i class="fas fa-file-contract" style="color:var(--color-navy);"></i> Compliance Reports
                     </a>
+                    <?php if ($atRiskCount + $nonCompliantCount > 0): ?>
+                        <button type="button" onclick="sendBatchAdvisoryReminders()" class="btn-white" id="batchRemindBtn" style="color:#B45309; border-color:#FDE68A; background:#FFFBEB; font-weight:700;">
+                            <i class="fas fa-bell"></i> Send Advisory Reminders (<?= $atRiskCount + $nonCompliantCount ?>)
+                        </button>
+                    <?php endif; ?>
                     <a href="<?= PORTAL_URL ?>/admin/institutions/list.php" class="btn-primary-navy">
                         <i class="fas fa-university" style="color:#FDE047;"></i> Chapter Affiliations
                     </a>
@@ -343,16 +374,16 @@ $complianceRate = $totalInstitutions > 0 ? round(($compliantCount / $totalInstit
                 <div class="dash-kpi-card">
                     <div class="kpi-icon-pill amber"><i class="fas fa-triangle-exclamation"></i></div>
                     <div>
-                        <div class="kpi-val"><?= $atRiskCount ?></div>
-                        <div class="kpi-lbl">At Risk / Sub-quota</div>
+                        <div class="kpi-val" style="color:#D97706;"><?= $atRiskCount ?></div>
+                        <div class="kpi-lbl">At Risk Chapters</div>
                     </div>
                 </div>
 
                 <div class="dash-kpi-card">
-                    <div class="kpi-icon-pill gold"><i class="fas fa-chart-pie"></i></div>
+                    <div class="kpi-icon-pill navy" style="background:#FEE2E2; color:#DC2626;"><i class="fas fa-circle-exclamation"></i></div>
                     <div>
-                        <div class="kpi-val"><?= $complianceRate ?>%</div>
-                        <div class="kpi-lbl">Overall Compliance Index</div>
+                        <div class="kpi-val" style="color:#DC2626;"><?= $nonCompliantCount ?></div>
+                        <div class="kpi-lbl">Needs Improvement</div>
                     </div>
                 </div>
             </div>
@@ -364,14 +395,14 @@ $complianceRate = $totalInstitutions > 0 ? round(($compliantCount / $totalInstit
                     <input type="text" id="complianceSearchInput" class="search-input-field" placeholder="Search school name, acronym, status..." onkeyup="filterComplianceTable()">
                 </div>
                 <div style="font-size:0.75rem; font-weight:700; color:#64748B;">
-                    AY 2026-2027 Governance Cycle
+                    AY 2026-2027 Monitoring Cycle &bull; Index: <strong style="color:var(--color-navy);"><?= $complianceRate ?>%</strong>
                 </div>
             </div>
 
             <!-- 4. Table -->
             <div class="ap-card">
                 <div class="ap-card-header">
-                    <h3 class="ap-card-title"><i class="fas fa-clipboard-check"></i> Chartered Chapter Compliance Standing</h3>
+                    <h3 class="ap-card-title"><i class="fas fa-clipboard-check"></i> Institutional Chapter Compliance Standing (Monitoring Only &bull; CBL Art. V Sec. 3)</h3>
                 </div>
                 <div style="overflow-x:auto;">
                     <table class="ap-table" id="complianceTable">
@@ -379,8 +410,9 @@ $complianceRate = $totalInstitutions > 0 ? round(($compliantCount / $totalInstit
                             <tr>
                                 <th>Institution Name</th>
                                 <th>Acronym</th>
-                                <th>Active Student Members</th>
-                                <th>Charter Standing</th>
+                                <th>Active Members</th>
+                                <th>Participation (≥ 40%)</th>
+                                <th>Hosted / Venue (≥ 1)</th>
                                 <th>Compliance Status</th>
                                 <th style="text-align:right;">Actions</th>
                             </tr>
@@ -388,7 +420,7 @@ $complianceRate = $totalInstitutions > 0 ? round(($compliantCount / $totalInstit
                         <tbody>
                             <?php if (empty($complianceData)): ?>
                                 <tr>
-                                    <td colspan="6" style="text-align:center; padding:2.5rem; color:#64748B;">
+                                    <td colspan="7" style="text-align:center; padding:2.5rem; color:#64748B;">
                                         <i class="fas fa-building-circle-check" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
                                         <strong style="color:#0F172A; font-size:0.92rem;">No Chartered Institutions in Database</strong>
                                         <p style="margin:0.25rem 0 0; font-size:0.78rem;">Approved affiliation applications will automatically appear here.</p>
@@ -406,19 +438,32 @@ $complianceRate = $totalInstitutions > 0 ? round(($compliantCount / $totalInstit
                                             </span>
                                         </td>
                                         <td>
-                                            <strong style="color:var(--color-navy);"><?= number_format($row['member_count']) ?></strong> Students
+                                            <strong style="color:var(--color-navy);"><?= number_format($row['member_count']) ?></strong>
                                         </td>
                                         <td>
-                                            <span class="ap-pill active"><span class="ap-pill-dot"></span> Active</span>
+                                            <span style="font-weight:700; color:<?= $row['participation_rate'] >= 40 ? '#059669' : ($row['participation_rate'] >= 20 ? '#D97706' : '#DC2626') ?>;">
+                                                <?= number_format($row['participation_rate'], 1) ?>%
+                                            </span>
+                                            <span style="font-size:0.7rem; color:#94A3B8;">/ 40%</span>
+                                        </td>
+                                        <td>
+                                            <span style="font-weight:700; color:<?= $row['hosted_count'] >= 1 ? '#059669' : '#D97706' ?>;">
+                                                <?= $row['hosted_count'] ?> event<?= $row['hosted_count'] == 1 ? '' : 's' ?>
+                                            </span>
                                         </td>
                                         <td>
                                             <span class="ap-pill <?= $row['pill'] ?>">
-                                                <?= htmlspecialchars($row['status_label']) ?>
+                                                <?= htmlspecialchars($row['status_label'] === 'Non-Compliant' ? 'Needs Improvement' : $row['status_label']) ?>
                                             </span>
                                         </td>
-                                        <td style="text-align:right;">
+                                        <td style="text-align:right; white-space:nowrap;">
+                                            <?php if ($row['status_label'] !== 'Compliant'): ?>
+                                                <button type="button" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem; color:#B45309; border-color:#FDE68A; background:#FFFBEB; margin-right:0.25rem;" onclick="sendSingleSchoolReminder('<?= $row['id'] ?>', '<?= htmlspecialchars(addslashes($row['name'])) ?>')">
+                                                    <i class="fas fa-bell"></i> Remind
+                                                </button>
+                                            <?php endif; ?>
                                             <a href="<?= PORTAL_URL ?>/admin/members/list.php?school=<?= urlencode($row['id']) ?>" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
-                                                <i class="fas fa-users" style="color:var(--color-navy);"></i> View Roster
+                                                <i class="fas fa-users"></i> Roster
                                             </a>
                                         </td>
                                     </tr>
@@ -428,7 +473,6 @@ $complianceRate = $totalInstitutions > 0 ? round(($compliantCount / $totalInstit
                     </table>
                 </div>
             </div>
-
         </div>
     </main>
 
@@ -443,6 +487,58 @@ $complianceRate = $totalInstitutions > 0 ? round(($compliantCount / $totalInstit
                 if (tr.children.length === 1 && tr.children[0].getAttribute('colspan')) continue;
                 const text = tr.textContent.toLowerCase();
                 tr.style.display = (text.indexOf(query) > -1) ? '' : 'none';
+            }
+        }
+
+        async function sendBatchAdvisoryReminders() {
+            const btn = document.getElementById('batchRemindBtn');
+            if (!btn) return;
+            if (!confirm('Dispatch advisory monitoring reminders to all chapters currently At Risk or Needing Improvement?')) return;
+
+            btn.disabled = true;
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Dispatching...';
+
+            try {
+                const res = await fetch('/api/cron/compliance-monitoring-reminders.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✓ Compliance monitoring reminders dispatched successfully!\n\n' +
+                          'Institutions notified: ' + (data.institutions_processed || 0) + '\n' +
+                          'In-app notices created: ' + (data.notifications_created || 0) + '\n' +
+                          'Emails sent: ' + (data.reminders_sent || 0));
+                } else {
+                    alert('Notice: ' + (data.error || 'Failed to dispatch reminders'));
+                }
+            } catch (err) {
+                alert('Connection error dispatching reminders: ' + err.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHTML;
+            }
+        }
+
+        async function sendSingleSchoolReminder(instId, instName) {
+            if (!confirm('Send a compliance monitoring reminder to the chapter officers of ' + instName + '?')) return;
+
+            try {
+                const res = await fetch('/api/cron/compliance-monitoring-reminders.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ institution_id: instId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✓ Advisory reminder sent successfully to ' + instName + ' officers.');
+                } else {
+                    alert('Notice: ' + (data.error || 'Failed to send reminder'));
+                }
+            } catch (err) {
+                alert('Connection error: ' + err.message);
             }
         }
     </script>

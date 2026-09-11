@@ -20,12 +20,13 @@ class ComplianceEngine
      * Calculate compliance score for an institution
      * 
      * Constitution Art. V Sec. 3 Requirements:
-     * - 40% participation rate (attending members / total members)
-     * - At least 1 hosted event per year
+     * - Minimum 40% member participation rate (attending members / total members)
+     * - Host at least 1 sanctioned event OR serve as official venue per academic year
      * 
-     * Compliance Status:
-     * - compliant: participation >= 40% AND hosted_events >= 1
-     * - at_risk: participation < 40% OR hosted_events < 1
+     * System-Computed Compliance Statuses:
+     * - compliant: participation >= 40% AND (hosted_events >= 1 OR venue_events >= 1)
+     * - at_risk: approaching threshold (e.g. participation >= 20% OR met hosting/venue but under 40%)
+     * - non_compliant: participation < 20% AND neither hosted nor served as venue
      * 
      * @param string $institutionId
      * @param int $year
@@ -61,40 +62,72 @@ class ComplianceEngine
             'status' => 'eq.completed'
         ]));
 
-        // 4. Determine compliance status per Constitution Art. V Sec. 3
-        // Both conditions must be met: participation >= 40% AND hosted_events >= 1
-        $isCompliant = ($participationRate >= 40 && $hostedEvents >= 1);
-        $complianceStatus = $isCompliant ? 'compliant' : 'at_risk';
+        // 4. Count events where institution served as official venue (CBL Art. V Sec. 3)
+        $venueEvents = 0;
+        try {
+            $venueRecords = $this->db->select('events', [
+                'venue_institution_id' => 'eq.' . $institutionId,
+                'status' => 'eq.completed'
+            ]);
+            if (is_array($venueRecords)) {
+                $venueEvents = count($venueRecords);
+            }
+        } catch (\Throwable $ve) {
+            // Graceful fallback if venue_institution_id column was recently added
+            $venueEvents = 0;
+        }
 
-        // 5. Calculate score (50% participation, 50% hosting)
-        $participationScore = $participationRate >= 40 ? 50 : ($participationRate / 40) * 50;
-        $hostingScore = $hostedEvents >= 1 ? 50 : 0;
-        $overallScore = min($participationScore + $hostingScore, 100);
+        $totalHostingCredit = $hostedEvents + $venueEvents;
 
-        // 6. Upsert compliance score
+        // 5. Determine 3 compliance statuses per Constitution Art. V Sec. 3
+        if ($participationRate >= 40.0 && $totalHostingCredit >= 1) {
+            $complianceStatus = 'compliant';
+        } elseif ($participationRate >= 20.0 || $totalHostingCredit >= 1) {
+            $complianceStatus = 'at_risk';
+        } else {
+            $complianceStatus = 'non_compliant';
+        }
+
+        // 6. Calculate score (50% participation weight, 50% hosting/venue weight)
+        $participationScore = $participationRate >= 40.0 ? 50.0 : (($participationRate / 40.0) * 50.0);
+        $hostingScore = $totalHostingCredit >= 1 ? 50.0 : 0.0;
+        $overallScore = min($participationScore + $hostingScore, 100.0);
+
+        // 7. Upsert compliance score record
         $this->db->upsert('compliance_scores', [
             'institution_id' => $institutionId,
             'year' => $year,
             'participation_rate' => round($participationRate, 2),
-            'hosted_event_count' => $hostedEvents,
+            'hosted_event_count' => $totalHostingCredit,
             'overall_score' => round($overallScore, 2),
             'compliance_status' => $complianceStatus,
             'last_updated' => date('Y-m-d H:i:s')
         ]);
 
-        // 7. Record in blockchain (hash-chained audit trail)
+        // Keep institutions table compliance_status in sync
+        try {
+            $this->db->update('institutions', [
+                'compliance_status' => $complianceStatus
+            ], $institutionId);
+        } catch (\Throwable $ie) {
+            error_log("Notice updating institution compliance_status: " . $ie->getMessage());
+        }
+
+        // 8. Record in blockchain (tamper-evident, hash-chained audit trail)
         $this->blockchain->record('compliance_attendance', $institutionId . '-' . $year, [
             'institution_id' => $institutionId,
             'year' => $year,
             'score' => round($overallScore, 2),
             'participation_rate' => round($participationRate, 2),
             'hosted_events' => $hostedEvents,
+            'venue_events' => $venueEvents,
+            'total_hosting_credit' => $totalHostingCredit,
             'compliance_status' => $complianceStatus
         ]);
 
-        // 8. Send alert if at risk
-        if ($complianceStatus === 'at_risk') {
-            $this->sendComplianceAlert($institutionId, $overallScore);
+        // 9. Send alert if at risk or non-compliant
+        if ($complianceStatus === 'at_risk' || $complianceStatus === 'non_compliant') {
+            $this->sendComplianceAlert($institutionId, $overallScore, $complianceStatus);
         }
 
         return round($overallScore, 2);
@@ -122,11 +155,12 @@ class ComplianceEngine
     }
 
     /**
-     * Send compliance alert to school officer and admin
+     * Send compliance monitoring reminder to school officers
      * @param string $institutionId
      * @param float $score
+     * @param string $status
      */
-    private function sendComplianceAlert(string $institutionId, float $score): void
+    private function sendComplianceAlert(string $institutionId, float $score, string $status = 'at_risk'): void
     {
         // Get school officers
         $officers = $this->db->select('user_profiles', [
@@ -134,12 +168,18 @@ class ComplianceEngine
             'role' => 'eq.school_officer'
         ]);
 
+        $statusLabel = ($status === 'non_compliant') ? 'Needs Improvement' : 'At Risk';
+        $statusTitle = "IECEP-LSC Chapter Compliance Monitoring Reminder";
+        $statusMsg = ($status === 'non_compliant')
+            ? "Friendly monitoring reminder: Your chapter's compliance standing is currently {$score}% ({$statusLabel}). We encourage inviting more student members to upcoming regional events or coordinating to host/serve as venue to reach the 40% participation benchmark."
+            : "Friendly monitoring reminder: Your chapter's compliance standing is currently {$score}% ({$statusLabel}). Please encourage member attendance in upcoming activities or coordinate with the Executive Board for chapter event hosting.";
+
         foreach ($officers as $officer) {
             $this->db->insert('notifications', [
                 'user_id' => $officer['id'],
-                'title' => 'Compliance Alert',
-                'message' => "Your institution's compliance score is {$score}%. Please take action to improve.",
-                'type' => 'warning',
+                'title' => $statusTitle,
+                'message' => $statusMsg,
+                'type' => 'reminder',
                 'created_at' => date('Y-m-d H:i:s')
             ]);
         }

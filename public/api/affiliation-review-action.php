@@ -254,13 +254,22 @@ function saveAndImportAffiliationDirectory(SupabaseClient $supabase, array $appl
     $documentTypes = [
         'letter_of_intent',
         'endorsement_letter',
-        'constitution_by_laws',
-        'officers_cvs',
-        'organizational_chart',
+        'constitution_bylaws',
+        'officers_cv',
+        'org_chart',
         'member_directory'
     ];
+    $docAliases = [
+        'constitution_bylaws' => 'constitution_by_laws',
+        'officers_cv'         => 'officers_cvs',
+        'org_chart'           => 'organizational_chart'
+    ];
     foreach ($documentTypes as $documentType) {
+        $altType = $docAliases[$documentType] ?? null;
         $source = $documents[$documentType] ?? $application[$documentType] ?? null;
+        if (!$source && $altType) {
+            $source = $documents[$altType] ?? $application[$altType] ?? null;
+        }
         if (is_string($source) && $source !== '' && !isset($documentSources[$documentType])) {
             $documentSources[$documentType] = $source;
         }
@@ -339,6 +348,7 @@ function saveAndImportAffiliationDirectory(SupabaseClient $supabase, array $appl
     $isPaymentConfirmed = !empty($application['receipt_number']) || floatval($application['total_fee'] ?? 0) > 0;
     $paymentStatus = $isPaymentConfirmed ? 'paid' : 'pending';
     $batchId = 'AFF-' . $applicationId;
+    $oneYearExpiry = date('Y-m-d', strtotime('+1 year'));
 
     foreach ($validMembers as $idx => $member) {
         $existing = $supabase->select('members', ['email' => 'eq.' . $member['email'], 'limit' => 1]);
@@ -364,6 +374,9 @@ function saveAndImportAffiliationDirectory(SupabaseClient $supabase, array $appl
             'payment_status' => $paymentStatus,
             'status' => 'active',
             'membership_id' => $membershipId,
+            'membership_expiry' => $oneYearExpiry,
+            'expiration_date' => $oneYearExpiry,
+            'joined_date' => date('Y-m-d'),
             'created_at' => date('c'),
             'updated_at' => date('c')
         ];

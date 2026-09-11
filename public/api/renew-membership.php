@@ -45,8 +45,21 @@ try {
 
     $member = $members[0];
 
-    // Calculate renewal fee (could be from fee_brackets table)
-    $renewalFee = 500.00; // Default fee
+    // Calculate renewal fee per 2025 Constitution Art. IV Sec. 2 (₱200 for returning members)
+    $renewalFee = 200.00;
+    try {
+        $setting = $supabase->select('system_settings', ['key' => 'eq.returning_member_fee', 'limit' => 1]);
+        if (!empty($setting) && isset($setting[0]['value'])) {
+            $renewalFee = floatval($setting[0]['value']);
+        } else {
+            $mf = $supabase->select('member_fees', ['member_type' => 'eq.returning', 'limit' => 1]);
+            if (!empty($mf) && isset($mf[0]['fee'])) {
+                $renewalFee = floatval($mf[0]['fee']);
+            }
+        }
+    } catch (\Throwable $fe) {
+        $renewalFee = 200.00;
+    }
 
     // Handle payment proof upload if provided
     $paymentProofPath = null;

@@ -52,19 +52,58 @@ class FeeCalculator
     {
         try {
             // Query fee_brackets for applicable bracket
-            $result = $this->supabase->from('fee_brackets')
-                ->select('*')
-                ->eq('is_active', true)
-                ->lte('min_members', $memberCount)
-                ->order('min_members', 'desc')
-                ->limit(1)
-                ->single();
-
-            if (!$result) {
-                throw new \Exception('No applicable fee bracket found for member count: ' . $memberCount);
+            $result = null;
+            if (method_exists($this->supabase, 'from')) {
+                try {
+                    $builder = $this->supabase->from('fee_brackets');
+                    if (is_object($builder) && method_exists($builder, 'select')) {
+                        $q = $builder->select('*');
+                        if (is_object($q) && method_exists($q, 'eq')) {
+                            $q = $q->eq('is_active', true);
+                            if (is_object($q) && method_exists($q, 'lte')) $q = $q->lte('min_members', $memberCount);
+                            if (is_object($q) && method_exists($q, 'order')) $q = $q->order('min_members', 'desc');
+                            if (is_object($q) && method_exists($q, 'limit')) $q = $q->limit(1);
+                            if (is_object($q) && method_exists($q, 'single')) $result = $q->single();
+                            elseif (is_object($q) && method_exists($q, 'get')) {
+                                $rows = $q->get();
+                                $result = $rows[0] ?? null;
+                            }
+                        }
+                    }
+                } catch (\Throwable $fe) {
+                    $result = null;
+                }
+            }
+            
+            if (!$result && method_exists($this->supabase, 'select')) {
+                try {
+                    $rows = $this->supabase->select('fee_brackets', [
+                        'is_active' => 'eq.true',
+                        'min_members' => 'lte.' . $memberCount,
+                        'order' => 'min_members.desc',
+                        'limit' => 1
+                    ]);
+                    $result = $rows[0] ?? null;
+                } catch (\Throwable $se) {
+                    $result = null;
+                }
             }
 
-            $nationalFee = (float) $result['fee'];
+            // Fallback according to 2025 Constitution & By-Laws (BR No. 021-2024)
+            if (!$result || !isset($result['fee'])) {
+                if ($memberCount <= 50) {
+                    $nationalFee = 1500.00;
+                } elseif ($memberCount <= 100) {
+                    $nationalFee = 2000.00;
+                } elseif ($memberCount <= 150) {
+                    $nationalFee = 2500.00;
+                } else {
+                    $nationalFee = 3000.00;
+                }
+            } else {
+                $nationalFee = (float) $result['fee'];
+            }
+
             $operationalFee = $this->getOperationalFee();
             $totalFee = $nationalFee + $operationalFee;
 
@@ -76,14 +115,25 @@ class FeeCalculator
 
         } catch (\Exception $e) {
             error_log('Affiliation fee calculation error: ' . $e->getMessage());
-            throw $e;
+            // Safe fallback to constitutional brackets
+            $nationalFee = ($memberCount <= 50) ? 1500.00 : (($memberCount <= 100) ? 2000.00 : (($memberCount <= 150) ? 2500.00 : 3000.00));
+            $operationalFee = 800.00;
+            return [
+                'national_fee'    => round($nationalFee, 2),
+                'operational_fee' => round($operationalFee, 2),
+                'total_fee'       => round($nationalFee + $operationalFee, 2),
+            ];
         }
     }
 
     /**
      * Calculate total membership fees
      * 
-     * Multiplies member type counts by their respective rates from member_fees table.
+     * Multiplies member type counts by their respective rates from system_settings / member_fees table.
+     * 2025 Constitution Art. IV Sec. 2:
+     * - Returning: ₱200.00
+     * - New: ₱250.00
+     * - Honorary: ₱300.00
      * 
      * @param array $memberTypeCounts ['new' => count, 'returning' => count, 'honorary' => count]
      * @return float Total membership fees
@@ -91,20 +141,33 @@ class FeeCalculator
     public function calculateMembershipFees(array $memberTypeCounts): float
     {
         try {
-            // Load member fees from database
-            $result = $this->supabase->from('member_fees')
-                ->select('*')
-                ->eq('is_active', true)
-                ->get();
+            $feeRates = [
+                'returning' => $this->getSettingFee('returning_member_fee', 200.00),
+                'new'       => $this->getSettingFee('new_member_fee', 250.00),
+                'honorary'  => $this->getSettingFee('honorary_member_fee', 300.00)
+            ];
 
-            $feeRates = [];
-            foreach ($result ?? [] as $row) {
-                $feeRates[$row['member_type']] = (float) $row['fee'];
+            // If not found in system_settings, check member_fees table
+            if (!isset($feeRates['new']) || !isset($feeRates['returning'])) {
+                $result = null;
+                if (method_exists($this->supabase, 'from')) {
+                    $result = $this->supabase->from('member_fees')
+                        ->select('*')
+                        ->eq('is_active', true)
+                        ->get();
+                } else {
+                    $result = $this->supabase->select('member_fees', ['is_active' => 'eq.true']);
+                }
+
+                foreach ($result ?? [] as $row) {
+                    if (isset($row['member_type'], $row['fee'])) {
+                        $feeRates[$row['member_type']] = (float) $row['fee'];
+                    }
+                }
             }
 
-            // Default rates if not found (should not happen if DB is properly seeded)
-            if (!isset($feeRates['new'])) $feeRates['new'] = 250.00;
             if (!isset($feeRates['returning'])) $feeRates['returning'] = 200.00;
+            if (!isset($feeRates['new'])) $feeRates['new'] = 250.00;
             if (!isset($feeRates['honorary'])) $feeRates['honorary'] = 300.00;
 
             // Calculate total
@@ -114,37 +177,72 @@ class FeeCalculator
                 ($memberTypeCounts['honorary'] ?? 0) * $feeRates['honorary']
             );
 
-            return $total;
+            return round($total, 2);
 
         } catch (\Exception $e) {
             error_log('Membership fee calculation error: ' . $e->getMessage());
-            throw $e;
+            // Constitutional fallback
+            $total = (
+                ($memberTypeCounts['new'] ?? 0) * 250.00 +
+                ($memberTypeCounts['returning'] ?? 0) * 200.00 +
+                ($memberTypeCounts['honorary'] ?? 0) * 300.00
+            );
+            return round($total, 2);
         }
     }
 
     /**
-     * Get operational fee from system settings
+     * Helper to get a specific fee from system_settings
+     */
+    public function getSettingFee(string $key, float $default): float
+    {
+        try {
+            $result = null;
+            if (method_exists($this->supabase, 'from')) {
+                try {
+                    $builder = $this->supabase->from('system_settings');
+                    if (is_object($builder) && method_exists($builder, 'select')) {
+                        $q = $builder->select('*');
+                        if (is_object($q) && method_exists($q, 'eq')) {
+                            $q = $q->eq('key', $key);
+                            if (is_object($q) && method_exists($q, 'single')) $result = $q->single();
+                            elseif (is_object($q) && method_exists($q, 'get')) {
+                                $rows = $q->get();
+                                $result = $rows[0] ?? null;
+                            }
+                        }
+                    }
+                } catch (\Throwable $fe) {
+                    $result = null;
+                }
+            }
+            
+            if (!$result && method_exists($this->supabase, 'select')) {
+                try {
+                    $rows = $this->supabase->select('system_settings', ['key' => 'eq.' . $key, 'limit' => 1]);
+                    $result = $rows[0] ?? null;
+                } catch (\Throwable $se) {
+                    $result = null;
+                }
+            }
+
+            if ($result && isset($result['value'])) {
+                return (float) $result['value'];
+            }
+            return $default;
+        } catch (\Exception $e) {
+            return $default;
+        }
+    }
+
+    /**
+     * Get operational fee from system settings (Art. IV)
      * 
-     * @return float Operational fee amount
+     * @return float Operational fee amount (₱800.00)
      */
     public function getOperationalFee(): float
     {
-        try {
-            $result = $this->supabase->from('system_settings')
-                ->select('*')
-                ->eq('key', 'operational_fee')
-                ->single();
-
-            if (!$result || !isset($result['value'])) {
-                return 800.00; // Default operational fee
-            }
-
-            return (float) $result['value'];
-
-        } catch (\Exception $e) {
-            error_log('Error fetching operational fee: ' . $e->getMessage());
-            return 800.00; // Default operational fee
-        }
+        return $this->getSettingFee('operational_fee', 800.00);
     }
 
     /**

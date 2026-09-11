@@ -11,20 +11,20 @@
         <div class="summary-card" style="background: linear-gradient(135deg, #D4AF37 0%, #F5A623 100%); color: white;">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h5 class="mb-2"><i class="fas fa-bell me-2"></i>Automated Compliance Reminders</h5>
-                    <p class="mb-0 opacity-75">Automatically sends compliance reminders to institutions based on participation rates and deadlines</p>
+                    <h5 class="mb-2"><i class="fas fa-bell me-2"></i>Automated Low-Compliance Monitoring Reminders</h5>
+                    <p class="mb-0 opacity-75">Automatically sends chapter engagement and monitoring reminders to institutions with low participation rates (under 40%) or pending event hosting</p>
                 </div>
                 <div class="text-end">
                     <div class="mb-2">
                         <span class="badge bg-light text-dark" id="compliance-reminder-status">
-                            <i class="fas fa-check-circle me-1"></i>System Active
+                            <i class="fas fa-check-circle me-1"></i>Monitoring System Active
                         </span>
                     </div>
                     <div class="small opacity-75">
-                        Next scheduled run: <span id="compliance-reminder-next-run">Tomorrow, 9:00 AM</span>
+                        Next scheduled advisory run: <span id="compliance-reminder-next-run">Tomorrow, 9:00 AM</span>
                     </div>
                     <button class="btn btn-light btn-sm mt-2" onclick="triggerComplianceReminders()">
-                        <i class="fas fa-paper-plane me-1"></i>Send Now
+                        <i class="fas fa-paper-plane me-1"></i>Send Advisory Now
                     </button>
                 </div>
             </div>
@@ -37,12 +37,12 @@
     <div class="col-md-12">
         <div class="table-container">
             <div style="padding: 1.5rem;">
-                <h6 class="mb-3"><i class="fas fa-cog me-2"></i>Reminder Configuration</h6>
+                <h6 class="mb-3"><i class="fas fa-cog me-2"></i>Monitoring Advisory Configuration</h6>
                 <div class="row">
                     <div class="col-md-4">
                         <div class="mb-3">
-                            <label class="form-label small text-muted">Participation Rate Threshold (%)</label>
-                            <input type="number" class="form-control" id="participation-threshold" value="75" min="0" max="100">
+                            <label class="form-label small text-muted">Participation Rate Threshold (%) (CBL Art. V)</label>
+                            <input type="number" class="form-control" id="participation-threshold" value="40" min="0" max="100">
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -77,7 +77,7 @@ async function triggerComplianceReminders() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Sending...';
     
     try {
-        const response = await fetch('/api/cron/compliance-deadline-reminders.php', {
+        const response = await fetch('/api/cron/compliance-monitoring-reminders.php', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -137,7 +137,7 @@ async function saveReminderSettings() {
 // Update next run time from server
 async function updateComplianceReminderStatus() {
     try {
-        const response = await fetch('/api/cron/compliance-deadline-reminders.php?action=status');
+        const response = await fetch('/api/cron/compliance-monitoring-reminders.php?action=status');
         const result = await response.json();
         
         if (result.success && result.next_run) {

@@ -495,6 +495,7 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'published';
 ALTER TABLE events ADD COLUMN IF NOT EXISTS institution_id UUID;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS created_by UUID;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS target_roles TEXT[];
+ALTER TABLE events ADD COLUMN IF NOT EXISTS venue_institution_id UUID;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
 ALTER TABLE events ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
 ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
@@ -502,6 +503,7 @@ ALTER TABLE events ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW()
 CREATE INDEX IF NOT EXISTS idx_events_status ON events(status);
 CREATE INDEX IF NOT EXISTS idx_events_start ON events(start_date);
 CREATE INDEX IF NOT EXISTS idx_events_start_datetime ON events(start_datetime);
+CREATE INDEX IF NOT EXISTS idx_events_venue_institution ON events(venue_institution_id);
 
 -- Event Attendees (Officer Scanner & 15s Dynamic QR)
 CREATE TABLE IF NOT EXISTS event_attendees (
@@ -2778,6 +2780,9 @@ BEGIN
     INSERT INTO system_settings (key, value, description)
     VALUES
         ('operational_fee', '800.00', 'Annual organization operational fee per Board Resolution No. 021-2024'),
+        ('returning_member_fee', '200.00', 'Individual membership due for returning (old) members per CBL Art. IV Sec. 2'),
+        ('new_member_fee', '250.00', 'Individual membership due for new members per CBL Art. IV Sec. 2'),
+        ('honorary_member_fee', '300.00', 'Individual membership due for honorary members per CBL Art. IV Sec. 2'),
         ('facebook_page_url', 'https://www.facebook.com/IECEPLSC', 'Official IECEP-LSC Facebook URL'),
         ('treasurer_email', 'treasurer@iecep-lsc.org', 'Email address for receiving monthly financial reports'),
         ('president_email', 'president@iecep-lsc.org', 'Email address for receiving monthly financial reports'),

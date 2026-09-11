@@ -248,7 +248,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
                 $feedbackType = 'danger';
             }
         }
-    } elseif ($action === 'batch_revoke') {
+    } elseif ($action === 'batch_reset') {
         $instId = trim($_POST['institution_id'] ?? '');
         if ($instId && $supabase) {
             try {
@@ -265,10 +265,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
                 }
                 $supabase->update('institutions', ['compliance_status' => 'at_risk', 'updated_at' => date('c')], $instId);
 
-                $feedbackMsg = "⚠️ Chapter compliance status reset to Pending / At Risk for audit re-evaluation.";
-                $feedbackType = 'warning';
+                $feedbackMsg = "ℹ️ Chapter requirements reset to Pending Review for monitoring.";
+                $feedbackType = 'info';
             } catch (\Throwable $e) {
-                $feedbackMsg = "Batch revoke error: " . $e->getMessage();
+                $feedbackMsg = "Batch reset notice: " . $e->getMessage();
                 $feedbackType = 'danger';
             }
         }
@@ -338,9 +338,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && isset($_POST['action'])) {
                 }
 
                 $subjectPrefix = match($noticeType) {
-                    'urgent' => '🔴 URGENT: Regulatory Compliance Deadline Warning',
+                    'urgent' => '📢 Chapter Compliance Monitoring Advisory Notice',
                     'congrats' => '🏆 Official Chapter Accreditation & Good Standing Confirmation',
-                    default => 'Official Regulatory Compliance Notice'
+                    default => 'Official Chapter Compliance Monitoring Notice'
                 };
 
                 if (!empty($email)) {
@@ -842,7 +842,7 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                         <option value="all" <?= $selectedStatusFilter === 'all' ? 'selected' : '' ?>>All Statuses</option>
                         <option value="compliant" <?= $selectedStatusFilter === 'compliant' ? 'selected' : '' ?>>Compliant (Passed)</option>
                         <option value="pending" <?= $selectedStatusFilter === 'pending' ? 'selected' : '' ?>>Pending Review</option>
-                        <option value="overdue" <?= $selectedStatusFilter === 'overdue' ? 'selected' : '' ?>>Overdue Deadlines</option>
+                        <option value="overdue" <?= $selectedStatusFilter === 'overdue' ? 'selected' : '' ?>>Past Target Date</option>
                     </select>
                 </div>
 
@@ -874,7 +874,7 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                             <tr>
                                 <th style="width:25%;">Chapter / Institution</th>
                                 <th style="width:33%;">Regulatory Requirement</th>
-                                <th style="width:12%;">Deadline</th>
+                                <th style="width:12%;">Target Date</th>
                                 <th style="width:14%;">Audit Status</th>
                                 <th style="width:16%; text-align:right;">Actions</th>
                             </tr>
@@ -944,7 +944,7 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                                             <div style="display:inline-flex; gap:0.25rem;">
                                                 <button type="button" class="btn-white" id="toggle-btn-<?= $rec['id'] ?>" style="padding:0.28rem 0.55rem; font-size:0.72rem;" title="<?= $isPassed ? 'Mark Pending' : 'Mark Compliant' ?>" onclick="ajaxTogglePolicy('<?= $rec['id'] ?>', <?= $isPassed ? 0 : 1 ?>)">
                                                     <i class="fas <?= $isPassed ? 'fa-arrow-rotate-left' : 'fa-check' ?>" style="color:<?= $isPassed ? '#64748B' : '#059669' ?>;"></i>
-                                                    <span id="toggle-text-<?= $rec['id'] ?>"><?= $isPassed ? 'Revoke' : 'Pass' ?></span>
+                                                    <span id="toggle-text-<?= $rec['id'] ?>"><?= $isPassed ? 'Unverify' : 'Verify' ?></span>
                                                 </button>
                                                 <button type="button" class="btn-white" style="padding:0.28rem 0.55rem; font-size:0.72rem;" title="Edit Requirement" onclick='openEditPolicyModal(<?= json_encode($rec) ?>, "<?= htmlspecialchars(addslashes($inst['name'] ?? 'Chapter')) ?>")'>
                                                     <i class="fas fa-pen-to-square"></i>
@@ -1018,7 +1018,7 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                                             </button>
                                         </form>
                                         <form method="POST" style="display:inline;" onsubmit="return confirm('Reset all requirements to Pending Review for <?= htmlspecialchars(addslashes($inst['name'])) ?>?');">
-                                            <input type="hidden" name="action" value="batch_revoke">
+                                            <input type="hidden" name="action" value="batch_reset">
                                             <input type="hidden" name="institution_id" value="<?= $iid ?>">
                                             <button type="submit" class="btn-white" style="padding:0.22rem 0.45rem; font-size:0.7rem; color:#D97706;" title="Reset / Audit Re-evaluation">
                                                 <i class="fas fa-arrow-rotate-left"></i> Reset
@@ -1071,7 +1071,7 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
 
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem; margin-bottom:0.85rem;">
                     <div>
-                        <label style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Compliance Deadline</label>
+                        <label style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Target Date</label>
                         <input type="date" name="due_date" value="<?= date('Y-11-30') ?>" required style="width:100%; padding:0.45rem 0.65rem; border-radius:7px; border:1px solid #CBD5E1; font-size:0.8rem; font-family:'Plus Jakarta Sans',sans-serif; box-sizing:border-box;">
                     </div>
                     <div>
@@ -1128,7 +1128,7 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
 
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem; margin-bottom:0.85rem;">
                     <div>
-                        <label style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Compliance Deadline</label>
+                        <label style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Target Date</label>
                         <input type="date" name="due_date" id="editDueDate" style="width:100%; padding:0.45rem 0.65rem; border-radius:7px; border:1px solid #CBD5E1; font-size:0.8rem; font-family:'Plus Jakarta Sans',sans-serif; box-sizing:border-box;">
                     </div>
                     <div>
@@ -1205,7 +1205,7 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                     <label style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Notice Classification / Subject Template</label>
                     <select name="notice_type" id="noticeTypeSelect" style="width:100%; padding:0.45rem 0.65rem; border-radius:7px; border:1px solid #CBD5E1; font-size:0.8rem; font-family:'Plus Jakarta Sans',sans-serif;">
                         <option value="regular">📋 Official Regulatory Compliance Checklist & Audit Notice</option>
-                        <option value="urgent">🔴 Urgent: Impending Accreditation Deadline Notice</option>
+                        <option value="urgent">📢 Chapter Compliance Monitoring Advisory Notice</option>
                         <option value="congrats">🏆 Official Chapter Accreditation Confirmation</option>
                     </select>
                 </div>
@@ -1339,14 +1339,14 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                         statusCell.innerHTML = '<span class="ap-badge passed"><i class="fas fa-check-circle"></i> Compliant</span><div style="font-size:0.68rem; color:#64748B; margin-top:2px; font-family:\'JetBrains Mono\',monospace;">Just now</div>';
                         btn.onclick = function() { ajaxTogglePolicy(policyId, 0); };
                         btn.title = "Mark Pending";
-                        btn.innerHTML = '<i class="fas fa-arrow-rotate-left" style="color:#64748B;"></i> <span id="toggle-text-' + policyId + '">Revoke</span>';
-                        showToast('✓ Policy marked Compliant!');
+                        btn.innerHTML = '<i class="fas fa-arrow-rotate-left" style="color:#64748B;"></i> <span id="toggle-text-' + policyId + '">Unverify</span>';
+                        showToast('✓ Requirement verified as Compliant!');
                     } else {
                         statusCell.innerHTML = '<span class="ap-badge pending"><i class="fas fa-clock"></i> Pending Review</span>';
                         btn.onclick = function() { ajaxTogglePolicy(policyId, 1); };
                         btn.title = "Mark Compliant";
-                        btn.innerHTML = '<i class="fas fa-check" style="color:#059669;"></i> <span id="toggle-text-' + policyId + '">Pass</span>';
-                        showToast('✓ Policy revoked to Pending Review.');
+                        btn.innerHTML = '<i class="fas fa-check" style="color:#059669;"></i> <span id="toggle-text-' + policyId + '">Verify</span>';
+                        showToast('✓ Requirement set to Pending Review.');
                     }
                 } else {
                     alert('Error: ' + (res.error || 'Failed to update policy'));
@@ -1450,7 +1450,7 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
         // Export CSV Functionality
         function exportCSV() {
             const rows = [
-                ['Chapter Institution', 'Acronym', 'Policy Requirement', 'Description', 'Deadline', 'Status', 'Completed Date', 'Auditor Notes']
+                ['Chapter Institution', 'Acronym', 'Policy Requirement', 'Description', 'Target Date', 'Status', 'Completed Date', 'Auditor Notes']
             ];
 
             <?php foreach ($policyRecords as $p): ?>

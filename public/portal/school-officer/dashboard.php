@@ -52,6 +52,7 @@ if ($supabase) {
                 $schoolName = $institutions[0]['name'];
                 $schoolAcronym = $institutions[0]['acronym'] ?? 'IECEP-SC';
                 $institutionMembershipCount = (int)($institutions[0]['membership_count'] ?? 0);
+                $chapterComplianceStatus = strtolower($institutions[0]['compliance_status'] ?? 'compliant');
             }
         } else {
             $institutions = $supabase->select('institutions', ['status' => 'eq.active', 'limit' => 1]);
@@ -60,6 +61,7 @@ if ($supabase) {
                 $schoolName = $institutions[0]['name'] ?? $schoolName;
                 $schoolAcronym = $institutions[0]['acronym'] ?? 'IECEP-SC';
                 $institutionMembershipCount = (int)($institutions[0]['membership_count'] ?? 0);
+                $chapterComplianceStatus = strtolower($institutions[0]['compliance_status'] ?? 'compliant');
             }
         }
     } catch (Exception $e) {
@@ -424,6 +426,23 @@ $complianceRate = ($memberCount > 0) ? round(($activePaidMembers / $memberCount)
                     </a>
                 </div>
             </div>
+
+            <?php if (!empty($chapterComplianceStatus) && ($chapterComplianceStatus === 'at_risk' || $chapterComplianceStatus === 'non_compliant')): ?>
+                <div style="background: <?= $chapterComplianceStatus === 'non_compliant' ? '#FFF1F2' : '#FFFBEB' ?>; border: 1px solid <?= $chapterComplianceStatus === 'non_compliant' ? '#FECDD3' : '#FDE68A' ?>; border-left: 4px solid <?= $chapterComplianceStatus === 'non_compliant' ? '#E11D48' : '#D97706' ?>; border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 0.85rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 0.65rem;">
+                        <i class="fas fa-bell" style="color: <?= $chapterComplianceStatus === 'non_compliant' ? '#E11D48' : '#D97706' ?>; font-size: 1.05rem;"></i>
+                        <div>
+                            <strong style="font-size: 0.82rem; color: #0F172A;">Chapter Compliance Monitoring Reminder:</strong>
+                            <span style="font-size: 0.78rem; color: #475569; margin-left: 0.35rem;">
+                                Your chapter currently has an advisory standing of <strong><?= $chapterComplianceStatus === 'non_compliant' ? 'Needs Improvement' : 'At Risk' ?></strong> (CBL Art. V Sec. 3). Boost student participation or host/co-host an upcoming event.
+                            </span>
+                        </div>
+                    </div>
+                    <a href="<?= PORTAL_URL ?>/school-officer/compliance/status.php" class="btn-white" style="font-size: 0.72rem; padding: 0.25rem 0.65rem; color: var(--color-navy); font-weight: 700;">
+                        View Compliance Scorecard &rarr;
+                    </a>
+                </div>
+            <?php endif; ?>
 
             <!-- 2. KPI Grid -->
             <div class="dash-kpi-grid">

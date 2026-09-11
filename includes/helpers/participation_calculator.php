@@ -42,21 +42,21 @@ function getComplianceStatus($participationRate) {
 }
 
 /**
- * Update school affiliation status based on compliance
+ * Update school compliance status for monitoring purposes
+ * Note: Per project guidelines, compliance is for monitoring and advisory purposes only.
+ * It does NOT revoke or suspend institutional affiliation status.
  */
 function updateSchoolStatus($schoolId, $conn) {
     $stats = calculateParticipationRate($schoolId, $conn);
     $status = getComplianceStatus($stats['participation_rate']);
     
-    $affiliationStatus = 'Active';
-    if ($status === 'At Risk') $affiliationStatus = 'Probationary';
-    if ($status === 'Non-Compliant') $affiliationStatus = 'Revoked';
-    
-    $query = "UPDATE school_profiles SET affiliation_status = $1 WHERE id = $2";
-    pg_query_params($conn, $query, [$affiliationStatus, $schoolId]);
+    // In monitoring-only model, affiliation status remains unaffected.
+    // We update the compliance_status column to track chapter engagement standing.
+    $query = "UPDATE school_profiles SET compliance_status = $1 WHERE id = $2";
+    @pg_query_params($conn, $query, [$status, $schoolId]);
     
     return [
-        'status' => $affiliationStatus,
+        'compliance_status' => $status,
         'participation_rate' => $stats['participation_rate']
     ];
 }

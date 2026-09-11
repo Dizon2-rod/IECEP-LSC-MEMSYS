@@ -72,6 +72,8 @@ $studentNumber = $member['student_number'] ?? $member['student_id'] ?? '';
 $digitalHash = $member['digital_id_hash'] ?? '';
 $memberFullName = $member['full_name'] ?? '';
 $avatarUrl = $member['avatar_url'] ?? '';
+$paymentStatus = strtolower($member['payment_status'] ?? 'paid');
+$isPaid = ($paymentStatus === 'paid');
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -309,6 +311,35 @@ $avatarUrl = $member['avatar_url'] ?? '';
             </div>
         </div>
 
+        <?php if (!$isPaid): ?>
+            <div style="background:#FFFFFF; border:1px solid var(--border-color); border-radius:12px; padding:2.5rem 1.5rem; text-align:center; max-width:540px; margin:2rem auto; box-shadow:var(--shadow-card);">
+                <div style="width:58px; height:58px; border-radius:50%; background:#FEF3C7; color:#D97706; display:flex; align-items:center; justify-content:center; margin:0 auto 1rem; font-size:1.6rem; border:1px solid #FDE68A;">
+                    <i class="fas fa-lock"></i>
+                </div>
+                <h2 style="font-size:1.2rem; font-weight:800; color:#0F172A; margin:0 0 0.5rem;">Digital ID Gated — Dues Unpaid</h2>
+                <p style="color:#64748B; font-size:0.84rem; line-height:1.5; margin-bottom:1.5rem;">
+                    In accordance with <strong>Article IV, Section 2</strong> and <strong>Article VI</strong> of the IECEP-LSC 2025 Constitution &amp; By-Laws, official Student Digital IDs and dynamic credentials are only generated and issued upon confirmed payment of individual membership dues.
+                </p>
+                <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem; margin-bottom:1.5rem; text-align:left; font-size:0.8rem;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.35rem;">
+                        <span style="color:#64748B;">Student Member:</span>
+                        <strong style="color:#0F172A;"><?= htmlspecialchars($memberFullName ?: $displayName) ?></strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.35rem;">
+                        <span style="color:#64748B;">Chapter Affiliation:</span>
+                        <strong style="color:#0F172A;"><?= htmlspecialchars($schoolName ?: 'IECEP Laguna Student Chapter') ?></strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between;">
+                        <span style="color:#64748B;">Dues Status:</span>
+                        <span style="color:#D97706; font-weight:800; text-transform:uppercase;"><?= htmlspecialchars($paymentStatus) ?></span>
+                    </div>
+                </div>
+                <a href="/IECEP-LSC-MEMSYS/public/portal/member/payments.php" class="btn-primary-navy" style="display:inline-flex;">
+                    <i class="fas fa-receipt"></i> View Dues &amp; Payment Ledger
+                </a>
+            </div>
+        <?php else: ?>
+
         <div class="id-layout-container">
             <!-- Left: White Theme Digital ID Card -->
             <div>
@@ -409,19 +440,20 @@ $avatarUrl = $member['avatar_url'] ?? '';
                     <div style="font-family:'JetBrains Mono', monospace; font-size:0.68rem; color:#475569; word-break:break-all; background:#FFFFFF; padding:0.5rem; border:1px solid #E2E8F0; border-radius:6px;">
                         SHA-256: <?= htmlspecialchars($digitalHash) ?>
                     </div>
-                </div>
             </div>
         </div>
+        <?php endif; ?>
     </main>
 
     <script>
         const realMemberId = <?= json_encode($realMemberId) ?>;
+        const isPaid = <?= json_encode($isPaid) ?>;
         let memberQrSecondsLeft = 30;
         let memberQrTimerInterval = null;
 
         async function fetchAndRenderMemberQr() {
+            if (!isPaid || !realMemberId) return;
             try {
-                if (!realMemberId) return;
                 const res = await fetch(`/IECEP-LSC-MEMSYS/public/api/events/attendance.php?action=generate_member_qr&member_id=${encodeURIComponent(realMemberId)}`);
                 const data = await res.json();
                 if (data.success) {
@@ -493,8 +525,10 @@ $avatarUrl = $member['avatar_url'] ?? '';
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            fetchAndRenderMemberQr();
-            startTimer();
+            if (isPaid) {
+                fetchAndRenderMemberQr();
+                startTimer();
+            }
         });
     </script>
 </body>

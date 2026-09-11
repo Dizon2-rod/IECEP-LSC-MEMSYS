@@ -309,15 +309,37 @@ if ($action === 'submit' || $action === 'submit_application') {
         // Prepare documents array
         $documents = [];
 
+        // Alias mapping for canonical 2025 CBL keys (Art. IV Sec. 3)
+        $canonicalMap = [
+            'constitution_bylaws'  => ['constitution_by_laws', 'constitution_bylaws'],
+            'officers_cv'          => ['officers_cvs', 'officers_cv'],
+            'org_chart'            => ['organizational_chart', 'org_chart'],
+            'letter_of_intent'     => ['letter_of_intent'],
+            'endorsement_letter'   => ['endorsement_letter'],
+            'member_directory'     => ['member_directory']
+        ];
+
         // Handle file uploads
         $documentFields = [
-            'letter_of_intent' => ['name' => 'Letter of Intent', 'allowed' => ['application/pdf']],
-            'endorsement_letter' => ['name' => 'Endorsement Letter', 'allowed' => ['application/pdf']],
-            'constitution_by_laws' => ['name' => 'Constitution and By-Laws', 'allowed' => ['application/pdf']],
-            'officers_cvs' => ['name' => 'List of Officers with CVs', 'allowed' => ['application/pdf']],
-            'organizational_chart' => ['name' => 'Organizational Chart', 'allowed' => ['application/pdf']],
-            'member_directory' => ['name' => 'Member Directory', 'allowed' => ['application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv']]
+            'letter_of_intent'     => ['name' => 'Letter of Intent', 'allowed' => ['application/pdf']],
+            'endorsement_letter'   => ['name' => 'Endorsement Letter', 'allowed' => ['application/pdf']],
+            'constitution_bylaws'  => ['name' => 'Constitution and By-Laws', 'allowed' => ['application/pdf']],
+            'officers_cv'          => ['name' => 'List of Officers with CVs', 'allowed' => ['application/pdf']],
+            'org_chart'            => ['name' => 'Organizational Chart', 'allowed' => ['application/pdf']],
+            'member_directory'     => ['name' => 'Member Directory', 'allowed' => ['application/pdf', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/csv']]
         ];
+
+        // Also check if request passed alias keys in $_FILES and remap to canonical
+        foreach ($canonicalMap as $canonicalKey => $aliases) {
+            if (!isset($_FILES[$canonicalKey])) {
+                foreach ($aliases as $altKey) {
+                    if (isset($_FILES[$altKey])) {
+                        $_FILES[$canonicalKey] = $_FILES[$altKey];
+                        break;
+                    }
+                }
+            }
+        }
 
         // Load existing documents if resubmitting
         $existingDocuments = [];

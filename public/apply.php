@@ -641,13 +641,11 @@ $isResubmit = !empty($existingApplication);
                 </div>
 
                 <div class="alert alert-info" style="margin-bottom: var(--space-6);">
-                    <strong>📋 Fee Breakdown (CBL Compliance):</strong>
+                    <strong>📋 Fee Breakdown (2025 Constitution & By-Laws):</strong>
                     <ul style="margin: var(--space-2) 0 0 var(--space-4);">
-                        <li>1-50 members: ₱1,500</li>
-                        <li>51-100 members: ₱2,000</li>
-                        <li>101-150 members: ₱2,500</li>
-                        <li>151+ members: ₱3,000</li>
-                        <li>Fixed Operational Fee: ₱800</li>
+                        <li><strong>Institutional Affiliation (BR No. 021-2024):</strong> 1–50: ₱1,500 | 51–100: ₱2,000 | 101–150: ₱2,500 | 151+: ₱3,000</li>
+                        <li><strong>Operational & Activity Fee:</strong> ₱800.00 (Fixed per organization)</li>
+                        <li><strong>Individual Student Dues (Art. IV Sec. 2):</strong> Returning: ₱200.00 | New: ₱250.00 | Honorary: ₱300.00</li>
                     </ul>
                 </div>
 

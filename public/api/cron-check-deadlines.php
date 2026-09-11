@@ -151,9 +151,9 @@ try {
 
     if (empty($complianceInstitutions['error']) && !empty($complianceInstitutions['data'])) {
         foreach ($complianceInstitutions['data'] as $institution) {
-            $statusLabel = str_replace('_', ' ', strtoupper($institution['compliance_status'] ?? 'at_risk'));
-            $title = 'Compliance Risk Notice';
-            $message = "Institution \"{$institution['name']}\" is marked {$statusLabel}. Please address compliance requirements immediately.";
+            $statusLabel = ($institution['compliance_status'] === 'non_compliant') ? 'Needs Improvement' : 'At Risk';
+            $title = 'IECEP-LSC Compliance Monitoring Reminder';
+            $message = "Advisory Notice: Chapter \"{$institution['name']}\" currently has an advisory monitoring standing ({$statusLabel}). Please encourage member participation in regional events or coordinate with the EB for chapter hosting.";
 
             $schoolOfficersResult = $supabase->from('user_profiles')
                 ->select('id,email,role')
@@ -174,7 +174,7 @@ try {
                 $recipients = array_merge($recipients, $execBoardResult['data'] ?? []);
             }
 
-            notifyUsers($recipients, $title, $message, '/portal/compliance.php', $emailService, $summary);
+            notifyUsers($recipients, $title, $message, '/portal/school-officer/compliance/status.php', $emailService, $summary);
             $summary['compliance_reminders']++;
         }
     }

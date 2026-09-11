@@ -916,6 +916,9 @@ ON DUPLICATE KEY UPDATE `fee` = VALUES(`fee`);
 INSERT INTO `system_settings` (`id`, `key`, `value`, `description`)
 VALUES
     ('s1a1b2c3-d4e5-6789-0123-456789abcdef', 'operational_fee', '800.00', 'Annual organization operational fee per Board Resolution No. 021-2024'),
+    ('s3a1b2c3-d4e5-6789-0123-456789abcdef', 'returning_member_fee', '200.00', 'Individual membership due for returning (old) members per CBL Art. IV Sec. 2'),
+    ('s4a1b2c3-d4e5-6789-0123-456789abcdef', 'new_member_fee', '250.00', 'Individual membership due for new members per CBL Art. IV Sec. 2'),
+    ('s5a1b2c3-d4e5-6789-0123-456789abcdef', 'honorary_member_fee', '300.00', 'Individual membership due for honorary members per CBL Art. IV Sec. 2'),
     ('s2a1b2c3-d4e5-6789-0123-456789abcdef', 'facebook_page_url', 'https://www.facebook.com/IECEPLSC', 'Official IECEP-LSC Facebook URL')
 ON DUPLICATE KEY UPDATE `value` = VALUES(`value`);
 
