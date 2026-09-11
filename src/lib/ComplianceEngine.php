@@ -175,13 +175,17 @@ class ComplianceEngine
             : "Friendly monitoring reminder: Your chapter's compliance standing is currently {$score}% ({$statusLabel}). Please encourage member attendance in upcoming activities or coordinate with the Executive Board for chapter event hosting.";
 
         foreach ($officers as $officer) {
-            $this->db->insert('notifications', [
-                'user_id' => $officer['id'],
-                'title' => $statusTitle,
-                'message' => $statusMsg,
-                'type' => 'reminder',
-                'created_at' => date('Y-m-d H:i:s')
-            ]);
+            try {
+                $this->db->insert('notifications', [
+                    'user_id' => $officer['id'],
+                    'title' => $statusTitle,
+                    'message' => $statusMsg,
+                    'type' => 'warning',
+                    'created_at' => date('Y-m-d H:i:s')
+                ]);
+            } catch (\Throwable $ne) {
+                error_log("Notice sending compliance notification: " . $ne->getMessage());
+            }
         }
     }
 

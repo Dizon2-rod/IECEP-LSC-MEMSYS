@@ -1906,6 +1906,9 @@ foreach ($allAppsMap as $app) {
                     </p>
                 </div>
                 <div class="dash-header-btn-group">
+                    <button type="button" id="btnSyncAllData" class="btn-white" style="border:1px solid #CBD5E1; color:var(--color-navy); font-weight:800; background:#F8FAFC; box-shadow:0 1px 2px rgba(0,0,0,0.05);" onclick="triggerFullSystemSync()" title="Synchronize all institutions, rosters, requirements, finances, and blockchain ledger">
+                        <i class="fas fa-rotate" id="syncAllBtnIcon" style="color:var(--color-gold-dark);"></i> Sync All Data
+                    </button>
                     <button type="button" id="btnDownloadTemplate" class="btn-excel-green">
                         <i class="fas fa-file-excel"></i> Excel Template (.xlsx)
                     </button>
@@ -1991,6 +1994,9 @@ foreach ($allAppsMap as $app) {
                         </p>
                     </div>
                     <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <button type="button" class="btn-white" style="font-size:0.74rem; padding:0.35rem 0.75rem; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); color:#FFFFFF; font-weight:700;" onclick="triggerFullSystemSync()" title="Synchronize all ledger balances and fee brackets">
+                            <i class="fas fa-rotate"></i> Synchronize Data
+                        </button>
                         <button type="button" class="btn-white" style="font-size:0.74rem; padding:0.35rem 0.75rem; background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.25); color:#FFFFFF;" onclick="window.print()">
                             <i class="fas fa-print"></i> Print Financial Audit
                         </button>
@@ -3990,9 +3996,227 @@ foreach ($allAppsMap as $app) {
                     if (reqModal && reqModal.style.display === 'flex') {
                         closeRequirementsModal();
                     }
+                    const syncModal = document.getElementById('syncSystemModal');
+                    if (syncModal && syncModal.style.display === 'flex') {
+                        closeSyncModal();
+                    }
                 }
             });
         })();
+
+        // Full System Data Synchronization Controller
+        function triggerFullSystemSync() {
+            const modal = document.getElementById('syncSystemModal');
+            const stateLoading = document.getElementById('syncStateLoading');
+            const stateSuccess = document.getElementById('syncStateSuccess');
+            const stateError = document.getElementById('syncStateError');
+
+            modal.style.display = 'flex';
+            stateLoading.style.display = 'block';
+            stateSuccess.style.display = 'none';
+            stateError.style.display = 'none';
+
+            // Spin header button icon if visible
+            const syncIcon = document.getElementById('syncAllBtnIcon');
+            if (syncIcon) syncIcon.classList.add('fa-spin');
+
+            fetch('<?= PORTAL_URL ?>/../../api/sync-all.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (syncIcon) syncIcon.classList.remove('fa-spin');
+                if (data.success) {
+                    stateLoading.style.display = 'none';
+                    stateSuccess.style.display = 'block';
+
+                    const stats = data.stats || {};
+                    document.getElementById('syncDurationDisplay').textContent = `${data.duration_sec || 0}s`;
+                    document.getElementById('syncStatChapters').textContent = stats.institutions_processed || 0;
+                    document.getElementById('syncStatMembers').textContent = stats.members_linked || 0;
+                    document.getElementById('syncStatDocs').textContent = stats.documents_synced || 0;
+                    document.getElementById('syncStatFinances').textContent = stats.financials_updated || 0;
+                    document.getElementById('syncStatCompliance').textContent = stats.compliance_evaluated || 0;
+                    document.getElementById('syncStatBlockchain').textContent = stats.blockchain_blocks || 0;
+
+                    const logContainer = document.getElementById('syncLogList');
+                    logContainer.innerHTML = '';
+                    (data.log || []).forEach(entry => {
+                        const li = document.createElement('li');
+                        li.style.marginBottom = '0.35rem';
+                        li.innerHTML = `<i class="fas fa-check" style="color:#059669; margin-right:4px;"></i> ${escapeHtml(entry)}`;
+                        logContainer.appendChild(li);
+                    });
+                } else {
+                    stateLoading.style.display = 'none';
+                    stateError.style.display = 'block';
+                    document.getElementById('syncErrorMsg').textContent = data.message || 'Synchronization failed.';
+                }
+            })
+            .catch(err => {
+                if (syncIcon) syncIcon.classList.remove('fa-spin');
+                stateLoading.style.display = 'none';
+                stateError.style.display = 'block';
+                document.getElementById('syncErrorMsg').textContent = err.message || 'Network error occurred during synchronization.';
+            });
+        }
+
+        function closeSyncModal() {
+            document.getElementById('syncSystemModal').style.display = 'none';
+        }
+
+        function finishSyncAndReload() {
+            window.location.reload();
+        }
     </script>
+
+    <!-- Full System Data Synchronization Modal -->
+    <div id="syncSystemModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(11,29,74,0.72); backdrop-filter:blur(5px); z-index:999999; align-items:center; justify-content:center; padding:1rem; box-sizing:border-box;">
+        <div style="background:#FFFFFF; border-radius:14px; max-width:640px; width:95%; max-height:90vh; overflow-y:auto; box-shadow:0 25px 60px -15px rgba(11,29,74,0.45); border:1px solid #CBD5E1; animation:modalPop 0.2s ease-out; box-sizing:border-box;">
+            
+            <!-- Header -->
+            <div style="background:linear-gradient(135deg, #0B1D4A 0%, #152C6E 100%); color:#FFFFFF; padding:1.15rem 1.4rem; display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap:0.65rem;">
+                    <div style="width:38px; height:38px; border-radius:9px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; color:#FDE047; font-size:1.2rem;">
+                        <i class="fas fa-rotate"></i>
+                    </div>
+                    <div>
+                        <h3 style="margin:0; font-size:1.05rem; font-weight:800; color:#FFFFFF;">
+                            System-Wide Data Synchronization
+                        </h3>
+                        <div style="font-size:0.72rem; color:#93C5FD; margin-top:1px;">
+                            Harmonizing chapters, student rosters, requirements, finances &amp; blockchain
+                        </div>
+                    </div>
+                </div>
+                <button type="button" onclick="closeSyncModal()" style="background:rgba(255,255,255,0.15); border:none; color:#FFFFFF; border-radius:6px; width:30px; height:30px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:1.3rem;">&times;</button>
+            </div>
+
+            <!-- Body -->
+            <div style="padding:1.5rem;">
+                
+                <!-- 1. LOADING STATE -->
+                <div id="syncStateLoading" style="text-align:center; padding:1.5rem 0.5rem;">
+                    <div style="width:64px; height:64px; margin:0 auto 1.25rem; border-radius:50%; background:#EFF6FF; border:3px solid #DBEAFE; display:flex; align-items:center; justify-content:center; color:#2563EB; font-size:1.75rem;">
+                        <i class="fas fa-rotate fa-spin"></i>
+                    </div>
+                    <h4 style="margin:0 0 0.4rem; font-size:1.1rem; font-weight:800; color:#0F172A;">
+                        Synchronizing All System Records...
+                    </h4>
+                    <p style="margin:0 auto 1.25rem; font-size:0.78rem; color:#64748B; max-width:440px; line-height:1.5;">
+                        Executing multi-phase alignment: linking chapter records, resolving student rosters, cross-syncing CBL requirements, calculating 2025 CBL fees, and anchoring blockchain blocks.
+                    </p>
+
+                    <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem; max-width:440px; margin:0 auto; text-align:left; font-size:0.74rem; color:#475569;">
+                        <div style="display:flex; align-items:center; gap:0.45rem; margin-bottom:0.35rem;">
+                            <i class="fas fa-circle-notch fa-spin" style="color:#2563EB;"></i>
+                            <span>Aligning Chapter Affiliations &amp; Contacts</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.45rem; margin-bottom:0.35rem;">
+                            <i class="fas fa-circle-notch fa-spin" style="color:#2563EB;"></i>
+                            <span>Reconciling Active Enrolled Member Counts</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.45rem; margin-bottom:0.35rem;">
+                            <i class="fas fa-circle-notch fa-spin" style="color:#2563EB;"></i>
+                            <span>Cross-Syncing 6 CBL Requirements &amp; Dossiers</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.45rem; margin-bottom:0.35rem;">
+                            <i class="fas fa-circle-notch fa-spin" style="color:#2563EB;"></i>
+                            <span>Auditing 2025 CBL Bracket Collections &amp; Receipts</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.45rem;">
+                            <i class="fas fa-circle-notch fa-spin" style="color:#2563EB;"></i>
+                            <span>Anchoring Cryptographic Blockchain Ledger</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. SUCCESS STATE -->
+                <div id="syncStateSuccess" style="display:none;">
+                    <div style="background:#ECFDF5; border:1px solid #A7F3D0; border-radius:10px; padding:1rem 1.25rem; display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem;">
+                        <div style="display:flex; align-items:center; gap:0.75rem;">
+                            <div style="width:40px; height:40px; border-radius:50%; background:#059669; color:#FFFFFF; display:flex; align-items:center; justify-content:center; font-size:1.25rem; flex-shrink:0;">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div>
+                                <h4 style="margin:0; font-size:1rem; font-weight:800; color:#065F46;">
+                                    All System Data Synchronized!
+                                </h4>
+                                <div style="font-size:0.75rem; color:#047857; margin-top:2px;">
+                                    Every chapter, roster, document dossier, and ledger balance is in 100% harmony.
+                                </div>
+                            </div>
+                        </div>
+                        <span id="syncDurationDisplay" class="ap-pill active" style="font-size:0.75rem; font-family:'JetBrains Mono',monospace;">0.0s</span>
+                    </div>
+
+                    <!-- 6 Stats Grid -->
+                    <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.65rem; margin-bottom:1.25rem;">
+                        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.65rem 0.75rem; text-align:center;">
+                            <div style="font-size:0.68rem; text-transform:uppercase; font-weight:700; color:#64748B;">Chapters Aligned</div>
+                            <div id="syncStatChapters" style="font-size:1.2rem; font-weight:800; color:#0B1D4A; font-family:'JetBrains Mono',monospace; margin-top:2px;">0</div>
+                        </div>
+                        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.65rem 0.75rem; text-align:center;">
+                            <div style="font-size:0.68rem; text-transform:uppercase; font-weight:700; color:#64748B;">Members Linked</div>
+                            <div id="syncStatMembers" style="font-size:1.2rem; font-weight:800; color:#2563EB; font-family:'JetBrains Mono',monospace; margin-top:2px;">0</div>
+                        </div>
+                        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.65rem 0.75rem; text-align:center;">
+                            <div style="font-size:0.68rem; text-transform:uppercase; font-weight:700; color:#64748B;">Docs Synced</div>
+                            <div id="syncStatDocs" style="font-size:1.2rem; font-weight:800; color:#D97706; font-family:'JetBrains Mono',monospace; margin-top:2px;">0</div>
+                        </div>
+                        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.65rem 0.75rem; text-align:center;">
+                            <div style="font-size:0.68rem; text-transform:uppercase; font-weight:700; color:#64748B;">Ledgers Audited</div>
+                            <div id="syncStatFinances" style="font-size:1.2rem; font-weight:800; color:#059669; font-family:'JetBrains Mono',monospace; margin-top:2px;">0</div>
+                        </div>
+                        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.65rem 0.75rem; text-align:center;">
+                            <div style="font-size:0.68rem; text-transform:uppercase; font-weight:700; color:#64748B;">Compliance Evaluated</div>
+                            <div id="syncStatCompliance" style="font-size:1.2rem; font-weight:800; color:#8B5CF6; font-family:'JetBrains Mono',monospace; margin-top:2px;">0</div>
+                        </div>
+                        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.65rem 0.75rem; text-align:center;">
+                            <div style="font-size:0.68rem; text-transform:uppercase; font-weight:700; color:#64748B;">Blocks Anchored</div>
+                            <div id="syncStatBlockchain" style="font-size:1.2rem; font-weight:800; color:#0B1D4A; font-family:'JetBrains Mono',monospace; margin-top:2px;">0</div>
+                        </div>
+                    </div>
+
+                    <!-- Sync Phase Log -->
+                    <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem; margin-bottom:1.25rem;">
+                        <div style="font-size:0.72rem; text-transform:uppercase; font-weight:800; color:#475569; margin-bottom:0.45rem;">
+                            <i class="fas fa-list-check" style="color:#0B1D4A;"></i> Execution Highlights:
+                        </div>
+                        <ul id="syncLogList" style="margin:0; padding-left:1.15rem; font-size:0.75rem; color:#334155; line-height:1.45;">
+                            <!-- Populated dynamically -->
+                        </ul>
+                    </div>
+
+                    <div style="display:flex; justify-content:flex-end; gap:0.65rem;">
+                        <button type="button" class="btn-white" onclick="closeSyncModal()">
+                            Close
+                        </button>
+                        <button type="button" class="btn-primary-navy" onclick="finishSyncAndReload()">
+                            <i class="fas fa-arrows-rotate"></i> Done &amp; Refresh Dashboard
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. ERROR STATE -->
+                <div id="syncStateError" style="display:none; text-align:center; padding:1.5rem 0.5rem;">
+                    <div style="width:56px; height:56px; margin:0 auto 1rem; border-radius:50%; background:#FEE2E2; color:#DC2626; display:flex; align-items:center; justify-content:center; font-size:1.5rem;">
+                        <i class="fas fa-circle-exclamation"></i>
+                    </div>
+                    <h4 style="margin:0 0 0.35rem; font-size:1.05rem; font-weight:800; color:#991B1B;">
+                        Synchronization Error
+                    </h4>
+                    <p id="syncErrorMsg" style="font-size:0.8rem; color:#64748B; margin:0 0 1.25rem; word-break:break-word;">
+                        An error occurred while synchronizing system records.
+                    </p>
+                    <button type="button" class="btn-primary-navy" onclick="closeSyncModal()">
+                        Dismiss
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
 </body>
 </html>
