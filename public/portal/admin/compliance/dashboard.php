@@ -458,8 +458,8 @@ $complianceRate = $totalInstitutions > 0 ? round(($compliantCount / $totalInstit
                                         </td>
                                         <td style="text-align:right; white-space:nowrap;">
                                             <?php if ($row['status_label'] !== 'Compliant'): ?>
-                                                <button type="button" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem; color:#B45309; border-color:#FDE68A; background:#FFFBEB; margin-right:0.25rem;" onclick="sendSingleSchoolReminder('<?= $row['id'] ?>', '<?= htmlspecialchars(addslashes($row['name'])) ?>')">
-                                                    <i class="fas fa-bell"></i> Remind
+                                                <button type="button" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.6rem; color:#B45309; border-color:#FDE68A; background:#FFFBEB; margin-right:0.25rem; font-weight:700;" onclick="sendSingleSchoolReminder('<?= $row['id'] ?>', '<?= htmlspecialchars(addslashes($row['name'])) ?>')" title="Send compliance monitoring reminder">
+                                                    <i class="fas fa-bell"></i> Remind School
                                                 </button>
                                             <?php endif; ?>
                                             <a href="<?= PORTAL_URL ?>/admin/members/list.php?school=<?= urlencode($row['id']) ?>" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem;">

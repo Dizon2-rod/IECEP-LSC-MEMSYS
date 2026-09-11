@@ -419,9 +419,6 @@ foreach ($policyRecords as $p) {
 $totalPoliciesCount = count($policyRecords);
 $totalPassedCount = count(array_filter($policyRecords, fn($p) => !empty($p['is_compliant'])));
 $totalPendingCount = $totalPoliciesCount - $totalPassedCount;
-$totalOverdueCount = count(array_filter($policyRecords, function($p) {
-    return empty($p['is_compliant']) && !empty($p['due_date']) && strtotime($p['due_date']) < time();
-}));
 $overallComplianceRate = $totalPoliciesCount > 0 ? round(($totalPassedCount / $totalPoliciesCount) * 100, 1) : 100.0;
 
 // Filter handling
@@ -434,8 +431,6 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
         return false;
     }
     $isPassed = !empty($p['is_compliant']);
-    $dueDate = $p['due_date'] ?? '';
-    $isOverdue = (!$isPassed && $dueDate && strtotime($dueDate) < time());
 
     if ($selectedStatusFilter === 'compliant' && !$isPassed) {
         return false;
@@ -443,9 +438,7 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
     if ($selectedStatusFilter === 'pending' && $isPassed) {
         return false;
     }
-    if ($selectedStatusFilter === 'overdue' && !$isOverdue) {
-        return false;
-    }
+
     if (!empty($searchQuery)) {
         $instName = strtolower($institutionsMap[$p['institution_id']]['name'] ?? '');
         $instAcronym = strtolower($institutionsMap[$p['institution_id']]['acronym'] ?? '');
@@ -813,10 +806,10 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                 </div>
 
                 <div class="dash-kpi-card">
-                    <div class="kpi-icon-pill <?= $totalOverdueCount > 0 ? 'rose' : 'amber' ?>"><i class="fas <?= $totalOverdueCount > 0 ? 'fa-calendar-xmark' : 'fa-clock-rotate-left' ?>"></i></div>
+                    <div class="kpi-icon-pill amber"><i class="fas fa-clock-rotate-left"></i></div>
                     <div>
-                        <div class="kpi-val" style="color:<?= $totalOverdueCount > 0 ? '#E11D48' : '#D97706' ?>;"><?= $totalPendingCount ?> <span style="font-size:0.75rem; color:#64748B;">(<?= $totalOverdueCount ?> Overdue)</span></div>
-                        <div class="kpi-lbl">Pending Review & Audits</div>
+                        <div class="kpi-val" style="color:#D97706;"><?= $totalPendingCount ?></div>
+                        <div class="kpi-lbl">Pending Review & Monitoring</div>
                     </div>
                 </div>
             </div>
@@ -842,7 +835,6 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                         <option value="all" <?= $selectedStatusFilter === 'all' ? 'selected' : '' ?>>All Statuses</option>
                         <option value="compliant" <?= $selectedStatusFilter === 'compliant' ? 'selected' : '' ?>>Compliant (Passed)</option>
                         <option value="pending" <?= $selectedStatusFilter === 'pending' ? 'selected' : '' ?>>Pending Review</option>
-                        <option value="overdue" <?= $selectedStatusFilter === 'overdue' ? 'selected' : '' ?>>Past Target Date</option>
                     </select>
                 </div>
 
@@ -872,17 +864,16 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                     <table class="ap-table" id="complianceTable" style="width:100%; border-collapse:collapse; text-align:left;">
                         <thead>
                             <tr>
-                                <th style="width:25%;">Chapter / Institution</th>
-                                <th style="width:33%;">Regulatory Requirement</th>
-                                <th style="width:12%;">Target Date</th>
-                                <th style="width:14%;">Audit Status</th>
-                                <th style="width:16%; text-align:right;">Actions</th>
+                                <th style="width:28%;">Chapter / Institution</th>
+                                <th style="width:42%;">Regulatory Requirement</th>
+                                <th style="width:15%;">Audit Status</th>
+                                <th style="width:15%; text-align:right;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($filteredRecords)): ?>
                                 <tr>
-                                    <td colspan="5" style="text-align:center; padding:2rem; color:#64748B;">
+                                    <td colspan="4" style="text-align:center; padding:2rem; color:#64748B;">
                                         <i class="fas fa-clipboard-check" style="font-size:2rem; color:#CBD5E1; margin-bottom:0.5rem; display:block;"></i>
                                         No policy compliance records matched your filter criteria.
                                     </td>
@@ -892,8 +883,6 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                                     <?php
                                         $inst = $institutionsMap[$rec['institution_id']] ?? [];
                                         $isPassed = !empty($rec['is_compliant']);
-                                        $dueDate = $rec['due_date'] ?? '';
-                                        $isOverdue = (!$isPassed && $dueDate && strtotime($dueDate) < time());
                                     ?>
                                     <tr id="row-<?= $rec['id'] ?>" style="border-bottom:1px solid #F1F5F9;">
                                         <td style="padding:0.75rem 1rem;">
@@ -919,12 +908,6 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                                                 <div id="notes-text-<?= $rec['id'] ?>" style="display:none; font-size:0.7rem; color:#2563EB; margin-top:3px; font-style:italic;"></div>
                                             <?php endif; ?>
                                         </td>
-                                        <td style="padding:0.75rem 1rem; font-family:'JetBrains Mono',monospace; font-size:0.76rem;" id="duedate-cell-<?= $rec['id'] ?>">
-                                            <?= $dueDate ? date('M d, Y', strtotime($dueDate)) : 'Term Ongoing' ?>
-                                            <?php if ($isOverdue): ?>
-                                                <div style="color:#E11D48; font-size:0.68rem; font-weight:700;">Overdue</div>
-                                            <?php endif; ?>
-                                        </td>
                                         <td style="padding:0.75rem 1rem;" id="status-cell-<?= $rec['id'] ?>">
                                             <?php if ($isPassed): ?>
                                                 <span class="ap-badge passed">
@@ -934,18 +917,23 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                                                     <?= !empty($rec['completed_at']) ? date('M d, Y', strtotime($rec['completed_at'])) : 'Verified' ?>
                                                 </div>
                                             <?php else: ?>
-                                                <span class="ap-badge <?= $isOverdue ? 'overdue' : 'pending' ?>">
-                                                    <i class="fas <?= $isOverdue ? 'fa-triangle-exclamation' : 'fa-clock' ?>"></i>
-                                                    <?= $isOverdue ? 'Overdue' : 'Pending Review' ?>
+                                                <span class="ap-badge pending">
+                                                    <i class="fas fa-clock"></i> Pending Review
                                                 </span>
                                             <?php endif; ?>
                                         </td>
                                         <td style="padding:0.75rem 1rem; text-align:right;">
-                                            <div style="display:inline-flex; gap:0.25rem;">
-                                                <button type="button" class="btn-white" id="toggle-btn-<?= $rec['id'] ?>" style="padding:0.28rem 0.55rem; font-size:0.72rem;" title="<?= $isPassed ? 'Mark Pending' : 'Mark Compliant' ?>" onclick="ajaxTogglePolicy('<?= $rec['id'] ?>', <?= $isPassed ? 0 : 1 ?>)">
-                                                    <i class="fas <?= $isPassed ? 'fa-arrow-rotate-left' : 'fa-check' ?>" style="color:<?= $isPassed ? '#64748B' : '#059669' ?>;"></i>
-                                                    <span id="toggle-text-<?= $rec['id'] ?>"><?= $isPassed ? 'Unverify' : 'Verify' ?></span>
-                                                </button>
+                                            <div style="display:inline-flex; gap:0.25rem; align-items:center;">
+                                                <?php if (!$isPassed): ?>
+                                                    <button type="button" class="btn-white" id="toggle-btn-<?= $rec['id'] ?>" style="padding:0.28rem 0.55rem; font-size:0.72rem; color:#059669; font-weight:600;" title="Mark Compliant" onclick="ajaxTogglePolicy('<?= $rec['id'] ?>', 1)">
+                                                        <i class="fas fa-check"></i>
+                                                        <span id="toggle-text-<?= $rec['id'] ?>">Verify</span>
+                                                    </button>
+                                                <?php else: ?>
+                                                    <span class="ap-badge passed" id="verified-badge-<?= $rec['id'] ?>" style="font-size:0.72rem; padding:0.28rem 0.55rem; display:inline-flex; align-items:center; gap:0.25rem;">
+                                                        <i class="fas fa-check-circle"></i> Verified
+                                                    </span>
+                                                <?php endif; ?>
                                                 <button type="button" class="btn-white" style="padding:0.28rem 0.55rem; font-size:0.72rem;" title="Edit Requirement" onclick='openEditPolicyModal(<?= json_encode($rec) ?>, "<?= htmlspecialchars(addslashes($inst['name'] ?? 'Chapter')) ?>")'>
                                                     <i class="fas fa-pen-to-square"></i>
                                                 </button>
@@ -965,12 +953,12 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                 </div>
             </div>
 
-            <!-- 5. Per-Institution Compliance Matrix Summary & Certificate Generator -->
+            <!-- 5. Per-Institution Compliance Matrix Summary & Percentage Monitoring -->
             <div class="ap-card">
                 <div class="ap-card-header">
                     <h3 class="ap-card-title">
-                        <i class="fas fa-building-columns" style="color:var(--color-navy); margin-right:0.35rem;"></i>
-                        Chapter Regulatory Standing, Official Notices & Accreditation Certificates
+                        <i class="fas fa-chart-pie" style="color:var(--color-navy); margin-right:0.35rem;"></i>
+                        Chapter Compliance Percentage Monitoring & Chapter Reminders
                     </h3>
                 </div>
                 <div class="ap-card-body" style="padding:1rem;">
@@ -983,8 +971,9 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                                 $instTotal = count($instPols);
                                 $instScore = $instTotal > 0 ? round(($instPassed / $instTotal) * 100) : 100;
                                 $isAllGood = ($instScore >= 100);
+                                $isLowCompliance = ($instScore < 100);
                             ?>
-                            <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; padding:0.85rem 1rem;">
+                            <div style="background:#F8FAFC; border:1px solid <?= $isLowCompliance ? '#FED7AA' : '#E2E8F0' ?>; border-radius:8px; padding:0.85rem 1rem;">
                                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.45rem;">
                                     <div>
                                         <div style="font-weight:800; font-size:0.86rem; color:#0F172A;">
@@ -994,16 +983,23 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                                             <?= htmlspecialchars($inst['name']) ?>
                                         </div>
                                     </div>
-                                    <span class="ap-badge <?= $isAllGood ? 'passed' : 'pending' ?>">
+                                    <span class="ap-badge <?= $isAllGood ? 'passed' : 'pending' ?>" style="font-size:0.84rem; font-weight:800; padding:0.25rem 0.55rem;">
                                         <?= $instScore ?>%
                                     </span>
                                 </div>
-                                <div style="width:100%; height:6px; background:#E2E8F0; border-radius:999px; overflow:hidden; margin:0.5rem 0;">
-                                    <div style="width:<?= $instScore ?>%; height:100%; background:<?= $isAllGood ? '#059669' : '#D97706' ?>; border-radius:999px;"></div>
+                                <div style="width:100%; height:8px; background:#E2E8F0; border-radius:999px; overflow:hidden; margin:0.5rem 0;">
+                                    <div style="width:<?= $instScore ?>%; height:100%; background:<?= $isAllGood ? '#059669' : ($instScore >= 60 ? '#D97706' : '#E11D48') ?>; border-radius:999px; transition:width 0.3s ease;"></div>
                                 </div>
                                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; color:#64748B; margin-top:0.6rem; flex-wrap:wrap; gap:0.4rem;">
-                                    <span><?= $instPassed ?> of <?= $instTotal ?> Complied</span>
-                                    <div style="display:flex; gap:0.25rem; flex-wrap:wrap;">
+                                    <span><strong><?= $instPassed ?> / <?= $instTotal ?></strong> Requirements (<?= $instScore ?>%)</span>
+                                    <div style="display:flex; gap:0.25rem; flex-wrap:wrap; align-items:center;">
+                                        <?php if ($isLowCompliance): ?>
+                                            <button type="button" class="btn-white" style="padding:0.25rem 0.6rem; font-size:0.72rem; color:#B45309; background:#FFFBEB; border:1px solid #FCD34D; font-weight:700;" onclick="remindSchool('<?= $iid ?>', '<?= htmlspecialchars(addslashes($inst['name'])) ?>', <?= $instScore ?>)" title="Send compliance reminder notification to school officers">
+                                                <i class="fas fa-bell"></i> Remind School
+                                            </button>
+                                        <?php else: ?>
+                                            <span style="font-size:0.72rem; color:#059669; font-weight:700;"><i class="fas fa-check-circle"></i> 100% Compliant</span>
+                                        <?php endif; ?>
                                         <button type="button" class="btn-white" style="padding:0.22rem 0.45rem; font-size:0.7rem;" onclick="openNoticeModal('<?= $iid ?>', '<?= htmlspecialchars(addslashes($inst['name'])) ?>')">
                                             <i class="fas fa-envelope" style="color:var(--color-blue);"></i> Notice
                                         </button>
@@ -1015,13 +1011,6 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                                             <input type="hidden" name="institution_id" value="<?= $iid ?>">
                                             <button type="submit" class="btn-white" style="padding:0.22rem 0.45rem; font-size:0.7rem; color:#059669;" title="Mark all Compliant">
                                                 <i class="fas fa-check-double"></i> Verify All
-                                            </button>
-                                        </form>
-                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Reset all requirements to Pending Review for <?= htmlspecialchars(addslashes($inst['name'])) ?>?');">
-                                            <input type="hidden" name="action" value="batch_reset">
-                                            <input type="hidden" name="institution_id" value="<?= $iid ?>">
-                                            <button type="submit" class="btn-white" style="padding:0.22rem 0.45rem; font-size:0.7rem; color:#D97706;" title="Reset / Audit Re-evaluation">
-                                                <i class="fas fa-arrow-rotate-left"></i> Reset
                                             </button>
                                         </form>
                                     </div>
@@ -1069,18 +1058,12 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                     <textarea name="policy_description" rows="2" placeholder="Describe the required proof, format, and accreditation guidelines..." style="width:100%; padding:0.45rem 0.65rem; border-radius:7px; border:1px solid #CBD5E1; font-size:0.8rem; font-family:'Plus Jakarta Sans',sans-serif; box-sizing:border-box;"></textarea>
                 </div>
 
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem; margin-bottom:0.85rem;">
-                    <div>
-                        <label style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Target Date</label>
-                        <input type="date" name="due_date" value="<?= date('Y-11-30') ?>" required style="width:100%; padding:0.45rem 0.65rem; border-radius:7px; border:1px solid #CBD5E1; font-size:0.8rem; font-family:'Plus Jakarta Sans',sans-serif; box-sizing:border-box;">
-                    </div>
-                    <div>
-                        <label style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Initial Status</label>
-                        <select name="is_compliant" style="width:100%; padding:0.45rem 0.65rem; border-radius:7px; border:1px solid #CBD5E1; font-size:0.8rem; font-family:'Plus Jakarta Sans',sans-serif;">
-                            <option value="1">Compliant (Pre-verified)</option>
-                            <option value="0" selected>Pending Review</option>
-                        </select>
-                    </div>
+                <div style="margin-bottom:0.85rem;">
+                    <label style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Initial Status</label>
+                    <select name="is_compliant" style="width:100%; padding:0.45rem 0.65rem; border-radius:7px; border:1px solid #CBD5E1; font-size:0.8rem; font-family:'Plus Jakarta Sans',sans-serif;">
+                        <option value="0" selected>Pending Review</option>
+                        <option value="1">Compliant (Pre-verified)</option>
+                    </select>
                 </div>
 
                 <div style="margin-bottom:1.25rem;">
@@ -1126,18 +1109,12 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                     <textarea name="policy_description" id="editPolicyDesc" rows="2" style="width:100%; padding:0.45rem 0.65rem; border-radius:7px; border:1px solid #CBD5E1; font-size:0.8rem; font-family:'Plus Jakarta Sans',sans-serif; box-sizing:border-box;"></textarea>
                 </div>
 
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.65rem; margin-bottom:0.85rem;">
-                    <div>
-                        <label style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Target Date</label>
-                        <input type="date" name="due_date" id="editDueDate" style="width:100%; padding:0.45rem 0.65rem; border-radius:7px; border:1px solid #CBD5E1; font-size:0.8rem; font-family:'Plus Jakarta Sans',sans-serif; box-sizing:border-box;">
-                    </div>
-                    <div>
-                        <label style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Audit Status</label>
-                        <select name="is_compliant" id="editStatusSelect" style="width:100%; padding:0.45rem 0.65rem; border-radius:7px; border:1px solid #CBD5E1; font-size:0.8rem; font-family:'Plus Jakarta Sans',sans-serif;">
-                            <option value="1">Compliant (Passed)</option>
-                            <option value="0">Pending Review</option>
-                        </select>
-                    </div>
+                <div style="margin-bottom:0.85rem;">
+                    <label style="display:block; font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">Audit Status</label>
+                    <select name="is_compliant" id="editStatusSelect" style="width:100%; padding:0.45rem 0.65rem; border-radius:7px; border:1px solid #CBD5E1; font-size:0.8rem; font-family:'Plus Jakarta Sans',sans-serif;">
+                        <option value="1">Compliant (Passed)</option>
+                        <option value="0">Pending Review</option>
+                    </select>
                 </div>
 
                 <div style="margin-bottom:1.25rem;">
@@ -1337,15 +1314,12 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                     const statusCell = document.getElementById('status-cell-' + policyId);
                     if (res.is_compliant) {
                         statusCell.innerHTML = '<span class="ap-badge passed"><i class="fas fa-check-circle"></i> Compliant</span><div style="font-size:0.68rem; color:#64748B; margin-top:2px; font-family:\'JetBrains Mono\',monospace;">Just now</div>';
-                        btn.onclick = function() { ajaxTogglePolicy(policyId, 0); };
-                        btn.title = "Mark Pending";
-                        btn.innerHTML = '<i class="fas fa-arrow-rotate-left" style="color:#64748B;"></i> <span id="toggle-text-' + policyId + '">Unverify</span>';
+                        btn.outerHTML = '<span class="ap-badge passed" style="font-size:0.72rem; padding:0.28rem 0.55rem; display:inline-flex; align-items:center; gap:0.25rem;"><i class="fas fa-check-circle"></i> Verified</span>';
                         showToast('✓ Requirement verified as Compliant!');
                     } else {
                         statusCell.innerHTML = '<span class="ap-badge pending"><i class="fas fa-clock"></i> Pending Review</span>';
-                        btn.onclick = function() { ajaxTogglePolicy(policyId, 1); };
-                        btn.title = "Mark Compliant";
                         btn.innerHTML = '<i class="fas fa-check" style="color:#059669;"></i> <span id="toggle-text-' + policyId + '">Verify</span>';
+                        btn.onclick = function() { ajaxTogglePolicy(policyId, 1); };
                         showToast('✓ Requirement set to Pending Review.');
                     }
                 } else {
@@ -1379,7 +1353,6 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
             document.getElementById('editChapterName').value = chapterName || 'Chapter';
             document.getElementById('editPolicyName').value = rec.policy_name || '';
             document.getElementById('editPolicyDesc').value = rec.policy_description || '';
-            document.getElementById('editDueDate').value = rec.due_date || '';
             document.getElementById('editStatusSelect').value = (rec.is_compliant == 1 || rec.is_compliant === true) ? '1' : '0';
             document.getElementById('editNotesField').value = rec.notes || '';
             document.getElementById('editPolicyModal').style.display = 'flex';
@@ -1396,6 +1369,26 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
         }
         function closeNotesModal() {
             document.getElementById('editNotesModal').style.display = 'none';
+        }
+
+        async function remindSchool(instId, instName, score) {
+            if (!confirm('Send an advisory compliance reminder to the chapter officers of ' + instName + ' (Current Compliance: ' + score + '%)?')) return;
+
+            try {
+                const res = await fetch('/api/cron/compliance-monitoring-reminders.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ institution_id: instId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('✓ Compliance monitoring reminder sent to ' + instName + '!');
+                } else {
+                    alert('Notice: ' + (data.error || 'Failed to dispatch reminder.'));
+                }
+            } catch (err) {
+                alert('Connection error: ' + err.message);
+            }
         }
 
         function openNoticeModal(instId, instName) {
@@ -1450,7 +1443,7 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
         // Export CSV Functionality
         function exportCSV() {
             const rows = [
-                ['Chapter Institution', 'Acronym', 'Policy Requirement', 'Description', 'Target Date', 'Status', 'Completed Date', 'Auditor Notes']
+                ['Chapter Institution', 'Acronym', 'Policy Requirement', 'Description', 'Status', 'Completed Date', 'Auditor Notes']
             ];
 
             <?php foreach ($policyRecords as $p): ?>
@@ -1463,7 +1456,6 @@ $filteredRecords = array_filter($policyRecords, function($p) use ($selectedInstF
                     <?= json_encode($inst['acronym'] ?? 'HEI') ?>,
                     <?= json_encode($p['policy_name'] ?? '') ?>,
                     <?= json_encode($p['policy_description'] ?? '') ?>,
-                    <?= json_encode($p['due_date'] ?? '') ?>,
                     <?= json_encode($st) ?>,
                     <?= json_encode($p['completed_at'] ?? '') ?>,
                     <?= json_encode($p['notes'] ?? '') ?>
