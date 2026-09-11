@@ -13,18 +13,13 @@ $complianceData = [];
 $eventsCount = 0;
 
 try {
-    $instData = $supabase->select('institutions', ['select' => 'id, name, acronym, status, compliance_status, created_at', 'order' => 'name.asc']);
-    if (is_array($instData)) $institutions = $instData;
+    $instRepo = \App\Lib\InstitutionRepository::getInstance($supabase);
+    $institutions = $instRepo->getAll();
     
-    $membersData = $supabase->select('members', ['select' => 'id, institution_id']);
-    if (is_array($membersData)) {
-        foreach ($membersData as $m) {
-            $iid = $m['institution_id'] ?? '';
-            if ($iid) $memberCountMap[$iid] = ($memberCountMap[$iid] ?? 0) + 1;
-        }
-    }
+    $memberRepo = \App\Lib\MemberRepository::getInstance($supabase);
+    $globalStats = $memberRepo->getGlobalStats();
     
-    $eventsData = $supabase->select('events', ['select' => 'id']);
+    $eventsData = $supabase ? $supabase->select('events', ['select' => 'id']) : [];
     if (is_array($eventsData)) {
         $eventsCount = count($eventsData);
     }
@@ -38,12 +33,11 @@ $nonCompliantCount = 0;
 $scoresMap = [];
 
 try {
-    $scoresData = $supabase->select('compliance_scores', ['year' => 'eq.' . date('Y')]);
-    if (is_array($scoresData)) {
-        foreach ($scoresData as $sc) {
-            if (isset($sc['institution_id'])) {
-                $scoresMap[$sc['institution_id']] = $sc;
-            }
+    $compRepo = \App\Lib\ComplianceRepository::getInstance($supabase);
+    $allScores = $compRepo->getAllScores(intval(date('Y')));
+    foreach ($allScores as $sc) {
+        if (isset($sc['institution_id'])) {
+            $scoresMap[$sc['institution_id']] = $sc;
         }
     }
 } catch (Exception $e) {

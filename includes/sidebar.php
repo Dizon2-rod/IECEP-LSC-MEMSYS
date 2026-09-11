@@ -980,6 +980,7 @@ if (!function_exists('isMenuItemActive')) {
             <span class="sidebar-status-dot"></span>
             <span class="sidebar-status-text">MEMSYS – Laguna Student Chapter</span>
         </div>
+        <div id="sync-status-indicator" class="sync-status synced" style="display:none; align-items:center; gap:0.35rem; font-size:0.68rem; margin-top:0.35rem; padding:3px 8px; border-radius:5px; background:#F8FAFC; border:1px solid #E2E8F0;"></div>
     </div>
     
     <nav class="sidebar-nav">

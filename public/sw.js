@@ -61,20 +61,23 @@ self.addEventListener('install', event => {
     self.skipWaiting();
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up old caches and migrate legacy offline DB
 self.addEventListener('activate', event => {
     console.log('[SW] Activating service worker');
     event.waitUntil(
-        caches.keys().then(cacheNames => {
-            return Promise.all(
-                cacheNames.map(cacheName => {
-                    if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
-                        console.log('[SW] Deleting old cache:', cacheName);
-                        return caches.delete(cacheName);
-                    }
-                })
-            );
-        })
+        Promise.all([
+            caches.keys().then(cacheNames => {
+                return Promise.all(
+                    cacheNames.map(cacheName => {
+                        if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
+                            console.log('[SW] Deleting old cache:', cacheName);
+                            return caches.delete(cacheName);
+                        }
+                    })
+                );
+            }),
+            migrateLegacyIndexedDB()
+        ])
     );
     self.clients.claim();
 });
@@ -342,26 +345,148 @@ async function updateCachedContent() {
     }
 }
 
-// IndexedDB helpers for offline actions
+// Migration helper: Migrate pending actions from legacy IECEP_MEMSYS_Offline to IECEP_Offline_DB
+async function migrateLegacyIndexedDB() {
+    try {
+        const legacyDbExists = await new Promise((resolve) => {
+            const req = indexedDB.open('IECEP_MEMSYS_Offline');
+            req.onsuccess = (e) => {
+                const db = e.target.result;
+                const hasStore = db.objectStoreNames.contains('pendingRequests');
+                db.close();
+                resolve(hasStore);
+            };
+            req.onerror = () => resolve(false);
+        });
+
+        if (!legacyDbExists) return;
+
+        console.log('[SW] Found legacy IndexedDB IECEP_MEMSYS_Offline, migrating records...');
+
+        // Read all items from legacy DB
+        const legacyRecords = await new Promise((resolve, reject) => {
+            const req = indexedDB.open('IECEP_MEMSYS_Offline');
+            req.onerror = () => reject(req.error);
+            req.onsuccess = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('pendingRequests')) {
+                    db.close();
+                    return resolve([]);
+                }
+                const tx = db.transaction(['pendingRequests'], 'readonly');
+                const store = tx.objectStore('pendingRequests');
+                const getAll = store.getAll();
+                getAll.onsuccess = () => {
+                    db.close();
+                    resolve(getAll.result || []);
+                };
+                getAll.onerror = () => {
+                    db.close();
+                    reject(getAll.error);
+                };
+            };
+        });
+
+        if (legacyRecords.length > 0) {
+            // Write to new DB preserving queued_at and mutation_id
+            await new Promise((resolve, reject) => {
+                const req = indexedDB.open('IECEP_Offline_DB', 1);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('queued_requests')) {
+                        const s = db.createObjectStore('queued_requests', { keyPath: 'id', autoIncrement: true });
+                        s.createIndex('timestamp', 'timestamp', { unique: false });
+                        s.createIndex('endpoint', 'endpoint', { unique: false });
+                    }
+                    if (!db.objectStoreNames.contains('cached_data')) {
+                        db.createObjectStore('cached_data', { keyPath: 'key' });
+                    }
+                };
+                req.onerror = () => reject(req.error);
+                req.onsuccess = (e) => {
+                    const db = e.target.result;
+                    const tx = db.transaction(['queued_requests'], 'readwrite');
+                    const store = tx.objectStore('queued_requests');
+
+                    for (const item of legacyRecords) {
+                        store.add({
+                            mutation_id: item.mutation_id || item.id || ('legacy-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9)),
+                            endpoint: item.endpoint || item.url || '',
+                            method: item.method || 'POST',
+                            data: item.data || item.body || null,
+                            headers: item.headers || {},
+                            queued_at: item.queued_at || (item.timestamp ? new Date(item.timestamp).toISOString() : new Date().toISOString()),
+                            timestamp: item.timestamp || Date.now(),
+                            retryCount: item.retryCount || 0
+                        });
+                    }
+
+                    tx.oncomplete = () => {
+                        db.close();
+                        resolve();
+                    };
+                    tx.onerror = () => {
+                        db.close();
+                        reject(tx.error);
+                    };
+                };
+            });
+
+            console.log(`[SW] Successfully migrated ${legacyRecords.length} offline records to IECEP_Offline_DB`);
+        }
+
+        // Safe deletion of legacy DB only after verified migration
+        await new Promise((resolve) => {
+            const delReq = indexedDB.deleteDatabase('IECEP_MEMSYS_Offline');
+            delReq.onsuccess = () => resolve();
+            delReq.onerror = () => resolve();
+            delReq.onblocked = () => resolve();
+        });
+
+    } catch (err) {
+        console.error('[SW] Legacy IndexedDB migration error:', err);
+        const allClients = await self.clients.matchAll();
+        for (const client of allClients) {
+            client.postMessage({
+                type: 'MIGRATION_ERROR',
+                message: 'Failed to migrate legacy offline storage: ' + (err.message || 'unknown error')
+            });
+        }
+    }
+}
+
+// IndexedDB helpers for offline actions targeting canonical IECEP_Offline_DB
 function getOfflineActions() {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('IECEP_MEMSYS_Offline', 1);
+        const request = indexedDB.open('IECEP_Offline_DB', 1);
 
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
             const db = request.result;
-            const transaction = db.transaction(['pendingRequests'], 'readonly');
-            const store = transaction.objectStore('pendingRequests');
+            if (!db.objectStoreNames.contains('queued_requests')) {
+                db.close();
+                return resolve([]);
+            }
+            const transaction = db.transaction(['queued_requests'], 'readonly');
+            const store = transaction.objectStore('queued_requests');
             const getAllRequest = store.getAll();
 
-            getAllRequest.onsuccess = () => resolve(getAllRequest.result);
-            getAllRequest.onerror = () => reject(getAllRequest.error);
+            getAllRequest.onsuccess = () => {
+                db.close();
+                resolve(getAllRequest.result || []);
+            };
+            getAllRequest.onerror = () => {
+                db.close();
+                reject(getAllRequest.error);
+            };
         };
 
         request.onupgradeneeded = (event) => {
             const db = event.target.result;
-            if (!db.objectStoreNames.contains('pendingRequests')) {
-                db.createObjectStore('pendingRequests', { keyPath: 'id', autoIncrement: true });
+            if (!db.objectStoreNames.contains('queued_requests')) {
+                const s = db.createObjectStore('queued_requests', { keyPath: 'id', autoIncrement: true });
+                s.createIndex('timestamp', 'timestamp', { unique: false });
+                s.createIndex('endpoint', 'endpoint', { unique: false });
             }
         };
     });
@@ -369,17 +494,27 @@ function getOfflineActions() {
 
 function removeOfflineAction(id) {
     return new Promise((resolve, reject) => {
-        const request = indexedDB.open('IECEP_MEMSYS_Offline', 1);
+        const request = indexedDB.open('IECEP_Offline_DB', 1);
 
         request.onerror = () => reject(request.error);
         request.onsuccess = () => {
             const db = request.result;
-            const transaction = db.transaction(['pendingRequests'], 'readwrite');
-            const store = transaction.objectStore('pendingRequests');
+            if (!db.objectStoreNames.contains('queued_requests')) {
+                db.close();
+                return resolve();
+            }
+            const transaction = db.transaction(['queued_requests'], 'readwrite');
+            const store = transaction.objectStore('queued_requests');
             const deleteRequest = store.delete(id);
 
-            deleteRequest.onsuccess = () => resolve();
-            deleteRequest.onerror = () => reject(deleteRequest.error);
+            deleteRequest.onsuccess = () => {
+                db.close();
+                resolve();
+            };
+            deleteRequest.onerror = () => {
+                db.close();
+                reject(deleteRequest.error);
+            };
         };
     });
 }

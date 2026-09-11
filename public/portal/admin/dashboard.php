@@ -22,10 +22,8 @@ $supabase = getSupabaseClient();
 // A. Real Institutions / Chapters
 $institutionsList = [];
 try {
-    if ($supabase) {
-        $instRes = $supabase->select('institutions', ['select' => '*', 'order' => 'created_at.desc']);
-        if (is_array($instRes)) $institutionsList = $instRes;
-    }
+    $instRepo = \App\Lib\InstitutionRepository::getInstance($supabase);
+    $institutionsList = $instRepo->getAll();
 } catch (\Throwable $e) {
     error_log("Dashboard institutions query: " . $e->getMessage());
 }
@@ -54,19 +52,19 @@ try {
     error_log("Dashboard policy compliance query: " . $e->getMessage());
 }
 
-
-// B. Real Members
+// B. Real Members via MemberRepository
 $membersList = [];
+$totalMembers = 0;
+$paidMembers = 0;
 try {
-    if ($supabase) {
-        $memRes = $supabase->select('members', ['select' => '*', 'order' => 'created_at.desc']);
-        if (is_array($memRes)) $membersList = $memRes;
-    }
+    $memberRepo = \App\Lib\MemberRepository::getInstance($supabase);
+    $membersList = $memberRepo->getAll();
+    $globalStats = $memberRepo->getGlobalStats();
+    $totalMembers = $globalStats['total'];
+    $paidMembers = $globalStats['paid'];
 } catch (\Throwable $e) {
     error_log("Dashboard members query: " . $e->getMessage());
 }
-$totalMembers = count($membersList);
-$paidMembers = count(array_filter($membersList, fn($m) => in_array(strtolower($m['payment_status'] ?? ''), ['paid', 'active', 'completed', 'verified'])));
 
 // Sum from verified institutional rosters
 $instMembersSum = 0;
@@ -96,7 +94,7 @@ try {
 }
 $pendingAffiliationsCount = count($pendingAffiliationsList);
 
-// D. Real Financial Transactions & Collections
+// D. Real Financial Transactions & Collections via PaymentRepository
 $transactionsList = [];
 $totalCollections = 0.0;
 $categoryCollections = [
@@ -108,31 +106,10 @@ $categoryCollections = [
 ];
 
 try {
-    if ($supabase) {
-        $txRes = $supabase->select('transactions', ['select' => '*', 'order' => 'created_at.desc']);
-        if (is_array($txRes)) {
-            $transactionsList = $txRes;
-            foreach ($txRes as $tx) {
-                $amt = floatval($tx['amount'] ?? 0);
-                $st = strtolower($tx['status'] ?? '');
-                if (in_array($st, ['paid', 'completed', 'verified', 'settled', 'success', 'approved'])) {
-                    $totalCollections += $amt;
-                    $type = strtolower($tx['transaction_type'] ?? $tx['type'] ?? $tx['description'] ?? 'other');
-                    if (strpos($type, 'member') !== false || strpos($type, 'due') !== false) {
-                        $categoryCollections['Membership Dues'] += $amt;
-                    } elseif (strpos($type, 'affil') !== false || strpos($type, 'school') !== false || strpos($type, 'charter') !== false) {
-                        $categoryCollections['Chapter Affiliations'] += $amt;
-                    } elseif (strpos($type, 'event') !== false || strpos($type, 'summit') !== false || strpos($type, 'ticket') !== false) {
-                        $categoryCollections['Events & Summits'] += $amt;
-                    } elseif (strpos($type, 'merch') !== false || strpos($type, 'item') !== false || strpos($type, 'shirt') !== false) {
-                        $categoryCollections['Merchandise'] += $amt;
-                    } else {
-                        $categoryCollections['Other Collections'] += $amt;
-                    }
-                }
-            }
-        }
-    }
+    $paymentRepo = \App\Lib\PaymentRepository::getInstance($supabase);
+    $transactionsList = $paymentRepo->getAll();
+    $totalCollections = $paymentRepo->getTotalCollections();
+    $categoryCollections = $paymentRepo->getCategoryBreakdown();
 } catch (\Throwable $e) {
     error_log("Dashboard transactions query: " . $e->getMessage());
 }

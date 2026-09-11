@@ -1,7 +1,7 @@
 <?php
 /**
  * Compliance Reports API
- * Generates PDF compliance reports for institutions
+ * Generates JSON and PDF compliance reports for institutions
  */
 
 require_once __DIR__ . '/../../../includes/config.php';
@@ -29,48 +29,38 @@ try {
                     throw new Exception('institution_id parameter is required');
                 }
                 
-                // Get institution details
-                $institutions = $db->select('institutions', [
-                    'id' => 'eq.' . $institutionId
-                ]);
+                $instRepo = \App\Lib\InstitutionRepository::getInstance($db);
+                $institution = $instRepo->getById($institutionId);
                 
-                if (empty($institutions)) {
+                if (empty($institution)) {
                     throw new Exception('Institution not found');
                 }
                 
-                $institution = $institutions[0];
+                $compRepo = \App\Lib\ComplianceRepository::getInstance($db);
+                $complianceData = $compRepo->getScoresForInstitution($institutionId, $year);
                 
-                // Get compliance score
-                $complianceScores = $db->select('compliance_scores', [
-                    'institution_id' => 'eq.' . $institutionId,
-                    'year' => 'eq.' . $year
-                ]);
-                
-                $complianceData = $complianceScores[0] ?? null;
-                
-                // Get events attended
                 $events = $db->select('events', [
                     'status' => 'eq.completed',
                     'order' => 'start_date.desc'
-                ]);
+                ]) ?: [];
                 
                 $attendedEvents = [];
                 $hostedEvents = [];
                 
                 foreach ($events as $event) {
-                    // Check if institution hosted this event
-                    if ($event['institution_id'] === $institutionId) {
+                    // Check if institution hosted this event or served as venue
+                    if ($event['institution_id'] === $institutionId || ($event['venue_institution_id'] ?? '') === $institutionId) {
                         $hostedEvents[] = $event;
                     }
                     
                     // Check attendance
                     $attendances = $db->select('event_attendees', [
                         'event_id' => 'eq.' . $event['id']
-                    ]);
+                    ]) ?: [];
                     
                     $members = $db->select('members', [
                         'institution_id' => 'eq.' . $institutionId
-                    ]);
+                    ]) ?: [];
                     
                     $memberIds = array_column($members, 'id');
                     foreach ($attendances as $att) {
@@ -81,22 +71,26 @@ try {
                     }
                 }
                 
-                // Get total members
+                $members = $db->select('members', [
+                    'institution_id' => 'eq.' . $institutionId
+                ]) ?: [];
                 $totalMembers = count($members);
                 
-                // Calculate participation rate
                 $uniqueAttendedEvents = array_unique($attendedEvents, SORT_REGULAR);
-                $participationRate = $totalMembers > 0 ? (count($uniqueAttendedEvents) / count($events)) * 100 : 0;
+                $totalEventsCount = max(1, count($events));
+                $participationRate = $totalMembers > 0 ? (count($uniqueAttendedEvents) / $totalEventsCount) * 100 : 0;
                 
-                // Generate recommendations
+                // Recommendations based on settings
+                $settings = \App\Lib\SettingsService::getInstance($db);
+                $minPart = $settings->getMinParticipationRate();
                 $recommendations = [];
-                if ($participationRate < 40) {
-                    $recommendations[] = "Increase participation in IECEP-LSC events to meet the 40% minimum requirement.";
+                if ($participationRate < $minPart) {
+                    $recommendations[] = "Increase participation in IECEP-LSC events to meet the {$minPart}% minimum requirement.";
                 }
                 if (count($hostedEvents) < 1) {
-                    $recommendations[] = "Host at least one sanctioned event per academic year to maintain compliance.";
+                    $recommendations[] = "Host at least one sanctioned event or serve as official venue per academic year to maintain compliance.";
                 }
-                if ($participationRate >= 40 && count($hostedEvents) >= 1) {
+                if ($participationRate >= $minPart && count($hostedEvents) >= 1) {
                     $recommendations[] = "Maintain current participation and hosting levels to remain compliant.";
                 }
                 
@@ -122,26 +116,10 @@ try {
                 ]);
                 
             } elseif ($action === 'all-institutions') {
-                // Get compliance reports for all institutions
+                // Get compliance reports for all institutions via ComplianceRepository
                 $year = (int)($_GET['year'] ?? date('Y'));
-                
-                $institutions = $db->select('institutions', [
-                    'status' => 'eq.active'
-                ]);
-                
-                $reports = [];
-                foreach ($institutions as $institution) {
-                    $complianceScores = $db->select('compliance_scores', [
-                        'institution_id' => 'eq.' . $institution['id'],
-                        'year' => 'eq.' . $year
-                    ]);
-                    
-                    $reports[] = [
-                        'institution_id' => $institution['id'],
-                        'institution_name' => $institution['name'],
-                        'compliance' => $complianceScores[0] ?? null
-                    ];
-                }
+                $compRepo = \App\Lib\ComplianceRepository::getInstance($db);
+                $reports = $compRepo->getAllScores($year);
                 
                 echo json_encode([
                     'success' => true,
@@ -158,23 +136,56 @@ try {
                     throw new Exception('institution_id parameter is required');
                 }
                 
-                // Get report data
-                $reportUrl = "/api/compliance/reports.php?action=institution-report&institution_id={$institutionId}&year={$year}";
-                $reportResponse = file_get_contents(APP_URL . $reportUrl);
-                $reportData = json_decode($reportResponse, true);
-                
-                if (!$reportData['success']) {
-                    throw new Exception('Failed to generate report data');
+                // Get report data directly
+                $instRepo = \App\Lib\InstitutionRepository::getInstance($db);
+                $institution = $instRepo->getById($institutionId);
+                if (empty($institution)) {
+                    throw new Exception('Institution not found');
                 }
                 
-                $report = $reportData['report'];
+                $compRepo = \App\Lib\ComplianceRepository::getInstance($db);
+                $complianceData = $compRepo->getScoresForInstitution($institutionId, $year);
+                
+                $members = $db->select('members', ['institution_id' => 'eq.' . $institutionId]) ?: [];
+                $totalMembers = count($members);
+                $participationRate = (float)($complianceData['participation_rate'] ?? 0);
+                $hostedEventsCount = (int)($complianceData['hosted_event_count'] ?? 0);
+                
+                $settings = \App\Lib\SettingsService::getInstance($db);
+                $minPart = $settings->getMinParticipationRate();
+                $recommendations = [];
+                if ($participationRate < $minPart) {
+                    $recommendations[] = "Increase participation in IECEP-LSC events to meet the {$minPart}% minimum requirement.";
+                }
+                if ($hostedEventsCount < 1) {
+                    $recommendations[] = "Host at least one sanctioned event or serve as official venue per academic year to maintain compliance.";
+                }
+                if ($participationRate >= $minPart && $hostedEventsCount >= 1) {
+                    $recommendations[] = "Maintain current participation and hosting levels to remain compliant.";
+                }
+
+                $reportData = [
+                    'institution' => $institution,
+                    'year' => $year,
+                    'compliance' => $complianceData,
+                    'statistics' => [
+                        'total_members' => $totalMembers,
+                        'participation_rate' => round($participationRate, 2),
+                        'events_attended' => 0,
+                        'events_hosted' => $hostedEventsCount,
+                        'total_events' => 0
+                    ],
+                    'attended_events' => [],
+                    'hosted_events' => [],
+                    'recommendations' => $recommendations
+                ];
                 
                 // Generate PDF using DOMPDF
                 require_once __DIR__ . '/../../src/lib/pdf.php';
                 $pdfService = new \App\Lib\PDFService();
                 
-                $html = generateComplianceReportHTML($report);
-                $pdfPath = $pdfService->generatePDF($html, 'compliance-report-' . $report['institution']['name'] . '-' . $year);
+                $html = generateComplianceReportHTML($reportData);
+                $pdfPath = $pdfService->generatePDF($html, 'compliance-report-' . ($institution['name'] ?? 'institution') . '-' . $year);
                 
                 echo json_encode([
                     'success' => true,
@@ -204,10 +215,10 @@ function generateComplianceReportHTML($report) {
     $compliance = $report['compliance'];
     $stats = $report['statistics'];
     $institutionAddress = $institution['address'] ?? 'N/A';
-    $institutionContact = $institution['contact_email'] ?? 'N/A';
+    $institutionContact = $institution['contact_email'] ?? ($institution['email'] ?? 'N/A');
     
-    $statusColor = $compliance && $compliance['compliance_status'] === 'compliant' ? '#10b981' : '#f59e0b';
-    $statusText = $compliance ? ucfirst($compliance['compliance_status']) : 'Not Evaluated';
+    $statusColor = $compliance && ($compliance['compliance_status'] ?? '') === 'compliant' ? '#10b981' : '#f59e0b';
+    $statusText = $compliance ? ucfirst(str_replace('_', ' ', $compliance['compliance_status'] ?? '')) : 'Not Evaluated';
     
     $html = "
     <div style='font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;'>
@@ -218,10 +229,10 @@ function generateComplianceReportHTML($report) {
         </div>
         
         <div style='background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px;'>
-            <h2 style='color: #0B1D4A; margin-bottom: 15px;'>{$institution['name']}</h2>
+            <h2 style='color: #0B1D4A; margin-bottom: 15px;'>" . htmlspecialchars($institution['name'] ?? '') . "</h2>
             <p style='margin: 5px 0;'><strong>Status:</strong> <span style='color: {$statusColor}; font-weight: bold;'>{$statusText}</span></p>
-            <p style='margin: 5px 0;'><strong>Address:</strong> {$institutionAddress}</p>
-            <p style='margin: 5px 0;'><strong>Contact:</strong> {$institutionContact}</p>
+            <p style='margin: 5px 0;'><strong>Address:</strong> " . htmlspecialchars($institutionAddress) . "</p>
+            <p style='margin: 5px 0;'><strong>Contact:</strong> " . htmlspecialchars($institutionContact) . "</p>
         </div>
         
         <h3 style='color: #0B1D4A; margin-bottom: 15px;'>Compliance Statistics</h3>
@@ -237,14 +248,9 @@ function generateComplianceReportHTML($report) {
                 <td style='padding: 12px; border-bottom: 1px solid #ddd; text-align: right;'>≥40%</td>
             </tr>
             <tr>
-                <td style='padding: 12px; border-bottom: 1px solid #ddd;'>Events Hosted</td>
+                <td style='padding: 12px; border-bottom: 1px solid #ddd;'>Events Hosted / Venue</td>
                 <td style='padding: 12px; border-bottom: 1px solid #ddd; text-align: right;'>{$stats['events_hosted']}</td>
                 <td style='padding: 12px; border-bottom: 1px solid #ddd; text-align: right;'>≥1</td>
-            </tr>
-            <tr>
-                <td style='padding: 12px; border-bottom: 1px solid #ddd;'>Events Attended</td>
-                <td style='padding: 12px; border-bottom: 1px solid #ddd; text-align: right;'>{$stats['events_attended']}</td>
-                <td style='padding: 12px; border-bottom: 1px solid #ddd; text-align: right;'>N/A</td>
             </tr>
             <tr>
                 <td style='padding: 12px; border-bottom: 1px solid #ddd;'>Total Members</td>
@@ -257,37 +263,14 @@ function generateComplianceReportHTML($report) {
         <ul style='margin-bottom: 30px;'>";
     
     foreach ($report['recommendations'] as $recommendation) {
-        $html .= "<li style='margin-bottom: 10px;'>{$recommendation}</li>";
+        $html .= "<li style='margin-bottom: 10px;'>" . htmlspecialchars($recommendation) . "</li>";
     }
     
     $html .= "</ul>
         
-        <h3 style='color: #0B1D4A; margin-bottom: 15px;'>Hosted Events</h3>
-        <table style='width: 100%; border-collapse: collapse; margin-bottom: 30px;'>";
-    
-    if (empty($report['hosted_events'])) {
-        $html .= "<tr><td style='padding: 12px; text-align: center;'>No events hosted this year</td></tr>";
-    } else {
-        $html .= "<tr style='background-color: #0B1D4A; color: white;'>
-            <th style='padding: 12px; text-align: left;'>Event Name</th>
-            <th style='padding: 12px; text-align: left;'>Date</th>
-            <th style='padding: 12px; text-align: left;'>Venue</th>
-        </tr>";
-        
-        foreach ($report['hosted_events'] as $event) {
-            $html .= "<tr>
-                <td style='padding: 12px; border-bottom: 1px solid #ddd;'>{$event['title']}</td>
-                <td style='padding: 12px; border-bottom: 1px solid #ddd;'>{$event['start_date']}</td>
-                <td style='padding: 12px; border-bottom: 1px solid #ddd;'>" . ($event['venue'] ?? 'N/A') . "</td>
-            </tr>";
-        }
-    }
-    
-    $html .= "</table>
-        
         <div style='text-align: center; color: #6c757d; font-size: 12px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd;'>
             <p>© {$report['year']} IECEP-LSC MEMSYS – All rights reserved</p>
-            <p>Institute of Electronics Engineers of the Philippines – Laguna State Chapter</p>
+            <p>Institute of Electronics Engineers of the Philippines – Laguna Student Chapter</p>
             <p>Generated on: " . date('F j, Y, g:i a') . "</p>
         </div>
     </div>";

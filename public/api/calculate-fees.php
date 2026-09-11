@@ -30,7 +30,23 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 $config = require __DIR__ . '/../../includes/supabase.php';
 $supabase = new SupabaseClient($config['url'], $config['anon_key']);
 
-// Only allow POST
+// Handle GET request for synchronized settings/rates
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    $action = $_GET['action'] ?? '';
+    if ($action === 'get_settings' || $action === 'rates') {
+        $settings = \App\Lib\SettingsService::getInstance($supabase);
+        echo json_encode([
+            'success' => true,
+            'settings' => $settings->getAllSettingsForSync(),
+            'fee_brackets' => $settings->getFeeBrackets(),
+            'member_fees' => $settings->getMemberFeesList(),
+            'operational_fee' => $settings->getOperationalFee()
+        ]);
+        exit;
+    }
+}
+
+// Only allow POST for calculation
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'error' => 'Method not allowed']);
@@ -142,63 +158,30 @@ try {
         }
     }
 
-    // 9. Apply fee brackets from database
-    $bracketResult = $supabase->from('fee_brackets')
-        ->select('*')
-        ->eq('is_active', true)
-        ->lte('min_members', $totalMembers)
-        ->order('min_members', 'desc')
-        ->limit(1)
-        ->single();
+    // 9. Calculate fees via centralized FeeCalculator
+    require_once SRC_PATH . 'lib/FeeCalculator.php';
+    $feeCalculator = new \App\Lib\FeeCalculator($supabase);
+    $calculated = $feeCalculator->calculate($totalMembers, $memberTypeCounts);
 
-    $affiliationFee = $bracketResult['fee'] ?? 1500.00; // Fallback to lowest bracket
+    $affiliationFee = $calculated['affiliation_fee'];
+    $operationalFee = $calculated['operational_fee'];
+    $membershipFeesTotal = $calculated['membership_fees_total'];
+    $totalFee = $calculated['total_fee'];
 
-    // 10. Retrieve operational fee and member fees from database
-    $settingsResult = $supabase->from('system_settings')
-        ->select('*')
-        ->eq('key', 'operational_fee')
-        ->single();
-    
-    $operationalFee = isset($settingsResult['value']) ? floatval($settingsResult['value']) : 800.00;
-
-    $memberFeesResult = $supabase->from('member_fees')
-        ->select('*')
-        ->eq('is_active', true)
-        ->get();
-
-    $memberFeeRates = [];
-    foreach ($memberFeesResult ?? [] as $row) {
-        $memberFeeRates[$row['member_type']] = floatval($row['fee']);
-    }
-
-    // Default rates if not found in DB
-    if (!isset($memberFeeRates['new'])) $memberFeeRates['new'] = 250.00;
-    if (!isset($memberFeeRates['returning'])) $memberFeeRates['returning'] = 200.00;
-    if (!isset($memberFeeRates['honorary'])) $memberFeeRates['honorary'] = 300.00;
-
-    // 11. Calculate fees
-    $membershipFeesTotal = (
-        $memberTypeCounts['new'] * $memberFeeRates['new'] +
-        $memberTypeCounts['returning'] * $memberFeeRates['returning'] +
-        $memberTypeCounts['honorary'] * $memberFeeRates['honorary']
-    );
-
-    $totalFee = $affiliationFee + $operationalFee + $membershipFeesTotal;
-
-    // 12. Store in session with timestamp
+    // 10. Store in session with timestamp
     $_SESSION['affiliation_fee_calc'] = [
         'timestamp' => time(),
         'member_count' => $totalMembers,
-        'new_members' => $memberTypeCounts['new'],
-        'returning_members' => $memberTypeCounts['returning'],
-        'honorary_members' => $memberTypeCounts['honorary'],
+        'new_members' => $memberTypeCounts['new'] ?? 0,
+        'returning_members' => $memberTypeCounts['returning'] ?? 0,
+        'honorary_members' => $memberTypeCounts['honorary'] ?? 0,
         'affiliation_fee' => $affiliationFee,
         'operational_fee' => $operationalFee,
         'membership_fees_total' => $membershipFeesTotal,
         'total_fee' => $totalFee
     ];
 
-    // 13. Log to audit_logs
+    // 11. Log to audit_logs
     audit_log(
         null,
         'affiliation_fee_calculated',
@@ -208,13 +191,13 @@ try {
         ['member_count' => $totalMembers, 'total_fee' => $totalFee]
     );
 
-    // 14. Return calculated fees
+    // 12. Return calculated fees
     echo json_encode([
         'success' => true,
         'member_count' => $totalMembers,
-        'new_members' => $memberTypeCounts['new'],
-        'returning_members' => $memberTypeCounts['returning'],
-        'honorary_members' => $memberTypeCounts['honorary'],
+        'new_members' => $memberTypeCounts['new'] ?? 0,
+        'returning_members' => $memberTypeCounts['returning'] ?? 0,
+        'honorary_members' => $memberTypeCounts['honorary'] ?? 0,
         'affiliation_fee' => round($affiliationFee, 2),
         'operational_fee' => round($operationalFee, 2),
         'membership_fees_total' => round($membershipFeesTotal, 2),

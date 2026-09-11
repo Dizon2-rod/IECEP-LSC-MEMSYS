@@ -72,8 +72,8 @@ $studentNumber = $member['student_number'] ?? $member['student_id'] ?? '';
 $digitalHash = $member['digital_id_hash'] ?? '';
 $memberFullName = $member['full_name'] ?? '';
 $avatarUrl = $member['avatar_url'] ?? '';
-$paymentStatus = strtolower($member['payment_status'] ?? 'paid');
-$isPaid = ($paymentStatus === 'paid');
+$paymentStatus = strtolower($member['payment_status'] ?? 'unpaid');
+$isPaid = !empty($member) && \App\Lib\MemberRepository::getInstance($supabase)->isPaid($member);
 ?>
 <!DOCTYPE html>
 <html lang="en">

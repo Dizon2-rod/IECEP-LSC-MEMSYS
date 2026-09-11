@@ -93,18 +93,10 @@ if ($institutionId && $supabase) {
         }
     } catch (Exception $e) {}
 
-    // 2. Transactions / Collections
+    // 2. Transactions / Collections via PaymentRepository
     try {
-        $txs = $supabase->select('transactions', [
-            'institution_id' => 'eq.' . $institutionId
-        ]);
-        if (is_array($txs) && !isset($txs['code'])) {
-            foreach ($txs as $t) {
-                if (strtolower($t['status'] ?? '') === 'paid') {
-                    $totalPaid += floatval($t['amount'] ?? 0);
-                }
-            }
-        }
+        $paymentRepo = \App\Lib\PaymentRepository::getInstance($supabase);
+        $totalPaid = $paymentRepo->getPaidTotalForInstitution($institutionId);
     } catch (Exception $e) {}
 
     // 3. Upload Batches
@@ -129,14 +121,27 @@ if ($institutionId && $supabase) {
             $upcomingEvents = $evs;
         }
     } catch (Exception $e) {}
+
+    // 5. Compliance score via ComplianceRepository
+    try {
+        $compRepo = \App\Lib\ComplianceRepository::getInstance($supabase);
+        $compScore = $compRepo->getScoresForInstitution($institutionId, intval(date('Y')));
+        if (!empty($compScore)) {
+            $complianceRate = floatval($compScore['participation_rate'] ?? 0);
+            $chapterComplianceStatus = $compScore['compliance_status'] ?? $chapterComplianceStatus;
+        }
+    } catch (Exception $e) {}
 }
 
 $actualMembersCount = count($membersList);
 $memberCount = ($institutionMembershipCount !== null && $institutionMembershipCount > 0)
     ? max($institutionMembershipCount, $actualMembersCount)
     : $actualMembersCount;
-$activePaidMembers = count(array_filter($membersList, fn($m) => strtolower($m['payment_status'] ?? '') === 'paid' || !empty($m['is_paid'])));
-$complianceRate = ($memberCount > 0) ? round(($activePaidMembers / $memberCount) * 100) : 0;
+
+$activePaidMembers = count(array_filter($membersList, fn($m) => \App\Lib\PaymentStatus::isMemberPaid($m['payment_status'] ?? '')));
+if (!isset($complianceRate)) {
+    $complianceRate = ($memberCount > 0) ? round(($activePaidMembers / $memberCount) * 100) : 0;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">

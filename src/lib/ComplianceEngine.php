@@ -80,38 +80,33 @@ class ComplianceEngine
         $totalHostingCredit = $hostedEvents + $venueEvents;
 
         // 5. Determine 3 compliance statuses per Constitution Art. V Sec. 3
-        if ($participationRate >= 40.0 && $totalHostingCredit >= 1) {
+        // Read thresholds centrally from SettingsService
+        $settings = SettingsService::getInstance($this->db);
+        $minPart = $settings->getMinParticipationRate();
+        $atRiskPart = $settings->getAtRiskParticipationRate();
+        $minEvents = $settings->getMinHostedEvents();
+
+        if ($participationRate >= $minPart && $totalHostingCredit >= $minEvents) {
             $complianceStatus = 'compliant';
-        } elseif ($participationRate >= 20.0 || $totalHostingCredit >= 1) {
+        } elseif ($participationRate >= $atRiskPart || $totalHostingCredit >= $minEvents) {
             $complianceStatus = 'at_risk';
         } else {
             $complianceStatus = 'non_compliant';
         }
 
         // 6. Calculate score (50% participation weight, 50% hosting/venue weight)
-        $participationScore = $participationRate >= 40.0 ? 50.0 : (($participationRate / 40.0) * 50.0);
-        $hostingScore = $totalHostingCredit >= 1 ? 50.0 : 0.0;
+        $participationScore = $participationRate >= $minPart ? 50.0 : (($participationRate / max(1.0, $minPart)) * 50.0);
+        $hostingScore = $totalHostingCredit >= $minEvents ? 50.0 : 0.0;
         $overallScore = min($participationScore + $hostingScore, 100.0);
 
-        // 7. Upsert compliance score record
-        $this->db->upsert('compliance_scores', [
-            'institution_id' => $institutionId,
-            'year' => $year,
+        // 7. Upsert compliance score record & sync institution status via ComplianceRepository
+        ComplianceRepository::getInstance($this->db)->saveScore($institutionId, $year, [
             'participation_rate' => round($participationRate, 2),
             'hosted_event_count' => $totalHostingCredit,
             'overall_score' => round($overallScore, 2),
             'compliance_status' => $complianceStatus,
             'last_updated' => date('Y-m-d H:i:s')
         ]);
-
-        // Keep institutions table compliance_status in sync
-        try {
-            $this->db->update('institutions', [
-                'compliance_status' => $complianceStatus
-            ], $institutionId);
-        } catch (\Throwable $ie) {
-            error_log("Notice updating institution compliance_status: " . $ie->getMessage());
-        }
 
         // 8. Record in blockchain (tamper-evident, hash-chained audit trail)
         $this->blockchain->record('compliance_attendance', $institutionId . '-' . $year, [
@@ -197,11 +192,6 @@ class ComplianceEngine
      */
     public function getReport(string $institutionId, int $year): ?array
     {
-        $scores = $this->db->select('compliance_scores', [
-            'institution_id' => 'eq.' . $institutionId,
-            'year' => 'eq.' . $year
-        ]);
-
-        return $scores[0] ?? null;
+        return ComplianceRepository::getInstance($this->db)->getScoresForInstitution($institutionId, $year);
     }
 }

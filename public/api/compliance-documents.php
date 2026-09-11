@@ -1,24 +1,19 @@
 <?php
-require_once __DIR__ . '/bootstrap.php';
-require_once __DIR__ . '/../../../includes/config.php';
+/**
+ * compliance-documents.php - Centralized API for institution compliance documents
+ */
 
-if (!function_exists('uploadToSupabaseStorage')) {
-    function uploadToSupabaseStorage(string $bucket, string $path, string $tmpFile, string $mimeType): ?string {
-        $supabaseClient = getSupabaseClient();
-        if ($supabaseClient && method_exists($supabaseClient, 'uploadFile')) {
-            $url = $supabaseClient->uploadFile($bucket, $path, $tmpFile, $mimeType);
-            if ($url) return $url;
-        }
-        return null;
-    }
-}
+require_once __DIR__ . '/../../bootstrap.php';
+require_once __DIR__ . '/../../includes/config.php';
 
 header('Content-Type: application/json');
 
 $method = $_SERVER['REQUEST_METHOD'];
 $action = $_GET['action'] ?? '';
 
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 $userId = $_SESSION['user_id'] ?? null;
 
 if (!$userId) {
@@ -27,8 +22,14 @@ if (!$userId) {
     exit;
 }
 
-$supabaseConfig = require __DIR__ . '/../../../includes/supabase.php';
-$supabase = new \App\Lib\SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
+$supabase = getSupabaseClient();
+if (!$supabase) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Database connection unavailable']);
+    exit;
+}
+
+$docRepo = \App\Lib\DocumentRepository::getInstance($supabase);
 
 switch ($action) {
     case 'upload_document':
@@ -38,43 +39,45 @@ switch ($action) {
             exit;
         }
         
-        $schoolId = $_POST['school_id'] ?? null;
-        $docType = $_POST['doc_type'] ?? null;
+        $schoolId = $_POST['school_id'] ?? ($_POST['institution_id'] ?? null);
+        $docType = $_POST['doc_type'] ?? ($_POST['document_type'] ?? null);
         
         if (!$schoolId || !$docType || !isset($_FILES['document'])) {
             http_response_code(400);
-            echo json_encode(['error' => 'Missing required fields']);
+            echo json_encode(['error' => 'Missing required fields (school_id, doc_type, document file)']);
             exit;
         }
         
         $mimeType = mime_content_type($_FILES['document']['tmp_name']) ?: $_FILES['document']['type'];
         $fileName = uniqid() . '_' . basename($_FILES['document']['name']);
+        
         $supabaseUrl = uploadToSupabaseStorage('compliance', 'documents/' . $fileName, $_FILES['document']['tmp_name'], $mimeType);
         
         if ($supabaseUrl) {
-            $fileUrl = $supabaseUrl;
-            
-            $document = $supabase->insert('compliance_docs', [
-                'school_id' => $schoolId,
-                'doc_type' => $docType,
-                'file_url' => $fileUrl,
-                'created_at' => date('Y-m-d H:i:s')
+            $created = $docRepo->uploadDocument([
+                'institution_id' => $schoolId,
+                'document_type'  => $docType,
+                'file_url'       => $supabaseUrl,
+                'file_name'      => $_FILES['document']['name'],
+                'file_size'      => $_FILES['document']['size'] ?? 0,
+                'uploaded_by'    => $userId,
+                'status'         => 'submitted'
             ]);
             
-            if ($document) {
-                echo json_encode(['success' => true, 'doc_id' => $document[0]['id'] ?? null]);
+            if ($created) {
+                echo json_encode(['success' => true, 'doc_id' => $created['id'] ?? null, 'url' => $supabaseUrl]);
             } else {
                 http_response_code(500);
-                echo json_encode(['error' => 'Failed to save document']);
+                echo json_encode(['error' => 'Failed to save document record']);
             }
         } else {
             http_response_code(500);
-            echo json_encode(['error' => 'Failed to upload file']);
+            echo json_encode(['error' => 'Failed to upload document file to storage']);
         }
         break;
         
     case 'get_documents':
-        $schoolId = $_GET['school_id'] ?? null;
+        $schoolId = $_GET['school_id'] ?? ($_GET['institution_id'] ?? null);
         
         if (!$schoolId) {
             http_response_code(400);
@@ -82,11 +85,25 @@ switch ($action) {
             exit;
         }
         
-        $docs = $supabase->select('compliance_docs', ['school_id' => 'eq.' . $schoolId, 'order' => 'created_at.desc']);
+        $docs = $docRepo->getDocumentsForInstitution($schoolId);
+        $missing = $docRepo->getMissingDocuments($schoolId);
+        $required = $docRepo->getRequiredTypes();
         
-        echo json_encode(['documents' => $docs ?? []]);
+        echo json_encode([
+            'success' => true,
+            'documents' => $docs,
+            'missing' => $missing,
+            'required_types' => $required
+        ]);
         break;
         
+    case 'get_required_types':
+        echo json_encode([
+            'success' => true,
+            'required_types' => $docRepo->getRequiredTypes()
+        ]);
+        break;
+
     case 'verify_document':
         if ($method !== 'POST') {
             http_response_code(405);
@@ -94,7 +111,9 @@ switch ($action) {
             exit;
         }
         
-        $docId = $_POST['doc_id'] ?? null;
+        $docId = $_POST['doc_id'] ?? ($_POST['id'] ?? null);
+        $status = $_POST['status'] ?? 'approved';
+        $remarks = $_POST['remarks'] ?? null;
         
         if (!$docId) {
             http_response_code(400);
@@ -102,13 +121,9 @@ switch ($action) {
             exit;
         }
         
-        $result = $supabase->update('compliance_docs', [
-            'is_verified' => true,
-            'verified_by' => $userId,
-            'verified_at' => date('Y-m-d H:i:s')
-        ], ['id' => 'eq.' . $docId]);
+        $success = $docRepo->updateStatus($docId, $status, $userId, $remarks);
         
-        if ($result) {
+        if ($success) {
             echo json_encode(['success' => true]);
         } else {
             http_response_code(500);

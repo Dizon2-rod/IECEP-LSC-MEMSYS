@@ -5,3 +5,4 @@ vendor/
 Thumbs.db
 node_modules/
 storage/*.json
+scratch/

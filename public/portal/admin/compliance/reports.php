@@ -11,15 +11,17 @@ $institutions = [];
 $memberCountMap = [];
 $scorecards = [];
 
-try {
-    $instData = $supabase->select('institutions', ['select' => 'id, name, acronym, status, compliance_status, created_at', 'order' => 'name.asc']);
-    if (is_array($instData)) $institutions = $instData;
+$scoresMap = [];
 
-    $membersData = $supabase->select('members', ['select' => 'id, institution_id']);
-    if (is_array($membersData)) {
-        foreach ($membersData as $m) {
-            $iid = $m['institution_id'] ?? '';
-            if ($iid) $memberCountMap[$iid] = ($memberCountMap[$iid] ?? 0) + 1;
+try {
+    $instRepo = \App\Lib\InstitutionRepository::getInstance($supabase);
+    $institutions = $instRepo->getAll();
+
+    $compRepo = \App\Lib\ComplianceRepository::getInstance($supabase);
+    $allScores = $compRepo->getAllScores(intval(date('Y')));
+    foreach ($allScores as $sc) {
+        if (isset($sc['institution_id'])) {
+            $scoresMap[$sc['institution_id']] = $sc;
         }
     }
 } catch (Exception $e) {
@@ -28,18 +30,21 @@ try {
 
 $compliantCount = 0;
 $atRiskCount = 0;
+$nonCompliantCount = 0;
 
 foreach ($institutions as $inst) {
     $instId = $inst['id'];
-    $liveCount = $memberCountMap[$instId] ?? 0;
-    $seedCount = intval($inst['membership_count'] ?? 0);
-    $mCount = $liveCount > 0 ? $liveCount : ($seedCount > 0 ? $seedCount : 1);
-    $compStatus = strtolower($inst['compliance_status'] ?? 'compliant');
+    $sc = $scoresMap[$instId] ?? null;
     
-    // Compute score based on member roster size vs quota (20 members = 100%)
-    $score = min(100, round(($mCount / 20) * 100, 1));
+    $mCount = intval($sc['total_members'] ?? ($inst['membership_count'] ?? 0));
+    $score = floatval($sc['overall_score'] ?? ($sc['score'] ?? 0.0));
+    $compStatus = strtolower($sc['compliance_status'] ?? ($inst['compliance_status'] ?? 'compliant'));
     
-    if ($compStatus === 'at_risk') {
+    if ($compStatus === 'non_compliant') {
+        $statusLabel = 'Non-Compliant';
+        $pillClass = 'inactive';
+        $nonCompliantCount++;
+    } elseif ($compStatus === 'at_risk') {
         $statusLabel = 'At Risk';
         $pillClass = 'pending';
         $atRiskCount++;

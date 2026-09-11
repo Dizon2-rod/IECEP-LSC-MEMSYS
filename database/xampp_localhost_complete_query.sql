@@ -1,5 +1,9 @@
 -- =====================================================================
--- IECEP-LSC MEMSYS - COMPLETE XAMPP LOCALHOST MYSQL/MARIADB QUERY
+-- [DEPRECATED] IECEP-LSC MEMSYS - COMPLETE XAMPP LOCALHOST MYSQL/MARIADB QUERY
+-- NOTICE: This file is DEPRECATED as of Migration 013 and kept solely for legacy reference.
+-- For new installs and schema updates, run sequential migrations in database/migrations/
+-- tracked by the `schema_migrations` table using `php scripts/migrate.php`.
+-- =====================================================================
 -- MySQL/MariaDB Database Setup for XAMPP Localhost (phpMyAdmin)
 -- 100% Synced & Identical with Supabase Cloud Database Schema
 -- Generated: 2026-08-28

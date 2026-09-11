@@ -721,6 +721,10 @@ function renderDashboard(array $config): void {
                         <i class="fas fa-wifi"></i>
                         <span>Online</span>
                     </div>
+                    <div id="sync-status-indicator" class="sync-status synced" style="display:inline-flex; align-items:center; gap:0.35rem; font-size:0.75rem; font-weight:600; padding:0.25rem 0.6rem; border-radius:6px; background:#F1F5F9; border:1px solid #E2E8F0;">
+                        <i class="fas fa-check-circle" style="color:#10b981;"></i>
+                        <span>All changes synced</span>
+                    </div>
                     <div class="user-greeting">
                         <span>Welcome, <?php echo htmlspecialchars($user_name); ?>!</span>
                     </div>

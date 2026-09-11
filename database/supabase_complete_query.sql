@@ -1,5 +1,9 @@
 -- =====================================================================
--- IECEP-LSC MEMSYS - COMPLETE UNIFIED SUPABASE POSTGRESQL MASTER SCHEMA
+-- [DEPRECATED] IECEP-LSC MEMSYS - COMPLETE UNIFIED SUPABASE POSTGRESQL MASTER SCHEMA
+-- NOTICE: This file is DEPRECATED as of Migration 013 and kept solely for legacy reference.
+-- For new installs and schema updates, run sequential migrations in database/migrations/
+-- tracked by the `schema_migrations` table using `php scripts/migrate.php`.
+-- =====================================================================
 -- Laguna Student Chapter Membership & Affiliation Management System
 -- Unified All-In-One SQL Script Combining All Repository SQL Migrations:
 --   - database/additional_tables.sql

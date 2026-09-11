@@ -51,30 +51,18 @@ $year = intval(date('Y'));
 
 if ($supabase && $institutionId) {
     try {
-        $mems = $supabase->select('members', ['institution_id' => 'eq.' . $institutionId, 'status' => 'eq.active']);
-        if (is_array($mems)) $memberCount = count($mems);
-        if ($memberCount === 0) {
-            $allMems = $supabase->select('members', ['institution_id' => 'eq.' . $institutionId]);
-            if (is_array($allMems)) $memberCount = count($allMems);
-        }
-        
-        $txs = $supabase->select('transactions', [
-            'institution_id' => 'eq.' . $institutionId,
-            'status' => 'eq.paid'
-        ]);
-        if (is_array($txs)) {
-            foreach ($txs as $t) $totalPaid += floatval($t['amount'] ?? 0);
-        }
+        $memberRepo = \App\Lib\MemberRepository::getInstance($supabase);
+        $memberStats = $memberRepo->getStatsForInstitution($institutionId);
+        $memberCount = $memberStats['active'] > 0 ? $memberStats['active'] : $memberStats['total'];
 
-        // 1. Fetch compliance score from compliance_scores table
-        $scores = $supabase->select('compliance_scores', [
-            'institution_id' => 'eq.' . $institutionId,
-            'year' => 'eq.' . $year,
-            'limit' => 1
-        ]);
+        $paymentRepo = \App\Lib\PaymentRepository::getInstance($supabase);
+        $totalPaid = $paymentRepo->getPaidTotalForInstitution($institutionId);
 
-        if (!empty($scores) && is_array($scores)) {
-            $row = $scores[0];
+        // 1. Fetch compliance score via ComplianceRepository
+        $compRepo = \App\Lib\ComplianceRepository::getInstance($supabase);
+        $row = $compRepo->getScoresForInstitution($institutionId, $year);
+
+        if (!empty($row)) {
             $participationRate = floatval($row['participation_rate'] ?? 0);
             $totalHostingCredit = intval($row['hosted_event_count'] ?? 0);
             $overallScore = floatval($row['overall_score'] ?? 0);
@@ -84,10 +72,10 @@ if ($supabase && $institutionId) {
             try {
                 require_once SRC_PATH . 'lib/BlockchainService.php';
                 require_once SRC_PATH . 'lib/ComplianceEngine.php';
-                $blockchain = new \App\Lib\BlockchainService($supabase);
+                $blockchain = $GLOBALS['blockchain'] ?? new \App\Lib\BlockchainService($supabase);
                 $engine = new \App\Lib\ComplianceEngine($supabase, $blockchain);
                 $overallScore = $engine->calculateForInstitution($institutionId, $year);
-                $rep = $engine->getReport($institutionId, $year);
+                $rep = $compRepo->getScoresForInstitution($institutionId, $year);
                 if ($rep) {
                     $participationRate = floatval($rep['participation_rate'] ?? 0);
                     $totalHostingCredit = intval($rep['hosted_event_count'] ?? 0);
