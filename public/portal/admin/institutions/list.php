@@ -780,6 +780,27 @@ foreach ($institutionsList as $inst) {
     $auditedReceiptsCount++;
 }
 
+// Query policy compliance records for institutions
+$policyComplianceMap = [];
+try {
+    if ($supabase) {
+        $polRes = $supabase->select('policy_compliance', ['select' => 'institution_id, is_compliant']);
+        if (is_array($polRes)) {
+            foreach ($polRes as $pr) {
+                $iid = $pr['institution_id'] ?? '';
+                if ($iid) {
+                    $policyComplianceMap[$iid]['total'] = ($policyComplianceMap[$iid]['total'] ?? 0) + 1;
+                    if (!empty($pr['is_compliant'])) {
+                        $policyComplianceMap[$iid]['passed'] = ($policyComplianceMap[$iid]['passed'] ?? 0) + 1;
+                    }
+                }
+            }
+        }
+    }
+} catch (\Throwable $e) {
+    error_log("Institutions list policy compliance query: " . $e->getMessage());
+}
+
 // Auto-audit pending applications
 foreach ($pendingApps as &$pApp) {
     $pMembers = intval($pApp['total_members'] ?? 0);
@@ -2019,13 +2040,36 @@ unset($aApp);
                                             </button>
                                         </td>
                                         <td>
-                                            <span class="ap-pill active" style="margin-bottom:2px;"><span class="ap-pill-dot"></span> Active</span><br>
-                                            <span class="ap-pill <?= ($inst['compliance_status'] ?? '') === 'at_risk' ? 'pending' : 'active' ?>" style="font-size:0.66rem;">
-                                                <?= ucfirst($inst['compliance_status'] ?? 'Compliant') ?>
+                                            <?php
+                                                $pInfo = $policyComplianceMap[$inst['id']] ?? null;
+                                                $pPassed = $pInfo['passed'] ?? 0;
+                                                $pTotal = $pInfo['total'] ?? 0;
+                                                if ($pTotal > 0) {
+                                                    $cScore = round(($pPassed / $pTotal) * 100);
+                                                } else {
+                                                    $cStat = strtolower($inst['compliance_status'] ?? 'compliant');
+                                                    $cScore = ($cStat === 'compliant') ? 100 : (($cStat === 'at_risk') ? 60 : 35);
+                                                }
+                                                $cColor = ($cScore >= 100) ? '#059669' : (($cScore >= 60) ? '#D97706' : '#DC2626');
+                                                $isLow = ($cScore < 100);
+                                            ?>
+                                            <div style="display:flex; align-items:center; gap:0.4rem; margin-bottom:3px;">
+                                                <strong style="font-size:0.84rem; font-family:'JetBrains Mono',monospace; color:<?= $cColor ?>;"><?= $cScore ?>%</strong>
+                                                <div style="width:55px; height:6px; background:#E2E8F0; border-radius:999px; overflow:hidden;">
+                                                    <div style="width:<?= $cScore ?>%; height:100%; background:<?= $cColor ?>; border-radius:999px;"></div>
+                                                </div>
+                                            </div>
+                                            <span class="ap-pill <?= $cScore >= 100 ? 'active' : 'pending' ?>" style="font-size:0.66rem;">
+                                                <?= $cScore >= 100 ? 'Compliant' : 'Monitoring' ?>
                                             </span>
                                         </td>
                                         <td style="text-align:right;">
-                                            <div style="display:inline-flex; align-items:center; gap:0.4rem;">
+                                            <div style="display:inline-flex; align-items:center; gap:0.35rem;">
+                                                <?php if ($isLow): ?>
+                                                    <button type="button" class="btn-white" style="font-size:0.72rem; padding:0.28rem 0.55rem; color:#B45309; background:#FFFBEB; border-color:#FCD34D; font-weight:700;" onclick="sendSingleSchoolReminder('<?= $inst['id'] ?>', '<?= htmlspecialchars(addslashes($inst['name'])) ?>')" title="Send compliance reminder notice">
+                                                        <i class="fas fa-bell"></i> Remind
+                                                    </button>
+                                                <?php endif; ?>
                                                 <button type="button" class="btn-white" style="font-size:0.72rem; padding:0.28rem 0.65rem;" onclick="openAuditedReceiptModal(<?= $finJson ?>)" title="View Audited Official Receipt">
                                                     <i class="fas fa-receipt" style="color:#D97706;"></i> Receipt
                                                 </button>
@@ -2956,6 +3000,26 @@ unset($aApp);
             const modal = document.getElementById('deleteInstitutionModal');
             if (modal) {
                 modal.style.display = 'none';
+            }
+        }
+
+        async function sendSingleSchoolReminder(instId, instName) {
+            if (!confirm('Send a compliance monitoring reminder to the chapter officers of ' + instName + '?')) return;
+
+            try {
+                const res = await fetch('/api/cron/compliance-monitoring-reminders.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ institution_id: instId })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    alert('✓ Compliance reminder sent successfully to ' + instName + ' officers.');
+                } else {
+                    alert('Notice: ' + (data.error || 'Failed to dispatch reminder.'));
+                }
+            } catch (err) {
+                alert('Connection error: ' + err.message);
             }
         }
 

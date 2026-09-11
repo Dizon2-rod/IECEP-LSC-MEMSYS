@@ -33,6 +33,28 @@ $totalSchools = count($institutionsList);
 $activeSchools = count(array_filter($institutionsList, fn($i) => ($i['status'] ?? '') === 'active' || ($i['compliance_status'] ?? '') === 'compliant'));
 $compliancePercentage = $totalSchools > 0 ? round(($activeSchools / $totalSchools) * 100) : 0;
 
+// Per-Institution Compliance Monitoring Map
+$policyComplianceMap = [];
+try {
+    if ($supabase) {
+        $polRes = $supabase->select('policy_compliance', ['select' => 'institution_id, is_compliant']);
+        if (is_array($polRes)) {
+            foreach ($polRes as $pr) {
+                $iid = $pr['institution_id'] ?? '';
+                if ($iid) {
+                    $policyComplianceMap[$iid]['total'] = ($policyComplianceMap[$iid]['total'] ?? 0) + 1;
+                    if (!empty($pr['is_compliant'])) {
+                        $policyComplianceMap[$iid]['passed'] = ($policyComplianceMap[$iid]['passed'] ?? 0) + 1;
+                    }
+                }
+            }
+        }
+    }
+} catch (\Throwable $e) {
+    error_log("Dashboard policy compliance query: " . $e->getMessage());
+}
+
+
 // B. Real Members
 $membersList = [];
 try {
@@ -726,7 +748,77 @@ $chartSchoolData = array_values($schoolMemberDistribution);
                 </div>
             </div>
 
-            <!-- 5. Real Data Tables Grid -->
+            <!-- 5. Chapter Compliance Percentage Monitoring Matrix -->
+            <div class="table-card-box" style="margin-bottom:0.85rem; padding:0.95rem 1.15rem;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.5rem; padding-bottom:0.45rem; border-bottom:1px solid var(--border-subtle);">
+                    <div>
+                        <div style="font-size:0.88rem; font-weight:800; color:var(--text-heading); display:flex; align-items:center; gap:0.45rem;">
+                            <i class="fas fa-chart-pie" style="color:var(--color-navy);"></i>
+                            Chapter Compliance Percentage Monitoring (All <?= count($institutionsList) ?> Schools)
+                        </div>
+                        <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+                            Quick-glance regulatory compliance &amp; governance scorecard per Laguna HEI chapter.
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.4rem;">
+                        <a href="<?= PORTAL_URL ?>/admin/policy-compliance.php" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
+                            <i class="fas fa-tasks" style="color:var(--color-navy);"></i> Policy Matrix
+                        </a>
+                        <a href="<?= PORTAL_URL ?>/admin/compliance/dashboard.php" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
+                            <i class="fas fa-shield-halved" style="color:var(--color-blue);"></i> Full Dashboard
+                        </a>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:0.65rem;">
+                    <?php foreach ($institutionsList as $inst): ?>
+                        <?php
+                            $iid = $inst['id'];
+                            $pInfo = $policyComplianceMap[$iid] ?? null;
+                            $passedCount = $pInfo['passed'] ?? 0;
+                            $totalCount = $pInfo['total'] ?? 0;
+                            if ($totalCount > 0) {
+                                $score = round(($passedCount / $totalCount) * 100);
+                            } else {
+                                $cStatus = strtolower($inst['compliance_status'] ?? 'compliant');
+                                $score = ($cStatus === 'compliant') ? 100 : (($cStatus === 'at_risk') ? 60 : 35);
+                            }
+                            $isLow = ($score < 100);
+                            $barColor = ($score >= 100) ? '#059669' : (($score >= 60) ? '#D97706' : '#DC2626');
+                            $bgColor = ($score >= 100) ? '#F8FAFC' : '#FFFBEB';
+                            $borderColor = ($score >= 100) ? '#E2E8F0' : '#FDE68A';
+                        ?>
+                        <div style="background:<?= $bgColor ?>; border:1px solid <?= $borderColor ?>; border-radius:8px; padding:0.65rem 0.8rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.25rem;">
+                                <div>
+                                    <strong style="font-size:0.82rem; color:var(--text-heading);"><?= htmlspecialchars($inst['acronym'] ?: $inst['name']) ?></strong>
+                                    <div style="font-size:0.68rem; color:var(--text-muted); max-width:145px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                        <?= htmlspecialchars($inst['name']) ?>
+                                    </div>
+                                </div>
+                                <span style="font-size:0.86rem; font-weight:800; color:<?= $barColor ?>; font-family:'JetBrains Mono',monospace;">
+                                    <?= $score ?>%
+                                </span>
+                            </div>
+                            <div style="width:100%; height:6px; background:#E2E8F0; border-radius:999px; overflow:hidden; margin:0.35rem 0;">
+                                <div style="width:<?= $score ?>%; height:100%; background:<?= $barColor ?>; border-radius:999px; transition:width 0.4s ease;"></div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.68rem; color:var(--text-muted); margin-top:0.35rem;">
+                                <span><?= $totalCount > 0 ? "$passedCount of $totalCount Verified" : "Active Chapter" ?></span>
+                                <?php if ($isLow): ?>
+                                    <button type="button" class="btn-white" style="font-size:0.66rem; padding:0.15rem 0.45rem; color:#B45309; background:#FFFBEB; border-color:#FCD34D; font-weight:700;" onclick="sendSingleSchoolReminder('<?= $iid ?>', '<?= htmlspecialchars(addslashes($inst['name'])) ?>')" title="Send compliance reminder notice to school officers">
+                                        <i class="fas fa-bell"></i> Remind
+                                    </button>
+                                <?php else: ?>
+                                    <span style="color:#059669; font-weight:700;"><i class="fas fa-check-circle"></i> 100%</span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- 6. Real Data Tables Grid -->
             <div class="dash-tables-grid">
                 
                 <!-- Table 1: Chartered Institutions -->
@@ -746,7 +838,7 @@ $chartSchoolData = array_values($schoolMemberDistribution);
                                 <tr>
                                     <th>Institution</th>
                                     <th>Officer / Advisor</th>
-                                    <th>Location</th>
+                                    <th>Compliance %</th>
                                     <th>Status</th>
                                     <th style="text-align:right;">Actions</th>
                                 </tr>
@@ -761,6 +853,20 @@ $chartSchoolData = array_values($schoolMemberDistribution);
                                     </tr>
                                 <?php else: ?>
                                     <?php foreach (array_slice($institutionsList, 0, 5) as $inst): ?>
+                                        <?php
+                                            $iid = $inst['id'];
+                                            $pInfo = $policyComplianceMap[$iid] ?? null;
+                                            $passedCount = $pInfo['passed'] ?? 0;
+                                            $totalCount = $pInfo['total'] ?? 0;
+                                            if ($totalCount > 0) {
+                                                $score = round(($passedCount / $totalCount) * 100);
+                                            } else {
+                                                $cStatus = strtolower($inst['compliance_status'] ?? 'compliant');
+                                                $score = ($cStatus === 'compliant') ? 100 : (($cStatus === 'at_risk') ? 60 : 35);
+                                            }
+                                            $isLow = ($score < 100);
+                                            $barColor = ($score >= 100) ? '#059669' : (($score >= 60) ? '#D97706' : '#DC2626');
+                                        ?>
                                         <tr>
                                             <td>
                                                 <strong style="color:var(--text-heading);"><?= htmlspecialchars($inst['name'] ?? 'HEI') ?></strong>
@@ -770,12 +876,24 @@ $chartSchoolData = array_values($schoolMemberDistribution);
                                                 <?= htmlspecialchars($inst['contact_person'] ?: 'Faculty Advisor') ?>
                                             </td>
                                             <td>
-                                                <?= htmlspecialchars($inst['city'] ?: 'Laguna') ?>
+                                                <div style="display:flex; align-items:center; gap:0.4rem;">
+                                                    <span style="font-weight:800; font-size:0.78rem; font-family:'JetBrains Mono',monospace; color:<?= $barColor ?>;">
+                                                        <?= $score ?>%
+                                                    </span>
+                                                    <div style="flex:1; min-width:45px; max-width:65px; height:5px; background:#E2E8F0; border-radius:999px; overflow:hidden;">
+                                                        <div style="width:<?= $score ?>%; height:100%; background:<?= $barColor ?>;"></div>
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td>
-                                                <span class="status-badge active"><i class="fas fa-circle" style="font-size:0.35rem;"></i> Active</span>
+                                                <span class="status-badge <?= $score >= 100 ? 'active' : 'pending' ?>"><i class="fas fa-circle" style="font-size:0.35rem;"></i> <?= $score >= 100 ? 'Compliant' : 'Monitoring' ?></span>
                                             </td>
-                                            <td style="text-align:right;">
+                                            <td style="text-align:right; white-space:nowrap;">
+                                                <?php if ($isLow): ?>
+                                                    <button type="button" class="btn-white" style="font-size:0.7rem; padding:0.22rem 0.45rem; color:#B45309; background:#FFFBEB; border-color:#FCD34D; font-weight:700; margin-right:0.2rem;" onclick="sendSingleSchoolReminder('<?= $iid ?>', '<?= htmlspecialchars(addslashes($inst['name'])) ?>')" title="Send compliance reminder notice">
+                                                        <i class="fas fa-bell"></i> Remind
+                                                    </button>
+                                                <?php endif; ?>
                                                 <a href="<?= PORTAL_URL ?>/admin/members/list.php?school=<?= urlencode($inst['id']) ?>" class="btn-white" style="font-size:0.7rem; padding:0.25rem 0.55rem;">
                                                     <i class="fas fa-users"></i> Members
                                                 </a>
@@ -938,6 +1056,26 @@ $chartSchoolData = array_values($schoolMemberDistribution);
             });
         }
     });
+
+    async function sendSingleSchoolReminder(instId, instName) {
+        if (!confirm('Send a compliance monitoring reminder to the chapter officers of ' + instName + '?')) return;
+
+        try {
+            const res = await fetch('/api/cron/compliance-monitoring-reminders.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ institution_id: instId })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert('✓ Compliance reminder sent successfully to ' + instName + ' officers.');
+            } else {
+                alert('Notice: ' + (data.error || 'Failed to dispatch reminder.'));
+            }
+        } catch (err) {
+            alert('Connection error: ' + err.message);
+        }
+    }
     </script>
 </body>
 </html>

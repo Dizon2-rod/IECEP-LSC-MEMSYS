@@ -441,10 +441,15 @@ $complianceRate = $totalInstitutions > 0 ? round(($compliantCount / $totalInstit
                                             <strong style="color:var(--color-navy);"><?= number_format($row['member_count']) ?></strong>
                                         </td>
                                         <td>
-                                            <span style="font-weight:700; color:<?= $row['participation_rate'] >= 40 ? '#059669' : ($row['participation_rate'] >= 20 ? '#D97706' : '#DC2626') ?>;">
-                                                <?= number_format($row['participation_rate'], 1) ?>%
-                                            </span>
-                                            <span style="font-size:0.7rem; color:#94A3B8;">/ 40%</span>
+                                            <div style="display:flex; align-items:center; gap:0.35rem;">
+                                                <span style="font-weight:800; font-size:0.82rem; font-family:'JetBrains Mono',monospace; color:<?= $row['participation_rate'] >= 40 ? '#059669' : ($row['participation_rate'] >= 20 ? '#D97706' : '#DC2626') ?>;">
+                                                    <?= number_format($row['participation_rate'], 1) ?>%
+                                                </span>
+                                                <span style="font-size:0.7rem; color:#94A3B8;">/ 40%</span>
+                                            </div>
+                                            <div style="width:100%; max-width:85px; height:5px; background:#E2E8F0; border-radius:999px; overflow:hidden; margin-top:2px;">
+                                                <div style="width:<?= min(100, round(($row['participation_rate'] / 40) * 100)) ?>%; height:100%; background:<?= $row['participation_rate'] >= 40 ? '#059669' : ($row['participation_rate'] >= 20 ? '#D97706' : '#DC2626') ?>; border-radius:999px;"></div>
+                                            </div>
                                         </td>
                                         <td>
                                             <span style="font-weight:700; color:<?= $row['hosted_count'] >= 1 ? '#059669' : '#D97706' ?>;">
