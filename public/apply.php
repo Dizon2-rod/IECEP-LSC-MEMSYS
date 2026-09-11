@@ -674,7 +674,33 @@ $isResubmit = !empty($existingApplication);
         let resubmitId = '<?php echo htmlspecialchars($resubmitId); ?>';
         let currentEmail = '';
 
-        // Safe URL builder for affiliation submission API
+        // Safe URL builders for verification APIs
+        window.getSendVerificationCodeApiUrl = function() {
+            if (typeof API_URL !== 'undefined' && API_URL) {
+                return API_URL.replace(/\/+$/, '') + '/send-verification-code.php';
+            }
+            const origin = window.location.origin;
+            if (window.location.pathname.includes('/public/')) {
+                const prefix = window.location.pathname.substring(0, window.location.pathname.indexOf('/public/'));
+                return origin + prefix + '/public/api/send-verification-code.php';
+            }
+            const prefix = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+            return origin + (prefix ? prefix : '') + '/public/api/send-verification-code.php';
+        };
+
+        window.getVerifyCodeApiUrl = function() {
+            if (typeof API_URL !== 'undefined' && API_URL) {
+                return API_URL.replace(/\/+$/, '') + '/verify-code.php';
+            }
+            const origin = window.location.origin;
+            if (window.location.pathname.includes('/public/')) {
+                const prefix = window.location.pathname.substring(0, window.location.pathname.indexOf('/public/'));
+                return origin + prefix + '/public/api/verify-code.php';
+            }
+            const prefix = window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/'));
+            return origin + (prefix ? prefix : '') + '/public/api/verify-code.php';
+        };
+
         window.getSubmitApiUrl = function() {
             if (typeof API_URL !== 'undefined' && API_URL) {
                 return API_URL.replace(/\/+$/, '') + '/submit-affiliation.php';
@@ -720,6 +746,29 @@ $isResubmit = !empty($existingApplication);
             }
         }
 
+        // 60-Second Cooldown Timer for Resend Button
+        let resendCooldownInterval = null;
+        function startResendCooldown(seconds = 60) {
+            const resendBtn = document.getElementById('resend-btn');
+            if (!resendBtn) return;
+            clearInterval(resendCooldownInterval);
+
+            let remaining = seconds;
+            resendBtn.disabled = true;
+            resendBtn.innerHTML = `<i class="fas fa-hourglass-half me-1"></i> Resend Code (${remaining}s)`;
+
+            resendCooldownInterval = setInterval(() => {
+                remaining--;
+                if (remaining <= 0) {
+                    clearInterval(resendCooldownInterval);
+                    resendBtn.disabled = false;
+                    resendBtn.innerHTML = '<i class="fas fa-redo me-1"></i> Resend Verification Code';
+                } else {
+                    resendBtn.innerHTML = `<i class="fas fa-hourglass-half me-1"></i> Resend Code (${remaining}s)`;
+                }
+            }, 1000);
+        }
+
         // Global handler for sending verification code (callable via onclick or addEventListener)
         window.handleSendVerificationCode = async function(btn) {
             console.log('[Verification] handleSendVerificationCode called');
@@ -754,7 +803,7 @@ $isResubmit = !empty($existingApplication);
             if (errorEl) errorEl.classList.add('hidden');
 
             try {
-                const targetUrl = window.getSubmitApiUrl();
+                const targetUrl = window.getSendVerificationCodeApiUrl();
                 console.log('[Verification] Posting send-verification-code to:', targetUrl);
                 const response = await fetch(targetUrl, {
                     method: 'POST',
@@ -763,7 +812,6 @@ $isResubmit = !empty($existingApplication);
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({
-                        action: 'send-verification-code',
                         email: email
                     })
                 });
@@ -777,7 +825,7 @@ $isResubmit = !empty($existingApplication);
                     throw new Error('Server returned an unexpected response format.');
                 }
 
-                if (result.success) {
+                if (response.ok && result.success) {
                     currentEmail = email;
                     const sentEmailSpan = document.getElementById('sent-email');
                     if (sentEmailSpan) sentEmailSpan.textContent = email;
@@ -787,17 +835,16 @@ $isResubmit = !empty($existingApplication);
                     
                     showSuccess(result.message || 'Verification code sent to your email! Please check your inbox and spam folder.');
                     startCountdown();
+                    startResendCooldown(60);
                     setupCodeInputs();
                 } else {
-                    if (result.email_exists) {
-                        if (result.resubmit_available && result.application_id) {
-                            showResubmitModal(result.message, result.application_id);
-                        } else {
-                            showError(result.message || result.error || 'This email cannot be used.');
-                        }
-                    } else {
-                        showError(result.error || result.message || 'Failed to send verification code. Please try again.');
+                    const errorMsg = result.message || result.error || 'Failed to send verification code. Please try again.';
+                    showError(errorMsg);
+
+                    if (response.status === 429 && result.retry_after) {
+                        startResendCooldown(result.retry_after);
                     }
+
                     if (sendBtn) {
                         sendBtn.disabled = false;
                         sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Send Verification Code';
@@ -967,7 +1014,7 @@ $isResubmit = !empty($existingApplication);
             }
 
             try {
-                const targetUrl = window.getSubmitApiUrl();
+                const targetUrl = window.getVerifyCodeApiUrl();
                 console.log('[Verification] Posting verify-code to:', targetUrl);
                 const response = await fetch(targetUrl, {
                     method: 'POST',
@@ -976,7 +1023,6 @@ $isResubmit = !empty($existingApplication);
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({
-                        action: 'verify-code',
                         email: email,
                         code: code
                     })
@@ -991,7 +1037,7 @@ $isResubmit = !empty($existingApplication);
                     throw new Error('Server returned an unexpected response format.');
                 }
 
-                if (result.success) {
+                if (response.ok && result.success) {
                     verifiedEmail = email;
                     const verifiedFlag = document.getElementById('email-verified-flag');
                     if (verifiedFlag) verifiedFlag.value = 'true';
@@ -1002,10 +1048,19 @@ $isResubmit = !empty($existingApplication);
                         moveToStep2();
                     }, 800);
                 } else {
-                    showError(result.error || result.message || 'Invalid or expired verification code');
-                    if (verifyBtn) {
-                        verifyBtn.disabled = false;
-                        verifyBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Verify Code';
+                    const errorMsg = result.message || result.error || 'Invalid or expired verification code';
+                    showError(errorMsg);
+
+                    if (result.locked) {
+                        if (verifyBtn) {
+                            verifyBtn.disabled = true;
+                            verifyBtn.innerHTML = '<i class="fas fa-lock me-2"></i> Code Locked';
+                        }
+                    } else {
+                        if (verifyBtn) {
+                            verifyBtn.disabled = false;
+                            verifyBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Verify Code';
+                        }
                     }
                 }
             } catch (error) {
@@ -1031,8 +1086,17 @@ $isResubmit = !empty($existingApplication);
                 sendBtn.disabled = false;
                 sendBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> Send Verification Code';
             }
-            document.getElementById('verification-email')?.focus();
+            const emailInput = document.getElementById('verification-email');
+            if (emailInput) {
+                emailInput.focus();
+                emailInput.select();
+            }
             clearInterval(countdownInterval);
+            clearInterval(resendCooldownInterval);
+            const errorEl = document.getElementById('verification-error');
+            if (errorEl) errorEl.classList.add('hidden');
+            const successEl = document.getElementById('verification-success');
+            if (successEl) successEl.classList.add('hidden');
         };
 
         document.getElementById('change-email-btn')?.addEventListener('click', function(e) {
@@ -1052,11 +1116,11 @@ $isResubmit = !empty($existingApplication);
 
             if (resendButton) {
                 resendButton.disabled = true;
-                resendButton.textContent = 'Sending new code...';
+                resendButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Sending...';
             }
 
             try {
-                const targetUrl = window.getSubmitApiUrl();
+                const targetUrl = window.getSendVerificationCodeApiUrl();
                 const response = await fetch(targetUrl, {
                     method: 'POST',
                     headers: {
@@ -1064,7 +1128,6 @@ $isResubmit = !empty($existingApplication);
                         'Accept': 'application/json'
                     },
                     body: JSON.stringify({
-                        action: 'send-verification-code',
                         email: email
                     })
                 });
@@ -1077,17 +1140,31 @@ $isResubmit = !empty($existingApplication);
                     throw new Error('Server returned an unexpected response format.');
                 }
 
-                if (result.success) {
-                    showSuccess('New verification code sent! Check your Gmail inbox.');
+                if (response.ok && result.success) {
+                    showSuccess(result.message || 'New verification code sent! Check your inbox.');
                     startCountdown();
+                    startResendCooldown(60);
                     setupCodeInputs();
+
+                    const verifyBtn = document.getElementById('verify-code-btn');
+                    if (verifyBtn) {
+                        verifyBtn.disabled = false;
+                        verifyBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Verify Code';
+                    }
                 } else {
-                    showError(result.message || result.error || 'Failed to resend verification code');
+                    const errorMsg = result.message || result.error || 'Failed to resend verification code';
+                    showError(errorMsg);
+
+                    if (response.status === 429 && result.retry_after) {
+                        startResendCooldown(result.retry_after);
+                    } else if (resendButton) {
+                        resendButton.disabled = false;
+                        resendButton.innerHTML = '<i class="fas fa-redo me-1"></i> Resend Verification Code';
+                    }
                 }
             } catch (error) {
                 console.error('[Verification] Resend error:', error);
                 showError('Network error: ' + error.message);
-            } finally {
                 if (resendButton) {
                     resendButton.disabled = false;
                     resendButton.innerHTML = '<i class="fas fa-redo me-1"></i> Resend Verification Code';
@@ -1104,10 +1181,8 @@ $isResubmit = !empty($existingApplication);
             let seconds = 600; // 10 minutes
             const countdownEl = document.getElementById('countdown');
             const timerEl = document.getElementById('timer');
-            const resendBtn = document.getElementById('resend-btn');
 
-            countdownEl.classList.remove('hidden');
-            resendBtn.disabled = true;
+            if (countdownEl) countdownEl.classList.remove('hidden');
 
             clearInterval(countdownInterval);
 
@@ -1115,12 +1190,20 @@ $isResubmit = !empty($existingApplication);
                 seconds--;
                 const minutes = Math.floor(seconds / 60);
                 const remainingSeconds = seconds % 60;
-                timerEl.textContent = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+                if (timerEl) {
+                    timerEl.textContent = `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+                }
 
                 if (seconds <= 0) {
                     clearInterval(countdownInterval);
-                    countdownEl.textContent = 'Verification code has expired. Please request a new code.';
-                    resendBtn.disabled = false;
+                    if (countdownEl) {
+                        countdownEl.textContent = 'Verification code has expired. Please request a new code.';
+                    }
+                    const verifyBtn = document.getElementById('verify-code-btn');
+                    if (verifyBtn) {
+                        verifyBtn.disabled = true;
+                        verifyBtn.innerHTML = '<i class="fas fa-clock me-2"></i> Code Expired';
+                    }
                 }
             }, 1000);
         }

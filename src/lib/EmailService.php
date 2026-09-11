@@ -405,7 +405,17 @@ class EmailService
         return $this->sendMailWithFallback($to, $subject, $body, $altBody);
     }
 
-    public function sendVerificationCode(string $to, string $code): bool
+    /**
+     * Send a 6-digit email verification code to the recipient
+     * Ensures $email is passed directly to $mail->addAddress($email) - never hardcoded, never from config.
+     * Uses the existing SMTP configuration (Port 465 SSL or 587 TLS).
+     * Wrapped in try/catch with server-side error logging.
+     *
+     * @param string $email The destination email entered by the user
+     * @param string $code The 6-digit verification code
+     * @return bool True if sent successfully, false otherwise
+     */
+    public function sendVerificationCode(string $email, string $code): bool
     {
         $formattedCode = implode(' ', str_split($code));
         $subject = 'Your IECEP-LSC Email Verification Code';
@@ -433,7 +443,7 @@ class EmailService
                         <td style='padding:35px 30px;'>
                             <h2 style='color:#0B1D4A;font-size:22px;font-weight:700;margin:0 0 12px;'>Email Verification Code</h2>
                             <p style='color:#475569;font-size:15px;line-height:1.6;margin:0 0 24px;'>
-                                Hello! We received a request to verify this email address (<strong>" . htmlspecialchars($to) . "</strong>) for your IECEP-LSC application. Use the one-time verification code below to proceed:
+                                Hello! We received a request to verify this email address (<strong>" . htmlspecialchars($email) . "</strong>) for your IECEP-LSC application. Use the one-time verification code below to proceed:
                             </p>
                             <table border='0' cellpadding='0' cellspacing='0' width='100%' style='margin:0 0 28px;'>
                                 <tr>
@@ -455,7 +465,59 @@ class EmailService
 </body>
 </html>";
 
-        return $this->sendMailWithFallback($to, $subject, $htmlBody, $altBody);
+        // Try primary SMTP (Port 465 SSL or Port 587 TLS as configured)
+        try {
+            $mail = $this->createMailer();
+            $mail->clearAddresses();
+            $mail->addAddress($email);
+            $mail->Subject = $subject;
+            $mail->Body    = $htmlBody;
+            $mail->AltBody = $altBody;
+
+            if ($mail->send()) {
+                error_log("Verification code email successfully sent to: {$email} via SMTP (Port {$mail->Port})");
+                return true;
+            }
+        } catch (\Throwable $smtpErr) {
+            error_log("Primary SMTP send failed for {$email}: " . $smtpErr->getMessage());
+
+            // If primary SMTP failed on Port 465, try Port 587 STARTTLS fallback (or vice-versa)
+            try {
+                $primaryPort = (int)($this->config['email']['port'] ?? 465);
+                $fallbackPort = ($primaryPort === 465) ? 587 : 465;
+                $fallbackSecure = ($fallbackPort === 465) ? \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS : \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+
+                $mailFallback = $this->createMailer([
+                    'port'   => $fallbackPort,
+                    'secure' => $fallbackSecure,
+                ]);
+                $mailFallback->clearAddresses();
+                $mailFallback->addAddress($email);
+                $mailFallback->Subject = $subject;
+                $mailFallback->Body    = $htmlBody;
+                $mailFallback->AltBody = $altBody;
+
+                if ($mailFallback->send()) {
+                    error_log("Verification code email sent to {$email} via fallback SMTP Port {$fallbackPort}!");
+                    return true;
+                }
+            } catch (\Throwable $fallbackErr) {
+                error_log("Fallback SMTP send failed for {$email}: " . $fallbackErr->getMessage());
+            }
+
+            // Also try Brevo / Resend HTTPS REST API if configured (ensuring recipient is strictly $email)
+            if ($this->hasHttpsApiConfigured()) {
+                try {
+                    if ($this->sendViaHttpsRestApi($email, $subject, $htmlBody, $altBody)) {
+                        return true;
+                    }
+                } catch (\Throwable $apiErr) {
+                    error_log("HTTPS REST API send failed for {$email}: " . $apiErr->getMessage());
+                }
+            }
+        }
+
+        return false;
     }
 
     public function sendSchoolAccountCredentials(string $to, string $institutionName, string $password, string $contactPerson = '', ?string $loginUrl = null): bool

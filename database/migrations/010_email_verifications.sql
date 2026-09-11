@@ -1,29 +1,34 @@
 -- ============================================================================
 -- Migration: 010_email_verifications.sql
 -- Description: Idempotent SQL table creation for email_verifications
--- Supports: Supabase (PostgreSQL) and XAMPP (MySQL)
+-- Supports: Supabase (PostgreSQL) and XAMPP (MySQL/MariaDB)
+-- Includes rate-limiting and brute-force protection columns (attempts & indexes)
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
 -- SECTION A: SUPABASE (PostgreSQL)
+-- Run this in the Supabase SQL Editor:
 -- ----------------------------------------------------------------------------
 
--- 1. Create email_verifications table
+-- 1. Create table if it doesn't already exist
 CREATE TABLE IF NOT EXISTS email_verifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) NOT NULL,
-    code VARCHAR(10) NOT NULL,
+    email TEXT NOT NULL,
+    code TEXT NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
-    verified BOOLEAN DEFAULT FALSE,
+    verified BOOLEAN DEFAULT false,
+    attempts INTEGER DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Indexes for fast lookups
-CREATE INDEX IF NOT EXISTS idx_email_verifications_email ON email_verifications (email);
-CREATE INDEX IF NOT EXISTS idx_email_verifications_lookup ON email_verifications (email, code, verified);
-CREATE INDEX IF NOT EXISTS idx_email_verifications_expires ON email_verifications (expires_at);
+-- 2. Ensure the attempts column exists if the table was created previously
+ALTER TABLE email_verifications ADD COLUMN IF NOT EXISTS attempts INTEGER DEFAULT 0;
 
--- 3. Row-Level Security (RLS) for Supabase
+-- 3. Idempotent Index on email to support rate-limiting and fast verification lookups
+CREATE INDEX IF NOT EXISTS idx_email_verifications_email ON email_verifications(email);
+CREATE INDEX IF NOT EXISTS idx_email_verifications_email_code ON email_verifications(email, code);
+
+-- 4. Enable Row Level Security (RLS) & Policies
 ALTER TABLE email_verifications ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow public insert for email_verifications" ON email_verifications;
@@ -38,65 +43,20 @@ DROP POLICY IF EXISTS "Allow public update for email_verifications" ON email_ver
 CREATE POLICY "Allow public update for email_verifications" ON email_verifications
     FOR UPDATE USING (true);
 
--- 4. Also ensure verification_codes table has the verified column if it exists
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1 FROM information_schema.tables WHERE table_name = 'verification_codes'
-    ) THEN
-        IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns 
-            WHERE table_name = 'verification_codes' AND column_name = 'verified'
-        ) THEN
-            ALTER TABLE verification_codes ADD COLUMN verified BOOLEAN DEFAULT FALSE;
-        END IF;
-    ELSE
-        CREATE TABLE verification_codes (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            email VARCHAR(255) NOT NULL,
-            code VARCHAR(10) NOT NULL,
-            purpose VARCHAR(50) DEFAULT 'affiliation',
-            expires_at TIMESTAMPTZ NOT NULL,
-            used BOOLEAN DEFAULT FALSE,
-            verified BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMPTZ DEFAULT NOW()
-        );
-        CREATE INDEX idx_ver_codes_lookup ON verification_codes (email, code, used);
-        ALTER TABLE verification_codes ENABLE ROW LEVEL SECURITY;
-        CREATE POLICY "Allow public insert verification_codes" ON verification_codes FOR INSERT WITH CHECK (true);
-        CREATE POLICY "Allow public select verification_codes" ON verification_codes FOR SELECT USING (true);
-        CREATE POLICY "Allow public update verification_codes" ON verification_codes FOR UPDATE USING (true);
-    END IF;
-END $$;
-
 
 -- ----------------------------------------------------------------------------
--- SECTION B: XAMPP / LOCALHOST (MySQL)
--- Run this section if executing directly inside phpMyAdmin or MySQL console
+-- SECTION B: XAMPP / LOCALHOST (MySQL / MariaDB)
+-- Run this in phpMyAdmin or the MySQL terminal for local database:
 -- ----------------------------------------------------------------------------
 /*
-CREATE TABLE IF NOT EXISTS `email_verifications` (
-    `id` VARCHAR(36) NOT NULL,
-    `email` VARCHAR(255) NOT NULL,
-    `code` VARCHAR(10) NOT NULL,
-    `expires_at` DATETIME NOT NULL,
-    `verified` TINYINT(1) DEFAULT 0,
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    INDEX `idx_email` (`email`),
-    INDEX `idx_lookup` (`email`, `code`, `verified`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `verification_codes` (
-    `id` VARCHAR(36) NOT NULL,
-    `email` VARCHAR(255) NOT NULL,
-    `code` VARCHAR(10) NOT NULL,
-    `purpose` VARCHAR(50) DEFAULT 'affiliation',
-    `expires_at` DATETIME NOT NULL,
-    `used` TINYINT(1) DEFAULT 0,
-    `verified` TINYINT(1) DEFAULT 0,
-    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`),
-    INDEX `idx_email_code` (`email`, `code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS email_verifications (
+    id CHAR(36) PRIMARY KEY,
+    email VARCHAR(255) NOT NULL,
+    code VARCHAR(6) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    verified TINYINT(1) DEFAULT 0,
+    attempts INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_email (email)
+);
 */
