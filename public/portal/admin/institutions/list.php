@@ -621,6 +621,102 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $feedbackMsg = "❌ Error deleting institution: " . $e->getMessage();
             $feedbackType = 'danger';
         }
+    } elseif ($action === 'upload_institution_requirement') {
+        try {
+            $targetInstId = trim($_POST['institution_id'] ?? '');
+            $reqType = trim($_POST['requirement_type'] ?? 'other');
+            $customTitle = trim($_POST['title'] ?? '');
+            $notes = trim($_POST['notes'] ?? '');
+            $timestamp = date('c');
+
+            if (empty($targetInstId)) {
+                throw new \Exception("Institution ID is required.");
+            }
+
+            if (!isset($_FILES['requirement_file']) || $_FILES['requirement_file']['error'] !== UPLOAD_ERR_OK) {
+                throw new \Exception("Please select a valid requirement file to upload.");
+            }
+
+            $uploadDir = dirname(__DIR__, 3) . '/public/storage/documents/';
+            if (!is_dir($uploadDir)) @mkdir($uploadDir, 0777, true);
+
+            $origName = basename($_FILES['requirement_file']['name']);
+            $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+            $safeName = 'REQ_' . substr($targetInstId, 0, 8) . '_' . time() . '_' . bin2hex(random_bytes(3)) . '.' . $ext;
+            $dest = $uploadDir . $safeName;
+            $fileUrl = '/IECEP-LSC-MEMSYS/public/storage/documents/' . $safeName;
+
+            if (!move_uploaded_file($_FILES['requirement_file']['tmp_name'], $dest)) {
+                throw new \Exception("Failed to save uploaded file to storage.");
+            }
+
+            $canonicalTitles = [
+                'letter_of_intent' => 'Letter of Intent (Art. IV Sec. 3)',
+                'endorsement_letter' => 'Dean / Chair Endorsement Letter',
+                'constitution_bylaws' => 'Student Chapter Constitution & By-Laws (CBL)',
+                'officers_cv' => 'Incumbent Student Chapter Officers Directory & CVs',
+                'org_chart' => 'Organizational Structure Chart',
+                'member_directory' => 'Certified Student Member Directory',
+                'official_receipt' => 'Official Audited Receipt / Deposit Slip',
+                'other' => 'Chapter Accreditation Document'
+            ];
+
+            $docTitle = !empty($customTitle) ? $customTitle : ($canonicalTitles[$reqType] ?? ucwords(str_replace('_', ' ', $reqType)));
+            $docId = uuid_v4();
+
+            $supabase->insert('documents', [[
+                'id' => $docId,
+                'institution_id' => $targetInstId,
+                'title' => $docTitle,
+                'category' => $reqType,
+                'description' => $notes,
+                'file_url' => $fileUrl,
+                'file_path' => $fileUrl,
+                'file_type' => $ext,
+                'uploaded_by' => $_SESSION['user']['email'] ?? 'Administrator',
+                'created_at' => $timestamp,
+                'updated_at' => $timestamp
+            ]]);
+
+            // Sync with pending_affiliations table if canonical key matches
+            try {
+                $targetApp = $supabase->select('pending_affiliations', ['institution_id' => 'eq.' . $targetInstId, 'limit' => 1]);
+                if (!empty($targetApp[0]['id'])) {
+                    $appId = $targetApp[0]['id'];
+                    $updateField = match($reqType) {
+                        'letter_of_intent' => 'letter_of_intent',
+                        'endorsement_letter' => 'endorsement_letter',
+                        'constitution_bylaws' => 'constitution_by_laws',
+                        'officers_cv' => 'officers_cvs',
+                        'org_chart' => 'organizational_chart',
+                        'member_directory' => 'member_directory',
+                        default => null
+                    };
+                    if ($updateField) {
+                        $supabase->update('pending_affiliations', [$updateField => $fileUrl, 'updated_at' => $timestamp], $appId);
+                    }
+                }
+            } catch (\Throwable $e2) {}
+
+            $feedbackMsg = "✓ Requirement document '{$docTitle}' ({$origName}) successfully uploaded and attached to the chapter!";
+            $feedbackType = 'success';
+        } catch (\Throwable $e) {
+            error_log("Upload req error: " . $e->getMessage());
+            $feedbackMsg = "❌ Error uploading requirement: " . $e->getMessage();
+            $feedbackType = 'danger';
+        }
+    } elseif ($action === 'delete_institution_requirement') {
+        try {
+            $docId = trim($_POST['document_id'] ?? '');
+            if ($docId) {
+                $supabase->delete('documents', ['id' => 'eq.' . $docId]);
+                $feedbackMsg = "🗑️ Requirement file successfully removed from chapter repository.";
+                $feedbackType = 'warning';
+            }
+        } catch (\Throwable $e) {
+            $feedbackMsg = "Error deleting document: " . $e->getMessage();
+            $feedbackType = 'danger';
+        }
     }
 }
 
@@ -850,6 +946,77 @@ foreach ($approvedApps as &$aApp) {
     $aApp['blockchain_hash'] = hash('sha256', $aApp['receipt_number'] . '|' . ($aApp['institution_name'] ?? 'School') . '|' . $aTot);
 }
 unset($aApp);
+
+// Build consolidated requirement documents map per institution
+$institutionDocsMap = [];
+try {
+    if ($supabase) {
+        $rawDocs = $supabase->select('documents', ['select' => '*', 'order' => 'created_at.desc']);
+        if (is_array($rawDocs)) {
+            foreach ($rawDocs as $d) {
+                $iid = $d['institution_id'] ?? '';
+                if ($iid) {
+                    $institutionDocsMap[$iid][] = [
+                        'id' => $d['id'] ?? '',
+                        'title' => $d['title'] ?? 'Requirement Document',
+                        'category' => $d['category'] ?? 'other',
+                        'description' => $d['description'] ?? '',
+                        'file_url' => $d['file_url'] ?? ($d['file_path'] ?? ''),
+                        'file_type' => strtolower($d['file_type'] ?? 'pdf'),
+                        'uploaded_at' => $d['created_at'] ?? '',
+                        'uploaded_by' => $d['uploaded_by'] ?? 'Chapter Officer'
+                    ];
+                }
+            }
+        }
+    }
+} catch (\Throwable $docEx) {
+    error_log("Docs map error: " . $docEx->getMessage());
+}
+
+// Merge canonical affiliation documents from pending_affiliations if available
+foreach ($allAppsMap as $app) {
+    $instId = $app['institution_id'] ?? '';
+    if (!$instId) {
+        foreach ($institutionsList as $inst) {
+            if (strtolower($inst['email'] ?? '') === strtolower($app['email'] ?? '') || strtolower($inst['name'] ?? '') === strtolower($app['institution_name'] ?? '')) {
+                $instId = $inst['id'];
+                break;
+            }
+        }
+    }
+    if ($instId) {
+        $canonMap = [
+            'letter_of_intent' => ['title' => 'Letter of Intent (Art. IV Sec. 3)', 'file' => $app['letter_of_intent'] ?? ''],
+            'endorsement_letter' => ['title' => 'Dean / Chair Endorsement Letter', 'file' => $app['endorsement_letter'] ?? ''],
+            'constitution_bylaws' => ['title' => 'Student Chapter Constitution & By-Laws (CBL)', 'file' => $app['constitution_by_laws'] ?? ($app['constitution_bylaws'] ?? '')],
+            'officers_cv' => ['title' => 'Incumbent Officers Directory & CVs', 'file' => $app['officers_cvs'] ?? ($app['officers_cv'] ?? '')],
+            'org_chart' => ['title' => 'Organizational Structure Chart', 'file' => $app['organizational_chart'] ?? ($app['org_chart'] ?? '')],
+            'member_directory' => ['title' => 'Certified Student Member Directory', 'file' => $app['member_directory'] ?? ''],
+        ];
+        foreach ($canonMap as $cat => $cItem) {
+            if (!empty($cItem['file'])) {
+                $alreadyExists = false;
+                foreach ($institutionDocsMap[$instId] ?? [] as $exDoc) {
+                    if (($exDoc['category'] ?? '') === $cat) { $alreadyExists = true; break; }
+                }
+                if (!$alreadyExists) {
+                    $ext = strtolower(pathinfo($cItem['file'], PATHINFO_EXTENSION)) ?: 'pdf';
+                    $institutionDocsMap[$instId][] = [
+                        'id' => 'canon_' . $cat,
+                        'title' => $cItem['title'],
+                        'category' => $cat,
+                        'description' => 'Submitted during official affiliation application',
+                        'file_url' => $cItem['file'],
+                        'file_type' => $ext,
+                        'uploaded_at' => $app['submitted_at'] ?? ($app['created_at'] ?? date('Y-m-d')),
+                        'uploaded_by' => 'Affiliation Applicant'
+                    ];
+                }
+            }
+        }
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -876,6 +1043,74 @@ unset($aApp);
             --bg-page: #F8FAFC;
             --border-color: #E2E8F0;
             --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
+        }
+
+        /* Responsive Requirements Modal & Dropzone Styles */
+        .req-modal-grid {
+            display: grid;
+            grid-template-columns: 1.18fr 0.82fr;
+            gap: 1.15rem;
+        }
+        @media (max-width: 860px) {
+            .req-modal-grid {
+                grid-template-columns: 1fr !important;
+                gap: 1rem !important;
+            }
+        }
+        .req-card-item {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 9px;
+            padding: 0.65rem 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.65rem;
+            transition: all 0.18s ease;
+        }
+        .req-card-item:hover {
+            border-color: #CBD5E1;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            background: #FAFAFA;
+        }
+        .req-icon-box {
+            width: 34px;
+            height: 34px;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.95rem;
+            flex-shrink: 0;
+        }
+        .req-icon-box.pdf { background: #FEE2E2; color: #DC2626; border: 1px solid #FECACA; }
+        .req-icon-box.excel { background: #ECFDF5; color: #059669; border: 1px solid #A7F3D0; }
+        .req-icon-box.word { background: #EFF6FF; color: #2563EB; border: 1px solid #DBEAFE; }
+        .req-icon-box.image { background: #FEF9C3; color: #B45309; border: 1px solid #FDE68A; }
+        .req-icon-box.pending { background: #F1F5F9; color: #94A3B8; border: 1px dashed #CBD5E1; }
+
+        .req-dropzone {
+            border: 2px dashed #CBD5E1;
+            border-radius: 10px;
+            padding: 1.15rem 1rem;
+            text-align: center;
+            background: #F8FAFC;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .req-dropzone:hover, .req-dropzone.drag-over {
+            border-color: #2563EB;
+            background: #EFF6FF;
+        }
+        .req-dropzone:focus-within {
+            border-color: #2563EB;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        @media (max-width: 768px) {
+            .ap-card-body, .ap-card { padding: 0.75rem !important; }
+            .dash-header-banner { padding: 0.85rem 1rem !important; }
         }
 
         body {
@@ -2070,6 +2305,16 @@ unset($aApp);
                                                         <i class="fas fa-bell"></i> Remind
                                                     </button>
                                                 <?php endif; ?>
+                                                <?php 
+                                                    $instDocs = $institutionDocsMap[$inst['id']] ?? [];
+                                                    $instDocsCount = count($instDocs);
+                                                ?>
+                                                <button type="button" class="btn-white" style="font-size:0.72rem; padding:0.28rem 0.6rem; color:var(--color-navy); font-weight:700; border-color:#CBD5E1;" onclick="openRequirementsModal('<?= htmlspecialchars($inst['id'], ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($inst['name']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($inst['acronym'] ?? 'HEI'), ENT_QUOTES) ?>')" title="Manage & Upload Chapter Requirements">
+                                                    <i class="fas fa-folder-open" style="color:var(--color-gold-dark);"></i> Requirements
+                                                    <?php if ($instDocsCount > 0): ?>
+                                                        <span style="background:rgba(11,29,74,0.12); color:var(--color-navy); padding:1px 6px; border-radius:10px; font-size:0.65rem; margin-left:3px; font-weight:800;"><?= $instDocsCount ?></span>
+                                                    <?php endif; ?>
+                                                </button>
                                                 <button type="button" class="btn-white" style="font-size:0.72rem; padding:0.28rem 0.65rem;" onclick="openAuditedReceiptModal(<?= $finJson ?>)" title="View Audited Official Receipt">
                                                     <i class="fas fa-receipt" style="color:#D97706;"></i> Receipt
                                                 </button>
@@ -3262,5 +3507,492 @@ unset($aApp);
             </div>
         </div>
     </div>
+
+    <!-- Institution Requirements & Documents Dossier Modal -->
+    <div id="institutionRequirementsModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(11,29,74,0.68); backdrop-filter:blur(4px); z-index:999999; align-items:center; justify-content:center; padding:1rem; box-sizing:border-box;">
+        <div style="background:#FFFFFF; border-radius:14px; max-width:980px; width:96%; max-height:92vh; display:flex; flex-direction:column; box-shadow:0 25px 60px -15px rgba(11,29,74,0.4); border:1px solid #CBD5E1; animation:modalPop 0.22s ease-out; overflow:hidden; box-sizing:border-box;">
+            
+            <!-- Modal Header -->
+            <div style="background:linear-gradient(135deg, #0B1D4A 0%, #17327C 100%); color:#FFFFFF; padding:1.1rem 1.5rem; display:flex; justify-content:space-between; align-items:flex-start; flex-shrink:0;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <div style="width:42px; height:42px; border-radius:10px; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); display:flex; align-items:center; justify-content:center; color:#FDE047; font-size:1.35rem; flex-shrink:0;">
+                        <i class="fas fa-folder-open"></i>
+                    </div>
+                    <div>
+                        <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                            <span id="reqModalSchoolAcronym" style="background:#FDE047; color:#0B1D4A; font-weight:800; font-size:0.72rem; padding:2px 8px; border-radius:4px; text-transform:uppercase; letter-spacing:0.04em;">HEI</span>
+                            <span style="font-size:0.72rem; color:#93C5FD; text-transform:uppercase; letter-spacing:0.06em; font-weight:700;">Chapter Accreditation Dossier</span>
+                        </div>
+                        <h3 id="reqModalSchoolName" style="margin:0.2rem 0 0; font-size:1.1rem; font-weight:800; color:#FFFFFF; line-height:1.3;">
+                            Institution Requirements
+                        </h3>
+                    </div>
+                </div>
+                <button type="button" onclick="closeRequirementsModal()" style="background:rgba(255,255,255,0.15); border:none; color:#FFFFFF; border-radius:6px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:1.3rem; transition:background 0.15s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'" title="Close">&times;</button>
+            </div>
+
+            <!-- Modal Body Scrollable Content -->
+            <div style="padding:1.25rem 1.5rem; overflow-y:auto; flex:1; box-sizing:border-box;">
+                <div class="req-modal-grid">
+                    
+                    <!-- Left Column: Chapter Requirements Dossier & Status -->
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem; flex-wrap:wrap; gap:0.4rem;">
+                            <div style="font-size:0.88rem; font-weight:800; color:#0F172A; display:flex; align-items:center; gap:0.4rem;">
+                                <i class="fas fa-list-check" style="color:var(--color-navy);"></i> Official CBL Requirements Checklist
+                            </div>
+                            <span id="reqCompletionBadge" style="font-size:0.72rem; font-weight:800; padding:3px 8px; border-radius:12px; background:#EFF6FF; color:#2563EB;">
+                                Checking...
+                            </span>
+                        </div>
+
+                        <!-- Progress Bar -->
+                        <div style="background:#E2E8F0; border-radius:999px; height:7px; width:100%; margin-bottom:1rem; overflow:hidden;">
+                            <div id="reqProgressBar" style="background:#059669; height:100%; width:0%; border-radius:999px; transition:width 0.35s ease;"></div>
+                        </div>
+
+                        <!-- Dynamic Dossier List (Canonical CBL Requirements) -->
+                        <div id="reqCanonicalList" style="display:flex; flex-direction:column; gap:0.55rem; margin-bottom:1.25rem;">
+                            <!-- Populated via renderInstitutionRequirements() -->
+                        </div>
+
+                        <!-- Additional Supporting Files Header & Container -->
+                        <div style="margin-top:1.15rem; padding-top:0.95rem; border-top:1px solid #E2E8F0;">
+                            <div style="font-size:0.82rem; font-weight:800; color:#0F172A; margin-bottom:0.55rem; display:flex; align-items:center; gap:0.4rem;">
+                                <i class="fas fa-paperclip" style="color:#D97706;"></i> Other Uploaded Documents &amp; Attachments
+                            </div>
+                            <div id="reqAdditionalList" style="display:flex; flex-direction:column; gap:0.5rem;">
+                                <!-- Populated via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Upload & Attach Requirement File -->
+                    <div>
+                        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:11px; padding:1.15rem; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                            <div style="font-size:0.88rem; font-weight:800; color:#0F172A; margin-bottom:0.35rem; display:flex; align-items:center; gap:0.45rem;">
+                                <i class="fas fa-cloud-arrow-up" style="color:#2563EB;"></i> Upload Requirement File
+                            </div>
+                            <p style="font-size:0.73rem; color:#64748B; margin:0 0 0.95rem; line-height:1.4;">
+                                Attach official signed PDFs, endorsed documents, or rosters to this chapter's repository.
+                            </p>
+
+                            <form method="POST" action="" enctype="multipart/form-data" id="institutionReqUploadForm">
+                                <input type="hidden" name="action" value="upload_institution_requirement">
+                                <input type="hidden" name="institution_id" id="reqModalInstId" value="">
+
+                                <!-- Category Selection -->
+                                <div style="margin-bottom:0.75rem;">
+                                    <label for="reqTypeSelect" style="display:block; font-size:0.74rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">
+                                        Requirement Category <span style="color:#DC2626;">*</span>
+                                    </label>
+                                    <select id="reqTypeSelect" name="requirement_type" class="ap-input" style="font-size:0.78rem; width:100%; padding:0.45rem 0.65rem; border-radius:6px; border:1px solid #CBD5E1; background:#FFFFFF;" onchange="onReqTypeChanged(this.value)" required>
+                                        <optgroup label="Official CBL Affiliation Requirements (Art. IV)">
+                                            <option value="letter_of_intent">Letter of Intent (Art. IV Sec. 3)</option>
+                                            <option value="endorsement_letter">Dean / Chair Endorsement Letter</option>
+                                            <option value="constitution_bylaws">Student Chapter Constitution &amp; By-Laws</option>
+                                            <option value="officers_cv">Incumbent Officers Directory &amp; CVs</option>
+                                            <option value="org_chart">Organizational Structure Chart</option>
+                                            <option value="member_directory">Certified Student Member Directory</option>
+                                        </optgroup>
+                                        <optgroup label="Financial &amp; Compliance Attachments">
+                                            <option value="official_receipt">Official Payment Receipt / Deposit Slip</option>
+                                            <option value="activity_report">Activity / Accomplishment Report</option>
+                                            <option value="other">Other Supporting Requirement</option>
+                                        </optgroup>
+                                    </select>
+                                </div>
+
+                                <!-- Document Title -->
+                                <div style="margin-bottom:0.75rem;">
+                                    <label for="reqDocTitle" style="display:block; font-size:0.74rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">
+                                        Document Title <span style="color:#DC2626;">*</span>
+                                    </label>
+                                    <input type="text" id="reqDocTitle" name="document_title" class="ap-input" placeholder="e.g. Official Chapter Letter of Intent AY 2025-2026" required style="font-size:0.78rem; width:100%; padding:0.45rem 0.65rem; border-radius:6px; border:1px solid #CBD5E1; box-sizing:border-box;">
+                                </div>
+
+                                <!-- Document Description -->
+                                <div style="margin-bottom:0.85rem;">
+                                    <label for="reqDocDesc" style="display:block; font-size:0.74rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">
+                                        Notes / Description (Optional)
+                                    </label>
+                                    <textarea id="reqDocDesc" name="document_description" class="ap-input" rows="2" placeholder="e.g. Signed by Dean Engr. Santos on Feb 2026..." style="font-size:0.76rem; width:100%; padding:0.45rem 0.65rem; border-radius:6px; border:1px solid #CBD5E1; resize:vertical; box-sizing:border-box;"></textarea>
+                                </div>
+
+                                <!-- Drag & Drop File Upload Zone -->
+                                <div style="margin-bottom:0.95rem;">
+                                    <label style="display:block; font-size:0.74rem; font-weight:700; color:#334155; margin-bottom:0.25rem;">
+                                        File Attachment <span style="color:#DC2626;">*</span>
+                                    </label>
+                                    <div id="reqDropzone" class="req-dropzone" onclick="document.getElementById('reqFileInput').click()">
+                                        <input type="file" id="reqFileInput" name="requirement_file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.jpg,.jpeg,.png" style="display:none;" onchange="handleReqFileSelected(this)" required>
+                                        
+                                        <div id="reqDropzonePrompt">
+                                            <i class="fas fa-cloud-arrow-up" style="font-size:1.75rem; color:#2563EB; margin-bottom:0.35rem; display:block;"></i>
+                                            <div style="font-size:0.8rem; font-weight:700; color:#0F172A;">
+                                                Click to browse or drop file here
+                                            </div>
+                                            <div style="font-size:0.68rem; color:#64748B; margin-top:2px;">
+                                                Supported: PDF, DOCX, XLSX, CSV, Images (Max 15MB)
+                                            </div>
+                                        </div>
+
+                                        <div id="reqDropzoneFilePreview" style="display:none; text-align:left; background:#FFFFFF; border:1px solid #93C5FD; border-radius:7px; padding:0.65rem 0.85rem;">
+                                            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem;">
+                                                <div style="display:flex; align-items:center; gap:0.5rem; overflow:hidden;">
+                                                    <i id="reqPreviewIcon" class="fas fa-file-pdf" style="font-size:1.3rem; color:#DC2626;"></i>
+                                                    <div style="overflow:hidden;">
+                                                        <div id="reqPreviewName" style="font-size:0.76rem; font-weight:700; color:#0F172A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">filename.pdf</div>
+                                                        <div id="reqPreviewMeta" style="font-size:0.67rem; color:#64748B;">0 KB</div>
+                                                    </div>
+                                                </div>
+                                                <button type="button" onclick="event.stopPropagation(); clearReqFileSelection();" style="background:#FEE2E2; color:#DC2626; border:none; border-radius:4px; padding:3px 7px; font-size:0.72rem; cursor:pointer; font-weight:700;" title="Remove chosen file">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Submit Button -->
+                                <button type="submit" id="reqUploadSubmitBtn" class="btn-primary-navy" style="width:100%; justify-content:center; padding:0.65rem 1rem; font-size:0.82rem; font-weight:800; border-radius:7px; box-shadow:0 2px 4px rgba(11,29,74,0.2);">
+                                    <i class="fas fa-floppy-disk"></i> Upload &amp; Save Requirement
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div style="background:#F8FAFC; border-top:1px solid #E2E8F0; padding:0.75rem 1.5rem; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+                <span style="font-size:0.72rem; color:#64748B;">
+                    <i class="fas fa-shield-halved" style="color:#059669;"></i> Files are secured &amp; linked directly to the chapter's institutional record.
+                </span>
+                <button type="button" class="btn-white" onclick="closeRequirementsModal()" style="font-size:0.78rem; padding:0.4rem 0.95rem;">
+                    Close Dossier
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Hidden Form for Requirement Document Deletion -->
+    <form id="deleteReqDocForm" method="POST" action="" style="display:none;">
+        <input type="hidden" name="action" value="delete_institution_requirement">
+        <input type="hidden" name="document_id" id="deleteReqDocIdInput" value="">
+    </form>
+
+    <script>
+        // Centralized Institution Documents Registry (Injected from PHP Supabase query)
+        window.allInstitutionDocs = <?= json_encode($institutionDocsMap, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES) ?> || {};
+
+        // Canonical 6 CBL Requirements configuration
+        const CANONICAL_REQ_CONFIG = [
+            { key: 'letter_of_intent', title: 'Letter of Intent (Art. IV Sec. 3)', desc: 'Official signed letter addressed to IECEP-LSC Chapter President', icon: 'fa-file-signature', defaultType: 'pdf' },
+            { key: 'endorsement_letter', title: 'Dean / Chair Endorsement Letter', desc: 'Formal endorsement from College Dean or ECE Department Chair', icon: 'fa-award', defaultType: 'pdf' },
+            { key: 'constitution_bylaws', title: 'Student Chapter Constitution & By-Laws', desc: 'Ratified student chapter CBL aligned with IECEP-LSC 2025 CBL', icon: 'fa-scale-balanced', defaultType: 'pdf' },
+            { key: 'officers_cv', title: 'Incumbent Officers Directory & CVs', desc: 'Directory of student chapter executive officers with curriculum vitae', icon: 'fa-id-card-clip', defaultType: 'pdf' },
+            { key: 'org_chart', title: 'Organizational Structure Chart', desc: 'Official student chapter executive and committee organizational chart', icon: 'fa-sitemap', defaultType: 'pdf' },
+            { key: 'member_directory', title: 'Certified Student Member Directory', desc: 'Complete roster of certified student members with student numbers', icon: 'fa-file-excel', defaultType: 'excel' }
+        ];
+
+        let currentModalInstId = '';
+
+        function openRequirementsModal(instId, instName, instAcronym) {
+            currentModalInstId = instId;
+            document.getElementById('reqModalInstId').value = instId;
+            document.getElementById('reqModalSchoolName').textContent = instName || 'Institution';
+            document.getElementById('reqModalSchoolAcronym').textContent = instAcronym || 'HEI';
+
+            renderInstitutionRequirements(instId);
+
+            // Reset upload form
+            document.getElementById('institutionReqUploadForm').reset();
+            clearReqFileSelection();
+            onReqTypeChanged(document.getElementById('reqTypeSelect').value);
+
+            // Display modal
+            document.getElementById('institutionRequirementsModal').style.display = 'flex';
+        }
+
+        function closeRequirementsModal() {
+            document.getElementById('institutionRequirementsModal').style.display = 'none';
+        }
+
+        function renderInstitutionRequirements(instId) {
+            const docs = window.allInstitutionDocs[instId] || [];
+            const canonContainer = document.getElementById('reqCanonicalList');
+            const addlContainer = document.getElementById('reqAdditionalList');
+
+            canonContainer.innerHTML = '';
+            addlContainer.innerHTML = '';
+
+            let canonicalFoundCount = 0;
+
+            // Render Canonical 6 Checklist
+            CANONICAL_REQ_CONFIG.forEach(cfg => {
+                // Look for doc matching this category
+                const matched = docs.find(d => d.category === cfg.key);
+                if (matched && matched.file_url) {
+                    canonicalFoundCount++;
+                    const ext = (matched.file_type || 'pdf').toLowerCase();
+                    let iconClass = 'fa-file-pdf';
+                    let typeClass = 'pdf';
+                    if (['xls', 'xlsx', 'csv'].includes(ext)) { iconClass = 'fa-file-excel'; typeClass = 'excel'; }
+                    else if (['doc', 'docx'].includes(ext)) { iconClass = 'fa-file-word'; typeClass = 'word'; }
+                    else if (['jpg', 'jpeg', 'png'].includes(ext)) { iconClass = 'fa-file-image'; typeClass = 'image'; }
+
+                    const isDynamic = matched.id && !matched.id.startsWith('canon_');
+
+                    const card = document.createElement('div');
+                    card.className = 'req-card-item';
+                    card.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:0.65rem; overflow:hidden;">
+                            <div class="req-icon-box ${typeClass}">
+                                <i class="fas ${iconClass}"></i>
+                            </div>
+                            <div style="overflow:hidden;">
+                                <div style="display:flex; align-items:center; gap:0.4rem;">
+                                    <strong style="font-size:0.8rem; color:#0F172A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(matched.title || cfg.title)}">
+                                        ${escapeHtml(matched.title || cfg.title)}
+                                    </strong>
+                                    <span class="ap-pill active" style="font-size:0.62rem; padding:1px 6px;"><i class="fas fa-check"></i> Filed</span>
+                                </div>
+                                <div style="font-size:0.68rem; color:#64748B; margin-top:2px;">
+                                    Uploaded: ${matched.uploaded_at ? matched.uploaded_at.substring(0, 10) : 'Active'} &bull; ${matched.uploaded_by || 'Officer'}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
+                            <a href="${escapeHtml(matched.file_url)}" target="_blank" class="btn-white" style="font-size:0.7rem; padding:0.25rem 0.55rem; color:#2563EB; font-weight:700; text-decoration:none;" title="View / Download Document">
+                                <i class="fas fa-arrow-up-right-from-square"></i> View
+                            </a>
+                            ${isDynamic ? `
+                            <button type="button" class="btn-white" style="font-size:0.7rem; padding:0.25rem 0.45rem; color:#DC2626;" onclick="deleteRequirementDoc('${matched.id}', '${escapeHtml(matched.title)}')" title="Delete File">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                            ` : ''}
+                        </div>
+                    `;
+                    canonContainer.appendChild(card);
+                } else {
+                    // Missing Canonical Requirement Card
+                    const card = document.createElement('div');
+                    card.className = 'req-card-item';
+                    card.style.background = '#FFFBEB';
+                    card.style.borderColor = '#FDE68A';
+                    card.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:0.65rem; overflow:hidden;">
+                            <div class="req-icon-box pending">
+                                <i class="fas ${cfg.icon}"></i>
+                            </div>
+                            <div style="overflow:hidden;">
+                                <div style="display:flex; align-items:center; gap:0.4rem;">
+                                    <strong style="font-size:0.8rem; color:#92400E; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${escapeHtml(cfg.title)}">
+                                        ${escapeHtml(cfg.title)}
+                                    </strong>
+                                    <span class="ap-pill pending" style="font-size:0.62rem; padding:1px 6px;">Pending</span>
+                                </div>
+                                <div style="font-size:0.67rem; color:#B45309; margin-top:2px;">
+                                    ${cfg.desc}
+                                </div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-white" style="font-size:0.7rem; padding:0.25rem 0.6rem; color:#B45309; border-color:#FCD34D; font-weight:700; background:#FFFFFF; flex-shrink:0;" onclick="quickSelectReqCategory('${cfg.key}', '${escapeHtml(cfg.title)}')">
+                            <i class="fas fa-plus"></i> Upload
+                        </button>
+                    `;
+                    canonContainer.appendChild(card);
+                }
+            });
+
+            // Update Progress & Badge
+            const pct = Math.round((canonicalFoundCount / 6) * 100);
+            const pBar = document.getElementById('reqProgressBar');
+            const pBadge = document.getElementById('reqCompletionBadge');
+            pBar.style.width = pct + '%';
+            if (pct >= 100) {
+                pBar.style.background = '#059669';
+                pBadge.className = 'ap-pill active';
+                pBadge.innerHTML = `<i class="fas fa-circle-check"></i> Complete (${canonicalFoundCount}/6 CBL Requirements)`;
+            } else {
+                pBar.style.background = pct >= 50 ? '#D97706' : '#DC2626';
+                pBadge.className = 'ap-pill pending';
+                pBadge.innerHTML = `<i class="fas fa-clock"></i> Incomplete (${canonicalFoundCount}/6 Requirements)`;
+            }
+
+            // Render Additional Supporting Files
+            const additionalDocs = docs.filter(d => !CANONICAL_REQ_CONFIG.some(c => c.key === d.category));
+            if (additionalDocs.length === 0) {
+                addlContainer.innerHTML = `
+                    <div style="text-align:center; padding:0.9rem; background:#F8FAFC; border:1px dashed #CBD5E1; border-radius:8px; font-size:0.74rem; color:#64748B;">
+                        No additional supporting documents uploaded yet. Use the upload panel to attach receipts or event reports.
+                    </div>
+                `;
+            } else {
+                additionalDocs.forEach(d => {
+                    const ext = (d.file_type || 'pdf').toLowerCase();
+                    let iconClass = 'fa-file-lines';
+                    let typeClass = 'word';
+                    if (['xls', 'xlsx', 'csv'].includes(ext)) { iconClass = 'fa-file-excel'; typeClass = 'excel'; }
+                    else if (['jpg', 'jpeg', 'png'].includes(ext)) { iconClass = 'fa-file-image'; typeClass = 'image'; }
+                    else if (ext === 'pdf') { iconClass = 'fa-file-pdf'; typeClass = 'pdf'; }
+
+                    const card = document.createElement('div');
+                    card.className = 'req-card-item';
+                    card.innerHTML = `
+                        <div style="display:flex; align-items:center; gap:0.65rem; overflow:hidden;">
+                            <div class="req-icon-box ${typeClass}">
+                                <i class="fas ${iconClass}"></i>
+                            </div>
+                            <div style="overflow:hidden;">
+                                <div style="display:flex; align-items:center; gap:0.4rem;">
+                                    <strong style="font-size:0.8rem; color:#0F172A; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                        ${escapeHtml(d.title)}
+                                    </strong>
+                                    <span class="ap-pill blue" style="font-size:0.62rem; padding:1px 6px;">${escapeHtml(d.category || 'attachment')}</span>
+                                </div>
+                                <div style="font-size:0.68rem; color:#64748B; margin-top:2px;">
+                                    ${escapeHtml(d.description || 'Chapter uploaded attachment')} &bull; ${d.uploaded_at ? d.uploaded_at.substring(0, 10) : 'Recent'}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.35rem; flex-shrink:0;">
+                            <a href="${escapeHtml(d.file_url)}" target="_blank" class="btn-white" style="font-size:0.7rem; padding:0.25rem 0.55rem; color:#2563EB; font-weight:700; text-decoration:none;" title="View / Download">
+                                <i class="fas fa-arrow-up-right-from-square"></i> View
+                            </a>
+                            ${d.id ? `
+                            <button type="button" class="btn-white" style="font-size:0.7rem; padding:0.25rem 0.45rem; color:#DC2626;" onclick="deleteRequirementDoc('${d.id}', '${escapeHtml(d.title)}')" title="Delete File">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                            ` : ''}
+                        </div>
+                    `;
+                    addlContainer.appendChild(card);
+                });
+            }
+        }
+
+        function quickSelectReqCategory(catKey, catTitle) {
+            const sel = document.getElementById('reqTypeSelect');
+            sel.value = catKey;
+            document.getElementById('reqDocTitle').value = catTitle;
+            
+            // Scroll to dropzone on mobile & flash dropzone
+            const dropzone = document.getElementById('reqDropzone');
+            dropzone.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            dropzone.classList.add('drag-over');
+            setTimeout(() => dropzone.classList.remove('drag-over'), 600);
+        }
+
+        function onReqTypeChanged(val) {
+            const titleInput = document.getElementById('reqDocTitle');
+            const canonItem = CANONICAL_REQ_CONFIG.find(c => c.key === val);
+            if (canonItem && !titleInput.value.trim()) {
+                titleInput.value = canonItem.title;
+            } else if (val === 'official_receipt' && !titleInput.value.trim()) {
+                titleInput.value = 'Official Payment Receipt & Deposit Slip';
+            } else if (val === 'activity_report' && !titleInput.value.trim()) {
+                titleInput.value = 'Annual Chapter Activity & Accomplishment Report';
+            }
+        }
+
+        function handleReqFileSelected(input) {
+            if (!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            const name = file.name;
+            const sizeKB = (file.size / 1024).toFixed(1);
+            const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+            const sizeDisplay = file.size > 1048576 ? `${sizeMB} MB` : `${sizeKB} KB`;
+
+            const ext = name.split('.').pop().toLowerCase();
+            const iconEl = document.getElementById('reqPreviewIcon');
+            if (['xls', 'xlsx', 'csv'].includes(ext)) {
+                iconEl.className = 'fas fa-file-excel';
+                iconEl.style.color = '#059669';
+            } else if (['doc', 'docx'].includes(ext)) {
+                iconEl.className = 'fas fa-file-word';
+                iconEl.style.color = '#2563EB';
+            } else if (['jpg', 'jpeg', 'png'].includes(ext)) {
+                iconEl.className = 'fas fa-file-image';
+                iconEl.style.color = '#D97706';
+            } else {
+                iconEl.className = 'fas fa-file-pdf';
+                iconEl.style.color = '#DC2626';
+            }
+
+            document.getElementById('reqPreviewName').textContent = name;
+            document.getElementById('reqPreviewMeta').textContent = `${sizeDisplay} • ${ext.toUpperCase()}`;
+
+            document.getElementById('reqDropzonePrompt').style.display = 'none';
+            document.getElementById('reqDropzoneFilePreview').style.display = 'block';
+
+            // Auto-populate title if empty
+            const titleInput = document.getElementById('reqDocTitle');
+            if (!titleInput.value.trim()) {
+                const cleanName = name.replace(/\.[^/.]+$/, "").replace(/[_ -]+/g, " ");
+                titleInput.value = cleanName;
+            }
+        }
+
+        function clearReqFileSelection() {
+            const input = document.getElementById('reqFileInput');
+            input.value = '';
+            document.getElementById('reqDropzonePrompt').style.display = 'block';
+            document.getElementById('reqDropzoneFilePreview').style.display = 'none';
+        }
+
+        function deleteRequirementDoc(docId, docTitle) {
+            if (!docId) return;
+            if (confirm(`Are you sure you want to permanently remove "${docTitle}" from this chapter's repository?`)) {
+                document.getElementById('deleteReqDocIdInput').value = docId;
+                document.getElementById('deleteReqDocForm').submit();
+            }
+        }
+
+        // Drag & Drop Setup
+        (function() {
+            const dropzone = document.getElementById('reqDropzone');
+            if (!dropzone) return;
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.add('drag-over');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.remove('drag-over');
+                }, false);
+            });
+
+            dropzone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files && files.length > 0) {
+                    const fileInput = document.getElementById('reqFileInput');
+                    fileInput.files = files;
+                    handleReqFileSelected(fileInput);
+                }
+            }, false);
+
+            // Close modal with Escape key
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    const reqModal = document.getElementById('institutionRequirementsModal');
+                    if (reqModal && reqModal.style.display === 'flex') {
+                        closeRequirementsModal();
+                    }
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

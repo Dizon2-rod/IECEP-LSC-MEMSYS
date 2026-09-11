@@ -80,7 +80,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     'updated_at' => $timestamp
                 ]]);
 
-                $feedbackMsg = "🎉 Chapter document '{$title}' uploaded successfully!";
+                // Synchronize with pending_affiliations if canonical requirement
+                if ($institutionId && in_array($category, ['letter_of_intent', 'endorsement_letter', 'constitution_bylaws', 'officers_cv', 'org_chart', 'member_directory'])) {
+                    try {
+                        $targetApp = $supabase->select('pending_affiliations', ['institution_id' => 'eq.' . $institutionId, 'limit' => 1]);
+                        if (!empty($targetApp[0]['id'])) {
+                            $updateCol = match($category) {
+                                'letter_of_intent' => 'letter_of_intent',
+                                'endorsement_letter' => 'endorsement_letter',
+                                'constitution_bylaws' => 'constitution_by_laws',
+                                'officers_cv' => 'officers_cvs',
+                                'org_chart' => 'organizational_chart',
+                                'member_directory' => 'member_directory',
+                                default => null
+                            };
+                            if ($updateCol) {
+                                $supabase->update('pending_affiliations', [$updateCol => $fileUrl, 'updated_at' => $timestamp], $targetApp[0]['id']);
+                            }
+                        }
+                    } catch (\Throwable $ex2) {}
+                }
+
+                $feedbackMsg = "🎉 Chapter requirement '{$title}' uploaded and saved successfully!";
                 $feedbackType = 'success';
             } catch (Exception $e) {
                 error_log("Upload doc error: " . $e->getMessage());
@@ -502,12 +523,33 @@ if ($supabase) {
                                                 <strong style="color:#0F172A; font-size:0.84rem;"><?= htmlspecialchars($d['title'] ?? 'Document') ?></strong>
                                             </div>
                                         </td>
-                                        <td><span class="ap-pill blue"><?= ucfirst($d['category'] ?? 'Governance') ?></span></td>
+                                        <td>
+                                            <?php
+                                                $catMap = [
+                                                    'letter_of_intent' => 'Letter of Intent',
+                                                    'endorsement_letter' => 'Endorsement Letter',
+                                                    'constitution_bylaws' => 'Constitution & By-Laws',
+                                                    'officers_cv' => 'Officers Directory',
+                                                    'org_chart' => 'Organizational Chart',
+                                                    'member_directory' => 'Member Directory',
+                                                    'governance' => 'Governance',
+                                                    'finance' => 'Finance & Receipts',
+                                                    'events' => 'Events & Proposals',
+                                                    'membership' => 'Membership'
+                                                ];
+                                                $catRaw = $d['category'] ?? 'governance';
+                                                $catLabel = $catMap[$catRaw] ?? ucwords(str_replace('_', ' ', $catRaw));
+                                                $isCanon = in_array($catRaw, ['letter_of_intent', 'endorsement_letter', 'constitution_bylaws', 'officers_cv', 'org_chart', 'member_directory']);
+                                            ?>
+                                            <span class="ap-pill <?= $isCanon ? 'gold' : 'blue' ?>" style="font-size:0.68rem; font-weight:700;">
+                                                <?= htmlspecialchars($catLabel) ?>
+                                            </span>
+                                        </td>
                                         <td style="color:#64748B; font-size:0.78rem;"><?= htmlspecialchars($d['description'] ?? 'Official document') ?></td>
                                         <td style="color:#64748B; font-size:0.75rem; white-space:nowrap;"><?= !empty($d['created_at']) ? date('M d, Y', strtotime($d['created_at'])) : 'Recent' ?></td>
                                         <td style="text-align:right;">
                                             <?php if (!empty($url)): ?>
-                                                <a href="<?= htmlspecialchars($url) ?>" target="_blank" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem;">
+                                                <a href="<?= htmlspecialchars($url) ?>" target="_blank" class="btn-white" style="font-size:0.72rem; padding:0.25rem 0.55rem; color:var(--color-navy); font-weight:700;">
                                                     <i class="fas fa-download"></i> View / Download
                                                 </a>
                                             <?php else: ?>
@@ -529,23 +571,34 @@ if ($supabase) {
     <div id="uploadModal" class="doc-modal">
         <div class="modal-inner-box">
             <div class="ap-card-header">
-                <h3 class="ap-card-title"><i class="fas fa-cloud-arrow-up"></i> Upload Chapter Document</h3>
+                <h3 class="ap-card-title"><i class="fas fa-cloud-arrow-up"></i> Upload Chapter Requirement / Document</h3>
                 <button class="btn-white" style="border:none; padding:0.25rem 0.5rem;" onclick="closeUploadModal()">&times;</button>
             </div>
             <form method="POST" enctype="multipart/form-data" style="padding:1.25rem;">
                 <input type="hidden" name="action" value="upload_doc">
                 <div class="ap-form-group">
-                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Document Title</label>
-                    <input type="text" name="title" class="ap-input" placeholder="e.g. Chapter Constitution & By-Laws AY 2026" required style="font-size:0.8rem;">
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Requirement Category</label>
+                    <select name="category" class="ap-input" style="font-size:0.8rem;" required>
+                        <optgroup label="Official CBL Affiliation Requirements (Art. IV)">
+                            <option value="letter_of_intent">Letter of Intent (Art. IV Sec. 3)</option>
+                            <option value="endorsement_letter">Dean / Chair Endorsement Letter</option>
+                            <option value="constitution_bylaws">Student Chapter Constitution &amp; By-Laws (CBL)</option>
+                            <option value="officers_cv">Incumbent Officers Directory &amp; CVs</option>
+                            <option value="org_chart">Organizational Structure Chart</option>
+                            <option value="member_directory">Certified Student Member Directory</option>
+                        </optgroup>
+                        <optgroup label="Chapter Operations &amp; Governance">
+                            <option value="governance">Governance &amp; Internal Policies</option>
+                            <option value="finance">Financial Reports &amp; Receipts</option>
+                            <option value="events">Activity Proposals &amp; Accomplishments</option>
+                            <option value="membership">Membership Guidelines</option>
+                            <option value="other">Other Supporting File</option>
+                        </optgroup>
+                    </select>
                 </div>
                 <div class="ap-form-group">
-                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Category</label>
-                    <select name="category" class="ap-input" style="font-size:0.8rem;">
-                        <option value="governance">Governance & Bylaws</option>
-                        <option value="finance">Financial Reports & Receipts</option>
-                        <option value="events">Activity Proposals & Briefs</option>
-                        <option value="membership">Membership Guidelines</option>
-                    </select>
+                    <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">Document Title</label>
+                    <input type="text" name="title" class="ap-input" placeholder="e.g. Chapter Constitution & By-Laws AY 2026" required style="font-size:0.8rem;">
                 </div>
                 <div class="ap-form-group">
                     <label class="ap-form-label" style="font-size:0.76rem; font-weight:700;">File Attachment (.pdf, .docx, .xlsx)</label>
