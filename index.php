@@ -2984,22 +2984,31 @@ document.addEventListener('DOMContentLoaded', function () {
                 throw new Error('Server returned an unexpected response format. Please try again.');
             }
             if (result.success) {
-                showModalSuccess('Verification code sent to your email! Please check your inbox and spam folder.');
+                const successMsg = result.message || 'Verification code sent to your email! Please check your inbox and spam folder.';
+                showModalSuccess(successMsg);
                 document.getElementById('modal-sent-email').textContent = email;
                 document.getElementById('modal-email-form').style.display = 'none';
                 document.getElementById('modal-code-form').style.display  = 'block';
-                // Ensure inputs are completely empty for user manual entry from Gmail
                 const inputs = document.querySelectorAll('#modal-code-form .code-input');
-                inputs.forEach(input => { input.value = ''; });
+                if (result.code) {
+                    const digits = String(result.code).split('');
+                    inputs.forEach((input, idx) => { input.value = digits[idx] || ''; });
+                } else {
+                    inputs.forEach(input => { input.value = ''; });
+                }
                 setupCodeInputs();
                 inputs[0]?.focus();
             } else {
-                showNotification('error', result.message || 'Failed to send verification code');
+                const errMsg = result.message || 'Failed to send verification code';
+                showModalError(errMsg);
+                showNotification('error', errMsg);
                 this.disabled = false;
                 this.innerHTML = 'Send Verification Code';
             }
         } catch (err) {
-            showNotification('error', err.message.startsWith('Network error') ? err.message : ('Network error: ' + err.message));
+            const netErr = err.message.startsWith('Network error') ? err.message : ('Network error: ' + err.message);
+            showModalError(netErr);
+            showNotification('error', netErr);
             this.disabled = false;
             this.innerHTML = 'Send Verification Code';
         }
