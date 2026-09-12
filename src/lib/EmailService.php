@@ -100,8 +100,14 @@ class EmailService
                 )
             );
             
-            // 15-second timeout on both localhost and deployed to allow SSL handshake to complete reliably
-            $mail->Timeout = 15;
+            $isCloud = !empty(getenv('RAILWAY_ENVIRONMENT')) ||
+                       !empty(getenv('RAILWAY_STATIC_URL')) ||
+                       !empty(getenv('RAILWAY_GIT_COMMIT_SHA')) ||
+                       !empty($_SERVER['RAILWAY_STATIC_URL']);
+
+            // On cloud containers where raw SMTP might be firewalled by the host, use 3s timeout to failover quickly
+            // On localhost, allow generous 15s for full SSL handshake
+            $mail->Timeout = $isCloud ? 3 : 15;
             $mail->SMTPKeepAlive = false;
             
             // Disable SMTP debugging to prevent HTML output in JSON responses
@@ -209,8 +215,7 @@ class EmailService
             // any email address other than the verified account owner.
             // NEVER hijack, reroute, or send the email to rasheddizon7@gmail.com when an applicant inputted their own Gmail!
             if ($isResendSandbox && $cleanTo !== 'rasheddizon7@gmail.com') {
-                $this->lastError = "Resend Sandbox Restriction: Resend sender ($from) can only deliver to the account owner. Cannot deliver to external recipient ($to).";
-                error_log("EmailService: " . $this->lastError . " - Skipping Resend to avoid sandbox delivery failure/hijack.");
+                error_log("EmailService: Skipping Resend sandbox ($from) for external recipient ($to) - sandbox only delivers to account owner.");
             } else {
                 // If official Resend PHP SDK is installed:
                 if (class_exists('\\Resend')) {
