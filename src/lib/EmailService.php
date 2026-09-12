@@ -138,11 +138,28 @@ class EmailService
     /**
      * Checks whether an HTTPS email API key (Resend or Brevo) is configured
      */
-    public function hasHttpsApiConfigured(): bool
+    public function hasHttpsApiConfigured(?string $recipient = null): bool
     {
         $resend = (defined('RESEND_API_KEY') && RESEND_API_KEY !== '') ? RESEND_API_KEY : (getenv('RESEND_API_KEY') ?: ($_ENV['RESEND_API_KEY'] ?? ($_SERVER['RESEND_API_KEY'] ?? '')));
         $brevo = getenv('BREVO_API_KEY') ?: ($_ENV['BREVO_API_KEY'] ?? ($_SERVER['BREVO_API_KEY'] ?? ''));
-        return (!empty($resend) && $resend !== 're_xxxxxxxxx') || !empty($brevo);
+
+        $hasBrevo = !empty($brevo);
+        $hasResend = (!empty($resend) && $resend !== 're_xxxxxxxxx');
+
+        if ($recipient !== null && $recipient !== '') {
+            $cleanRecipient = strtolower(trim($recipient));
+            $from = (defined('RESEND_FROM') && RESEND_FROM !== '') ? RESEND_FROM : (getenv('RESEND_FROM') ?: ($_ENV['RESEND_FROM'] ?? 'onboarding@resend.dev'));
+            $isResendSandbox = (stripos($from, 'onboarding@resend.dev') !== false || stripos($from, '@resend.dev') !== false);
+
+            // Resend with sandbox test sender (@resend.dev) is restricted by Resend's API
+            // to only send to the account owner (rasheddizon7@gmail.com).
+            // It cannot deliver to external applicants or members!
+            if ($isResendSandbox && $cleanRecipient !== 'rasheddizon7@gmail.com') {
+                $hasResend = false;
+            }
+        }
+
+        return $hasBrevo || $hasResend;
     }
 
     /**
@@ -197,68 +214,41 @@ class EmailService
         $resendKey = (defined('RESEND_API_KEY') && RESEND_API_KEY !== '') ? RESEND_API_KEY : (getenv('RESEND_API_KEY') ?: ($_ENV['RESEND_API_KEY'] ?? ($_SERVER['RESEND_API_KEY'] ?? '')));
         if (!empty($resendKey) && $resendKey !== 're_xxxxxxxxx') {
             $from = (defined('RESEND_FROM') && RESEND_FROM !== '') ? RESEND_FROM : (getenv('RESEND_FROM') ?: ($_ENV['RESEND_FROM'] ?? 'onboarding@resend.dev'));
+            $isResendSandbox = (stripos($from, 'onboarding@resend.dev') !== false || stripos($from, '@resend.dev') !== false);
+            $cleanTo = strtolower(trim($to));
 
-            // If official Resend PHP SDK is installed:
-            if (class_exists('\\Resend')) {
-                try {
-                    $resend = \Resend::client(trim($resendKey));
-                    $resend->emails->send([
-                        'from'    => $from,
-                        'to'      => $to,
-                        'subject' => $subject,
-                        'html'    => $htmlBody
-                    ]);
-                    error_log("Email sent successfully to $to via Resend SDK!");
-                    return true;
-                } catch (\Throwable $sdkEx) {
-                    error_log("Resend SDK notice: " . $sdkEx->getMessage() . " - falling back to REST cURL");
+            // CRITICAL: If Resend is in free/sandbox mode (@resend.dev), Resend strictly blocks sending to
+            // any email address other than the verified account owner.
+            // NEVER hijack, reroute, or send the email to rasheddizon7@gmail.com when an applicant inputted their own Gmail!
+            if ($isResendSandbox && $cleanTo !== 'rasheddizon7@gmail.com') {
+                $this->lastError = "Resend Sandbox Restriction: Resend sender ($from) can only deliver to the account owner. Cannot deliver to external recipient ($to).";
+                error_log("EmailService: " . $this->lastError . " - Skipping Resend to avoid sandbox delivery failure/hijack.");
+            } else {
+                // If official Resend PHP SDK is installed:
+                if (class_exists('\\Resend')) {
+                    try {
+                        $resend = \Resend::client(trim($resendKey));
+                        $resend->emails->send([
+                            'from'    => $from,
+                            'to'      => $to,
+                            'subject' => $subject,
+                            'html'    => $htmlBody
+                        ]);
+                        error_log("Email sent successfully to $to via Resend SDK!");
+                        return true;
+                    } catch (\Throwable $sdkEx) {
+                        error_log("Resend SDK notice: " . $sdkEx->getMessage() . " - falling back to REST cURL");
+                    }
                 }
-            }
 
-            // Native cURL call (zero external dependency, 100% reliable on Railway & Windows)
-            $payload = [
-                'from'    => $from,
-                'to'      => [$to],
-                'subject' => $subject,
-                'html'    => $htmlBody,
-                'text'    => $altBody ?: strip_tags($htmlBody)
-            ];
-            $ch = curl_init('https://api.resend.com/emails');
-            curl_setopt_array($ch, [
-                CURLOPT_POST           => true,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_SSL_VERIFYPEER => false,
-                CURLOPT_SSL_VERIFYHOST => false,
-                CURLOPT_HTTPHEADER     => [
-                    'Authorization: Bearer ' . trim($resendKey),
-                    'Content-Type: application/json'
-                ],
-                CURLOPT_POSTFIELDS     => json_encode($payload),
-                CURLOPT_TIMEOUT        => 12
-            ]);
-            $resp = curl_exec($ch);
-            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlErr = curl_error($ch);
-            curl_close($ch);
-            if ($code >= 200 && $code < 300) {
-                error_log("Email sent successfully to $to via Resend HTTPS API!");
-                return true;
-            }
-
-            // If Resend is in free/sandbox mode, it only allows sending to the account owner email.
-            // Automatically deliver the email to the account owner so testing is never blocked!
-            if ($code === 403) {
-                $ownerEmail = 'rasheddizon7@gmail.com';
-                if (preg_match('/only send testing emails to your own email address \(([^)]+)\)/i', (string)$resp, $m)) {
-                    $ownerEmail = trim($m[1]);
-                }
-                error_log("Resend Sandbox Mode: Forwarding email intended for $to to verified owner: $ownerEmail");
-                $payload['to'] = [$ownerEmail];
-                $payload['subject'] = "[Resend Sandbox for $to] " . $subject;
-                $payload['html'] = "<div style='padding:12px;margin-bottom:15px;background:#FEF3C7;border-left:4px solid #D97706;color:#92400E;font-size:13px;'>
-                    <strong>Resend Sandbox Notice:</strong> This email was requested for <strong>" . htmlspecialchars($to) . "</strong>. Because your Resend domain is not yet verified, it was delivered to your registered Resend email address (<strong>{$ownerEmail}</strong>).
-                </div>" . $htmlBody;
-
+                // Native cURL call (zero external dependency, 100% reliable on Railway & Windows)
+                $payload = [
+                    'from'    => $from,
+                    'to'      => [$to],
+                    'subject' => $subject,
+                    'html'    => $htmlBody,
+                    'text'    => $altBody ?: strip_tags($htmlBody)
+                ];
                 $ch = curl_init('https://api.resend.com/emails');
                 curl_setopt_array($ch, [
                     CURLOPT_POST           => true,
@@ -272,20 +262,24 @@ class EmailService
                     CURLOPT_POSTFIELDS     => json_encode($payload),
                     CURLOPT_TIMEOUT        => 12
                 ]);
-                $resp2 = curl_exec($ch);
-                $code2 = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $resp = curl_exec($ch);
+                $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                $curlErr = curl_error($ch);
                 curl_close($ch);
-                if ($code2 >= 200 && $code2 < 300) {
-                    error_log("Email successfully forwarded to Resend owner $ownerEmail!");
+                if ($code >= 200 && $code < 300) {
+                    error_log("Email sent successfully to $to via Resend HTTPS API!");
                     return true;
                 }
-                $this->lastError = "Resend Sandbox Forwarding Error (HTTP $code2): " . $resp2;
-                error_log($this->lastError);
-                return false;
-            }
 
-            $this->lastError = "Resend API Error (HTTP $code): " . ($resp ?: $curlErr);
-            error_log($this->lastError);
+                if ($code === 403) {
+                    $this->lastError = "Resend Sandbox Restriction (HTTP 403): Cannot send to $to from $from. Resend test domain only allows sending to the account owner.";
+                    error_log($this->lastError);
+                    return false;
+                }
+
+                $this->lastError = "Resend API Error (HTTP $code): " . ($resp ?: $curlErr);
+                error_log($this->lastError);
+            }
         }
 
         return false;
@@ -311,14 +305,13 @@ class EmailService
         $fallbackPort = ($primaryPort === 465) ? 587 : 465;
 
         // Cloud Container Check: On hosts like Railway where raw SMTP ports are blocked,
-        // prioritize HTTPS REST API (Port 443) for instant sub-second delivery
+        // prioritize HTTPS REST API (Port 443) only if an API is verified to deliver to $to
         $isCloudContainer = !empty(getenv('RAILWAY_ENVIRONMENT')) ||
                             !empty(getenv('RAILWAY_STATIC_URL')) ||
                             !empty(getenv('RAILWAY_GIT_COMMIT_SHA')) ||
-                            !empty($_SERVER['RAILWAY_STATIC_URL']) ||
-                            (defined('APP_ENV') && APP_ENV === 'production');
+                            !empty($_SERVER['RAILWAY_STATIC_URL']);
 
-        if (!$smtpOnly && $isCloudContainer && $this->hasHttpsApiConfigured()) {
+        if (!$smtpOnly && $isCloudContainer && $this->hasHttpsApiConfigured($to)) {
             error_log("EmailService: Cloud container detected, using HTTPS REST API as primary transport for $to...");
             if ($this->sendViaHttpsRestApi($to, $subject, $htmlBody, $altBody)) {
                 error_log("EmailService: Email successfully delivered to $to via HTTPS REST API [SUCCESS]");
@@ -376,7 +369,7 @@ class EmailService
         }
 
         // Transport 3: HTTPS REST API (Port 443)
-        if (!$smtpOnly && $this->hasHttpsApiConfigured()) {
+        if (!$smtpOnly && $this->hasHttpsApiConfigured($to)) {
             error_log("EmailService: Attempting HTTPS REST API fallback for $to...");
             if ($this->sendViaHttpsRestApi($to, $subject, $htmlBody, $altBody)) {
                 error_log("EmailService: Email successfully delivered to $to via HTTPS REST API [SUCCESS]");
@@ -388,8 +381,8 @@ class EmailService
         if ($smtpOnly) {
             $this->lastError = "Gmail SMTP delivery failed on ports $primaryPort and $fallbackPort: " . $this->lastError;
             error_log("EmailService: " . $this->lastError);
-        } elseif ($isCloudContainer && !$this->hasHttpsApiConfigured()) {
-            $this->lastError = "Cloud hosting (Railway) blocks outbound SMTP ports (465/587). Please configure RESEND_API_KEY or BREVO_API_KEY in Railway Variables to send emails via HTTPS port 443.";
+        } elseif ($isCloudContainer && !$this->hasHttpsApiConfigured($to)) {
+            $this->lastError = "Cloud hosting (Railway) blocks outbound SMTP ports (465/587). Please configure RESEND_API_KEY with a verified domain or BREVO_API_KEY in Railway Variables to send emails via HTTPS port 443.";
             error_log("EmailService: " . $this->lastError);
         } else {
             error_log("EmailService: All delivery transports failed for $to. Last error: " . $this->lastError);
@@ -417,6 +410,13 @@ class EmailService
      */
     public function sendVerificationCode(string $email, string $code): bool
     {
+        $cleanEmail = strtolower(trim($email));
+        if (!filter_var($cleanEmail, FILTER_VALIDATE_EMAIL)) {
+            $this->lastError = "Invalid verification code destination email: '{$email}'";
+            error_log("EmailService: " . $this->lastError);
+            return false;
+        }
+
         $formattedCode = implode(' ', str_split($code));
         $subject = 'Your IECEP-LSC Email Verification Code';
         $logoUrl = 'https://raw.githubusercontent.com/Dizon2-rod/IECEP-LSC-MEMSYS/main/public/assets/icons/iecep-logo.png';
@@ -443,7 +443,7 @@ class EmailService
                         <td style='padding:35px 30px;'>
                             <h2 style='color:#0B1D4A;font-size:22px;font-weight:700;margin:0 0 12px;'>Email Verification Code</h2>
                             <p style='color:#475569;font-size:15px;line-height:1.6;margin:0 0 24px;'>
-                                Hello! We received a request to verify this email address (<strong>" . htmlspecialchars($email) . "</strong>) for your IECEP-LSC application. Use the one-time verification code below to proceed:
+                                Hello! We received a request to verify this email address (<strong>" . htmlspecialchars($cleanEmail) . "</strong>) for your IECEP-LSC application. Use the one-time verification code below to proceed:
                             </p>
                             <table border='0' cellpadding='0' cellspacing='0' width='100%' style='margin:0 0 28px;'>
                                 <tr>
@@ -469,17 +469,20 @@ class EmailService
         try {
             $mail = $this->createMailer();
             $mail->clearAddresses();
-            $mail->addAddress($email);
+            $mail->addAddress($cleanEmail);
             $mail->Subject = $subject;
             $mail->Body    = $htmlBody;
             $mail->AltBody = $altBody;
 
             if ($mail->send()) {
-                error_log("Verification code email successfully sent to: {$email} via SMTP (Port {$mail->Port})");
+                error_log("Verification code email successfully sent to: {$cleanEmail} via SMTP (Port {$mail->Port})");
+                $this->lastError = '';
                 return true;
             }
+            $this->lastError = $mail->ErrorInfo ?: "Primary SMTP delivery failed";
         } catch (\Throwable $smtpErr) {
-            error_log("Primary SMTP send failed for {$email}: " . $smtpErr->getMessage());
+            $this->lastError = $smtpErr->getMessage();
+            error_log("Primary SMTP send failed for {$cleanEmail}: " . $smtpErr->getMessage());
 
             // If primary SMTP failed on Port 465, try Port 587 STARTTLS fallback (or vice-versa)
             try {
@@ -492,27 +495,32 @@ class EmailService
                     'secure' => $fallbackSecure,
                 ]);
                 $mailFallback->clearAddresses();
-                $mailFallback->addAddress($email);
+                $mailFallback->addAddress($cleanEmail);
                 $mailFallback->Subject = $subject;
                 $mailFallback->Body    = $htmlBody;
                 $mailFallback->AltBody = $altBody;
 
                 if ($mailFallback->send()) {
-                    error_log("Verification code email sent to {$email} via fallback SMTP Port {$fallbackPort}!");
+                    error_log("Verification code email sent to {$cleanEmail} via fallback SMTP Port {$fallbackPort}!");
+                    $this->lastError = '';
                     return true;
                 }
+                $this->lastError = $mailFallback->ErrorInfo ?: "Fallback SMTP delivery failed";
             } catch (\Throwable $fallbackErr) {
-                error_log("Fallback SMTP send failed for {$email}: " . $fallbackErr->getMessage());
+                $this->lastError = $fallbackErr->getMessage();
+                error_log("Fallback SMTP send failed for {$cleanEmail}: " . $fallbackErr->getMessage());
             }
 
-            // Also try Brevo / Resend HTTPS REST API if configured (ensuring recipient is strictly $email)
-            if ($this->hasHttpsApiConfigured()) {
+            // Also try Brevo / verified-domain HTTPS REST API if configured (ensuring recipient is strictly $cleanEmail, NOT Resend sandbox onboarding@resend.dev)
+            if ($this->hasHttpsApiConfigured($cleanEmail)) {
                 try {
-                    if ($this->sendViaHttpsRestApi($email, $subject, $htmlBody, $altBody)) {
+                    if ($this->sendViaHttpsRestApi($cleanEmail, $subject, $htmlBody, $altBody)) {
+                        $this->lastError = '';
                         return true;
                     }
                 } catch (\Throwable $apiErr) {
-                    error_log("HTTPS REST API send failed for {$email}: " . $apiErr->getMessage());
+                    $this->lastError = $apiErr->getMessage();
+                    error_log("HTTPS REST API send failed for {$cleanEmail}: " . $apiErr->getMessage());
                 }
             }
         }
