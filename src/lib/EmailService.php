@@ -59,10 +59,9 @@ class EmailService
             $rawHost = $options['host'] ?? $this->config['email']['host'];
             $baseHost = $rawHost ?: 'smtp.gmail.com';
 
-            // When using Gmail SMTP, connect directly to official Google SMTP hosts.
-            // Avoid gethostbynamel() DNS blocking and failing raw IP addresses.
+            // Connect directly to official Gmail SMTP host
             if (stripos($baseHost, 'gmail.com') !== false) {
-                $mail->Host = 'smtp.gmail.com;smtp.googlemail.com';
+                $mail->Host = 'smtp.gmail.com';
             } else {
                 $mail->Host = $baseHost;
             }
@@ -92,29 +91,18 @@ class EmailService
                 error_log("WARNING: Gmail password does not appear to be an App Password (length=" . strlen($cleanPassword) . "). Gmail will reject standard passwords. Use a 16-character App Password.");
             }
             
-            // Comprehensive SSL context options for OpenSSL compatibility on Windows/XAMPP
+            // Universal SSL context options compatible with both Windows/XAMPP and Linux/Docker
             $mail->SMTPOptions = array(
                 'ssl' => array(
                     'verify_peer' => false,
                     'verify_peer_name' => false,
-                    'allow_self_signed' => true,
-                    'peer_name' => 'smtp.gmail.com',
-                    'SNI_enabled' => true,
-                    'SNI_server_name' => 'smtp.gmail.com'
+                    'allow_self_signed' => true
                 )
             );
             
-            // Cloud container detection
-            $isCloud = !empty(getenv('RAILWAY_ENVIRONMENT')) ||
-                       !empty(getenv('RAILWAY_STATIC_URL')) ||
-                       !empty(getenv('RAILWAY_GIT_COMMIT_SHA')) ||
-                       !empty($_SERVER['RAILWAY_STATIC_URL']) ||
-                       (defined('APP_ENV') && APP_ENV === 'production');
-
-            // 4-second timeout in cloud environments (e.g. Railway) to prevent 502 Bad Gateway timeouts.
-            // On localhost/Windows, allow up to 10s.
-            $mail->Timeout = $isCloud ? 4 : 10;
-            $mail->SMTPKeepAlive = true;
+            // 15-second timeout on both localhost and deployed to allow SSL handshake to complete reliably
+            $mail->Timeout = 15;
+            $mail->SMTPKeepAlive = false;
             
             // Disable SMTP debugging to prevent HTML output in JSON responses
             $mail->SMTPDebug = 0;
@@ -304,23 +292,6 @@ class EmailService
         $primaryPort = (int)($this->config['email']['port'] ?: 465);
         $fallbackPort = ($primaryPort === 465) ? 587 : 465;
 
-        // Cloud Container Check: On hosts like Railway where raw SMTP ports are blocked,
-        // prioritize HTTPS REST API (Port 443) only if an API is verified to deliver to $to
-        $isCloudContainer = !empty(getenv('RAILWAY_ENVIRONMENT')) ||
-                            !empty(getenv('RAILWAY_STATIC_URL')) ||
-                            !empty(getenv('RAILWAY_GIT_COMMIT_SHA')) ||
-                            !empty($_SERVER['RAILWAY_STATIC_URL']);
-
-        if (!$smtpOnly && $isCloudContainer && $this->hasHttpsApiConfigured($to)) {
-            error_log("EmailService: Cloud container detected, using HTTPS REST API as primary transport for $to...");
-            if ($this->sendViaHttpsRestApi($to, $subject, $htmlBody, $altBody)) {
-                error_log("EmailService: Email successfully delivered to $to via HTTPS REST API [SUCCESS]");
-                $this->lastError = '';
-                return true;
-            }
-            error_log("EmailService: HTTPS REST API failed, falling back to SMTP...");
-        }
-
         // Transport 1: Primary SMTP Port
         try {
             $mail = $this->createMailer(['port' => $primaryPort]);
@@ -466,8 +437,13 @@ class EmailService
 </html>";
 
         // Try primary SMTP (Port 465 SSL or Port 587 TLS as configured)
+        $primaryPort = (int)($this->config['email']['port'] ?? 465);
+        $fallbackPort = ($primaryPort === 465) ? 587 : 465;
+        $fallbackSecure = ($fallbackPort === 465) ? \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS : \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+
+        // Transport 1: Primary SMTP Port (e.g. 465 SSL)
         try {
-            $mail = $this->createMailer();
+            $mail = $this->createMailer(['port' => $primaryPort]);
             $mail->clearAddresses();
             $mail->addAddress($cleanEmail);
             $mail->Subject = $subject;
@@ -479,17 +455,13 @@ class EmailService
                 $this->lastError = '';
                 return true;
             }
-            $this->lastError = $mail->ErrorInfo ?: "Primary SMTP delivery failed";
+            throw new \Exception($mail->ErrorInfo ?: "Primary SMTP port {$primaryPort} delivery failed");
         } catch (\Throwable $smtpErr) {
             $this->lastError = $smtpErr->getMessage();
             error_log("Primary SMTP send failed for {$cleanEmail}: " . $smtpErr->getMessage());
 
-            // If primary SMTP failed on Port 465, try Port 587 STARTTLS fallback (or vice-versa)
+            // Transport 2: Fallback SMTP Port (e.g. 587 STARTTLS)
             try {
-                $primaryPort = (int)($this->config['email']['port'] ?? 465);
-                $fallbackPort = ($primaryPort === 465) ? 587 : 465;
-                $fallbackSecure = ($fallbackPort === 465) ? \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_SMTPS : \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-
                 $mailFallback = $this->createMailer([
                     'port'   => $fallbackPort,
                     'secure' => $fallbackSecure,
@@ -505,13 +477,13 @@ class EmailService
                     $this->lastError = '';
                     return true;
                 }
-                $this->lastError = $mailFallback->ErrorInfo ?: "Fallback SMTP delivery failed";
+                throw new \Exception($mailFallback->ErrorInfo ?: "Fallback SMTP port {$fallbackPort} delivery failed");
             } catch (\Throwable $fallbackErr) {
                 $this->lastError = $fallbackErr->getMessage();
                 error_log("Fallback SMTP send failed for {$cleanEmail}: " . $fallbackErr->getMessage());
             }
 
-            // Also try Brevo / verified-domain HTTPS REST API if configured (ensuring recipient is strictly $cleanEmail, NOT Resend sandbox onboarding@resend.dev)
+            // Transport 3: HTTPS REST API if configured and capable of delivering to $cleanEmail
             if ($this->hasHttpsApiConfigured($cleanEmail)) {
                 try {
                     if ($this->sendViaHttpsRestApi($cleanEmail, $subject, $htmlBody, $altBody)) {
@@ -519,7 +491,6 @@ class EmailService
                         return true;
                     }
                 } catch (\Throwable $apiErr) {
-                    $this->lastError = $apiErr->getMessage();
                     error_log("HTTPS REST API send failed for {$cleanEmail}: " . $apiErr->getMessage());
                 }
             }
