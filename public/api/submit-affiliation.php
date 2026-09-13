@@ -111,6 +111,10 @@ try {
     require_once __DIR__ . '/../../src/lib/SupabaseClient.php';
     ob_end_clean();
 
+    $config = require __DIR__ . '/../../includes/supabase.php';
+    $sbKey = trim($config['service_role_key'] ?: $config['anon_key'], "\"' \t\n\r\0\x0B");
+    $sb = new \App\Lib\SupabaseClient($config['url'], $sbKey);
+
     /**
      * Upload a file to Supabase Storage with local disk fallback
      */
@@ -134,6 +138,8 @@ try {
                     CURLOPT_POST => true,
                     CURLOPT_POSTFIELDS => $fileContent,
                     CURLOPT_TIMEOUT => 15,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => false,
                     CURLOPT_HTTPHEADER => [
                         'apikey: ' . $key,
                         'Authorization: Bearer ' . $key,
@@ -201,7 +207,9 @@ try {
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_POST           => true,
                     CURLOPT_POSTFIELDS     => $fileContent,
-                    CURLOPT_TIMEOUT        => 12,
+                    CURLOPT_TIMEOUT        => 15,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => false,
                     CURLOPT_HTTPHEADER     => [
                         'apikey: ' . $key,
                         'Authorization: Bearer ' . $key,
@@ -267,9 +275,6 @@ try {
             echo json_encode(['success' => false, 'message' => 'Please provide a valid email address.']);
             exit;
         }
-
-        $config = require __DIR__ . '/../../includes/supabase.php';
-        $sb = new \App\Lib\SupabaseClient($config['url'], $config['anon_key']);
 
         // Check if email already exists in user_profiles
         try {
@@ -381,9 +386,6 @@ try {
             echo json_encode(['success' => false, 'message' => 'Email and 6-digit code are required.']);
             exit;
         }
-
-        $config = require __DIR__ . '/../../includes/supabase.php';
-        $sb = new \App\Lib\SupabaseClient($config['url'], $config['anon_key']);
 
         $verified = false;
         $now = time();
@@ -574,10 +576,6 @@ try {
 
     $required_files = array_merge(array_keys($pdf_docs), ['member_directory']);
     
-    // Database Logic
-    $config = require __DIR__ . '/../../includes/supabase.php';
-    $sb = new SupabaseClient($config['url'], $config['anon_key']);
-
     // Check if email already exists in user_profiles
     $userProfile = $sb->select('user_profiles', ['email' => 'eq.' . $contact_email]);
     if (is_array($userProfile) && isset($userProfile[0]) && is_array($userProfile[0])) {
@@ -674,12 +672,31 @@ try {
     ];
 
     $affiliationData = [
-        'school_name'    => $institution_name,
-        'email'          => $contact_email,
-        'contact_person' => $contact_person,
-        'contact_number' => $contact_phone,
-        'status'         => 'pending',
-        'documents'      => json_encode($documentsData)
+        'school_name'          => $institution_name,
+        'email'                => $contact_email,
+        'contact_person'       => $contact_person,
+        'contact_number'       => $contact_phone,
+        'status'               => 'pending',
+        'documents'            => json_encode($documentsData),
+        'institution_name'     => $institution_name,
+        'institution_address'  => $institution_address,
+        'contact_position'     => $contact_position,
+        'contact_email'        => $contact_email,
+        'contact_phone'        => $contact_phone,
+        'letter_of_intent'     => $uploadedFiles['letter_of_intent'] ?? null,
+        'endorsement_letter'   => $uploadedFiles['endorsement_letter'] ?? null,
+        'constitution_by_laws' => $uploadedFiles['constitution_by_laws'] ?? null,
+        'officers_cvs'         => $uploadedFiles['officers_cvs'] ?? null,
+        'organizational_chart' => $uploadedFiles['organizational_chart'] ?? null,
+        'member_directory'     => $uploadedFiles['member_directory'] ?? null,
+        'total_members'        => $totalMembers,
+        'new_members'          => $newMembers,
+        'old_members'          => $oldMembers,
+        'affiliation_fee'      => $affiliationFee,
+        'membership_total'     => $membershipTotal,
+        'total_fee'            => $totalFee,
+        'receipt_number'       => $receiptNumber,
+        'submitted_at'         => date('c')
     ];
     
     $result = $sb->insert('pending_affiliations', $affiliationData);
@@ -715,8 +732,8 @@ try {
     ]);
     exit;
     
-} catch (Exception $e) {
-    error_log('Submit affiliation error: ' . $e->getMessage());
+} catch (\Throwable $e) {
+    error_log('Submit affiliation error: ' . $e->getMessage() . "\n" . $e->getTraceAsString());
     // Return JSON error response for AJAX
     echo json_encode([
         'success' => false,

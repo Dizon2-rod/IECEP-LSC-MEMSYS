@@ -100,7 +100,8 @@ if ($isPostRequest && !empty($postAction)) {
 
         try {
             $supabaseConfig = require __DIR__ . '/includes/supabase.php';
-            $supabaseClient = new SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
+            $sbKey = !empty($supabaseConfig['service_role_key']) ? $supabaseConfig['service_role_key'] : ($supabaseConfig['anon_key'] ?? '');
+            $supabaseClient = new SupabaseClient($supabaseConfig['url'], $sbKey);
 
             // 1. Check if email already exists in user_profiles (Admin, School Officer, Member, etc.)
             $userProfile = $supabaseClient->select('user_profiles', ['email' => 'eq.' . $email]);
@@ -261,7 +262,8 @@ if ($isPostRequest && !empty($postAction)) {
         if (!$verified) {
             try {
                 $supabaseConfig = require __DIR__ . '/includes/supabase.php';
-                $supabaseClient = new SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
+                $sbKey = !empty($supabaseConfig['service_role_key']) ? $supabaseConfig['service_role_key'] : ($supabaseConfig['anon_key'] ?? '');
+                $supabaseClient = new SupabaseClient($supabaseConfig['url'], $sbKey);
                 $records = $supabaseClient->select('verification_codes', [
                     'email' => 'eq.' . $email,
                     'code'  => 'eq.' . $code,
@@ -325,7 +327,8 @@ if ($isPostRequest && !empty($postAction)) {
         try {
             require_once __DIR__ . '/includes/config.php';
             $supabaseConfig = require __DIR__ . '/includes/supabase.php';
-            $supabaseClient = new SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
+            $sbKey = !empty($supabaseConfig['service_role_key']) ? $supabaseConfig['service_role_key'] : ($supabaseConfig['anon_key'] ?? '');
+            $supabaseClient = new SupabaseClient($supabaseConfig['url'], $sbKey);
 
             $contactEmail      = filter_var($_POST['contact_email'] ?? '', FILTER_SANITIZE_EMAIL);
             $institutionName   = trim($_POST['institution_name'] ?? '');

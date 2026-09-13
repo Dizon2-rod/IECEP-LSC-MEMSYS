@@ -61,8 +61,9 @@ use App\Lib\SupabaseClient;
 $supabaseConfig = require dirname(__DIR__, 2) . '/includes/supabase.php';
 $supabase = null;
 try {
-    if (!empty($supabaseConfig['url']) && !empty($supabaseConfig['anon_key'])) {
-        $supabase = new SupabaseClient($supabaseConfig['url'], $supabaseConfig['anon_key']);
+    $sbKey = !empty($supabaseConfig['service_role_key']) ? $supabaseConfig['service_role_key'] : ($supabaseConfig['anon_key'] ?? '');
+    if (!empty($supabaseConfig['url']) && !empty($sbKey)) {
+        $supabase = new SupabaseClient($supabaseConfig['url'], $sbKey);
     }
 } catch (\Throwable $e) {
     error_log('[send-verification-code] Supabase init warning: ' . $e->getMessage());
@@ -174,9 +175,20 @@ if ($supabase) {
                 unset($supabaseData['attempts']);
                 $supabase->insert('email_verifications', $supabaseData);
                 $savedInDb = true;
-            } else {
-                throw $colErr;
             }
+        }
+
+        try {
+            $supabase->insert('verification_codes', [
+                'email' => $email,
+                'code' => $code,
+                'purpose' => 'affiliation',
+                'expires_at' => date('c', $now + 600),
+                'used' => false
+            ]);
+            $savedInDb = true;
+        } catch (\Throwable $vce) {
+            error_log('[send-verification-code] Supabase verification_codes insert notice: ' . $vce->getMessage());
         }
     } catch (\Throwable $se) {
         error_log('[send-verification-code] Supabase insert error: ' . $se->getMessage());
