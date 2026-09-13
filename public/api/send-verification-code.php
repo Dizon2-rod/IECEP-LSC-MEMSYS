@@ -250,12 +250,11 @@ try {
         ]);
         exit;
     } else {
-        error_log("[send-verification-code] EmailService fallback to instant verification code for: {$email}");
-        $_SESSION[$sessionCooldownKey] = $now;
+        $lastErr = $emailService->getLastError();
+        error_log("[send-verification-code] EmailService failed to send verification code to {$email}: {$lastErr}");
         echo json_encode([
-            'success' => true,
-            'message' => 'Verification code: ' . $code . ' (Please enter this code below to proceed)',
-            'code' => $code
+            'success' => false,
+            'message' => 'Failed to send verification code email to your Gmail: ' . ($lastErr ?: 'Please check your email address and try again.')
         ]);
         exit;
     }

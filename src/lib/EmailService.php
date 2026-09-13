@@ -100,14 +100,8 @@ class EmailService
                 )
             );
             
-            $isCloud = !empty(getenv('RAILWAY_ENVIRONMENT')) ||
-                       !empty(getenv('RAILWAY_STATIC_URL')) ||
-                       !empty(getenv('RAILWAY_GIT_COMMIT_SHA')) ||
-                       !empty($_SERVER['RAILWAY_STATIC_URL']);
-
-            // On cloud containers where raw SMTP might be firewalled by the host, use 3s timeout to failover quickly
-            // On localhost, allow generous 15s for full SSL handshake
-            $mail->Timeout = $isCloud ? 3 : 15;
+            // 20-second timeout on both localhost and cloud/Docker containers to allow full SSL handshake to complete reliably
+            $mail->Timeout = 20;
             $mail->SMTPKeepAlive = false;
             
             // Disable SMTP debugging to prevent HTML output in JSON responses

@@ -212,12 +212,10 @@ if ($isPostRequest && !empty($postAction)) {
                     'message' => 'Verification code sent to your email! Please check your Gmail inbox and spam folder.'
                 ];
             } else {
-                error_log("send_code: Email delivery via SMTP/API could not reach {$cleanEmail} ({$emailError}). Providing instant verification code fallback so applicant can proceed identically to localhost.");
+                error_log("send_code: Email delivery via SMTP/API could not reach {$cleanEmail} ({$emailError}).");
                 $response = [
-                    'success' => true,
-                    'message' => 'Verification code: ' . $code . ' (Please enter this code below to proceed)',
-                    'code'    => $code,
-                    'email_error' => $emailError
+                    'success' => false,
+                    'message' => 'Failed to send verification code email to your Gmail: ' . ($emailError ?: 'Please check your email address and try again.')
                 ];
             }
 
@@ -2986,12 +2984,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 document.getElementById('modal-email-form').style.display = 'none';
                 document.getElementById('modal-code-form').style.display  = 'block';
                 const inputs = document.querySelectorAll('#modal-code-form .code-input');
-                if (result.code) {
-                    const digits = String(result.code).split('');
-                    inputs.forEach((input, idx) => { input.value = digits[idx] || ''; });
-                } else {
-                    inputs.forEach(input => { input.value = ''; });
-                }
+                inputs.forEach(input => { input.value = ''; });
                 setupCodeInputs();
                 inputs[0]?.focus();
             } else {

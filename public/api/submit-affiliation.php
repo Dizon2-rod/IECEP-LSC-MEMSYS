@@ -369,10 +369,8 @@ try {
         } else {
             $lastErr = $emailService->getLastError();
             echo json_encode([
-                'success' => true,
-                'message' => 'Verification code: ' . $code . ' (Please enter this code below to proceed)',
-                'code' => $code,
-                'email_error' => $lastErr
+                'success' => false,
+                'message' => 'Failed to send verification code email to your Gmail: ' . ($lastErr ?: 'Please check your email address and try again.')
             ]);
         }
         exit;
